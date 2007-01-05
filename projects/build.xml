@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="google-enterprise-connector-otex" default="everything" basedir=".">
+
+	<!-- ========================= PROPERTIES ============================= -->
+	<property name="version" value="1.0" />
+
+	<!-- Define Directories. -->
+	<property name="otex-core.dir" value="otex-core" />
+	<property name="otex-lapi.dir" value="otex-lapi" />
+	<property name="install.dir" value="install" />
+
+	<!-- =========================== TASKS =============================== -->
+
+
+	<target name="clean-all">
+		<ant dir="${otex-core.dir}" target="clean" />
+		<ant dir="${otex-lapi.dir}" target="clean" />
+	</target>
+
+	<target name="otex-core">
+		<ant dir="${otex-core.dir}" />
+	</target>
+
+	<target name="otex-lapi" depends="otex-core">
+		<ant dir="${otex-lapi.dir}" />
+	</target>
+
+	<target name="build-all" depends="otex-core,otex-lapi"/>
+
+	<target name="make-install-dir">
+		<mkdir dir="${install.dir}" />
+	</target>
+
+	<target name="install-otex-core" depends="otex-core,make-install-dir">
+		<mkdir dir="${install.dir}/otex-core" />
+		<copy todir="${install.dir}/otex-core" >
+			<fileset dir="${otex-core.dir}/dist"/>
+		</copy>
+	</target>
+
+	<target name="install-otex-lapi" depends="otex-lapi,make-install-dir">
+		<mkdir dir="${install.dir}/otex-lapi" />
+		<copy todir="${install.dir}/otex-lapi" >
+			<fileset dir="${otex-lapi.dir}/dist"/>
+		</copy>
+	</target>
+
+	<target name="install-all" 
+		depends="install-otex-core,install-otex-lapi"/>
+
+	<target name="everything" depends="clean-all,build-all,install-all"/>
+
+</project>
