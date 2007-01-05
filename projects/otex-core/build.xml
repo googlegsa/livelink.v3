@@ -51,14 +51,14 @@
 		</javac>
 	</target>
 
-	<target name="compile_tests" depends="init,jar">
+	<target name="compile_tests" depends="init">
 		<!-- compile java source files for tests -->
 		<javac srcdir="${tests.src}" destdir="${tests.classes}" debug="${COMPILE_DEBUG_FLAG}">
 			<classpath>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
-				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
+				<pathelement location="${classes}" />
 			</classpath>
 		</javac>
 	</target>
@@ -82,7 +82,8 @@
 		</junit>
 	</target>
 
-	<target name="jar" description="livelink-connector" depends="compile">
+	<target name="jar" description="livelink-connector" 
+			depends="compile,compile_tests">
 		<copy todir="${config.build}">
 			<fileset dir="${config}" />
 			<filterset>
