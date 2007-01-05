@@ -11,6 +11,7 @@
 	<property name="src" value="source/java" />
 	<property name="classes" value="${build}/classes" />
 	<property name="config" value="config" />
+	<property name="config.build" value="${build}/config" />
 
 	<property name="tests.src" value="source/javatests" />
 	<property name="tests.build" value="build/tests" />
@@ -34,6 +35,7 @@
 		<mkdir dir="${build}" />
 		<mkdir dir="${dist}" />
 		<mkdir dir="${classes}" />
+		<mkdir dir="${config.build}" />
 		<mkdir dir="${tests.build}" />
 		<mkdir dir="${tests.classes}" />
 		<mkdir dir="${tests.todir}" />
@@ -81,9 +83,18 @@
 	</target>
 
 	<target name="jar" description="livelink-connector" depends="compile">
+		<copy todir="${config.build}">
+			<fileset dir="${config}" />
+			<filterset>
+				<filter token="constructor-arg" 
+					value="&lt;constructor-arg value=&quot;com.google.enterprise.connector.otex.client.mock.MockClientFactory&quot; /&gt;" />
+			</filterset>
+		</copy>
+
 		<jar jarfile="${jarfile}">
 			<fileset dir="${classes}"/>
-			<fileset dir="." includes="${config}/**"/>
+			<fileset dir="${tests.classes}" includes="**/mock/*" />
+			<fileset dir="${build}" includes="config/**"/>
 		</jar>
 	</target>
 

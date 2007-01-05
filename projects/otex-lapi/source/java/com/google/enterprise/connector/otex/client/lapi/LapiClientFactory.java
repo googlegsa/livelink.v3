@@ -2,8 +2,6 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 

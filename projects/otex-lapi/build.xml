@@ -11,6 +11,7 @@
 	<property name="src" value="source/java" />
 	<property name="classes" value="${build}/classes" />
 	<property name="config" value="config" />
+	<property name="config.build" value="${build}/config" />
 
 	<property name="tests.src" value="source/javatests" />
 	<property name="tests.build" value="build/tests" />
@@ -39,6 +40,7 @@
 		<mkdir dir="${build}" />
 		<mkdir dir="${dist}" />
 		<mkdir dir="${classes}" />
+		<mkdir dir="${config.build}" />
 		<mkdir dir="${tests.build}" />
 		<mkdir dir="${tests.classes}" />
 		<mkdir dir="${tests.todir}" />
@@ -92,10 +94,17 @@
 	</target>
 
 	<target name="jar" description="livelink-connector" depends="compile">
+		<copy todir="${config.build}">
+			<fileset dir="${core.dir}/config" />
+			<filterset>
+				<filter token="constructor-arg" value="" />
+			</filterset>
+		</copy>
+
 		<jar jarfile="${jarfile}">
 			<fileset dir="${core.classes}"/>
 			<fileset dir="${classes}"/>
-			<fileset dir="${core.dir}" includes="${config}/**"/>
+			<fileset dir="${build}" includes="config/**"/>
 		</jar>
 	</target>
 

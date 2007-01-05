@@ -35,7 +35,7 @@ public class LivelinkConnector implements Connector {
      * repository, using the specified client factory class.
      */
     LivelinkConnector(String clientFactoryClass) {
-        LOGGER.config("NEW INSTANCE");
+        LOGGER.config("NEW INSTANCE: " + clientFactoryClass);
         try {
             clientFactory = (ClientFactory)
                 Class.forName(clientFactoryClass).newInstance();
