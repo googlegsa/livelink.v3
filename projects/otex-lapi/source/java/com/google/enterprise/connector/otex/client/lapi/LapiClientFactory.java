@@ -13,7 +13,7 @@ import com.opentext.api.LLValue;
 /**
  * A direct LAPI client factory implementation.
  */
-public class LapiClientFactory implements ClientFactory
+public final class LapiClientFactory implements ClientFactory
 {
     private String hostname = null;
     private int port = 0;

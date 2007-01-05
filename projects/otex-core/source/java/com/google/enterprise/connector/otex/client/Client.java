@@ -7,9 +7,6 @@ import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 
-// TODO: Eliminate this.
-import com.opentext.api.LLValue;
-
 /**
  * A facade interface that encapsulates the Livelink API, as it is
  * used by the connector. The intent is to enable non-LAPI
@@ -18,10 +15,9 @@ import com.opentext.api.LLValue;
  */
 public interface Client
 {
-    LLValue ListNodes(Logger logger, String query, String view,
-        LLValue columns) throws RepositoryException;
+    RecArray ListNodes(Logger logger, String query, String view,
+        String[] columns) throws RepositoryException;
 
     InputStream FetchVersion(Logger logger, int volumeId, int objectId,
         int versionNumber) throws RepositoryException;
 }
-

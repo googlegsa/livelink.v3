@@ -36,8 +36,6 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
-import javax.jcr.query.QueryManager;
-
 /**
  * This is a copy of the QueryTraverserTest class with modifications
  * to use the Livelink connector rather than the mock JCR connector.

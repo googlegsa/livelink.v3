@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.RecArray;
 
 import com.opentext.api.LAPI_DOCUMENTS;
 import com.opentext.api.LLSession;
@@ -19,7 +20,7 @@ import com.opentext.api.LLValue;
 /**
  * A direct LAPI client implementation.
  */
-class LapiClient implements Client
+final class LapiClient implements Client
 {
     private final LLSession session;
     
@@ -30,12 +31,15 @@ class LapiClient implements Client
         this.documents = new LAPI_DOCUMENTS(session);
     }
 
-    public synchronized LLValue ListNodes(Logger logger, String query,
-            String view, LLValue columns) throws RepositoryException {
+    public synchronized RecArray ListNodes(Logger logger, String query,
+            String view, String[] columns) throws RepositoryException {
         LLValue recArr = (new LLValue()).setTable();
         try {
             LLValue args = (new LLValue()).setList();
-            if (documents.ListNodes(query, args, view, columns, 
+            LLValue columnsList = (new LLValue()).setList();
+            for (int i = 0; i < columns.length; i++)
+                columnsList.add(columns[i]);
+            if (documents.ListNodes(query, args, view, columnsList, 
                     LAPI_DOCUMENTS.PERM_SEECONTENTS, LLValue.LL_FALSE,
                     recArr) != 0) {
                 throw new LapiException(session, logger);
@@ -43,7 +47,7 @@ class LapiClient implements Client
         } catch (RuntimeException e) {
             throw new LapiException(e, logger);
         }
-        return recArr;
+        return new LapiRecArray(recArr);
     }
     
 

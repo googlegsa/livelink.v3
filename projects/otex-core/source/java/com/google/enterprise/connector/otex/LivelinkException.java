@@ -7,8 +7,6 @@ import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 
-import com.opentext.api.LLSession;
-
 public class LivelinkException extends RepositoryException
 {
     /**

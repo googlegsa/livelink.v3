@@ -2,7 +2,7 @@
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
 	<bean id="livelink-connector"
-		class="com.google.enterprise.connector.livelink.LivelinkConnector">
+		class="com.google.enterprise.connector.otex.LivelinkConnector">
 		<property name="hostname" value="${hostname}"/>
 		<property name="port" value="${port}"/>
 		<property name="username" value="${username}"/>

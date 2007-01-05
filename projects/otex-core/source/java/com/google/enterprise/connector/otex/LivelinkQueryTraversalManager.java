@@ -29,9 +29,7 @@ import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
-
-// TODO: Eliminate this.
-import com.opentext.api.LLValue;
+import com.google.enterprise.connector.otex.client.RecArray;
 
 class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
@@ -119,10 +117,11 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      */
     private static final class Field {
         public final String fieldName;
-        public final int fieldType;
+        public final ValueType fieldType;
         public final String propertyName;
 
-        public Field(String fieldName, int fieldType, String propertyName) {
+        public Field(String fieldName, ValueType fieldType,
+                     String propertyName) {
             this.fieldName = fieldName;
             this.fieldType = fieldType;
             this.propertyName = propertyName;
@@ -136,27 +135,27 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         ArrayList list = new ArrayList();
 
         list.add(new Field(
-            null, LLValue.LL_STRING, SpiConstants.PROPNAME_CONTENT));
+            null, ValueType.STRING, SpiConstants.PROPNAME_CONTENT));
         list.add(new Field(
-            null, LLValue.LL_STRING, SpiConstants.PROPNAME_DISPLAYURL));
+            null, ValueType.STRING, SpiConstants.PROPNAME_DISPLAYURL));
         list.add(new Field(
-            null, LLValue.LL_BOOLEAN, SpiConstants.PROPNAME_ISPUBLIC));
+            null, ValueType.BOOLEAN, SpiConstants.PROPNAME_ISPUBLIC));
 
         list.add(new Field(
-            "DataID", LLValue.LL_INTEGER, SpiConstants.PROPNAME_DOCID));
+            "DataID", ValueType.LONG, SpiConstants.PROPNAME_DOCID));
         list.add(new Field(
-            "ModifyDate", LLValue.LL_DATE, SpiConstants.PROPNAME_LASTMODIFY));
+            "ModifyDate", ValueType.DATE, SpiConstants.PROPNAME_LASTMODIFY));
         list.add(new Field(
-            "MimeType", LLValue.LL_STRING, SpiConstants.PROPNAME_MIMETYPE));
+            "MimeType", ValueType.STRING, SpiConstants.PROPNAME_MIMETYPE));
 
         list.add(new Field(
-            "Name", LLValue.LL_STRING, "Name"));
+            "Name", ValueType.STRING, "Name"));
         list.add(new Field(
-            "OwnerID", LLValue.LL_INTEGER, "OwnerID"));
+            "OwnerID", ValueType.LONG, "OwnerID"));
         list.add(new Field(
-            "PermID", LLValue.LL_INTEGER, null));
+            "PermID", ValueType.LONG, null));
         list.add(new Field(
-            "SubType", LLValue.LL_INTEGER, "SubType"));
+            "SubType", ValueType.LONG, "SubType"));
 
         fields = (Field[]) list.toArray(new Field[0]);
 
@@ -247,7 +246,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     {
         String query;
         String view;
-        LLValue columns = (new LLValue()).setList();
+        String[] columns;
 
         // TODO: This is just a sketch of a subtype and volume type
         // restriction. Note that this code only handles SQL Server.
@@ -266,9 +265,10 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
             // FIXME: This code is working around fields with null
             // field names. This turns into "top 100 null, null, ...".
-            columns.add("top " + batchSize + " " + fields[0].fieldName);
+            columns = new String[fields.length];
+            columns[0] = "top " + batchSize + " " + fields[0].fieldName;
             for (int i = 1; i < fields.length; i++)
-                columns.add(fields[i].fieldName + "");
+                columns[i] = fields[i].fieldName + "";
         } else {
             query = "rownum <= " + batchSize;
             StringBuffer buffer = new StringBuffer();
@@ -282,15 +282,16 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             buffer.append(getOrderBy());
             buffer.append(')');
             view = buffer.toString();
-            columns.add("*");
+            columns = new String[] { "*" };
         }
 
-        final LLValue recArr = client.ListNodes(LOGGER, query, view, columns);
-        LOGGER.fine("RESULTSET: " + recArr.size() + " rows. @" +
+        final RecArray recArray =
+            client.ListNodes(LOGGER, query, view, columns);
+        LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
             System.identityHashCode(this));
         
         return new ResultSet() { public Iterator iterator() {
-            return new RecArrayResultSetIterator(connector, client, recArr); } };
+            return new RecArrayResultSetIterator(connector, client, recArray); } };
     }
 
 
@@ -336,13 +337,13 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
     
     private static class RecArrayResultSetIterator implements Iterator {
-        private final LLValue recArray;
+        private final RecArray recArray;
         private int row;
         private final int size;
         private final LivelinkConnector connector;
         private final Client client;
         RecArrayResultSetIterator(LivelinkConnector connector, Client client,
-            LLValue recArray)
+            RecArray recArray)
         {
             this.recArray = recArray;
             this.row = 0;
@@ -366,12 +367,12 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
 
     private static class RecArrayPropertyMap implements PropertyMap {
-        private final LLValue recArray;
+        private final RecArray recArray;
         private final int row;
         private final LivelinkConnector connector;
         private final Client client;
         RecArrayPropertyMap(LivelinkConnector connector, Client client,
-            LLValue recArray, int row) {
+            RecArray recArray, int row) {
             this.recArray = recArray;
             this.row = row;
             this.client = client;
@@ -405,13 +406,13 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
 
     private static class RecArrayPropertyMapIterator implements Iterator {
-        private final LLValue recArray;
+        private final RecArray recArray;
         private final int row;
         private Iterator columns;
         private final LivelinkConnector connector;
         private final Client client;
         RecArrayPropertyMapIterator(LivelinkConnector connector, Client client,
-            LLValue recArray, int row) {
+            RecArray recArray, int row) {
             this.recArray = recArray;
             this.row = row;
             this.columns = fieldsMap.values().iterator();
@@ -435,13 +436,13 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         private static final Logger LOGGER =
             Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
 
-        private final LLValue recArray;
+        private final RecArray recArray;
         private final int row;
         private final Field column;
         private final LivelinkConnector connector;
         private final Client client;
         RecArrayProperty(LivelinkConnector connector, Client client,
-            LLValue recArray, int row, Field column) {
+            RecArray recArray, int row, Field column) {
             this.recArray = recArray;
             this.row = row;
             this.column = column;
@@ -515,10 +516,10 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     private static class RecArrayValue implements Value {
         private static final Logger LOGGER =
             Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
-        private final LLValue recArray;
+        private final RecArray recArray;
         private final int row;
         private final Field column;
-        RecArrayValue(LLValue recArray, int row, Field column) {
+        RecArrayValue(RecArray recArray, int row, Field column) {
             this.recArray = recArray;
             this.row = row;
             this.column = column;
@@ -546,27 +547,13 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             return null;
         }
         public String getString() {
-            if (column.fieldType == LLValue.LL_DATE)
+            if (column.fieldType == ValueType.DATE)
                 return toIso8601String(recArray.toDate(row, column.fieldName));
             else
                 return recArray.toString(row, column.fieldName);
         }
         public ValueType getType() throws RepositoryException {
-            switch (column.fieldType) {
-            case LLValue.LL_BOOLEAN:
-                return ValueType.BOOLEAN;
-            case LLValue.LL_DATE:
-                return ValueType.DATE;
-            case LLValue.LL_DOUBLE:
-                return ValueType.DOUBLE;
-            case LLValue.LL_INTEGER:
-                return ValueType.LONG;
-            case LLValue.LL_STRING:
-                return ValueType.STRING;
-            default:
-                throw new LivelinkException(
-                    "FIXME: Unknown field type " + column.fieldType, LOGGER);
-            }
+            return column.fieldType;
         }
     }
     

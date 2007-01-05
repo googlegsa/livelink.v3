@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project name="otex-core" default="build" basedir=".">
+<project name="otex-lapi" default="build" basedir=".">
 
 	<!-- ========================= PROPERTIES ============================= -->
 	<property name="version" value="1.0" />
@@ -20,11 +20,16 @@
 	<property name="jar.dir"  value="${dist}/jar" />
 	<property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
 
+        <property name="core.dir" location="../otex-core"/>
+        <property name="core.classes" location="../otex-core/build/classes"/>
+
 	<property name="connector-manager.dir" location="../../../cm/projects/connector-manager" />
 	<property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
 	<property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
 	<property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
 	<property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
+
+	<property name="lapi.jarfile" location="c:/Program Files/Open Text/LAPI/lib/lapi.jar" />
 
 	<!-- =========================== TASKS =============================== -->
 	<target name="build" depends="init,compile,compile_tests,jar">
@@ -45,6 +50,8 @@
 		<javac srcdir="${src}" destdir="${classes}" debug="${COMPILE_DEBUG_FLAG}">
 			<classpath>
 				<pathelement location="${spi.jarfile}" />
+                                <pathelement location="${core.classes}" />
+				<pathelement location="${lapi.jarfile}" />
 			</classpath>
 		</javac>
 	</target>
@@ -57,6 +64,9 @@
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
+<!--
+				<pathelement location="${lapi.jarfile}" />
+-->
 			</classpath>
 		</javac>
 	</target>
@@ -68,6 +78,7 @@
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
+				<pathelement location="${lapi.jarfile}" />
 				<pathelement location="${tests.classes}" />
 			</classpath>
 			<formatter type="brief" usefile="no"/>
@@ -82,8 +93,9 @@
 
 	<target name="jar" description="livelink-connector" depends="compile">
 		<jar jarfile="${jarfile}">
+			<fileset dir="${core.classes}"/>
 			<fileset dir="${classes}"/>
-			<fileset dir="." includes="${config}/**"/>
+			<fileset dir="${core.dir}" includes="${config}/**"/>
 		</jar>
 	</target>
 
