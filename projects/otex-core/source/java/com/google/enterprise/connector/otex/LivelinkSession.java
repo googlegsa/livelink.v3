@@ -4,6 +4,7 @@ package com.google.enterprise.connector.otex;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.AuthenticationManager;
@@ -55,14 +56,16 @@ class LivelinkSession
     }
 
     public boolean authenticate(String username, String password) {
-        LOGGER.fine("AUTHENTICATE: " + username);
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("AUTHENTICATE: " + username);
         return true;
     }
 
     public ResultSet authorizeDocids(List docids, String username)
         throws RepositoryException
     {
-        LOGGER.fine("AUTHORIZE DOCIDS");
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("AUTHORIZE DOCIDS");
         SimpleResultSet rs = new SimpleResultSet();
         for (Iterator i = docids.iterator(); i.hasNext(); ) {
             SimplePropertyMap pm = new SimplePropertyMap();
@@ -78,7 +81,10 @@ class LivelinkSession
     }
 
     public ResultSet authorizeTokens(List docids, String username) {
-        LOGGER.fine("AUTHORIZE TOKENS");
+        // TODO: Throw an exception, because if we don't return a
+        // SECURITYTOKEN property this method should never be called.
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("AUTHORIZE TOKENS");
         return new SimpleResultSet();
     }
 }

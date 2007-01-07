@@ -9,6 +9,7 @@ import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.LoginException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 public class LivelinkConnector implements Connector {
@@ -16,6 +17,10 @@ public class LivelinkConnector implements Connector {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnector.class.getName());
 
+    /**
+     * The client factory used to configure and instantiate the
+     * client facade.
+     */
     private final ClientFactory clientFactory;
 
     /** The display URL prefix for the search results. */
@@ -34,8 +39,10 @@ public class LivelinkConnector implements Connector {
      * Constructs a connector instance for a specific Livelink
      * repository, using the specified client factory class.
      */
+    /* XXX: Should we throw the relevant checked exceptions instead? */
     LivelinkConnector(String clientFactoryClass) {
-        LOGGER.config("NEW INSTANCE: " + clientFactoryClass);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("NEW INSTANCE: " + clientFactoryClass);
         try {
             clientFactory = (ClientFactory)
                 Class.forName(clientFactoryClass).newInstance();
@@ -46,61 +53,82 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
+     * Sets the hostname of the Livelink server.
+     * 
      * @param hostname the host name to set
      */
     public void setHostname(String hostname) {
-        LOGGER.config("HOSTNAME: " + hostname);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("HOSTNAME: " + hostname);
         clientFactory.setHostname(hostname);
     }
 
     /**
+     * Sets the hostname of the Livelink server. This should be the
+     * Livelink server port, unless HTTP tunnelling is used, in which
+     * case it should be the HTTP port.
+     * 
      * @param port the port number to set
      */
     public void setPort(int port) {
-        LOGGER.config("PORT: " + port);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("PORT: " + port);
         clientFactory.setPort(port);
     }
 
     /**
+     * Sets the database connection to use. This property is optional.
+     * 
      * @param database the database name to set
      */
     public void setDatabase(String database) {
-        LOGGER.config("DATABASE: " + database);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("DATABASE: " + database);
         clientFactory.setDatabase(database);
     }
 
     /**
+     * Sets the Livelink username.
+     * 
      * @param username the username to set
      */
     public void setUsername(String username) {
-        LOGGER.config("USERNAME: " + username);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("USERNAME: " + username);
         clientFactory.setUsername(username);
     }
 
     /**
+     * Sets the Livelink password.
+     * 
      * @param password the password to set
      */
     public void setPassword(String password) {
-        LOGGER.config("PASSWORD: " + password);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("PASSWORD: " + password);
         clientFactory.setPassword(password);
     }
 
     /**
+     * Sets the Livelink domain name. This property is optional.
+     * 
      * @param domainName the domain name to set
      */
     public void setDomainName(String domainName) {
-        LOGGER.config("DOMAIN NAME: " + domainName);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("DOMAIN NAME: " + domainName);
         clientFactory.setDomainName(domainName);
     }
 
     /**
-     * Gets the display URL prefix for the search results, e.g.,
+     * Sets the display URL prefix for the search results, e.g.,
      * "http://myhostname/Livelink/livelink.exe".
      * 
      * @param displayUrl the display URL prefix
      */
     public void setDisplayUrl(String displayUrl) {
-        LOGGER.config("DISPLAY URL: " + displayUrl);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("DISPLAY URL: " + displayUrl);
         this.displayUrl = displayUrl;
     }
     
@@ -113,16 +141,20 @@ public class LivelinkConnector implements Connector {
         return displayUrl;
     }
     
-    // TODO: Extra config options (DS, tunnelling, domains),
-    // character encodings, volume ID.
-    
-    public Session login() throws LoginException, RepositoryException {
-        LOGGER.fine("LOGIN");
+    // TODO: Extra config options (e.g., DS, tunnelling).
 
-        // TODO: Make sure that the client can actually connect to Livelink.
-        // This test can just use a local client, e.g.,
-        // Client client = clientFactory.createClient();
-        // client.GetServerInfo(logger, ...);
+    /** {@inheritDoc} */
+    public Session login() throws LoginException, RepositoryException {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("LOGIN");
+
+        // Two birds with one stone. Getting the character encoding
+        // from the server verifies connectivity, and we use the
+        // result to set the character encoding for future clients.
+        Client client = clientFactory.createClient();
+        String encoding = client.getEncoding(LOGGER);
+        if (encoding != null)
+            clientFactory.setEncoding(encoding);
         
         return new LivelinkSession(this, clientFactory);
     }

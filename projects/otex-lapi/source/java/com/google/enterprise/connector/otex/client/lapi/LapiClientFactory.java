@@ -18,49 +18,68 @@ public final class LapiClientFactory implements ClientFactory
     private String database = null;
     private String username = null;
     private String password = null;
-    private String displayUrl = null;
     private LLValue config = null;
 
-    /** Required property. */
+    /** {@inheritDoc} */
     public void setHostname(String value) {
-        this.hostname = value;
+        hostname = value;
     }
 
-    /** Required property. */
+    /** {@inheritDoc} */
     public void setPort(int value) {
-        this.port = value;
+        port = value;
     }
 
     /** Optional property. */
     public void setDatabase(String value) {
-        this.database = value;
+        database = value;
     }
 
-    /** Required property. */
+    /** {@inheritDoc} */
     public void setUsername(String value) {
-        this.username = value;
+        username = value;
     }
 
-    /** Required property. */
+    /** {@inheritDoc} */
     public void setPassword(String value) {
-        this.password = value;
+        password = value;
     }
 
-    /** Optional property. */
+    /** {@inheritDoc} */
     public void setDomainName(String value) {
+        setConfig("DomainName", value);
+    }
+
+    /** {@inheritDoc} */
+    public void setEncoding(String value) {
+        setConfig("Encoding", value);
+    }
+
+    /**
+     * Sets a feature in the config assoc.
+     *
+     * @param name the feature name
+     * @param value the feature value
+     */
+    /*
+     * This method is synchronized to emphasize safety over speed. It
+     * is extremely unlikely that this instance will be called from
+     * multiple threads, but this is also a very fast, rarely executed
+     * operation, so there's no need to cut corners.
+     */
+    private synchronized void setConfig(String name, String value) {
         if (config == null)
             config = (new LLValue()).setAssocNotSet();
 
         // XXX: Should we use add or setValue here?
-        config.add("DomainName", value);
+        config.add(name, value);
     }
-
-    /**
-     * Gets an initialized client.
-     *
-     * @return a client
-     */
+    
+    /** {@inheritDoc} */
     public Client createClient() {
+        // Construct a new LLSession and pass that to the client, just
+        // to avoid having to pass all of the constructor arguments to
+        // LapiClient.
         LLSession session = new LLSession(hostname, port, database, username,
             password, config);
         return new LapiClient(session);

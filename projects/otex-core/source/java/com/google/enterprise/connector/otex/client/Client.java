@@ -12,12 +12,50 @@ import com.google.enterprise.connector.spi.RepositoryException;
  * used by the connector. The intent is to enable non-LAPI
  * implementations that also don't require a Livelink server for
  * testing and support.
+ * <p>
+ * All of the methods take a <code>java.util.Logger</code> parameter
+ * to use when logging.
  */
+/* XXX: Do we want the client implementations to use their own loggers? */
 public interface Client
 {
+    /**
+     * Gets the server character encoding, or null if an encoding does
+     * not need to be set on the session.
+     *
+     * @param logger a logger instance to use
+     * @throws RepositoryException if an error occurs
+     */
+    String getEncoding(Logger logger) throws RepositoryException;
+    
+    /**
+     * Wraps the <code>LAPI_DOCUMENTS.ListNodes</code> method.
+     * Not all of the arguments of that method are exposed here.
+     * <p>
+     * The LAPI <code>ListNodes</code> implementation requires the
+     * DataID and PermID columns to be included in the selected
+     * columns.
+     *
+     * @param logger a logger instance to use
+     * @param query a SQL condition, used in the WHERE clause
+     * @param view a SQL table expression, used in the FROM clause
+     * @param columns a SQL select list, used in the SELECT clause
+     * @throws RepositoryException if an error occurs
+     */
     RecArray ListNodes(Logger logger, String query, String view,
         String[] columns) throws RepositoryException;
 
+    /**
+     * Wraps the <code>LAPI_DOCUMENTS.FetchVersion</code> method.
+     * All of the arguments of that method are exposed here.
+     *
+     * @param logger a logger instance to use
+     * @param volumeId the volume ID of the object to fetch
+     * @param objectId the object ID of the object to fetch
+     * @param versionNumber the version number to fetch
+     * @throws RepositoryException if an error occurs
+     */
+    /* XXX: Should we use volumeId and versionNumber or remove them? */
     InputStream FetchVersion(Logger logger, int volumeId, int objectId,
         int versionNumber) throws RepositoryException;
 }

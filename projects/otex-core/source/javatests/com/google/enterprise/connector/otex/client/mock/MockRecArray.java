@@ -7,13 +7,14 @@ import java.util.Date;
 import com.google.enterprise.connector.otex.client.RecArray;
 
 /**
- * A wrapper implementation on an <code>LLValue</code> containing a recarray.
+ * A mock implementation of an empty <code>RecArray</code>. The size
+ * is always zero, and the getter methods always throw an
+ * <code>IllegalArgumentException</code>.
  */
 public final class MockRecArray implements RecArray {
     MockRecArray() {
     }
     
-    /** {@inheritDoc} */
     public int size() {
         return 0;
     }

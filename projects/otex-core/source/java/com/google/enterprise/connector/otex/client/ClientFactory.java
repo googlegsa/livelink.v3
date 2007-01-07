@@ -26,10 +26,13 @@ public interface ClientFactory {
     /** Optional property. */
     void setDomainName(String value);
 
+    /** Required property. */
+    void setEncoding(String value);
+
     /**
      * Gets a new client instance.
      *
-     * @return a new mutex instance
+     * @return a new client instance
      */
     Client createClient();
 }

@@ -7,6 +7,7 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 
 /**
  * A mock factory for the facade interface that encapsulates the Livelink API.
+ * This implementation ignores the configuration properties.
  */
 public class MockClientFactory implements ClientFactory {
     /** {@inheritDoc} */
@@ -33,11 +34,11 @@ public class MockClientFactory implements ClientFactory {
     public void setDomainName(String value) {
     }
 
-    /**
-     * Gets a new client instance.
-     *
-     * @return a new mutex instance
-     */
+    /** {@inheritDoc} */
+    public void setEncoding(String value) {
+    }
+
+    /** {@inheritDoc} */
     public Client createClient() {
         return new MockClient();
     }

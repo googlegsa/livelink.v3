@@ -2,30 +2,17 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.InputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.TimeZone;
 
-import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.PropertyMap;
 import com.google.enterprise.connector.spi.QueryTraversalManager;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.ResultSet;
-import com.google.enterprise.connector.spi.SimpleProperty;
-import com.google.enterprise.connector.spi.SimplePropertyMap;
-import com.google.enterprise.connector.spi.SimpleResultSet;
-import com.google.enterprise.connector.spi.SimpleValue;
 import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
@@ -33,61 +20,8 @@ import com.google.enterprise.connector.otex.client.RecArray;
 
 class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
-    /* TODO: Autodetection of the database type plus a config parameter. */
-    private static boolean isSqlServer = true;
-
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
-
-    private final LivelinkConnector connector;
-
-    private final Client client;
-    
-    private int batchSize = 100;
-
-    LivelinkQueryTraversalManager(LivelinkConnector connector,
-                                  ClientFactory clientFactory) {
-        this.connector = connector;
-        client = clientFactory.createClient();
-    }
-
-
-    /**
-     * Will be called only once by Connector Manager
-     */
-    public ResultSet startTraversal() throws RepositoryException {
-        LOGGER.fine("START @" + System.identityHashCode(this));
-        return listNodes(null);
-    }
-
-
-    public void setBatchHint(int hint) {
-        batchSize = hint;
-    }
-
-
-    /**
-     * Gets a string of the form "yyyy-MM-dd HH:mm:ss,nnnnnn" where
-     * nnnnnn is the object ID of the item represented by the property
-     * map.
-     *
-     * @param pm a property map
-     * @return a checkpoint string for the given property map
-     */
-    public String checkpoint(PropertyMap pm) throws RepositoryException {
-        String s = ((RecArrayPropertyMap) pm).checkpoint();
-        LOGGER.fine("CHECKPOINT: " + s + " @" + System.identityHashCode(this));
-        return s;
-    }
-
-
-    public ResultSet resumeTraversal(String checkpoint)
-        throws RepositoryException {
-        LOGGER.fine("RESUME: " + checkpoint + " @" +
-            System.identityHashCode(this));
-        return listNodes(checkpoint);
-    }
-
 
     /**
      * The primary store for property names that we want to map from
@@ -97,37 +31,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * name. If the property name is <code>null</code>, then the field
      * will not be returned in the property map.
      */
-    private static final Field[] fields;
+    private static final Field[] FIELDS;
 
-    /**
-     * A map from the property name to the Field descriptor. We could
-     * use a LinkedHashMap here and not need to keep the fields array
-     * separately, although we would lose direct indexing.
-     */
-    private static final Map fieldsMap;
-
-    /**
-     * Describes the properties returned to the caller and the fields
-     * in Livelink needed to implement them. A null
-     * <code>fieldName</code> indicates a property that is in not in
-     * the recarray selected from the database. These properties are
-     * implemented separately. A null <code>propertyName</code>
-     * indicates a field that is required from the database but which
-     * is not returned as a property to the caller.
-     */
-    private static final class Field {
-        public final String fieldName;
-        public final ValueType fieldType;
-        public final String propertyName;
-
-        public Field(String fieldName, ValueType fieldType,
-                     String propertyName) {
-            this.fieldName = fieldName;
-            this.fieldType = fieldType;
-            this.propertyName = propertyName;
-        }
-    }
-    
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This class requires DataID, OwnerID,
@@ -157,13 +62,87 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         list.add(new Field(
             "SubType", ValueType.LONG, "SubType"));
 
-        fields = (Field[]) list.toArray(new Field[0]);
+        FIELDS = (Field[]) list.toArray(new Field[0]);
+    }
 
-        fieldsMap = new LinkedHashMap(fields.length * 2);
-        for (int i = 0; i < fields.length; i++) {
-            if (fields[i].propertyName != null)
-                fieldsMap.put(fields[i].propertyName, fields[i]);
+
+    /** The connector contains configuration information. */
+    private final LivelinkConnector connector;
+
+    /** The client provides access to the server. */
+    private final Client client;
+
+    /** The number of results to return in each batch. */
+    private int batchSize = 100;
+
+    /* TODO: Autodetection of the database type plus a config parameter. */
+    private boolean isSqlServer = true;
+
+
+    LivelinkQueryTraversalManager(LivelinkConnector connector,
+                                  ClientFactory clientFactory) {
+        this.connector = connector;
+        client = clientFactory.createClient();
+    }
+
+
+    /**
+     * Sets the batch size. This implementation limits the actual
+     * batch size to 100,000.
+     *
+     * @param hint the new batch size
+     * @throws IllegalArgumentException if the hint is less than zero
+     */
+    public void setBatchHint(int hint) {
+        if (hint < 0)
+            throw new IllegalArgumentException();
+        else if (hint == 0)
+            batchSize = 100; // We could ignore it, but we reset the default.
+        else if (hint > 100000)
+            batchSize = 100000;
+        else
+            batchSize = hint;
+    }
+
+
+    /** {@inheritDoc} */
+    public ResultSet startTraversal() throws RepositoryException {
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("START @" +
+                Integer.toHexString(System.identityHashCode(this)));
         }
+        return listNodes(null);
+    }
+
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation gets a string of the form "yyyy-MM-dd
+     * HH:mm:ss,nnnnnn" where nnnnnn is the object ID of the item
+     * represented by the property map.
+     *
+     * @param pm a property map
+     * @return a checkpoint string for the given property map
+     */
+    public String checkpoint(PropertyMap pm) throws RepositoryException {
+        String s = ((RecArrayResultSet.RecArrayPropertyMap) pm).checkpoint();
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("CHECKPOINT: " + s + " @" +
+                Integer.toHexString(System.identityHashCode(this)));
+        }
+        return s;
+    }
+
+
+    /** {@inheritDoc} */
+    public ResultSet resumeTraversal(String checkpoint)
+            throws RepositoryException {
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("RESUME: " + checkpoint + " @" +
+                Integer.toHexString(System.identityHashCode(this)));
+        }
+        return listNodes(checkpoint);
     }
 
 
@@ -220,78 +199,85 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * @return a batch of results starting at the checkpoint, if there
      * is one, or the beginning of the traversal order, otherwise
      */
-    /*
-     * 1. I like the StringBuffer for performance, but for some softer
-     * software, where we could put the queries into a properties
-     * file, we could use MessageFormat:
-     * 
-     * MessageFormat subquery = new MessageFormat(
-     *     "(select {0} from WebNodes {1,choice,0#|1#where {2}}{3})");
-     * Integer choice;
-     * String where;
-     * if (checkpoint == null) {
-     *     choice = new Integer(0);
-     *     where = null;
-     * } else {
-     *     choice = new Integer(1);
-     *     where = getRestriction(checkpoint);
-     * }
-     * view = subquery.format(new Object[] {
-     *     getSelectList(), choice, where, getOrderBy() });
-     * 
-     * 2. We could use FIRST_ROWS(<batchSize>), but I don't know how
-     * important that is on this query.
-     */
     private ResultSet listNodes(String checkpoint) throws RepositoryException
     {
-        String query;
-        String view;
-        String[] columns;
+        RecArray recArray;
+        if (isSqlServer)
+            recArray = listNodesSqlServer(checkpoint);
+        else
+            recArray = listNodesOracle(checkpoint);
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
+                Integer.toHexString(System.identityHashCode(this)));
+        }
+        return new RecArrayResultSet(connector, client, recArray, FIELDS);
+    }
 
-        // TODO: This is just a sketch of a subtype and volume type
+    private static final String ORDER_BY = " order by ModifyDate, DataID";
+
+    private static final String SUBTYPES = "SubType not in " +
+        "(137,142,143,148,150,154,161,162,201,203,209,210,211)";
+
+    // TODO: We need to get these volume IDs programmatically.
+    private final String ancestors = "DataID not in " +
+        "(select DataID from DTreeAncestors where AncestorID in (2001,2313))";
+
+    private final String excluded = SUBTYPES + " and " + ancestors;
+
+    
+    private RecArray listNodesSqlServer(String checkpoint)
+            throws RepositoryException {
+        // TODO: This includes just a sketch of a subtype and volume type
         // restriction. Note that this code only handles SQL Server.
-        String subtypes = "SubType not in (137,142,143,148,150,154,161,162,201,203,209,210,211)";
-        String ancestors = "DataID not in (select DataID from DTreeAncestors where AncestorID in (2001,2313))";
-        String excluded = subtypes + " and " + ancestors;
+        String query;
+        if (checkpoint == null)
+            //query = "1=1" + ORDER_BY;
+            query = excluded + ORDER_BY;
+        else
+            //query = getRestriction(checkpoint) + ORDER_BY;
+            query = excluded + " and " + getRestriction(checkpoint) + ORDER_BY;
+        String view = "WebNodes";
 
-        if (isSqlServer) {
-            if (checkpoint == null)
-                //query = "1=1" + getOrderBy();
-                query = excluded + getOrderBy();
-            else
-                //query = getRestriction(checkpoint) + getOrderBy();
-                query = excluded + " and " + getRestriction(checkpoint) + getOrderBy();
-            view = "WebNodes";
+        // FIXME: This code is working around fields with null
+        // field names. This turns into "top 100 null, null, ...".
+        String[] columns = new String[FIELDS.length];
+        columns[0] = "top " + batchSize + " " + FIELDS[0].fieldName;
+        for (int i = 1; i < FIELDS.length; i++)
+            columns[i] = FIELDS[i].fieldName + "";
 
-            // FIXME: This code is working around fields with null
-            // field names. This turns into "top 100 null, null, ...".
-            columns = new String[fields.length];
-            columns[0] = "top " + batchSize + " " + fields[0].fieldName;
-            for (int i = 1; i < fields.length; i++)
-                columns[i] = fields[i].fieldName + "";
-        } else {
-            query = "rownum <= " + batchSize;
-            StringBuffer buffer = new StringBuffer();
-            buffer.append("(select ");
-            buffer.append(getSelectList());
-            buffer.append(" from WebNodes ");
-            if (checkpoint != null) {
-                buffer.append("where ");
-                buffer.append(getRestriction(checkpoint));
-            }
-            buffer.append(getOrderBy());
-            buffer.append(')');
-            view = buffer.toString();
-            columns = new String[] { "*" };
+        return client.ListNodes(LOGGER, query, view, columns);
+    }
+
+
+    /*
+     * XXX: We could use FIRST_ROWS(<batchSize>), but I don't know how
+     * important that is on this query.
+     */
+    private RecArray listNodesOracle(String checkpoint)
+            throws RepositoryException {
+        String query = "rownum <= " + batchSize;
+        StringBuffer buffer = new StringBuffer();
+        buffer.append("(select ");
+
+        // FIXME: This code is working around fields with null
+        // field names. This turns into "null, null, ...".
+        buffer.append(FIELDS[0].fieldName);
+        for (int i = 1; i < FIELDS.length; i++) {
+            buffer.append(',');
+            buffer.append(FIELDS[i].fieldName);
         }
 
-        final RecArray recArray =
-            client.ListNodes(LOGGER, query, view, columns);
-        LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
-            System.identityHashCode(this));
-        
-        return new ResultSet() { public Iterator iterator() {
-            return new RecArrayResultSetIterator(connector, client, recArray); } };
+        buffer.append(" from WebNodes ");
+        if (checkpoint != null) {
+            buffer.append("where ");
+            buffer.append(getRestriction(checkpoint));
+        }
+        buffer.append(ORDER_BY);
+        buffer.append(')');
+        String view = buffer.toString();
+        String[] columns = new String[] { "*" };
+
+        return client.ListNodes(LOGGER, query, view, columns);
     }
 
 
@@ -305,12 +291,12 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * The TIMESTAMP literal, part of the SQL standard, was first
      * supported by Oracle 9i, and not at all by SQL Server.
      */
-    private static String getRestriction(String checkpoint) {
+    private String getRestriction(String checkpoint)
+            throws RepositoryException {
         int index = checkpoint.indexOf(',');
         if (index == -1) {
-            LOGGER.warning("Invalid checkpoint " + checkpoint +
-                "; restarting traversal.");
-            return "1=1";
+            throw new LivelinkException("Invalid checkpoint " + checkpoint,
+                LOGGER);
         } else {
             String ts = isSqlServer ? "" : "TIMESTAMP";
             String modifyDate = checkpoint.substring(0, index);
@@ -319,332 +305,5 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
                 "' or (ModifyDate = " + ts + '\'' + modifyDate +
                 "' and DataID > " + dataId + ')';
         }
-    }
-
-    private static String getSelectList() {
-        StringBuffer buffer = new StringBuffer();
-        buffer.append(fields[0].fieldName);
-        for (int i = 1; i < fields.length; i++) {
-            buffer.append(',');
-            buffer.append(fields[i].fieldName);
-        }
-        return buffer.toString();
-    }
-    
-    private static String getOrderBy() {
-        return " order by ModifyDate, DataID";
-    }
-
-    
-    private static class RecArrayResultSetIterator implements Iterator {
-        private final RecArray recArray;
-        private int row;
-        private final int size;
-        private final LivelinkConnector connector;
-        private final Client client;
-        RecArrayResultSetIterator(LivelinkConnector connector, Client client,
-            RecArray recArray)
-        {
-            this.recArray = recArray;
-            this.row = 0;
-            this.size = recArray.size();
-            this.client = client;
-            this.connector = connector;
-        }
-        public boolean hasNext() {
-            return row < size;
-        }
-        public Object next() {
-            if (row < size)
-                return new RecArrayPropertyMap(connector, client, recArray, row++);
-            else
-                throw new NoSuchElementException();
-        }
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-
-    private static class RecArrayPropertyMap implements PropertyMap {
-        private final RecArray recArray;
-        private final int row;
-        private final LivelinkConnector connector;
-        private final Client client;
-        RecArrayPropertyMap(LivelinkConnector connector, Client client,
-            RecArray recArray, int row) {
-            this.recArray = recArray;
-            this.row = row;
-            this.client = client;
-            this.connector = connector;
-        }
-        public Iterator getProperties() {
-            return new RecArrayPropertyMapIterator(connector, client, recArray, row);
-        }
-        public Property getProperty(String name) {
-            Object field = fieldsMap.get(name);
-            if (field == null)
-                return null;
-            else {
-                return new RecArrayProperty(connector, client, recArray, row,
-                    (Field) field);
-            }
-        }
-
-        /**
-         * Gets a string of the form "yyyy-MM-dd HH:mm:ss,nnnnnn" where
-         * nnnnnn is the object ID of the item represented by this property
-         * map.
-         *
-         * @return a checkpoint string for this property map
-         */
-        private String checkpoint() {
-            return toSqlString(recArray.toDate(row, "ModifyDate")) +
-                ','  + recArray.toString(row, "DataID");
-        }
-    }
-
-
-    private static class RecArrayPropertyMapIterator implements Iterator {
-        private final RecArray recArray;
-        private final int row;
-        private Iterator columns;
-        private final LivelinkConnector connector;
-        private final Client client;
-        RecArrayPropertyMapIterator(LivelinkConnector connector, Client client,
-            RecArray recArray, int row) {
-            this.recArray = recArray;
-            this.row = row;
-            this.columns = fieldsMap.values().iterator();
-            this.client = client;
-            this.connector = connector;
-        }
-        public boolean hasNext() {
-            return columns.hasNext();
-        }
-        public Object next() {
-            return new RecArrayProperty(connector, client, recArray, row,
-                (Field) columns.next());
-        }
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-
-    private static class RecArrayProperty implements Property {
-        private static final Logger LOGGER =
-            Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
-
-        private final RecArray recArray;
-        private final int row;
-        private final Field column;
-        private final LivelinkConnector connector;
-        private final Client client;
-        RecArrayProperty(LivelinkConnector connector, Client client,
-            RecArray recArray, int row, Field column) {
-            this.recArray = recArray;
-            this.row = row;
-            this.column = column;
-            this.client = client;
-            this.connector = connector;
-        }
-        public String getName() {
-            return column.propertyName;
-        }
-        public Value getValue() throws RepositoryException {
-            if (column.fieldName == null) {
-                // This column isn't in the recarray, so we need to do
-                // something else to get the value.
-
-                // TODO: Should we cache this? Use a hashed looked
-                // instead of sequential string comparisons?
-                if (column.propertyName.equals(SpiConstants.PROPNAME_CONTENT)) {
-                    String mimeType = recArray.toString(row, "MimeType");
-                    if ("?".equals(mimeType)) {
-                        // TODO: This is a workaround for a bug where
-                        // the QueryTraverser requires a content or
-                        // contenturl property.
-                        return new SimpleValue(ValueType.STRING, "");
-                    } else {
-                        // FIXME: I think that compound documents are
-                        // returning with a MIME type but, obviously,
-                        // no versions.
-                        int subType = recArray.toInteger(row, "SubType");
-                        LOGGER.fine("CONTENT WITH SUBTYPE = " + subType);
-                        int objectId = recArray.toInteger(row, "DataID");
-                        int volumeId = recArray.toInteger(row, "OwnerID");
-                        return new InputStreamValue(
-                            client.FetchVersion(LOGGER, volumeId,
-                                objectId, 0));
-                    }
-                } else if (column.propertyName.equals(
-                               SpiConstants.PROPNAME_DISPLAYURL)) {
-                    String displayUrl = connector.getDisplayUrl() +
-                        "?func=ll&objAction=open&objId=";
-                    int objectId = recArray.toInteger(row, "DataID");
-                    return new SimpleValue(ValueType.STRING, displayUrl
-                        + objectId);
-                } else if (column.propertyName.equals(
-                               SpiConstants.PROPNAME_ISPUBLIC)) {
-                    // FIXME: SimpleValue is immutable, so we only
-                    // need one (or maybe two) of these, not a new one
-                    // for each PropertyMap.
-                    return new SimpleValue(ValueType.BOOLEAN, "false");
-                } else {
-                    throw new LivelinkException(
-                        "FIXME: Unimplemented property \"" +
-                        column.propertyName + '"', LOGGER);
-                }
-            } else
-                return new RecArrayValue(recArray, row, column);
-        }
-        public Iterator getValues() throws RepositoryException {
-            // TODO: Real implementation, please.
-            ArrayList values = new ArrayList(1);
-            values.add(getValue());
-            return values.iterator();
-        }
-    }
-
-
-    /*
-     * TODO: Value conversion across types. We're relying on
-     * the behavior of the LLInstance subclasses here, and we're not
-     * catching the exceptions they throw.
-     */
-    private static class RecArrayValue implements Value {
-        private static final Logger LOGGER =
-            Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
-        private final RecArray recArray;
-        private final int row;
-        private final Field column;
-        RecArrayValue(RecArray recArray, int row, Field column) {
-            this.recArray = recArray;
-            this.row = row;
-            this.column = column;
-            if (column.propertyName.equals(SpiConstants.PROPNAME_DOCID) ||
-                column.propertyName.equals(SpiConstants.PROPNAME_LASTMODIFY)) {
-                LOGGER.fine("COLUMN: " + column.propertyName + " = " +
-                    getString());
-            }
-        }
-        public boolean getBoolean() {
-            return recArray.toBoolean(row, column.fieldName);
-        }
-        public Calendar getDate() {
-            Calendar c = Calendar.getInstance();
-            c.setTime(recArray.toDate(row, column.fieldName));
-            return c;
-        }
-        public double getDouble() {
-            return recArray.toDouble(row, column.fieldName);
-        }
-        public long getLong() {
-            return recArray.toInteger(row, column.fieldName);
-        }
-        public InputStream getStream() {
-            return null;
-        }
-        public String getString() {
-            if (column.fieldType == ValueType.DATE)
-                return toIso8601String(recArray.toDate(row, column.fieldName));
-            else
-                return recArray.toString(row, column.fieldName);
-        }
-        public ValueType getType() throws RepositoryException {
-            return column.fieldType;
-        }
-    }
-    
-    
-    /*
-     * TODO: Value conversion across types.
-     */
-    private static class InputStreamValue implements Value {
-        private static final Logger LOGGER =
-            Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
-        private final InputStream in;
-        InputStreamValue(InputStream in) {
-            this.in = in;
-        }
-        public boolean getBoolean() {
-            throw new IllegalArgumentException();
-        }
-        public Calendar getDate() {
-            throw new IllegalArgumentException();
-        }
-        public double getDouble() {
-            throw new IllegalArgumentException();
-        }
-        public long getLong() {
-            throw new IllegalArgumentException();
-        }
-        public InputStream getStream() {
-            return in;
-        }
-        public String getString() throws RepositoryException {
-            byte[] buffer = new byte[32];
-            try {
-                int count = in.read(buffer);
-                return new String(buffer, 0, count);
-            } catch (IOException e) {
-                throw new LivelinkException(e, LOGGER);
-            }
-        }
-        public ValueType getType() throws RepositoryException {
-            return ValueType.BINARY;
-        }
-    }
-
-
-    /*
-     * TODO: DateFormats are not synchronized, and presumably neither
-     * are their associated calendars. So we need to create an
-     * instance per thread, or synchronize access, or perhaps create
-     * per ResultSet instances which are then synchronized. The
-     * benefit of the last is that concurrent access to a ResultSet is
-     * unlikely, and single-thread synchronization is relatively fast.
-     */
-    private static final Calendar GMT_CALENDAR =
-        Calendar.getInstance(TimeZone.getTimeZone("GMT+0"));
-
-    /**
-     * Livelink only stores timestamps to the nearest second, but LAPI
-     * constructs a Date object that includes milliseconds, which are
-     * taken from the current time. So we need to avoid using the
-     * milliseconds in the parameter.
-     *
-     * @param value a Livelink date
-     * @return an ISO 8601 formatted string representation,
-     *     using the pattern "yyyy-MM-dd'T'HH:mm:ss'Z'"
-     */
-    /*
-     * TODO: LAPI converts the database local time to UTC using the
-     * default Java time zone, so if the database time zone is different
-     * from the Java time zone, we need to adjust the given Date
-     * accordingly. In order to account for Daylight Savings, we
-     * probably need to subtract the offsets for the date under both
-     * time zones and apply the resulting adjustment (in milliseconds)
-     * to the Date object.
-     */
-    private static String toIso8601String(Date value)
-    {
-        SimpleDateFormat iso8601 =
-            new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        iso8601.setCalendar(GMT_CALENDAR);
-        return iso8601.format(value);
-    }
-
-    /**
-     * Converts a local time date to an ISO SQL local time string.
-     *
-     * @param value a timestamp where local time is database local time
-     * @return an ISO SQL string using the pattern
-     * "yyyy-MM-dd' 'HH:mm:ss"
-     */
-    private static String toSqlString(Date value) {
-        SimpleDateFormat sql = new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
-        return sql.format(value);
     }
 }

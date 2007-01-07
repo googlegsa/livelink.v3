@@ -15,9 +15,49 @@ public interface RecArray {
      */
     int size();
 
+    /**
+     * Gets the named field from the given row as a boolean value.
+     *
+     * @param row a zero-based row index
+     * @param field a field name
+     * @return a boolean field value
+     */
     boolean toBoolean(int row, String field);
+
+    /**
+     * Gets the named field from the given row as a
+     * <code>java.util.Date</code> value.
+     *
+     * @param row a zero-based row index
+     * @param field a field name
+     * @return a <code>Date</code> field value
+     */
     Date toDate(int row, String field);
+
+    /**
+     * Gets the named field from the given row as a double value.
+     *
+     * @param row a zero-based row index
+     * @param field a field name
+     * @return a double field value
+     */
     double toDouble(int row, String field);
+
+    /**
+     * Gets the named field from the given row as an integer value.
+     *
+     * @param row a zero-based row index
+     * @param field a field name
+     * @return an integer field value
+     */
     int toInteger(int row, String field);
+
+    /**
+     * Gets the named field from the given row as a string value.
+     *
+     * @param row a zero-based row index
+     * @param field a field name
+     * @return a string field value
+     */
     String toString(int row, String field);
 }
