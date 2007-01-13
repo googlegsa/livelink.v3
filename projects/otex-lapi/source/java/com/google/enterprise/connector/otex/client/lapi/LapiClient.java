@@ -130,4 +130,12 @@ final class LapiClient implements Client
             throw new LapiException(e, logger);
         }
     }
+
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized void ImpersonateUser(String username) {
+        session.ImpersonateUser(username);
+    }
 }

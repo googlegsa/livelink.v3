@@ -58,4 +58,15 @@ public interface Client
     /* XXX: Should we use volumeId and versionNumber or remove them? */
     InputStream FetchVersion(Logger logger, int volumeId, int objectId,
         int versionNumber) throws RepositoryException;
+
+    /**
+     * Wraps the <code>LLSession.ImpersonateUser</code>
+     * method. The initial session must have been created with a
+     * user who has Livelink system administration privileges in
+     * order for impersonation to work.
+     *
+     * @param username the username
+     * @throws RepositoryException if an error occurs
+     */
+    void ImpersonateUser(String username) throws RepositoryException; 
 }

@@ -4,6 +4,11 @@
 
 	<!-- ========================= PROPERTIES ============================= -->
 	<property name="version" value="1.0" />
+        <property file="${user.home}/google-otex-connector.properties"/>
+        <propertyset id="javatest.properties">
+            <propertyref prefix="javatest."/>
+            <mapper type="glob" from="javatest.*" to="*"/>
+        </propertyset>
 
 	<!-- Define Directories. -->
 	<property name="build" value="build" />
@@ -85,6 +90,7 @@
 			</classpath>
 			<formatter type="brief" usefile="no"/>
 			<formatter type="plain" />
+                        <syspropertyset refid="javatest.properties"/>
 			<batchtest fork="yes" todir="${tests.todir}">
 				<fileset dir="${tests.src}">
 					<include name="**/*Test.java" />

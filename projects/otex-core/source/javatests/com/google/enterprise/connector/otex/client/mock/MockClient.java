@@ -48,4 +48,14 @@ final class MockClient implements Client
         logger.info("Entering MockClient.FetchVersion");
         return new ByteArrayInputStream(new byte[0]);
     }
+
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation has no effect.
+     */
+    public synchronized void ImpersonateUser(String username)
+        throws RepositoryException {
+    }
 }

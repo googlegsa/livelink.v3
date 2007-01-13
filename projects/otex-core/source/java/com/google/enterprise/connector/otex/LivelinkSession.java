@@ -20,7 +20,7 @@ import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 class LivelinkSession
-        implements Session, AuthenticationManager, AuthorizationManager {
+        implements Session, AuthenticationManager {
 
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkSession.class.getName());
@@ -51,40 +51,19 @@ class LivelinkSession
         return this;
     }
 
+    /**
+     * Gets an AuthorizationManager to implement per-user authorization.
+     * 
+     * @return an AuthorizationManager
+     * @throws RepositoryException
+     */
     public AuthorizationManager getAuthorizationManager() {
-        return this;
+        return new LivelinkAuthorizationManager(clientFactory);
     }
 
     public boolean authenticate(String username, String password) {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHENTICATE: " + username);
         return true;
-    }
-
-    public ResultSet authorizeDocids(List docids, String username)
-        throws RepositoryException
-    {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHORIZE DOCIDS");
-        SimpleResultSet rs = new SimpleResultSet();
-        for (Iterator i = docids.iterator(); i.hasNext(); ) {
-            SimplePropertyMap pm = new SimplePropertyMap();
-            pm.putProperty(
-                new SimpleProperty(SpiConstants.PROPNAME_DOCID,
-                    (String) i.next()));
-            pm.putProperty(
-                new SimpleProperty(SpiConstants.PROPNAME_AUTH_VIEWPERMIT,
-                    true));
-            rs.add(pm);
-        }
-        return rs;
-    }
-
-    public ResultSet authorizeTokens(List docids, String username) {
-        // TODO: Throw an exception, because if we don't return a
-        // SECURITYTOKEN property this method should never be called.
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHORIZE TOKENS");
-        return new SimpleResultSet();
     }
 }
