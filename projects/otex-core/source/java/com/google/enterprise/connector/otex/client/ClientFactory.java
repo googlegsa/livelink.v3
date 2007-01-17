@@ -35,4 +35,15 @@ public interface ClientFactory {
      * @return a new client instance
      */
     Client createClient();
+
+    /**
+     * Gets a new client instance using the provided username,
+     * which may be different than the username passed to {@link
+     * #setUsername}.
+     *
+     * @param username a username
+     * @param password a password
+     * @return a new client instance
+     */
+    Client createClient(String username, String password);  
 }

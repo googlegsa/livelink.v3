@@ -42,4 +42,9 @@ public class MockClientFactory implements ClientFactory {
     public Client createClient() {
         return new MockClient();
     }
+
+    /** {@inheritDoc} */
+    public Client createClient(String username, String password) {
+        return new MockClient();
+    }
 }

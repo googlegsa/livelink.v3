@@ -20,7 +20,7 @@ import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 class LivelinkSession
-        implements Session, AuthenticationManager {
+        implements Session {
 
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkSession.class.getName());
@@ -47,8 +47,14 @@ class LivelinkSession
         return new LivelinkQueryTraversalManager(connector, clientFactory);
     }
   
+    /**
+     * Gets an AuthenticationManager to implement per-user authentication.
+     * 
+     * @return an AuthenticationManager
+     * @throws RepositoryException
+     */
     public AuthenticationManager getAuthenticationManager() {
-        return this;
+        return new LivelinkAuthenticationManager(clientFactory); 
     }
 
     /**
@@ -59,11 +65,5 @@ class LivelinkSession
      */
     public AuthorizationManager getAuthorizationManager() {
         return new LivelinkAuthorizationManager(clientFactory);
-    }
-
-    public boolean authenticate(String username, String password) {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHENTICATE: " + username);
-        return true;
     }
 }

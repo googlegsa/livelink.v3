@@ -65,8 +65,21 @@ public interface Client
      * user who has Livelink system administration privileges in
      * order for impersonation to work.
      *
+     * @param logger a logger instance to use
      * @param username the username
      * @throws RepositoryException if an error occurs
      */
-    void ImpersonateUser(String username) throws RepositoryException; 
+    void ImpersonateUser(Logger logger, String username) throws RepositoryException;
+
+    /**
+     * Verifies that the current session can call a method which
+     * accesses the repository. This method may be used to ensure
+     * that the current user can access the repository, or that
+     * the repository is available.
+     *
+     * @param logger a logger instance to use
+     * @return true if the client can access the repository; false otherwise
+     * @throws RepositoryException if an error occurs
+     */
+    boolean ping(Logger logger) throws RepositoryException; 
 }

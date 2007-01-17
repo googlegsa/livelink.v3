@@ -84,7 +84,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         LOGGER.fine("AUTHORIZE DOCIDS");
 
         Client client = clientFactory.createClient();
-        client.ImpersonateUser(username);
+        client.ImpersonateUser(LOGGER, username);
         
         HashSet authorized = new HashSet(); 
         final int chunkSize = 10000;

@@ -79,6 +79,7 @@
 	</target>
 
 	<target name="run_tests" depends="compile_tests,jar">
+                <property name="test.suite" value="*"/>
 		<junit>
 			<classpath>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
@@ -93,7 +94,7 @@
                         <syspropertyset refid="javatest.properties"/>
 			<batchtest fork="yes" todir="${tests.todir}">
 				<fileset dir="${tests.src}">
-					<include name="**/*Test.java" />
+					<include name="**/${test.suite}Test.java" />
 				</fileset>
 			</batchtest>
 		</junit>

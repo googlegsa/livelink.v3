@@ -55,7 +55,19 @@ final class MockClient implements Client
      * <p>
      * This implementation has no effect.
      */
-    public synchronized void ImpersonateUser(String username)
-        throws RepositoryException {
+    public synchronized void ImpersonateUser(final Logger logger, 
+        String username) throws RepositoryException {
+        logger.info("Entering MockClient.ImpersonateUser");
+    }
+
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always returns true.
+     */
+    public synchronized boolean ping(final Logger logger) {
+        logger.info("Entering MockClient.ping");
+        return true;
     }
 }

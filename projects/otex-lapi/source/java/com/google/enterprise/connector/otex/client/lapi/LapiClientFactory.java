@@ -84,4 +84,17 @@ public final class LapiClientFactory implements ClientFactory
             password, config);
         return new LapiClient(session);
     }
+
+    /** {@inheritDoc} */
+    public Client createClient(String providedUsername, 
+            String providedPassword) {
+        // Construct a new LLSession using the provided username
+        // and password instead of the configured ones. This is
+        // intended for use by the AuthenticationManager.
+
+        // TODO: support other configurations for directory services, etc. 
+        LLSession session = new LLSession(hostname, port, database, 
+            providedUsername, providedPassword, config);
+        return new LapiClient(session);
+    }
 }
