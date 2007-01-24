@@ -5,6 +5,9 @@
 	<!-- ========================= PROPERTIES ============================= -->
 	<property name="version" value="1.0" />
 
+	<property name="COMPILE_DEBUG_FLAG" value="true" />
+	<property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
+
 	<!-- Define Directories. -->
 	<property name="build" value="build" />
 	<property name="dist" value="dist" />
@@ -44,7 +47,8 @@
 
 	<target name="compile" depends="init">
 		<!-- compile java source files -->
-		<javac srcdir="${src}" destdir="${classes}" debug="${COMPILE_DEBUG_FLAG}">
+		<javac srcdir="${src}" destdir="${classes}" 
+			debug="${COMPILE_DEBUG_FLAG}" debuglevel="${COMPILE_DEBUG_LEVEL}">
 			<classpath>
 				<pathelement location="${spi.jarfile}" />
 			</classpath>
@@ -53,7 +57,8 @@
 
 	<target name="compile_tests" depends="init">
 		<!-- compile java source files for tests -->
-		<javac srcdir="${tests.src}" destdir="${tests.classes}" debug="${COMPILE_DEBUG_FLAG}">
+		<javac srcdir="${tests.src}" destdir="${tests.classes}" 
+			debug="${COMPILE_DEBUG_FLAG}" debuglevel="${COMPILE_DEBUG_LEVEL}">
 			<classpath>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />

@@ -35,8 +35,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
     static {
         // ListNodes requires the DataID and PermID columns to be
-        // included here. This class requires DataID, OwnerID,
-        // ModifyDate, and MimeType.
+        // included here. This implementation requires DataID,
+        // OwnerID, ModifyDate, MimeType, and DataSize.
         ArrayList list = new ArrayList();
 
         list.add(new Field(
@@ -58,10 +58,13 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         list.add(new Field(
             "OwnerID", ValueType.LONG, "OwnerID"));
         list.add(new Field(
-            "PermID", ValueType.LONG, null));
-        list.add(new Field(
             "SubType", ValueType.LONG, "SubType"));
 
+        list.add(new Field(
+            "DataSize", ValueType.LONG, null));
+        list.add(new Field(
+            "PermID", ValueType.LONG, null));
+        
         FIELDS = (Field[]) list.toArray(new Field[0]);
     }
 
@@ -72,7 +75,11 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     /** The client provides access to the server. */
     private final Client client;
 
+    /** A concrete strategy for retrieving the content from the server. */
+    private final ContentHandler contentHandler;
+    
     /** The number of results to return in each batch. */
+    /* TODO: Configurable default value. */
     private int batchSize = 100;
 
     /* TODO: Autodetection of the database type plus a config parameter. */
@@ -80,9 +87,18 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
 
     LivelinkQueryTraversalManager(LivelinkConnector connector,
-                                  ClientFactory clientFactory) {
+            ClientFactory clientFactory) throws RepositoryException {
         this.connector = connector;
         client = clientFactory.createClient();
+
+        String contentHandlerClass = connector.getContentHandler();
+        try {
+            contentHandler = (ContentHandler)
+                Class.forName(contentHandlerClass).newInstance();
+        } catch (Exception e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+        contentHandler.initialize(connector, client, LOGGER);
     }
 
 
@@ -98,7 +114,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             throw new IllegalArgumentException();
         else if (hint == 0)
             batchSize = 100; // We could ignore it, but we reset the default.
-        else if (hint > 100000)
+        else if (hint > 100000) // TODO: Configurable limit.
             batchSize = 100000;
         else
             batchSize = hint;
@@ -210,7 +226,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
                 Integer.toHexString(System.identityHashCode(this)));
         }
-        return new RecArrayResultSet(connector, client, recArray, FIELDS);
+        return new RecArrayResultSet(connector, client, contentHandler,
+            recArray, FIELDS);
     }
 
     private static final String ORDER_BY = " order by ModifyDate, DataID";

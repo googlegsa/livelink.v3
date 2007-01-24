@@ -26,6 +26,10 @@ public class LivelinkConnector implements Connector {
     /** The display URL prefix for the search results. */
     private String displayUrl;
 
+    /** The <code>ContentHandler</code> implementation class. */
+    private String contentHandler =
+        "com.google.enterprise.connector.otex.FileContentHandler";
+    
     /**
      * Constructs a connector instance for a specific Livelink
      * repository, using the default client factory class.
@@ -143,6 +147,29 @@ public class LivelinkConnector implements Connector {
     
     // TODO: Extra config options (e.g., DS, tunnelling).
 
+    /**
+     * Sets the concrete implementation for the
+     * <code>ContentHandler</code> interface.
+     *
+     * @param contentHandler the fully-qualified name of the
+     * <code>ContentHandler</code> implementation to use
+     */
+    public void setContentHandler(String contentHandler) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("CONTENT HANDLER: " + contentHandler);
+        this.contentHandler = contentHandler;
+    }
+    
+    /**
+     * Gets the <code>ContentHandler</code> implementation class.
+     *
+     * @return the fully-qualified name of the <code>ContentHandler</code>
+     * implementation to use
+     */
+    public String getContentHandler() {
+        return contentHandler;
+    }
+    
     /** {@inheritDoc} */
     public Session login() throws LoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
@@ -153,8 +180,11 @@ public class LivelinkConnector implements Connector {
         // result to set the character encoding for future clients.
         Client client = clientFactory.createClient();
         String encoding = client.getEncoding(LOGGER);
-        if (encoding != null)
+        if (encoding != null) {
+            if (LOGGER.isLoggable(Level.CONFIG))
+                LOGGER.config("ENCODING: " + encoding);
             clientFactory.setEncoding(encoding);
+        }
         
         return new LivelinkSession(this, clientFactory);
     }

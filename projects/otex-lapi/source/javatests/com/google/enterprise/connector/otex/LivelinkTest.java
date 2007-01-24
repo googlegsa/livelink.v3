@@ -23,17 +23,17 @@ public class LivelinkTest extends TestCase {
     private LivelinkConnector conn;
 
     public void setUp() {
-        // Livelink 9.5 SP1: 20996
-        // Livelink 9.6: 20998
-        // Livelink 9.6 UTF-8: 20991
-        // Swift: 2959
-        
         conn = new LivelinkConnector();
-        conn.setHostname("localhost");
-        conn.setPort(20996);
-        conn.setUsername("Admin");
-        conn.setPassword("livelink");
-        conn.setDisplayUrl("http://localhost/Livelink9501/livelink.exe");
+        conn.setHostname(System.getProperty("connector.host"));
+        try {
+            conn.setPort(Integer.parseInt(
+                             System.getProperty("connector.port")));
+        } catch (NumberFormatException e) {
+            // TODO
+        }
+        conn.setUsername(System.getProperty("connector.username"));
+        conn.setPassword(System.getProperty("connector.password"));
+        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
     }
     
     public void testLogin() throws RepositoryException {

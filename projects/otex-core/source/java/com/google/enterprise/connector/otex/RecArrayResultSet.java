@@ -3,7 +3,6 @@
 package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -42,10 +41,23 @@ class RecArrayResultSet implements ResultSet {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
 
+    /** An immutable empty string value. */
+    private static final Value VALUE_EMPTY =
+        new SimpleValue(ValueType.STRING, "");
+
+    /** An immutable false value. */
+    private static final Value VALUE_FALSE =
+        new SimpleValue(ValueType.BOOLEAN, "false");
+        
+    /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
+    /** The client provides access to the server. */
     private final Client client;
 
+    /** A concrete strategy for retrieving the content from the server. */
+    private final ContentHandler contentHandler;
+    
     private final RecArray recArray;
 
     /**
@@ -69,9 +81,11 @@ class RecArrayResultSet implements ResultSet {
         new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
     
     RecArrayResultSet(LivelinkConnector connector, Client client,
-            RecArray recArray, Field[] fields) {
+            ContentHandler contentHandler, RecArray recArray, Field[] fields)
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
+        this.contentHandler = contentHandler;
         this.recArray = recArray;
 
         fieldsMap = new LinkedHashMap(fields.length * 2);
@@ -232,7 +246,6 @@ class RecArrayResultSet implements ResultSet {
         }
     }
 
-
     /**
      * {@inheritDoc}
      * <p>
@@ -260,7 +273,7 @@ class RecArrayResultSet implements ResultSet {
                 // This column isn't in the recarray, so we need to do
                 // something else to get the value.
 
-                // TODO: Should we cache this? Use a hashed looked
+                // TODO: Should we cache this? Use a hashed lookup
                 // instead of sequential string comparisons?
                 if (column.propertyName.equals(SpiConstants.PROPNAME_CONTENT)) {
                     // FIXME: Check for IsDefined instead?
@@ -269,7 +282,7 @@ class RecArrayResultSet implements ResultSet {
                         // TODO: This is a workaround for a bug where
                         // the QueryTraverser requires a content or
                         // contenturl property.
-                        return new SimpleValue(ValueType.STRING, "");
+                        return VALUE_EMPTY;
                     } else {
                         // FIXME: I think that compound documents are
                         // returning with a MIME type but, obviously,
@@ -277,11 +290,13 @@ class RecArrayResultSet implements ResultSet {
                         int subType = recArray.toInteger(row, "SubType");
                         if (LOGGER.isLoggable(Level.FINER))
                             LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
+
                         int objectId = recArray.toInteger(row, "DataID");
                         int volumeId = recArray.toInteger(row, "OwnerID");
+                        int size = recArray.toInteger(row, "DataSize");
                         return new InputStreamValue(
-                            client.FetchVersion(LOGGER, volumeId,
-                                objectId, 0));
+                            contentHandler.getInputStream(LOGGER, volumeId,
+                                objectId, 0, size));
                     }
                 } else if (column.propertyName.equals(
                                SpiConstants.PROPNAME_DISPLAYURL)) {
@@ -292,10 +307,7 @@ class RecArrayResultSet implements ResultSet {
                         + objectId);
                 } else if (column.propertyName.equals(
                                SpiConstants.PROPNAME_ISPUBLIC)) {
-                    // FIXME: SimpleValue is immutable, so we only
-                    // need one (or maybe two) of these, not a new one
-                    // for each PropertyMap.
-                    return new SimpleValue(ValueType.BOOLEAN, "false");
+                    return VALUE_FALSE;
                 } else {
                     throw new LivelinkException(
                         "FIXME: Unimplemented property \"" +

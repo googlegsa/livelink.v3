@@ -52,7 +52,7 @@ public final class LapiClientFactory implements ClientFactory
 
     /** {@inheritDoc} */
     public void setEncoding(String value) {
-        setConfig("Encoding", value);
+        setConfig("encoding", value);
     }
 
     /**
@@ -71,7 +71,6 @@ public final class LapiClientFactory implements ClientFactory
         if (config == null)
             config = (new LLValue()).setAssocNotSet();
 
-        // XXX: Should we use add or setValue here?
         config.add(name, value);
     }
     

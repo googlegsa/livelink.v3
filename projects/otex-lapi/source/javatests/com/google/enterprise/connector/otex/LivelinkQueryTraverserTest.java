@@ -44,70 +44,72 @@ import junit.textui.TestRunner;
  * @author johnl@vizdom.com (John Lacey)
  */
 public class LivelinkQueryTraverserTest extends TestCase {
-
     public final static void main(String[] args) {
         TestRunner.run(new TestSuite(LivelinkQueryTraverserTest.class));
     }
     
-  /**
-   * Test method for
-   * {@link com.google.enterprise.connector.traversal.QueryTraverser
-   * #runBatch(int)}.
-   * @throws InterruptedException 
-   */
-  public final void testRunBatch() throws IOException, LoginException, RepositoryException, InterruptedException {
+    /**
+     * Test method for
+     * {@link com.google.enterprise.connector.traversal.QueryTraverser
+     * #runBatch(int)}.
+     * @throws InterruptedException 
+     */
+    public final void testRunBatch() throws IOException, LoginException,
+            RepositoryException, InterruptedException {
     
-    runTestBatches(1);
-    runTestBatches(5);
-    runTestBatches(25);
-    runTestBatches(125);
-    runTestBatches(625);
+        runTestBatches(1);
+        runTestBatches(5);
+        runTestBatches(25);
+        runTestBatches(125);
+        runTestBatches(625);
     
-  }
-
-  private void runTestBatches(int batchSize) throws IOException, LoginException, RepositoryException, InterruptedException {
-      // Livelink 9.5 SP1: 20996
-      // Livelink 9.6: 20998
-      // Livelink 9.6 UTF-8: 20991
-      // Swift: 2959
-      
-      LivelinkConnector conn = new LivelinkConnector();
-      conn.setHostname("localhost");
-      conn.setPort(20996);
-      conn.setUsername("Admin");
-      conn.setPassword("livelink");
-      conn.setDisplayUrl("http://localhost/Livelink9501/livelink.exe");
-      Session sess = conn.login();
-
-      QueryTraversalManager qtm = sess.getQueryTraversalManager();
-
-    String connectorName = "livelink";
-    PrintStream out =
-        //System.out;
-        new PrintStream(new FileOutputStream("traverser-test.log"));
-    Pusher pusher =
-        //new MockPusher(System.out);
-        //new DocPusher(new MockFeedConnection());
-        new DocPusher(new MockFileFeedConnection(out));
-    ConnectorStateStore connectorStateStore = new MockConnectorStateStore();
-
-    Traverser traverser =
-        new QueryTraverser(pusher, qtm, connectorStateStore, connectorName);
-
-    System.out.println();
-    System.out.println("Running batch test batchsize " + batchSize);
-    
-    int docsProcessed = -1;
-    int totalDocsProcessed = 0;
-    int batchNumber = 0;
-    while (docsProcessed != 0) {
-      docsProcessed = traverser.runBatch(batchSize);
-      totalDocsProcessed += docsProcessed;
-      System.out.println("Batch# " + batchNumber + " docs " + docsProcessed +
-          " checkpoint " + connectorStateStore.getConnectorState(connectorName));
-      batchNumber++;
     }
-    Assert.assertEquals(380,totalDocsProcessed);
-  }
 
+    private void runTestBatches(int batchSize) throws IOException,
+            LoginException, RepositoryException, InterruptedException {
+        LivelinkConnector conn = new LivelinkConnector();
+        conn.setHostname(System.getProperty("connector.host"));
+        try {
+            conn.setPort(Integer.parseInt(
+                             System.getProperty("connector.port")));
+        } catch (NumberFormatException e) {
+            // TODO
+        }
+        conn.setUsername(System.getProperty("connector.username"));
+        conn.setPassword(System.getProperty("connector.password"));
+        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
+
+        Session sess = conn.login();
+        QueryTraversalManager qtm = sess.getQueryTraversalManager();
+
+        String connectorName = "livelink";
+        PrintStream out =
+            //System.out;
+            new PrintStream(new FileOutputStream("traverser-test.log"));
+        Pusher pusher =
+            //new MockPusher(System.out);
+            //new DocPusher(new MockFeedConnection());
+            new DocPusher(new MockFileFeedConnection(out));
+        ConnectorStateStore connectorStateStore =
+            new MockConnectorStateStore();
+
+        Traverser traverser = new QueryTraverser(pusher, qtm,
+            connectorStateStore, connectorName);
+
+        System.out.println();
+        System.out.println("Running batch test batchsize " + batchSize);
+    
+        int docsProcessed = -1;
+        int totalDocsProcessed = 0;
+        int batchNumber = 0;
+        while (docsProcessed != 0) {
+            docsProcessed = traverser.runBatch(batchSize);
+            totalDocsProcessed += docsProcessed;
+            System.out.println("Batch# " + batchNumber + " docs " +
+                docsProcessed + " checkpoint " +
+                connectorStateStore.getConnectorState(connectorName));
+            batchNumber++;
+        }
+        Assert.assertEquals(378, totalDocsProcessed);
+    }
 }

@@ -3,11 +3,7 @@
 package com.google.enterprise.connector.otex.client.lapi;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import java.io.IOException;
-import java.util.logging.Level;
+import java.io.OutputStream;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -15,6 +11,7 @@ import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.RecArray;
 
 import com.opentext.api.LAPI_DOCUMENTS;
+import com.opentext.api.LAPI_USERS;
 import com.opentext.api.LLSession;
 import com.opentext.api.LLValue;
 
@@ -32,6 +29,8 @@ final class LapiClient implements Client
     
     private final LAPI_DOCUMENTS documents;
 
+    private final LAPI_USERS users;
+
     /*
      * Constructs a new client using the given session. Initializes
      * and subsidiary objects that are needed.
@@ -41,6 +40,7 @@ final class LapiClient implements Client
     LapiClient(LLSession session) {
         this.session = session;
         this.documents = new LAPI_DOCUMENTS(session);
+        this.users = new LAPI_USERS(session);
     }
 
     /**
@@ -63,10 +63,27 @@ final class LapiClient implements Client
             throw new LapiException(e, logger);
         }
     }
+
+    public synchronized String getLLCookie(Logger logger)
+            throws RepositoryException {
+        LLValue cookies = (new LLValue()).setList();
+        try {
+            if (users.GetCookieInfo(cookies) != 0)
+                throw new LapiException(session, logger);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+        for (int i = 0; i < cookies.size(); i++) {
+            LLValue cookie = cookies.toValue(i);
+            if ("LLCookie".equalsIgnoreCase(cookie.toString("Name"))) {
+                return cookie.toString("Value");
+            }
+        }
+        // XXX: Or return null and have the caller do this?
+        throw new RepositoryException("Missing LLCookie");
+    }
     
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     public synchronized RecArray ListNodes(Logger logger, String query,
             String view, String[] columns) throws RepositoryException {
         LLValue recArray = (new LLValue()).setTable();
@@ -85,47 +102,30 @@ final class LapiClient implements Client
         }
         return new LapiRecArray(recArray);
     }
-    
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation uses <code>FetchVersion</code> and returns
-     * a <code>FileInputStream</code> subclass that deletes the the
-     * temporary file when the stream is closed.
-     */
-    /*
-     * TODO: Compare this implementation to one that uses an
-     * HttpURLConnection.
-     */
-    public synchronized InputStream FetchVersion(final Logger logger,
-            int volumeId, int objectId, int versionNumber)
+    /** {@inheritDoc} */
+    public synchronized void FetchVersion(final Logger logger,
+            int volumeId, int objectId, int versionNumber, File path)
             throws RepositoryException {
         try {
-            final File temporaryFile = File.createTempFile("gsa-otex-", null);
-            if (logger.isLoggable(Level.FINER))
-                logger.finer("TEMP FILE: " + temporaryFile);
-            if (documents.FetchVersion(volumeId, objectId,
-                    versionNumber, temporaryFile.getPath()) != 0) { 
+            if (documents.FetchVersion(volumeId, objectId, versionNumber,
+                    path.getPath()) != 0) {
                 throw new LapiException(session, logger);
             }
-            try {
-                return new FileInputStream(temporaryFile) {
-                        public void close() throws IOException {
-                            try {
-                                super.close();
-                            } finally {
-                                if (logger.isLoggable(Level.FINER))
-                                    logger.finer("DELETE: " + temporaryFile);
-                                temporaryFile.delete();
-                            }
-                        }
-                    };
-            } catch (FileNotFoundException e) {
-                throw new LapiException(e, logger);
-            }
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public synchronized void FetchVersion(final Logger logger,
+            int volumeId, int objectId, int versionNumber, OutputStream out)
+            throws RepositoryException {
+        try {
+            if (documents.FetchVersion(volumeId, objectId,
+                    versionNumber, out) != 0) { 
+                throw new LapiException(session, logger);
+            }
         } catch (RuntimeException e) {
             throw new LapiException(e, logger);
         }

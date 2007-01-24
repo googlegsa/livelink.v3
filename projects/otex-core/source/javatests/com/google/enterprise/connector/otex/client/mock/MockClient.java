@@ -2,11 +2,13 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.RecArray;
 
@@ -26,13 +28,22 @@ final class MockClient implements Client
     public String getEncoding(Logger logger) {
         return null;
     }
-    
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation returns an empty string.
+     */
+    public String getLLCookie(Logger logger) throws RepositoryException {
+        return "";
+    }
+
     /**
      * {@inheritDoc}
      * <p>
      * This implementation returns an empty <code>RecArray</code>.
      */
-    public synchronized RecArray ListNodes(Logger logger, String query,
+    public RecArray ListNodes(Logger logger, String query,
             String view, String[] columns) {
         logger.info("Entering MockClient.ListNodes");
         return new MockRecArray();
@@ -41,14 +52,29 @@ final class MockClient implements Client
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns an empty stream.
+     * This implementation does nothing.
      */
-    public synchronized InputStream FetchVersion(final Logger logger,
-            int volumeId, int objectId, int versionNumber) {
+    public void FetchVersion(final Logger logger,
+            int volumeId, int objectId, int versionNumber, File path) {
         logger.info("Entering MockClient.FetchVersion");
-        return new ByteArrayInputStream(new byte[0]);
+        // TODO: Make sure that the file exists and is empty.
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation does nothing but close the output stream.
+     */
+    public void FetchVersion(final Logger logger, int volumeId,
+            int objectId, int versionNumber, OutputStream out)
+            throws RepositoryException {
+        logger.info("Entering MockClient.FetchVersion");
+        try {
+            out.close();
+        } catch (IOException e) {
+            throw new LivelinkException(e, logger);
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -59,7 +85,6 @@ final class MockClient implements Client
         String username) throws RepositoryException {
         logger.info("Entering MockClient.ImpersonateUser");
     }
-
 
     /**
      * {@inheritDoc}
