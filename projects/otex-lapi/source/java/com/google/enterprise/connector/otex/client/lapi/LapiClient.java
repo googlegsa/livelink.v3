@@ -98,7 +98,7 @@ final class LapiClient implements Client
                 throw new LapiException(session, logger);
             }
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(session, logger);
         }
         return new LapiRecArray(recArray);
     }
@@ -149,7 +149,8 @@ final class LapiClient implements Client
     /* User access to the Personal Workspace can be disabled, so
      * try the Enterprise Workspace.  Passing null for the domain
      * parameter should cause the domain to default to the domain
-     * of the logged-in user.
+     * of the logged-in user. We might want to use the
+     * GetCookieInfo method instead.
      */
     public synchronized boolean ping(final Logger logger)
             throws RepositoryException {
@@ -157,9 +158,9 @@ final class LapiClient implements Client
         try {
             // TODO: ensure that the LapiClient handles domains.
             if (documents.AccessEnterpriseWSEx(null, info) != 0)
-                return false;
+                throw new LapiException(session, logger); 
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(session, logger); 
         }
         return true;
     }

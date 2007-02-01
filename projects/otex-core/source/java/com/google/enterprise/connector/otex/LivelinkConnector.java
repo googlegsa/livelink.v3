@@ -2,6 +2,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,6 +24,14 @@ public class LivelinkConnector implements Connector {
      */
     private final ClientFactory clientFactory;
 
+    /**
+     * The client factory used to configure and instantiate the
+     * client facade when a client is needed for authentication;
+     * may remain null if no custom authentication configuration
+     * is provided.
+     */
+    private ClientFactory authenticationClientFactory;
+
     /** The display URL prefix for the search results. */
     private String displayUrl;
 
@@ -33,6 +42,7 @@ public class LivelinkConnector implements Connector {
     /**
      * Constructs a connector instance for a specific Livelink
      * repository, using the default client factory class.
+
      */
     LivelinkConnector() {
         this("com.google.enterprise.connector.otex.client.lapi." +
@@ -68,9 +78,9 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the hostname of the Livelink server. This should be the
-     * Livelink server port, unless HTTP tunnelling is used, in which
-     * case it should be the HTTP port.
+     * Sets the Livelink server port. This should be the LAPI
+     * port, unless HTTP tunneling is used, in which case it
+     * should be the HTTP port.
      * 
      * @param port the port number to set
      */
@@ -114,6 +124,102 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
+     * Sets the UseHTTPS property. Set to true to use HTTPS when
+     * tunneling through a web server. The default value for this
+     * property is "true". If this property is set to true, the
+     * LivelinkCGI property is set, and Livelink Secure Connect
+     * is not installed, connections will fail.
+     *
+     * @param useHttps true if HTTPS should be used; false otherwise
+     */
+    public void setUseHttps(boolean useHttps) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("USE HTTPS: " + useHttps);
+        clientFactory.setUseHttps(useHttps);
+    }
+
+    /**
+     * Sets the EnableNTLM property. The default Livelink value is true.
+     *
+     * @param enableNtlm true if the NTLM subsystem should be used
+     */
+    public void setEnableNtlm(boolean enableNtlm) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("ENABLE NTLM: " + enableNtlm);
+        clientFactory.setEnableNtlm(enableNtlm);
+    }
+
+
+    /**
+     * Sets the Livelink CGI path to use when tunneling LAPI
+     * requests through the Livelink web server. If a proxy
+     * server is used, this value must be the complete URL to the
+     * Livelink CGI (e.g.,
+     * http://host:port/Livelink/livelink). If no proxy server is
+     * being used, only the path needs to be provided (e.g.,
+     * /Livelink/livelink).
+     *
+     * @param livelinkCgi the path or URL to the Livelink CGI 
+     */
+    public void setLivelinkCgi(String livelinkCgi) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("LIVELINK CGI: " + livelinkCgi);
+        clientFactory.setLivelinkCgi(livelinkCgi);
+    }
+
+    /**
+     * Sets a username to be used for HTTP authentication when
+     * accessing Livelink through a web server.
+     *
+     * @param httpUsername the username
+     */
+    public void setHttpUsername(String httpUsername) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("HTTP USERNAME: " + httpUsername);
+        clientFactory.setHttpUsername(httpUsername);
+    }
+
+    /**
+     * Sets a password to be used for HTTP authentication when
+     * accessing Livelink through a web server.
+     *
+     * @param httpPassword the password
+     */
+    public void setHttpPassword(String httpPassword) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("HTTP PASSWORD: " + httpPassword);
+        clientFactory.setHttpPassword(httpPassword);
+    }
+
+    /**
+     * Sets the VerifyServer property. This property may be used
+     * with {@link #setUseHttps} and {@link #setCaRootCerts}.
+     *
+     * @param verifyServer true if the server certificate should
+     * be verified
+     */
+    public void setVerifyServer(boolean verifyServer) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("VERIFY SERVER: " + verifyServer);
+        clientFactory.setVerifyServer(verifyServer);
+    }
+
+    /**
+     * Sets the CaRootCerts property.
+     *
+     * @param caRootCerts a list of certificate authority root certificates
+     */
+    /* TODO: figure out how this will work. Perhaps allow users
+     * to enter one cert on the form, and edit
+     * connectorInstance.xml to add more if needed. 
+     */
+    public void setCaRootCerts(List caRootCerts) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("CA ROOT CERTS: " + caRootCerts);
+        clientFactory.setCaRootCerts(caRootCerts);
+    }
+
+    /**
      * Sets the Livelink domain name. This property is optional.
      * 
      * @param domainName the domain name to set
@@ -145,7 +251,165 @@ public class LivelinkConnector implements Connector {
         return displayUrl;
     }
     
-    // TODO: Extra config options (e.g., DS, tunnelling).
+    // Authentication parameters
+
+    /**
+     * Creates an empty client factory instance for use with
+     * authentication configuration parameters. This will use the
+     * same implementation class as the default client factory.
+     */
+    /* Assumes that there aren't multiple threads configuring a 
+     * single LivelinkConnector instance. 
+     */
+    private void createAuthenticationClientFactory() {
+        if (authenticationClientFactory == null) {
+            if (LOGGER.isLoggable(Level.CONFIG)) {
+                LOGGER.config("NEW AUTHENTICATION INSTANCE: " + 
+                    clientFactory.getClass().getName());
+            }
+            try {
+                authenticationClientFactory = (ClientFactory)
+                    clientFactory.getClass().newInstance();
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, e.getMessage(), e);
+                throw new RuntimeException(e); // XXX: More specific exception?
+            }
+        }
+    }
+
+    /**
+     * Sets the hostname for authentication. See {@link #setHostname}. 
+     * 
+     * @param hostname the host name to set
+     */
+    public void setAuthenticationHostname(String hostname) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION HOSTNAME: " + hostname);
+        authenticationClientFactory.setHostname(hostname);
+    }
+
+    /**
+     * Sets the port to use. See {@link #setPort}. 
+     * 
+     * @param port the port number to set
+     */
+    public void setAuthenticationPort(int port) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION PORT: " + port);
+        authenticationClientFactory.setPort(port);
+    }
+
+    /**
+     * Sets the database connection to use when
+     * authenticating. See {@link #setDatabase}. 
+     * 
+     * @param database the database name to set
+     */
+    public void setAuthenticationDatabase(String database) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION DATABASE: " + database);
+        authenticationClientFactory.setDatabase(database);
+    }
+
+    /**
+     * Sets the UseHTTPS property. See {@link #setUseHttps}. 
+     *
+     * @param useHttps true if HTTPS should be used; false otherwise
+     */
+    public void setAuthenticationUseHttps(boolean useHttps) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION USE HTTPS: " + useHttps);
+        authenticationClientFactory.setUseHttps(useHttps);
+    }
+
+    /**
+     * Sets the EnableNTLM property. See {@link @setEnableNtlm}. 
+     *
+     * @param verifyServer true if the NTLM subsystem should be used
+     */
+    public void setAuthenticationEnableNtlm(boolean enableNtlm) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION ENABLE NTLM: " + enableNtlm);
+        authenticationClientFactory.setEnableNtlm(enableNtlm);
+    }
+
+    /**
+     * Sets the Livelink CGI path for use when tunneling requests
+     * through a web server. See {@link #setLivelinkCgi}. 
+     *
+     * @param livelinkCgi the Livelink CGI path or URL
+     */
+    public void setAuthenticationLivelinkCgi(String livelinkCgi) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION LIVELINK CGI: " + livelinkCgi);
+        authenticationClientFactory.setLivelinkCgi(livelinkCgi);
+    }
+
+    /**
+     * Sets the Verify Server property. See {@link @setVerifyServer}. 
+     *
+     * @param verifyServer true if the server certificate should
+     * be verified
+     */
+    public void setAuthenticationVerifyServer(boolean verifyServer) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION VERIFY SERVER: " + verifyServer);
+        authenticationClientFactory.setVerifyServer(verifyServer);
+    }
+
+    /**
+     * Sets the CaRootCerts property. See {@link #setCaRootCerts}. 
+     *
+     * @param caRootCerts a list of certificate authority root certificates
+     */
+    /* TODO: figure out how this will work. Perhaps allow users
+     * to enter one cert on the form, and edit
+     * connectorInstance.xml to add more if needed. 
+     */
+    public void setAuthenticationCaRootCerts(List caRootCerts) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION CA ROOT CERTS: " + caRootCerts);
+        authenticationClientFactory.setCaRootCerts(caRootCerts);
+    }
+
+    /**
+     * Sets the Livelink domain name. See {@link #setDomainName}. 
+     * 
+     * @param domainName the domain name to set
+     */
+    public void setAuthenticationDomainName(String domainName) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION DOMAIN NAME: " + domainName);
+        authenticationClientFactory.setDomainName(domainName);
+    }
+
+    /**
+     * Sets a property which indicates that any username and
+     * password values which need to be authenticated should be
+     * used as the HTTP username and password values.
+     *
+     * @param useWeb true if the username and password should be
+     * used for HTTP authentication
+     */
+    public void setAuthenticationUseUsernamePasswordWithWebServer(
+            boolean useWeb) {
+        createAuthenticationClientFactory();
+        if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("AUTHENTICATION USE USERNAME WITH WEB SERVER: " + 
+                useWeb);
+        }
+        authenticationClientFactory.setUseUsernamePasswordWithWebServer(
+            useWeb);
+    }
 
     /**
      * Sets the concrete implementation for the
@@ -178,14 +442,20 @@ public class LivelinkConnector implements Connector {
         // Two birds with one stone. Getting the character encoding
         // from the server verifies connectivity, and we use the
         // result to set the character encoding for future clients.
+        // FIXME: Should the authenticationClientFactory use the
+        // same encoding? It can't read the encoding itself; it
+        // doesn't have a username to use.
         Client client = clientFactory.createClient();
         String encoding = client.getEncoding(LOGGER);
+        
         if (encoding != null) {
             if (LOGGER.isLoggable(Level.CONFIG))
                 LOGGER.config("ENCODING: " + encoding);
             clientFactory.setEncoding(encoding);
+            if (authenticationClientFactory != null)
+                authenticationClientFactory.setEncoding(encoding);
         }
-        
-        return new LivelinkSession(this, clientFactory);
+        return new LivelinkSession(this, clientFactory, 
+            authenticationClientFactory);
     }
 }

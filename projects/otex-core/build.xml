@@ -75,6 +75,7 @@
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
+				<pathelement location="${classes}" />
 				<pathelement location="${tests.classes}" />
 			</classpath>
 			<formatter type="brief" usefile="no"/>

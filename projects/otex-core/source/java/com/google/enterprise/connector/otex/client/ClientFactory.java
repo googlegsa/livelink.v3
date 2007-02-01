@@ -29,6 +29,30 @@ public interface ClientFactory {
     /** Required property. */
     void setEncoding(String value);
 
+    /** Optional property. */
+    void setLivelinkCgi(String value); 
+
+    /** Optional property. */
+    void setUseHttps(boolean value); 
+
+    /** Optional property. */
+    void setHttpUsername(String value);
+
+    /** Optional property. */
+    void setHttpPassword(String value);
+
+    /** Optional property. */
+    void setVerifyServer(boolean value);
+
+    /** Optional property. */
+    void setCaRootCerts(java.util.List value);
+
+    /** Optional property. */
+    void setEnableNtlm(boolean value);
+
+    /** Optional property. */
+    void setUseUsernamePasswordWithWebServer(boolean value);
+
     /**
      * Gets a new client instance.
      *
@@ -39,7 +63,10 @@ public interface ClientFactory {
     /**
      * Gets a new client instance using the provided username,
      * which may be different than the username passed to {@link
-     * #setUsername}.
+     * #setUsername}. This method should avoid using any
+     * configured usernames from either {@link #setUsername} or
+     * {@link #setHttpUsername} and only use the values provided
+     * in the parameters.
      *
      * @param username a username
      * @param password a password

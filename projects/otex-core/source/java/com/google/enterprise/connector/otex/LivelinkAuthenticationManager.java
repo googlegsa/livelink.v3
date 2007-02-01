@@ -4,6 +4,7 @@ package com.google.enterprise.connector.otex;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.LogRecord;
 
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.LoginException;
@@ -40,13 +41,20 @@ class LivelinkAuthenticationManager implements AuthenticationManager {
      * @param username the username to check
      * @param password the user's password
      * @returns true if the user can be authenticated
-     * @throws LoginException
-     * @throws RepositoryException
+     * @throws LoginException not currently thrown
+     * @throws RepositoryException if an exception occured during
+     * authentication
      */
     public boolean authenticate(String username, String password)
             throws LoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHENTICATE: " + username);
-        return clientFactory.createClient(username, password).ping(LOGGER);
+        try {
+            return clientFactory.createClient(username, password).ping(LOGGER);
+        } catch (RepositoryException e) {
+            LOGGER.warning("Authentication failed for " + username + "; " +
+                e.getMessage()); 
+            throw e;
+        }
     }
 }

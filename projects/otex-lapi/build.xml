@@ -25,6 +25,8 @@
 	<property name="tests.build" value="build/tests" />
 	<property name="tests.classes" value="${tests.build}/classes" />
 	<property name="tests.todir" value="tests_outdir" />
+        <property name="tests.logging.properties" 
+            location="${tests.classes}/tests.logging.properties"/>
 
 	<property name="jar.dir"  value="${dist}/jar" />
 	<property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
@@ -85,18 +87,23 @@
 
 	<target name="run_tests" depends="compile_tests,jar">
                 <property name="test.suite" value="*"/>
+                <copy file="source/javatests/tests.logging.properties"
+                    tofile="${tests.logging.properties}"
+                    overwrite="yes"/>
 		<junit>
 			<classpath>
+				<pathelement location="${tests.classes}" />
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
 				<pathelement location="${lapi.jarfile}" />
-				<pathelement location="${tests.classes}" />
 			</classpath>
 			<formatter type="brief" usefile="no"/>
 			<formatter type="plain" />
                         <syspropertyset refid="javatest.properties"/>
+                        <sysproperty key="java.util.logging.config.file"
+                                value="${tests.logging.properties}"/>
 			<batchtest fork="yes" todir="${tests.todir}">
 				<fileset dir="${tests.src}">
 					<include name="**/${test.suite}Test.java" />

@@ -37,6 +37,38 @@ public class MockClientFactory implements ClientFactory {
     /** {@inheritDoc} */
     public void setEncoding(String value) {
     }
+    
+    /** {@inheritDoc} */
+    public void setLivelinkCgi(String value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setUseHttps(boolean value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setHttpUsername(String value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setHttpPassword(String value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setVerifyServer(boolean value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setCaRootCerts(java.util.List value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setEnableNtlm(boolean value) {
+    }
+
+    /** {@inheritDoc} */
+    public void setUseUsernamePasswordWithWebServer(boolean value) {
+    }
 
     /** {@inheritDoc} */
     public Client createClient() {
