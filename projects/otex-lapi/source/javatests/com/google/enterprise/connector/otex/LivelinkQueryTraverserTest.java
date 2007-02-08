@@ -47,7 +47,27 @@ public class LivelinkQueryTraverserTest extends TestCase {
     public final static void main(String[] args) {
         TestRunner.run(new TestSuite(LivelinkQueryTraverserTest.class));
     }
+
+    private LivelinkConnector conn;
     
+    public void setUp() {
+        conn = new LivelinkConnector();
+        conn.setHostname(System.getProperty("connector.hostname"));
+        try {
+            conn.setPort(Integer.parseInt(
+                             System.getProperty("connector.port")));
+        } catch (NumberFormatException e) {
+            // TODO
+        }
+        conn.setUsername(System.getProperty("connector.username"));
+        conn.setPassword(System.getProperty("connector.password"));
+        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
+        conn.setServtype(System.getProperty("connector.servtype"));
+        conn.setExcludedNodeTypes(
+            "137,142,143,148,150,154,161,162,201,203,209,210,211");
+        conn.setExcludedVolumeTypes("148,162");
+    }
+
     /**
      * Test method for
      * {@link com.google.enterprise.connector.traversal.QueryTraverser
@@ -65,19 +85,9 @@ public class LivelinkQueryTraverserTest extends TestCase {
     
     }
 
+
     private void runTestBatches(int batchSize) throws IOException,
             LoginException, RepositoryException, InterruptedException {
-        LivelinkConnector conn = new LivelinkConnector();
-        conn.setHostname(System.getProperty("connector.host"));
-        try {
-            conn.setPort(Integer.parseInt(
-                             System.getProperty("connector.port")));
-        } catch (NumberFormatException e) {
-            // TODO
-        }
-        conn.setUsername(System.getProperty("connector.username"));
-        conn.setPassword(System.getProperty("connector.password"));
-        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
 
         Session sess = conn.login();
         QueryTraversalManager qtm = sess.getQueryTraversalManager();

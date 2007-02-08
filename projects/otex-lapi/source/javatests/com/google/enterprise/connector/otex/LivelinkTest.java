@@ -24,7 +24,7 @@ public class LivelinkTest extends TestCase {
 
     public void setUp() {
         conn = new LivelinkConnector();
-        conn.setHostname(System.getProperty("connector.host"));
+        conn.setHostname(System.getProperty("connector.hostname"));
         try {
             conn.setPort(Integer.parseInt(
                              System.getProperty("connector.port")));

@@ -47,7 +47,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      */
     public void setUp() throws RepositoryException {
         conn = new LivelinkConnector();
-        conn.setHostname(System.getProperty("connector.host"));
+        conn.setHostname(System.getProperty("connector.hostname"));
         try {
             conn.setPort(Integer.parseInt(
                              System.getProperty("connector.port")));
