@@ -2,7 +2,9 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -212,8 +214,10 @@ class RecArrayResultSet implements ResultSet {
          * map.
          *
          * @return a checkpoint string for this property map
+         * @throws RepositoryException if an error occurs retrieving
+         * the field data
          */
-        public String checkpoint() {
+        public String checkpoint() throws RepositoryException {
             return toSqlString(recArray.toDate(row, "ModifyDate")) +
                 ','  + recArray.toString(row, "DataID");
         }
@@ -275,15 +279,9 @@ class RecArrayResultSet implements ResultSet {
 
                 // TODO: Should we cache this? Use a hashed lookup
                 // instead of sequential string comparisons?
-                if (column.propertyName.equals(SpiConstants.PROPNAME_CONTENT)) {
-                    // FIXME: Check for IsDefined instead?
-                    String mimeType = recArray.toString(row, "MimeType");
-                    if ("?".equals(mimeType)) {
-                        // TODO: This is a workaround for a bug where
-                        // the QueryTraverser requires a content or
-                        // contenturl property.
-                        return VALUE_EMPTY;
-                    } else {
+                if (column.propertyName.equals(
+                        SpiConstants.PROPNAME_CONTENT)) {
+                    if (recArray.isDefined(row, "MimeType")) {
                         // FIXME: I think that compound documents are
                         // returning with a MIME type but, obviously,
                         // no versions.
@@ -294,9 +292,21 @@ class RecArrayResultSet implements ResultSet {
                         int objectId = recArray.toInteger(row, "DataID");
                         int volumeId = recArray.toInteger(row, "OwnerID");
                         int size = recArray.toInteger(row, "DataSize");
+
+                        // FIXME: Better error handling. Either
+                        // uninstalling the Doorways module or calling
+                        // this with undefined MimeTypes throws errors
+                        // that we might want to handle more
+                        // gracefully (e.g., maybe the underlying error
+                        // is "no content").
                         return new InputStreamValue(
                             contentHandler.getInputStream(LOGGER, volumeId,
                                 objectId, 0, size));
+                    } else {
+                        // TODO: This is a workaround for a bug where
+                        // the QueryTraverser requires a content or
+                        // contenturl property.
+                        return VALUE_EMPTY;
                     }
                 } else if (column.propertyName.equals(
                                SpiConstants.PROPNAME_DISPLAYURL)) {
@@ -334,8 +344,7 @@ class RecArrayResultSet implements ResultSet {
      */
     /*
      * TODO: Value conversion across types. We're relying on
-     * the behavior of the LLInstance subclasses here, and we're not
-     * catching the exceptions they throw.
+     * the behavior of the LLInstance subclasses here.
      */
     private class RecArrayValue implements Value {
         private final RecArray recArray;
@@ -347,37 +356,46 @@ class RecArrayResultSet implements ResultSet {
             this.row = row;
             this.column = column;
             if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.finest("VALUE: " + column.propertyName + " = " +
-                    getString());
+                String value;
+                try {
+                    value = getString();
+                } catch (Throwable t) {
+                    value = t.toString();
+                }
+                LOGGER.finest("VALUE: " + column.propertyName + " = " + value);
             }
         }
 
-        public boolean getBoolean() {
+        public boolean getBoolean() throws RepositoryException {
             return recArray.toBoolean(row, column.fieldName);
         }
 
-        public Calendar getDate() {
+        public Calendar getDate() throws RepositoryException {
             Calendar c = Calendar.getInstance();
             c.setTime(recArray.toDate(row, column.fieldName));
             return c;
         }
 
-        public double getDouble() {
+        public double getDouble() throws RepositoryException {
             return recArray.toDouble(row, column.fieldName);
         }
 
-        public long getLong() {
+        public long getLong() throws RepositoryException {
             return recArray.toInteger(row, column.fieldName);
         }
 
-        /*
-         * XXX: Should we read the string and return a stream based on that?
-         */
-        public InputStream getStream() {
-            return null;
+        public InputStream getStream() throws RepositoryException {
+            try {
+                return new ByteArrayInputStream(getString().getBytes("UTF8"));
+            } catch (UnsupportedEncodingException e) {
+                // This can't happen.
+                RuntimeException re = new IllegalArgumentException();
+                re.initCause(e);
+                throw re;
+            }
         }
 
-        public String getString() {
+        public String getString() throws RepositoryException {
             if (column.fieldType == ValueType.DATE)
                 return toIso8601String(recArray.toDate(row, column.fieldName));
             else

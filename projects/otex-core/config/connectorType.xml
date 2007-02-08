@@ -10,6 +10,7 @@
 				<value>username</value>
 				<value>password</value>
 				<value>displayUrl</value>
+				<value>servtype</value>
 			</list>
 		</property>
 	</bean>

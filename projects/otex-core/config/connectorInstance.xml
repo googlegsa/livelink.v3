@@ -9,6 +9,11 @@
 		<property name="username" value="${username}"/>
 		<property name="password" value="${password}"/>
 		<property name="displayUrl" value="${displayUrl}"/>
+		<property name="servtype" value="${servtype}"/>
+		<property name="excludedNodeTypes" 
+			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
+		<property name="excludedVolumeTypes" value="148,162"/>
+		<property name="excludedLocationNodes" value=""/>
                 @constructor-arg@
 	</bean>
 </beans>

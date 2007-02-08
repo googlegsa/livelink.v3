@@ -75,15 +75,27 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     /** The client provides access to the server. */
     private final Client client;
 
+    private final Object selectList;
+
+    /**
+     * The condition for excluding content from the traversal. This
+     * condition is configured in the same way as the
+     * LivelinkExtractor configuration in opentext.ini.
+     *
+     * @see #getExcluded
+     */
+    private final String excluded;
+
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
     
     /** The number of results to return in each batch. */
     /* TODO: Configurable default value. */
-    private int batchSize = 100;
+    private volatile int batchSize = 100;
 
-    /* TODO: Autodetection of the database type plus a config parameter. */
-    private boolean isSqlServer = true;
+    /** The database type, either SQL Server or Oracle. */
+    /* XXX: We could use the state or strategy pattern if this gets messy. */
+    private final boolean isSqlServer;
 
 
     LivelinkQueryTraversalManager(LivelinkConnector connector,
@@ -91,6 +103,183 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         this.connector = connector;
         client = clientFactory.createClient();
 
+        isSqlServer = isSqlServer();
+        selectList = getSelectList();
+        excluded = getExcluded();
+        contentHandler = getContentHandler();
+    }
+
+
+    /**
+     * Determines whether the database type is SQL Server or Oracle.
+     * 
+     * @return <code>true</code> for SQL Server, or <code>false</code>
+     * for Oracle.
+     */
+    private boolean isSqlServer() throws RepositoryException {
+        String servtype = connector.getServtype();
+        if (servtype == null) {
+            // Autodetection of the database type. First, ferret out
+            // generic errors when connecting or using ListNodes.
+            String query = "1=1"; // ListNodes requires a WHERE clause.
+            String[] columns = { "42" };
+            RecArray results =
+                client.ListNodes(LOGGER, query, "KDual", columns);
+
+            // Then check an Oracle-specific query.
+            boolean isOracle;
+            try {
+                results = client.ListNodes(LOGGER, query, "dual", columns);
+                isOracle = true;
+            } catch (RepositoryException e) {
+                isOracle = false;
+            }
+            if (LOGGER.isLoggable(Level.CONFIG)) {
+                LOGGER.config("AUTO DETECT SERVTYPE: " +
+                    (isOracle ? "Oracle" : "MSSQL"));
+            }
+            return !isOracle;
+        } else {
+            // This is basically startsWithIgnoreCase.
+            boolean matches = servtype.regionMatches(true, 0, "MSSQL", 0, 5);
+            if (LOGGER.isLoggable(Level.CONFIG)) {
+                LOGGER.config("CONFIGURED SERVTYPE: " +
+                    (matches ? "MSSQL" : "Oracle"));
+            }
+            return matches;
+        }
+    }
+    
+       
+    /**
+     * Gets the select list for the needed fields.
+     *
+     * @return an <code>ArrayList</code> for SQL Server, or a string
+     * for Oracle.
+     */
+    private Object getSelectList() {
+        if (isSqlServer) {
+            ArrayList temp = new ArrayList(FIELDS.length);
+            for (int i = 0; i < FIELDS.length; i++) {
+                if (FIELDS[i].fieldName != null)
+                    temp.add(FIELDS[i].fieldName);
+            }
+            return temp;
+        } else {
+            StringBuffer buffer = new StringBuffer();
+            for (int i = 0; i < FIELDS.length; i++) {
+                if (FIELDS[i].fieldName != null) {
+                    buffer.append(',');
+                    buffer.append(FIELDS[i].fieldName);
+                }
+            }
+            return buffer.substring(1);
+        }
+    }
+    
+
+    /**
+     * Gets a SQL conditional expression that excludes nodes that
+     * should not be traversed. This returns a SQL expression of the
+     * form
+     *
+     * <pre>
+     *     SubType not in (<em>excludedNodeTypes</em>) and
+     *     DataID not in
+     *         (select DataID from DTreeAncestors where AncestorID in
+     *             (<em>excludedVolumeNodes</em>,
+     *                 <em>excludedLocationNodes</em>))
+     * </pre>
+     *
+     * where <em>excludedVolumeNodes</em> is obtained from
+     *
+     * <pre>
+     *     select DataID from DTree where SubType in
+     *         (<em>excludedVolumeTypes</em>)
+     * </pre>
+     *
+     * The returned expression is simplified in the obvious way when
+     * one or more of the configuration parameters is null or empty.
+     * 
+     * @return the SQL conditional expression
+     * @throws RepositoryException if an error occurs executing the
+     * excluded volume types query
+     */
+    /* This method has package access so that it can be unit tested. */
+    String getExcluded() throws RepositoryException {
+        StringBuffer buffer = new StringBuffer();
+        
+        boolean hasNodeTypes;
+        String excludedNodeTypes = connector.getExcludedNodeTypes();
+        if (excludedNodeTypes != null &&
+                excludedNodeTypes.length() > 0) {
+            hasNodeTypes = true;
+            buffer.append("SubType not in (");
+            buffer.append(excludedNodeTypes);
+            buffer.append(')');
+        } else
+            hasNodeTypes = false;
+
+        RecArray volumes;
+        String excludedVolumeTypes = connector.getExcludedVolumeTypes();
+        if (excludedVolumeTypes != null &&
+                excludedVolumeTypes.length() > 0) {
+            String query = "SubType in (" + excludedVolumeTypes + ")";
+            String view = "DTree";
+            String[] columns = { "DataID", "PermID" };
+            RecArray results = client.ListNodes(LOGGER, query, view, columns);
+            volumes = (results.size() == 0) ? null : results;
+        } else
+            volumes = null;
+        
+        String locations;
+        String excludedLocationNodes = connector.getExcludedLocationNodes();
+        if (excludedLocationNodes != null &&
+                excludedLocationNodes.length() > 0) {
+            locations = excludedLocationNodes;
+        } else
+            locations = null;
+
+        if (volumes != null || locations != null) {
+            if (hasNodeTypes)
+                buffer.append(" and ");
+
+            buffer.append("DataID not in (select DataID from ");
+            buffer.append("DTreeAncestors where AncestorID in (");
+
+            if (volumes != null) {
+                for (int i = 0; i < volumes.size(); i++) {
+                    if (i > 0)
+                        buffer.append(',');
+                    buffer.append(volumes.toString(i, "DataID"));
+                }
+            }
+
+            if (locations != null) {
+                if (volumes != null)
+                    buffer.append(',');
+                buffer.append(locations);
+            }
+
+            buffer.append("))");
+        }
+        
+        String excluded = (buffer.length() > 0) ? buffer.toString() : null;
+        if (LOGGER.isLoggable(Level.FINER))
+            LOGGER.finer("EXCLUDED: " + excluded);
+        return excluded;
+    }
+    
+
+    /**
+     * Gets a new instance of the configured content handler class.
+     *
+     * @return a new instance of the configured content handler class
+     * @throws RepositoryException if the class cannot be instantiated
+     * or initialized
+     */
+    private ContentHandler getContentHandler() throws RepositoryException {
+        ContentHandler contentHandler;
         String contentHandlerClass = connector.getContentHandler();
         try {
             contentHandler = (ContentHandler)
@@ -99,6 +288,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             throw new LivelinkException(e, LOGGER);
         }
         contentHandler.initialize(connector, client, LOGGER);
+        return contentHandler;
     }
 
 
@@ -230,37 +420,32 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             recArray, FIELDS);
     }
 
+    /**
+     * The sort order of the traversal. We need a complete ordering
+     * based on the modification date, in order to get incremental
+     * crawling without duplicates.
+     *
+     * @see #getRestriction
+     */
     private static final String ORDER_BY = " order by ModifyDate, DataID";
 
-    private static final String SUBTYPES = "SubType not in " +
-        "(137,142,143,148,150,154,161,162,201,203,209,210,211)";
 
-    // TODO: We need to get these volume IDs programmatically.
-    private final String ancestors = "DataID not in " +
-        "(select DataID from DTreeAncestors where AncestorID in (2001,2313))";
-
-    private final String excluded = SUBTYPES + " and " + ancestors;
-
-    
     private RecArray listNodesSqlServer(String checkpoint)
             throws RepositoryException {
-        // TODO: This includes just a sketch of a subtype and volume type
-        // restriction. Note that this code only handles SQL Server.
         String query;
-        if (checkpoint == null)
-            //query = "1=1" + ORDER_BY;
+        if (checkpoint == null && excluded == null)
+            query = "1=1" + ORDER_BY;
+        else if (checkpoint == null)
             query = excluded + ORDER_BY;
+        else if (excluded == null)
+            query = getRestriction(checkpoint) + ORDER_BY;
         else
-            //query = getRestriction(checkpoint) + ORDER_BY;
             query = excluded + " and " + getRestriction(checkpoint) + ORDER_BY;
         String view = "WebNodes";
-
-        // FIXME: This code is working around fields with null
-        // field names. This turns into "top 100 null, null, ...".
-        String[] columns = new String[FIELDS.length];
-        columns[0] = "top " + batchSize + " " + FIELDS[0].fieldName;
-        for (int i = 1; i < FIELDS.length; i++)
-            columns[i] = FIELDS[i].fieldName + "";
+        ArrayList selectArrayList = (ArrayList) selectList;
+        String[] columns = (String[]) selectArrayList.toArray(
+            new String[selectArrayList.size()]);
+        columns[0] = "top " + batchSize + " " + columns[0];
 
         return client.ListNodes(LOGGER, query, view, columns);
     }
@@ -275,23 +460,25 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         String query = "rownum <= " + batchSize;
         StringBuffer buffer = new StringBuffer();
         buffer.append("(select ");
-
-        // FIXME: This code is working around fields with null
-        // field names. This turns into "null, null, ...".
-        buffer.append(FIELDS[0].fieldName);
-        for (int i = 1; i < FIELDS.length; i++) {
-            buffer.append(',');
-            buffer.append(FIELDS[i].fieldName);
-        }
-
+        buffer.append(selectList);
         buffer.append(" from WebNodes ");
-        if (checkpoint != null) {
+        if (checkpoint != null || excluded != null) {
             buffer.append("where ");
-            buffer.append(getRestriction(checkpoint));
+            if (checkpoint == null) {
+                buffer.append(excluded);
+            } else if (excluded == null) {
+                buffer.append(getRestriction(checkpoint));
+            } else {
+                buffer.append(excluded);
+                buffer.append(" and ");
+                buffer.append(getRestriction(checkpoint));
+            }
         }
         buffer.append(ORDER_BY);
         buffer.append(')');
         String view = buffer.toString();
+        if (LOGGER.isLoggable(Level.FINER))
+            LOGGER.finer("ORACLE VIEW: " + view);
         String[] columns = new String[] { "*" };
 
         return client.ListNodes(LOGGER, query, view, columns);
@@ -299,10 +486,12 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
 
     /**
-     * Gets a SQL condition representing the given checkpoint.
+     * Gets a SQL condition representing the given checkpoint. This
+     * condition depends on the sort order of the traversal.
      *
      * @param checkpoint
      * @return a SQL condition returning items following the checkpoint
+     * @see #ORDER_BY
      */
     /*
      * The TIMESTAMP literal, part of the SQL standard, was first

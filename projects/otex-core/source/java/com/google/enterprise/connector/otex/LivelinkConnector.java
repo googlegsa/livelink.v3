@@ -5,6 +5,7 @@ package com.google.enterprise.connector.otex;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.LoginException;
@@ -18,6 +19,33 @@ public class LivelinkConnector implements Connector {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnector.class.getName());
 
+    /**
+     * A pattern describing a comma-separated list of unsigned
+     * integers, with optional whitespace. The list may be empty or
+     * consist entirely of whitespace.
+     */
+    private static final Pattern LIST_OF_INTEGERS =
+        Pattern.compile("\\s*|\\s*\\d+\\s*(?:,\\s*\\d+\\s*)*");
+
+
+    /**
+     * Sanitizes a list of integers by checking for invalid characters
+     * in the string and removing all whitespace.
+     *
+     * @param list a list of comma-separated integers
+     * @return the list with all whitespace characters removed
+     * @throws IllegalArgumentException if the list contains anything
+     * but whitespace, digits, or commas
+     */
+    /* This method has package access so that it can be unit tested. */
+    static String sanitizeListOfIntegers(String list) {
+        if (LIST_OF_INTEGERS.matcher(list).matches())
+            return list.replaceAll("\\s", "");
+        else
+            throw new IllegalArgumentException(list);
+    }
+
+    
     /**
      * The client factory used to configure and instantiate the
      * client facade.
@@ -34,6 +62,18 @@ public class LivelinkConnector implements Connector {
 
     /** The display URL prefix for the search results. */
     private String displayUrl;
+
+    /** The database server type, either "MSSQL" or "Oracle". */
+    private String servtype;
+    
+    /** The node types that you want to exclude from traversal. */
+    private String excludedNodeTypes;
+
+    /** The volume types that you want to exclude from traversal. */
+    private String excludedVolumeTypes;
+
+    /** The node IDs that you want to exclude from traversal. */
+    private String excludedLocationNodes;
 
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler =
@@ -251,8 +291,102 @@ public class LivelinkConnector implements Connector {
         return displayUrl;
     }
     
-    // Authentication parameters
+    /**
+     * Sets the database server type.
+     * 
+     * @param servtype the database server type, either "MSSQL" or "Oracle";
+     *     the empty string is also accepted but is ignored
+     */
+    /*
+     * There are strings like "MSSQL70" and "ORACLE80" in the Livelink
+     * source, so we'll let those work if someone copies them verbatim
+     * from their opentext.ini file.
+     */
+    public void setServtype(String servtype) {
+        if (servtype == null || servtype.length() == 0)
+            return;
+        if (!servtype.regionMatches(true, 0, "MSSQL", 0, 5) &&
+                !servtype.regionMatches(true, 0, "Oracle", 0, 6)) {
+            throw new IllegalArgumentException(servtype);
+        }
+        this.servtype = servtype;
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("SERVTYPE: " + this.servtype);
+    }
+    
+    /**
+     * Gets the database server type, either "MSSQL" or "Oracle", or
+     * <code>null</code> if the database type is not configured.
+     *
+     * @return the database server type
+     */
+    String getServtype() {
+        return servtype;
+    }
 
+    /**
+     * Sets the node types that you want to exclude from traversal.
+     * 
+     * @param excludedNodeTypes the excluded node types
+     */
+    public void setExcludedNodeTypes(String excludedNodeTypes) {
+        this.excludedNodeTypes = sanitizeListOfIntegers(excludedNodeTypes);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("EXCLUDED NODE TYPES: " + this.excludedNodeTypes);
+    }
+    
+    /**
+     * Gets the node types that you want to exclude from traversal.
+     *
+     * @return the excluded node types
+     */
+    public String getExcludedNodeTypes() {
+        return excludedNodeTypes;
+    }
+    
+    /**
+     * Sets the volume types that you want to exclude from traversal.
+     * 
+     * @param excludedVolumeTypes the excluded volume types
+     */
+    public void setExcludedVolumeTypes(String excludedVolumeTypes) {
+        this.excludedVolumeTypes = sanitizeListOfIntegers(excludedVolumeTypes);
+        if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("EXCLUDED VOLUME TYPES: " +
+                this.excludedVolumeTypes);
+        }
+    }
+    
+    /**
+     * Gets the volume types that you want to exclude from traversal.
+     *
+     * @return the excluded volume types
+     */
+    public String getExcludedVolumeTypes() {
+        return excludedVolumeTypes;
+    }
+    
+    /**
+     * Sets the node IDs that you want to exclude from traversal.
+     * 
+     * @param excludedLocationNodes the excluded node IDs
+     */
+    public void setExcludedLocationNodes(String excludedLocationNodes) {
+        this.excludedLocationNodes =
+            sanitizeListOfIntegers(excludedLocationNodes);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("EXCLUDED NODE IDS: " + this.excludedLocationNodes);
+    }
+    
+    /**
+     * Gets the node IDs that you want to exclude from traversal.
+     *
+     * @return the excluded node IDs
+     */
+    public String getExcludedLocationNodes() {
+        return excludedLocationNodes;
+    }
+    
     /**
      * Creates an empty client factory instance for use with
      * authentication configuration parameters. This will use the

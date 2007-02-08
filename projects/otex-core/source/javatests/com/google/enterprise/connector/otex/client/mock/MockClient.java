@@ -45,8 +45,26 @@ final class MockClient implements Client
      */
     public RecArray ListNodes(Logger logger, String query,
             String view, String[] columns) {
-        logger.info("Entering MockClient.ListNodes");
-        return new MockRecArray();
+        logger.fine("Entering MockClient.ListNodes");
+
+        Object[][] values;
+        if (query.startsWith("SubType in (") && view.equals("DTree")) {
+            // This is the excluded volume types query.
+
+            // One of the tests asks for invalid volume types, namely
+            // 2001 and 4104. That query needs to return no values.
+            // Other than that, any non-empty results are OK.
+            // TODO: Get the actual list of requested types and use >
+            // 2000 to check for invalid types.
+            if (query.indexOf("2001,4104") != -1)
+                values = new Object[0][0];
+            else {
+                values = new Object[][] {
+                    new Object[] { new Integer(9999), new Integer(0) } };
+            }
+        } else
+            values = new Object[0][0];
+        return new MockRecArray(new String[] { "DataID", "PermID" }, values);
     }
 
     /**
@@ -56,7 +74,7 @@ final class MockClient implements Client
      */
     public void FetchVersion(final Logger logger,
             int volumeId, int objectId, int versionNumber, File path) {
-        logger.info("Entering MockClient.FetchVersion");
+        logger.fine("Entering MockClient.FetchVersion");
         // TODO: Make sure that the file exists and is empty.
     }
 
@@ -68,7 +86,7 @@ final class MockClient implements Client
     public void FetchVersion(final Logger logger, int volumeId,
             int objectId, int versionNumber, OutputStream out)
             throws RepositoryException {
-        logger.info("Entering MockClient.FetchVersion");
+        logger.fine("Entering MockClient.FetchVersion");
         try {
             out.close();
         } catch (IOException e) {
@@ -83,7 +101,7 @@ final class MockClient implements Client
      */
     public synchronized void ImpersonateUser(final Logger logger, 
         String username) throws RepositoryException {
-        logger.info("Entering MockClient.ImpersonateUser");
+        logger.fine("Entering MockClient.ImpersonateUser");
     }
 
     /**
@@ -92,7 +110,7 @@ final class MockClient implements Client
      * This implementation always returns true.
      */
     public synchronized boolean ping(final Logger logger) {
-        logger.info("Entering MockClient.ping");
+        logger.fine("Entering MockClient.ping");
         return true;
     }
 }

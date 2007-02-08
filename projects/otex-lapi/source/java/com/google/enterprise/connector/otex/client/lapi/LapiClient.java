@@ -64,6 +64,7 @@ final class LapiClient implements Client
         }
     }
 
+    /** {@inheritDoc} */
     public synchronized String getLLCookie(Logger logger)
             throws RepositoryException {
         LLValue cookies = (new LLValue()).setList();
@@ -98,9 +99,9 @@ final class LapiClient implements Client
                 throw new LapiException(session, logger);
             }
         } catch (RuntimeException e) {
-            throw new LapiException(session, logger);
+            throw new LapiException(e, logger);
         }
-        return new LapiRecArray(recArray);
+        return new LapiRecArray(logger, recArray);
     }
 
     /** {@inheritDoc} */
@@ -160,7 +161,7 @@ final class LapiClient implements Client
             if (documents.AccessEnterpriseWSEx(null, info) != 0)
                 throw new LapiException(session, logger); 
         } catch (RuntimeException e) {
-            throw new LapiException(session, logger); 
+            throw new LapiException(e, logger); 
         }
         return true;
     }
