@@ -48,7 +48,9 @@
 	<target name="compile" depends="init">
 		<!-- compile java source files -->
 		<javac srcdir="${src}" destdir="${classes}" 
-			debug="${COMPILE_DEBUG_FLAG}" debuglevel="${COMPILE_DEBUG_LEVEL}">
+			debug="${COMPILE_DEBUG_FLAG}" 
+			debuglevel="${COMPILE_DEBUG_LEVEL}"
+			target="1.4" source="1.4">
 			<classpath>
 				<pathelement location="${spi.jarfile}" />
 			</classpath>
@@ -58,7 +60,9 @@
 	<target name="compile_tests" depends="init">
 		<!-- compile java source files for tests -->
 		<javac srcdir="${tests.src}" destdir="${tests.classes}" 
-			debug="${COMPILE_DEBUG_FLAG}" debuglevel="${COMPILE_DEBUG_LEVEL}">
+			debug="${COMPILE_DEBUG_FLAG}" 
+			debuglevel="${COMPILE_DEBUG_LEVEL}"
+			target="1.4" source="1.4">
 			<classpath>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
@@ -69,6 +73,7 @@
 	</target>
 
 	<target name="run_tests" depends="compile_tests,jar">
+                <property name="test.suite" value="*"/>
 		<junit>
 			<classpath>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
@@ -82,7 +87,7 @@
 			<formatter type="plain" />
 			<batchtest fork="yes" todir="${tests.todir}">
 				<fileset dir="${tests.src}">
-					<include name="**/*Test.java" />
+					<include name="**/${test.suite}Test.java" />
 				</fileset>
 			</batchtest>
 		</junit>
