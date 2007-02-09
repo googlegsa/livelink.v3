@@ -35,6 +35,8 @@
         <property name="core.classes" location="../otex-core/build/classes"/>
 
 	<property name="connector-manager.dir" location="../../../cm/projects/connector-manager" />
+	<property name="thirdparty.jar.dir" 
+		value="../../../cm/projects/third_party/lib" />
 	<property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
 	<property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
 	<property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
@@ -78,6 +80,9 @@
 			debuglevel="${COMPILE_DEBUG_LEVEL}"
 			target="1.4" source="1.4">
 			<classpath>
+				<fileset dir="${thirdparty.jar.dir}">
+					<include name="**/spring.jar" />
+				</fileset>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
@@ -96,6 +101,9 @@
                     overwrite="yes"/>
 		<junit>
 			<classpath>
+				<fileset dir="${thirdparty.jar.dir}">
+					<include name="**/*.jar" />
+				</fileset>
 				<pathelement location="${tests.classes}" />
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />

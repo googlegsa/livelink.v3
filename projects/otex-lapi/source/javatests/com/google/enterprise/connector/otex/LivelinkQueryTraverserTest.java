@@ -51,21 +51,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
     private LivelinkConnector conn;
     
     public void setUp() {
-        conn = new LivelinkConnector();
-        conn.setHostname(System.getProperty("connector.hostname"));
-        try {
-            conn.setPort(Integer.parseInt(
-                             System.getProperty("connector.port")));
-        } catch (NumberFormatException e) {
-            // TODO
-        }
-        conn.setUsername(System.getProperty("connector.username"));
-        conn.setPassword(System.getProperty("connector.password"));
-        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
-        conn.setServtype(System.getProperty("connector.servtype"));
-        conn.setExcludedNodeTypes(
-            "137,142,143,148,150,154,161,162,201,203,209,210,211");
-        conn.setExcludedVolumeTypes("148,162");
+        conn = LivelinkConnectorFactory.getConnector("connector.");
     }
 
     /**

@@ -23,17 +23,7 @@ public class LivelinkTest extends TestCase {
     private LivelinkConnector conn;
 
     public void setUp() {
-        conn = new LivelinkConnector();
-        conn.setHostname(System.getProperty("connector.hostname"));
-        try {
-            conn.setPort(Integer.parseInt(
-                             System.getProperty("connector.port")));
-        } catch (NumberFormatException e) {
-            // TODO
-        }
-        conn.setUsername(System.getProperty("connector.username"));
-        conn.setPassword(System.getProperty("connector.password"));
-        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
+        conn = LivelinkConnectorFactory.getConnector("connector.");
     }
     
     public void testLogin() throws RepositoryException {
@@ -46,7 +36,7 @@ public class LivelinkTest extends TestCase {
         QueryTraversalManager mgr = sess.getQueryTraversalManager();
         mgr.setBatchHint(20);
 
-        System.out.println("============ startTtraversal ============");
+        System.out.println("============ startTraversal ============");
         ResultSet rs = mgr.startTraversal();
         PropertyMap lastNode = processResultSet(rs);
         while (lastNode != null)
