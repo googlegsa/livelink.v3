@@ -21,11 +21,12 @@ public class LivelinkConnector implements Connector {
 
     /**
      * A pattern describing a comma-separated list of unsigned
-     * integers, with optional whitespace. The list may be empty or
-     * consist entirely of whitespace.
+     * integers, with optional whitespace and brace delimiters. The
+     * list may be empty or consist entirely of whitespace. The
+     * delimiters do not need to appear in a matching pair.
      */
     private static final Pattern LIST_OF_INTEGERS =
-        Pattern.compile("\\s*|\\s*\\d+\\s*(?:,\\s*\\d+\\s*)*");
+        Pattern.compile("\\s*\\{?\\s*(?:\\d+\\s*(?:,\\s*\\d+\\s*)*)?\\}?\\s*");
 
 
     /**
@@ -40,7 +41,7 @@ public class LivelinkConnector implements Connector {
     /* This method has package access so that it can be unit tested. */
     static String sanitizeListOfIntegers(String list) {
         if (LIST_OF_INTEGERS.matcher(list).matches())
-            return list.replaceAll("\\s", "");
+            return list.replaceAll("[\\s{}]", "");
         else
             throw new IllegalArgumentException(list);
     }

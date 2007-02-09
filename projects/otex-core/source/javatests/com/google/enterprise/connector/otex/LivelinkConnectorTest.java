@@ -2,8 +2,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.otex.LivelinkConnector;
-
 import junit.framework.TestCase;
 
 public class LivelinkConnectorTest extends TestCase {
@@ -26,6 +24,14 @@ public class LivelinkConnectorTest extends TestCase {
             "123, 456, 789",	"123,456,789",
             "123, 456, 789,",	null,
             ",123,456,789",	null,
+            "{1,2,3}",		"1,2,3",
+            "	{ 1, 2,3}",	"1,2,3",
+            "	{ 1, 2,3",	"1,2,3",
+            "1,2,3}",		"1,2,3",
+            "{ 1 }",		"1",
+            "} 1 }",		null,
+            "} 1 {",		null,
+            "{ 1 {",		null,
         };
 
         for (int i = 0; i < values.length; i += 2) {
@@ -34,7 +40,7 @@ public class LivelinkConnectorTest extends TestCase {
                     LivelinkConnector.sanitizeListOfIntegers(values[i]);
                 assertEquals(values[i], values[i + 1], output);
             } catch (IllegalArgumentException e) {
-                assertNull(values[i + 1]);
+                assertNull(e.toString(), values[i + 1]);
             }
         }
     }
