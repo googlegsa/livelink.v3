@@ -29,6 +29,8 @@
 	<property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
 	<property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
 	<property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
+        <property name="thirdparty.jar.dir"
+            value="../../../cm/projects/third_party/lib" />
 
 	<!-- =========================== TASKS =============================== -->
 	<target name="build" depends="init,compile,compile_tests,jar">
@@ -53,6 +55,9 @@
 			target="1.4" source="1.4">
 			<classpath>
 				<pathelement location="${spi.jarfile}" />
+                                <fileset dir="${thirdparty.jar.dir}">
+                                    <include name="**/*.jar" />
+                                </fileset>
 			</classpath>
 		</javac>
 	</target>
@@ -80,8 +85,6 @@
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
-				<pathelement location="${classes}" />
-				<pathelement location="${tests.classes}" />
 			</classpath>
 			<formatter type="brief" usefile="no"/>
 			<formatter type="plain" />

@@ -18,11 +18,42 @@ import org.springframework.core.io.Resource;
  * TODO: Merge this with the similar code used in the
  * LivelinkConnectorType if that class continues to explicitly do
  * Spring instantiation.
- *
- * TODO: Use this code in the Authn/z test classes when the
- * connectorInstance.xml supports them.
  */
 class LivelinkConnectorFactory {
+
+    static final Properties emptyProperties = new Properties();
+
+    static {
+        emptyProperties.put("hostname", ""); 
+        emptyProperties.put("port", ""); 
+        emptyProperties.put("database", ""); 
+        emptyProperties.put("username", ""); 
+        emptyProperties.put("password", ""); 
+        emptyProperties.put("useHttps", "true"); 
+        emptyProperties.put("enableNtlm", "true"); 
+        emptyProperties.put("livelinkCgi", ""); 
+        emptyProperties.put("httpUsername", ""); 
+        emptyProperties.put("httpPassword", ""); 
+        emptyProperties.put("verifyServer", "true"); 
+        emptyProperties.put("caRootCerts", ""); 
+        emptyProperties.put("domainName", ""); 
+        emptyProperties.put("displayUrl", ""); 
+        emptyProperties.put("useUsernamePasswordWithWebServer", "false"); 
+        //emptyProperties.put("servtype", ""); 
+        emptyProperties.put("useSeparateAuthentication", "false"); 
+        emptyProperties.put("authenticationHostname", ""); 
+        emptyProperties.put("authenticationPort", "0"); 
+        emptyProperties.put("authenticationDatabase", ""); 
+        emptyProperties.put("authenticationUseHttps", "true"); 
+        emptyProperties.put("authenticationEnableNtlm", "true"); 
+        emptyProperties.put("authenticationLivelinkCgi", ""); 
+        emptyProperties.put("authenticationVerifyServer", "true"); 
+        emptyProperties.put("authenticationCaRootCerts", ""); 
+        emptyProperties.put("authenticationDomainName", ""); 
+        emptyProperties.put("authenticationUseUsernamePasswordWithWebServer", 
+            "false"); 
+    }
+
     /*
      * Gets a new <code>LivelinkConnector</code> instance.
      *
@@ -33,7 +64,7 @@ class LivelinkConnectorFactory {
         Resource res = new ClassPathResource("config/connectorInstance.xml");
         XmlBeanFactory factory = new XmlBeanFactory(res);
 
-        Properties p = new Properties();
+        Properties p = new Properties(emptyProperties);
         Properties system = System.getProperties();
         Enumeration names = system.propertyNames();
         while (names.hasMoreElements()) {

@@ -46,19 +46,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      * @throws RepositoryException if login fails
      */
     public void setUp() throws RepositoryException {
-        conn = new LivelinkConnector();
-        conn.setHostname(System.getProperty("connector.hostname"));
-        try {
-            conn.setPort(Integer.parseInt(
-                             System.getProperty("connector.port")));
-        } catch (NumberFormatException e) {
-            // TODO
-        }
-        conn.setUsername(System.getProperty("connector.username"));
-        //System.out.println("session user: " + 
-        //    System.getProperty("connector.username"));
-        conn.setPassword(System.getProperty("connector.password"));
-        conn.setDisplayUrl(System.getProperty("connector.displayUrl"));
+        conn = LivelinkConnectorFactory.getConnector("connector."); 
         session = (LivelinkSession) conn.login();
         authManager = (LivelinkAuthorizationManager) session.
             getAuthorizationManager();
@@ -145,21 +133,24 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         start = System.currentTimeMillis();
         authManager.authorizeDocids(docids, "Admin");
         end = System.currentTimeMillis();
-        System.out.println("authorizeDocids (Admin): docs/time = " + 
-            docids.size() + "/" + (end - start)); 
+        long adminTime = end - start;
+        //System.out.println("authorizeDocids (Admin): docs/time = " + 
+        //    docids.size() + "/" + adminTime); 
 
         start = System.currentTimeMillis();
         authManager.authorizeDocids(docids, "llglobal");
         end = System.currentTimeMillis();
-        System.out.println("authorizeDocids (llglobal): docs/time = " + 
-            docids.size() + "/" + (end - start)); 
+        long llglobalTime = end - start;
+        //System.out.println("authorizeDocids (llglobal): docs/time = " + 
+        //    docids.size() + "/" + llglobalTime); 
 
         start = System.currentTimeMillis();
         authManager.authorizeDocids(docids, "llglobal-external");
         end = System.currentTimeMillis();
-        System.out.println(
-            "authorizeDocids (llglobal-external): docs/time = " + 
-            docids.size() + "/" + (end - start)); 
+        long llglobalExternalTime = end - start;
+        //System.out.println(
+        //    "authorizeDocids (llglobal-external): docs/time = " + 
+        //    docids.size() + "/" + llglobalExternalTime); 
     }
 
 

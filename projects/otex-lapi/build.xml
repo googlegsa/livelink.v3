@@ -44,6 +44,9 @@
 
 	<property name="lapi.jarfile" location="c:/Program Files/Open Text/LAPI/lib/lapi.jar" />
 
+        <property name="thirdparty.jar.dir"
+            value="../../../cm/projects/third_party/lib" />
+
 	<!-- =========================== TASKS =============================== -->
 	<target name="build" depends="init,compile,compile_tests,jar">
 	</target>
@@ -87,9 +90,9 @@
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
-<!--
-				<pathelement location="${lapi.jarfile}" />
--->
+                                <fileset dir="${thirdparty.jar.dir}">
+                                    <include name="**/*.jar" />
+                                </fileset>
 			</classpath>
 		</javac>
 	</target>
@@ -110,6 +113,9 @@
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
 				<pathelement location="${lapi.jarfile}" />
+                                <fileset dir="${thirdparty.jar.dir}">
+                                    <include name="**/*.jar" />
+                                </fileset>
 			</classpath>
 			<formatter type="brief" usefile="no"/>
 			<formatter type="plain" />

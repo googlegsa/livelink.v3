@@ -1,17 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
-	<bean id="livelink-connector"
-		class="com.google.enterprise.connector.spi.SimpleConnectorType">
-		<property name="configKeys">
-			<list>
-				<value>hostname</value>
-				<value>port</value>
-				<value>username</value>
-				<value>password</value>
-				<value>displayUrl</value>
-				<value>servtype</value>
-			</list>
-		</property>
-	</bean>
+        <bean id="livelink-connector"
+          class="com.google.enterprise.connector.otex.LivelinkConnectorType"/>
 </beans>

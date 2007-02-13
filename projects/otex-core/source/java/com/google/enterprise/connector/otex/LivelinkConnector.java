@@ -79,6 +79,12 @@ public class LivelinkConnector implements Connector {
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler =
         "com.google.enterprise.connector.otex.FileContentHandler";
+
+    /** The flag indicating that this connector has a separate
+     * set of authentication parameters. 
+     */
+    private boolean useSeparateAuthentication;
+
     
     /**
      * Constructs a connector instance for a specific Livelink
@@ -250,10 +256,6 @@ public class LivelinkConnector implements Connector {
      *
      * @param caRootCerts a list of certificate authority root certificates
      */
-    /* TODO: figure out how this will work. Perhaps allow users
-     * to enter one cert on the form, and edit
-     * connectorInstance.xml to add more if needed. 
-     */
     public void setCaRootCerts(List caRootCerts) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("CA ROOT CERTS: " + caRootCerts);
@@ -292,6 +294,40 @@ public class LivelinkConnector implements Connector {
         return displayUrl;
     }
     
+    /**
+     * Sets a property which indicates that any username and
+     * password values which need to be authenticated should be
+     * used as the HTTP username and password values.
+     *
+     * @param useWeb true if the username and password should be
+     * used for HTTP authentication
+     */
+    public void setUseUsernamePasswordWithWebServer(boolean useWeb) {
+        if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("USE USERNAME WITH WEB SERVER: " + 
+                useWeb);
+        }
+        clientFactory.setUseUsernamePasswordWithWebServer(useWeb);
+    }
+
+    /**
+     * Sets a flag indicating that a separate set of
+     * authentication parameters will be provided.
+     *
+     * @param useAuth true if a separate set of authentication
+     * parameters will be provided
+     */
+    public void setUseSeparateAuthentication(boolean useAuth) {
+        if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("USE SEPARATE AUTHENTICATION CONFIG: " + 
+                useAuth);
+        }
+        useSeparateAuthentication = useAuth;
+    }
+
+
+    // Authentication parameters
+
     /**
      * Sets the database server type.
      * 
@@ -504,10 +540,6 @@ public class LivelinkConnector implements Connector {
      *
      * @param caRootCerts a list of certificate authority root certificates
      */
-    /* TODO: figure out how this will work. Perhaps allow users
-     * to enter one cert on the form, and edit
-     * connectorInstance.xml to add more if needed. 
-     */
     public void setAuthenticationCaRootCerts(List caRootCerts) {
         createAuthenticationClientFactory();
         if (LOGGER.isLoggable(Level.CONFIG))
@@ -573,13 +605,15 @@ public class LivelinkConnector implements Connector {
     public Session login() throws LoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("LOGIN");
+        
+        // TODO: move this to a Spring-callable "after all
+        // properties have been set" method.
+        if (!useSeparateAuthentication)
+            authenticationClientFactory = null; 
 
         // Two birds with one stone. Getting the character encoding
         // from the server verifies connectivity, and we use the
         // result to set the character encoding for future clients.
-        // FIXME: Should the authenticationClientFactory use the
-        // same encoding? It can't read the encoding itself; it
-        // doesn't have a username to use.
         Client client = clientFactory.createClient();
         String encoding = client.getEncoding(LOGGER);
         

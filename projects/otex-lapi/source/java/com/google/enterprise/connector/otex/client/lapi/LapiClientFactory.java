@@ -94,13 +94,13 @@ public final class LapiClientFactory implements ClientFactory
     }
 
     /** {@inheritDoc} */
-    // TODO: figure out if this works coming from Spring and all.
-    // TODO: Can we use the LLSession.GetCARootCerts method to
-    // allow the admin to specify a directory of certificate
-    // files? It might need to be a URL to a location from which
-    // we can read the certificates, write them to a file, then
-    // read them, since the admin may not have generic filesystem
-    // access to the GSA if the connectors are running there.
+    /* TODO: Can we use the LLSession.GetCARootCerts method to
+     * allow the admin to specify a directory of certificate
+     * files? It might need to be a URL to a location from which
+     * we can read the certificates, write them to a file, then
+     * read them, since the admin may not have generic filesystem
+     * access to the GSA if the connectors are running there.
+     */
     public void setCaRootCerts(java.util.List value) {
         LLValue list = new LLValue().setList(); 
         for (int i = 0; i < value.size(); i++) {
