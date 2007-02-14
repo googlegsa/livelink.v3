@@ -25,12 +25,12 @@
 	<property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
 
 	<property name="connector-manager.dir" location="../../../cm/projects/connector-manager" />
+	<property name="thirdparty.jar.dir"
+		value="../../../cm/projects/third_party/lib" />
 	<property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
 	<property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
 	<property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
 	<property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
-        <property name="thirdparty.jar.dir"
-            value="../../../cm/projects/third_party/lib" />
 
 	<!-- =========================== TASKS =============================== -->
 	<target name="build" depends="init,compile,compile_tests,jar">
@@ -85,6 +85,7 @@
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />
 				<pathelement location="${jarfile}" />
 				<pathelement location="${spi.jarfile}" />
+				<pathelement location="${tests.classes}" />
 			</classpath>
 			<formatter type="brief" usefile="no"/>
 			<formatter type="plain" />
