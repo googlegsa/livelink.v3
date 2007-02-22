@@ -247,7 +247,6 @@ final class LapiClient implements Client
                             null, attributeInfo) != 0) {
                         throw new LapiException(session, logger);
                     }
-                    // TODO: Skip attrs with Search=false?
                     int attributeType = attributeInfo.toInteger("Type");
                     if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == attributeType) {
                         getAttributeSetValues(logger, data, categoryVersion, 
@@ -255,7 +254,7 @@ final class LapiClient implements Client
                     }
                     else {
                         getAttributeValue(logger, data, categoryVersion,
-                            attributeName, attributeType, null); 
+                            attributeName, attributeType, null, attributeInfo);
                     }
                 }
             }
@@ -293,15 +292,15 @@ final class LapiClient implements Client
                 attributeSetNames) != 0) {
             throw new LapiException(session, logger); 
         }
-        int[] attributeSetTypes = new int[attributeSetNames.size()];
+        LLValue[] attributeInfo = new LLValue[attributeSetNames.size()];
         for (int i = 0; i < attributeSetNames.size(); i++) {
             String name = attributeSetNames.toString(i); 
-            LLValue attributeInfo = new LLValue().setAssocNotSet();
+            LLValue info = new LLValue().setAssocNotSet();
             if (attributes.AttrGetInfo(categoryVersion, name, 
-                    attributeSetPath, attributeInfo) != 0) {
+                    attributeSetPath, info) != 0) {
                 throw new LapiException(session, logger);
             }
-            attributeSetTypes[i] = attributeInfo.toInteger("Type");
+            attributeInfo[i] = info;
         }
 
         // List the values for the set attribute itself. There
@@ -320,14 +319,15 @@ final class LapiClient implements Client
             // For each instance (row) of the attribute set, loop
             // over the attribute names.
             for (int j = 0; j < attributeSetNames.size(); j++) {
-                if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == attributeSetTypes[j]) {
+                int type = attributeInfo[j].toInteger("Type");
+                if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == type) {
                     logger.finer("Nested attributes sets are not supported.");
                     continue;
                 }
                 //System.out.println("      " + attributeSetNames.toString(j));
                 getAttributeValue(logger, data, categoryVersion, 
-                    attributeSetNames.toString(j), attributeSetTypes[j],
-                    attributeSetPath); 
+                    attributeSetNames.toString(j), type,
+                    attributeSetPath, attributeInfo[j]); 
             }
         }
     }
@@ -351,10 +351,13 @@ final class LapiClient implements Client
      */
     private void getAttributeValue(Logger logger, Map data, 
             LLValue categoryVersion, String attributeName, int attributeType,
-            LLValue attributeSetPath) throws RepositoryException {
+            LLValue attributeSetPath, LLValue attributeInfo)
+            throws RepositoryException {
 
         if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == attributeType)
             throw new IllegalArgumentException("attributeType = SET"); 
+        if (!attributeInfo.toBoolean("Search"))
+            return;
 
         LLValue attributeValues = new LLValue().setList();
         if (attributes.AttrGetValues(categoryVersion,

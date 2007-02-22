@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import java.util.Properties;
 
 import com.google.enterprise.connector.otex.client.Client;
+//import com.google.enterprise.connector.otex.client.lapi.LapiClient;
 import junit.framework.TestCase;
 
 /**
@@ -40,17 +41,18 @@ public class LapiClientTest extends TestCase {
     /* This test looks at Doorways test data/categories/document.txt */
 /*
     public void testDocumentWithCategories() throws Exception {
-        Map attrs = client.getCategoryAttributes(logger, 657666);
+        Map attrs = ((LapiClient) client).getCategoryAttributes(logger, 657666);
         System.out.println(attrs); 
     }
 */
+
     /* This test looks at a custom document with a category where
      * the category has several versions. I wanted to verify that
      * we only got one version of the category back.
      */
 /*
     public void testVersionedCategory() throws Exception {
-        Map attrs = client.getCategoryAttributes(logger, 658201);
+        Map attrs = ((LapiClient) client).getCategoryAttributes(logger, 658201);
         System.out.println(attrs); 
     }
 */
