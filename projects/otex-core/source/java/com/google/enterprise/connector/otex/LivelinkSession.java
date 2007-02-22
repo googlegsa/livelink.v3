@@ -83,4 +83,11 @@ class LivelinkSession
     public AuthorizationManager getAuthorizationManager() {
         return new LivelinkAuthorizationManager(clientFactory);
     }
+
+    /**
+     * Returns the ClientFactory for test use.
+     */
+    ClientFactory getFactory() {
+        return clientFactory;
+    }
 }
