@@ -62,13 +62,8 @@ class RecArrayResultSet implements ResultSet {
     
     private final RecArray recArray;
 
-    /**
-     * A map from the property name to the Field descriptor. It is
-     * important that this implementation use a
-     * <code>LinkedHashMap</code> in order to keep the fields in
-     * insertion order.
-     */
-    private final LinkedHashMap fieldsMap;
+    /** The recarray fields. */
+    private final Field[] fields;
 
     /** A GMT calendar for converting timestamps to UTC. */
     private final Calendar gmtCalendar =
@@ -89,12 +84,7 @@ class RecArrayResultSet implements ResultSet {
         this.client = client;
         this.contentHandler = contentHandler;
         this.recArray = recArray;
-
-        fieldsMap = new LinkedHashMap(fields.length * 2);
-        for (int i = 0; i < fields.length; i++) {
-            if (fields[i].propertyName != null)
-                fieldsMap.put(fields[i].propertyName, fields[i]);
-        }
+        this.fields = fields;
 
         iso8601.setCalendar(gmtCalendar);
     }
@@ -189,23 +179,31 @@ class RecArrayResultSet implements ResultSet {
      * This implementation simply represents a specific row of the
      * underlying recarray.
      */
+    /* TODO: Fields with an undefined value should not appear as properties. */
     class RecArrayPropertyMap implements PropertyMap {
         private final int row;
+
+        private final Map properties = new LinkedHashMap(fields.length * 2);
         
         RecArrayPropertyMap(int row) {
             this.row = row;
+
+            // Collect the recarray-based properties.
+            for (int i = 0; i < fields.length; i++) {
+                if (fields[i].propertyName != null) {
+                    properties.put(fields[i].propertyName,
+                        new RecArrayProperty(row, fields[i]));
+                }
+            }
         }
 
         public Iterator getProperties() {
-            return new RecArrayPropertyMapIterator(row);
+            // XXX: Should we use unmodifiableCollection here?
+            return properties.values().iterator();
         }
 
         public Property getProperty(String name) {
-            Object field = fieldsMap.get(name);
-            if (field == null)
-                return null;
-            else
-                return new RecArrayProperty(row, (Field) field);
+            return (Property) properties.get(name);
         }
 
         /**
@@ -223,32 +221,6 @@ class RecArrayResultSet implements ResultSet {
         }
     }
 
-
-    /**
-     * Iterates over a <code>PropertyMap</code>, returning each
-     * <code>Property</code> it contains.
-     */
-    private class RecArrayPropertyMapIterator implements Iterator {
-        private final int row;
-        private Iterator columns;
-
-        RecArrayPropertyMapIterator(int row) {
-            this.row = row;
-            this.columns = fieldsMap.values().iterator();
-        }
-
-        public boolean hasNext() {
-            return columns.hasNext();
-        }
-
-        public Object next() {
-            return new RecArrayProperty(row, (Field) columns.next());
-        }
-
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
 
     /**
      * {@inheritDoc}
