@@ -3,7 +3,9 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 import java.util.Properties;
 
@@ -36,24 +38,41 @@ public class LapiClientTest extends TestCase {
         client = session.getFactory().createClient(); 
     }
 
-    public void testNothing() { assertTrue(true); }
-
-    /* This test looks at Doorways test data/categories/document.txt */
-/*
-    public void testDocumentWithCategories() throws Exception {
-        Map attrs = ((LapiClient) client).getCategoryAttributes(logger, 657666);
-        System.out.println(attrs); 
-    }
-*/
-
-    /* This test looks at a custom document with a category where
-     * the category has several versions. I wanted to verify that
-     * we only got one version of the category back.
+    /**
+     * Empty test to serve as a placeholder.
      */
-/*
-    public void testVersionedCategory() throws Exception {
-        Map attrs = ((LapiClient) client).getCategoryAttributes(logger, 658201);
-        System.out.println(attrs); 
+    public void testNothing() {
+        assertTrue(true); 
     }
-*/
+
+
+    /**
+     * Tests the results of the two candidate implementations.
+     * @throws Exception if an error occurs
+     */
+    /*
+    public void testCompareImplementations() throws Exception {
+        Map attrs1 = ((LapiClient) client).getCategoryAttributes(
+            logger, 695345);
+        Map attrs2 = ((LapiClient) client).getCategoryAttributes2(
+            logger, 695345);
+        printMap(attrs1); 
+        System.out.println("*****************");
+        printMap(attrs2); 
+        assertTrue("Results not equal", attrs1.equals(attrs2)); 
+    }
+    */
+
+    /**
+     * Prints a map with the keys sorted.
+     *
+     * @param m the map to print
+     */
+    private void printMap(Map m) {
+        Iterator i = new TreeMap(m).entrySet().iterator();
+        while (i.hasNext()) {
+            Map.Entry e = (Map.Entry) i.next();
+            System.out.println(e.getKey() + " = " + e.getValue()); 
+        }
+    }
 }
