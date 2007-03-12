@@ -27,6 +27,8 @@
                         value="${useUsernamePasswordWithWebServer}"/>
                 <property name="useSeparateAuthentication" 
                         value="${useSeparateAuthentication}"/>
+		<property name="openAction" 
+			value="?func=ll&amp;objAction={0}&amp;objId={1}" />
 		<property name="servtype" value=""/>
 		<property name="excludedNodeTypes" 
 			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>

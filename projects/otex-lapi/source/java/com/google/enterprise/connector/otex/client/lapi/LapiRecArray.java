@@ -12,7 +12,12 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.RecArray;
 
 /**
- * A wrapper implementation on an <code>LLValue</code> containing a recarray.
+ * A wrapper implementation on an <code>LLValue</code>.
+ */
+/*
+ * TODO: Retrieving values by index rather than by string is about ten
+ * times faster. Even building a map and doing a map lookup before
+ * each call is five times faster.
  */
 public final class LapiRecArray implements RecArray {
     private final Logger logger;
@@ -20,14 +25,12 @@ public final class LapiRecArray implements RecArray {
     private final LLValue value;
 
     /**
-     * Wraps an <code>LLValue</code> containing a recarray.
+     * Wraps an <code>LLValue</code>.
      *
-     * @param value the recarray
-     * @throws IllegalArgumentException if the value is not a recarray
+     * @param logger a logger instance to use
+     * @param value the value to wrap
      */
     LapiRecArray(Logger logger, LLValue value) {
-        if (value.type() != LLValue.LL_TABLE)
-            throw new IllegalArgumentException();
         this.logger = logger;
         this.value = value;
     }
@@ -42,6 +45,18 @@ public final class LapiRecArray implements RecArray {
             throws RepositoryException {
         try {
             return value.toValue(row, field).isDefined();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public RecArray toValue(int row, String field)
+            throws RepositoryException {
+        try {
+            return new LapiRecArray(logger, value.toValue(row, field));
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {
@@ -98,6 +113,150 @@ public final class LapiRecArray implements RecArray {
     public String toString(int row, String field) throws RepositoryException {
         try {
             return value.toString(row, field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean isDefined(String field)
+            throws RepositoryException {
+        try {
+            return value.toValue(field).isDefined();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public RecArray toValue(String field) throws RepositoryException {
+        try {
+            return new LapiRecArray(logger, value.toValue(field));
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean toBoolean(String field) throws RepositoryException {
+        try {
+            return value.toBoolean(field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public Date toDate(String field) throws RepositoryException {
+        try {
+            return value.toDate(field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public double toDouble(String field) throws RepositoryException {
+        try {
+            return value.toDouble(field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public int toInteger(String field) throws RepositoryException {
+        try {
+            return value.toInteger(field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public String toString(String field) throws RepositoryException {
+        try {
+            return value.toString(field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean isDefined() throws RepositoryException {
+        try {
+            return value.isDefined();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean toBoolean() throws RepositoryException {
+        try {
+            return value.toBoolean();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public Date toDate() throws RepositoryException {
+        try {
+            return value.toDate();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public double toDouble() throws RepositoryException {
+        try {
+            return value.toDouble();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public int toInteger() throws RepositoryException {
+        try {
+            return value.toInteger();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public String toString2() throws RepositoryException {
+        try {
+            return value.toString();
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {

@@ -36,15 +36,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This implementation requires DataID,
-        // OwnerID, ModifyDate, MimeType, and DataSize.
+        // OwnerID, ModifyDate, MimeType, DataSize, and ParentID.
         ArrayList list = new ArrayList();
-
-        list.add(new Field(
-            null, ValueType.STRING, SpiConstants.PROPNAME_CONTENT));
-        list.add(new Field(
-            null, ValueType.STRING, SpiConstants.PROPNAME_DISPLAYURL));
-        list.add(new Field(
-            null, ValueType.BOOLEAN, SpiConstants.PROPNAME_ISPUBLIC));
 
         list.add(new Field(
             "DataID", ValueType.LONG, SpiConstants.PROPNAME_DOCID));
@@ -53,6 +46,11 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         list.add(new Field(
             "MimeType", ValueType.STRING, SpiConstants.PROPNAME_MIMETYPE));
 
+        // XXX: We should get the VerComment and add it as a value
+        // here, but WebNodes doesn't include VerComment. Is it worth
+        // the user's time to retrieve it separately?
+        list.add(new Field(
+            "DComment", ValueType.STRING, "Comment"));
         list.add(new Field(
             "Name", ValueType.STRING, "Name"));
         list.add(new Field(
@@ -62,6 +60,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
         list.add(new Field(
             "DataSize", ValueType.LONG, null));
+        list.add(new Field(
+            "ParentID", ValueType.LONG, null));
         list.add(new Field(
             "PermID", ValueType.LONG, null));
         
@@ -496,6 +496,10 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     /*
      * The TIMESTAMP literal, part of the SQL standard, was first
      * supported by Oracle 9i, and not at all by SQL Server.
+     *
+     * TODO: Validate the checkpoint. We could move the validatation
+     * to resumeTraversal, which is the only place a non-null
+     * checkpoint could come from.
      */
     private String getRestriction(String checkpoint)
             throws RepositoryException {

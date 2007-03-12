@@ -21,6 +21,15 @@ import com.google.enterprise.connector.spi.RepositoryException;
 /* XXX: Do we want the client implementations to use their own loggers? */
 public interface Client
 {
+    /** Topic object. */
+    int TOPICSUBTYPE = 130;
+
+    /** Reply object. */
+    int REPLYSUBTYPE = 134;
+    
+    /** Task object. */
+    int TASKSUBTYPE = 206;
+    
     /**
      * Gets the server character encoding, or null if an encoding does
      * not need to be set on the session.
@@ -55,6 +64,16 @@ public interface Client
      */
     RecArray ListNodes(Logger logger, String query, String view,
         String[] columns) throws RepositoryException;
+
+    /**
+     * Wraps the <code>LAPI_DOCUMENTS.GetObjectInfo</code> method.
+     * 
+     * @param logger a logger instance to use
+     * @param volumeId the volume ID of the object
+     * @param objectId the object ID of the object
+     */
+    RecArray GetObjectInfo(Logger logger, int volumeId, int objectId)
+        throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_DOCUMENTS.FetchVersion</code> method.

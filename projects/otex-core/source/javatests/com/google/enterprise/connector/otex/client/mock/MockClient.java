@@ -70,6 +70,18 @@ final class MockClient implements Client
     /**
      * {@inheritDoc}
      * <p>
+     * This implementation returns an empty recarray.
+     */
+    /* TODO: This should return an empty assoc. */
+    public RecArray GetObjectInfo(final Logger logger, int volumeId,
+        int objectId)
+    {
+        return new MockRecArray(new String[0], new Object[0][0]);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
      * This implementation does nothing.
      */
     public void FetchVersion(final Logger logger,

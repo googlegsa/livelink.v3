@@ -24,6 +24,13 @@ import com.opentext.api.LLValue;
  */
 final class LapiClient implements Client
 {
+    static {
+        // Verify that the Client class constants are correct.
+        assert TOPICSUBTYPE == LAPI_DOCUMENTS.TOPICSUBTYPE : TOPICSUBTYPE;
+        assert REPLYSUBTYPE == LAPI_DOCUMENTS.REPLYSUBTYPE : REPLYSUBTYPE;
+        assert TASKSUBTYPE == LAPI_DOCUMENTS.TASKSUBTYPE : TASKSUBTYPE;
+    }
+    
     /**
      * The Livelink session. LLSession instances are not thread-safe,
      * so all of the methods that access this session, directly or
@@ -56,8 +63,8 @@ final class LapiClient implements Client
      * This implementation calls GetServerInfo to retrieve the server
      * encoding.
      */
+    /* FIXME: Livelink 9.2 does not return the CharacterEncoding field. */
     public String getEncoding(Logger logger) throws RepositoryException {
-        if (true) return null; 
         try {
             LLValue value = (new LLValue()).setAssocNotSet();
             if (documents.GetServerInfo(value) != 0)
@@ -112,6 +119,20 @@ final class LapiClient implements Client
         return new LapiRecArray(logger, recArray);
     }
 
+    /** {@inheritDoc} */
+    public synchronized RecArray GetObjectInfo(final Logger logger,
+            int volumeId, int objectId) throws RepositoryException {
+        try {
+            LLValue objectInfo = new LLValue();
+            if (documents.GetObjectInfo(volumeId, objectId, objectInfo) != 0) {
+                throw new LapiException(session, logger);
+            }
+            return new LapiRecArray(logger, objectInfo);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, logger);
+        }
+    }
+    
     /** {@inheritDoc} */
     public synchronized void FetchVersion(final Logger logger,
             int volumeId, int objectId, int versionNumber, File path)

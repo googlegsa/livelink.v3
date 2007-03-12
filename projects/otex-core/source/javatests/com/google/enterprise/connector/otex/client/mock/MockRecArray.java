@@ -40,6 +40,10 @@ public final class MockRecArray implements RecArray {
         throw new IllegalArgumentException();
     }
     
+    public RecArray toValue(int row, String field) {
+        throw new IllegalArgumentException();
+    }
+    
     public boolean toBoolean(int row, String field) {
         throw new IllegalArgumentException();
     }
@@ -58,5 +62,57 @@ public final class MockRecArray implements RecArray {
 
     public String toString(int row, String field) {
         return getValue(row, field).toString();
+    }
+    
+    public boolean isDefined(String field) {
+        throw new IllegalArgumentException();
+    }
+    
+    public RecArray toValue(String field) {
+        throw new IllegalArgumentException();
+    }
+    
+    public boolean toBoolean(String field) {
+        throw new IllegalArgumentException();
+    }
+
+    public Date toDate(String field) {
+        throw new IllegalArgumentException();
+    }
+
+    public double toDouble(String field) {
+        throw new IllegalArgumentException();
+    }
+
+    public int toInteger(String field) {
+        throw new IllegalArgumentException();
+    }
+
+    public String toString(String field) {
+        throw new IllegalArgumentException();
+    }
+    
+    public boolean isDefined() {
+        throw new IllegalArgumentException();
+    }
+    
+    public boolean toBoolean() {
+        throw new IllegalArgumentException();
+    }
+
+    public Date toDate() {
+        throw new IllegalArgumentException();
+    }
+
+    public double toDouble() {
+        throw new IllegalArgumentException();
+    }
+
+    public int toInteger() {
+        throw new IllegalArgumentException();
+    }
+
+    public String toString2() {
+        throw new IllegalArgumentException();
     }
 }

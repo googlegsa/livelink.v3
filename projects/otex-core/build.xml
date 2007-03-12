@@ -80,6 +80,7 @@
 	<target name="run_tests" depends="compile_tests,jar">
                 <property name="test.suite" value="*"/>
 		<junit>
+			<assertions><enable/></assertions>
 			<classpath>
                                 <pathelement location="${spi.jar.dir}/connector.jar" />
                                 <pathelement location="${spi.jar.dir}/connector_tests.jar" />

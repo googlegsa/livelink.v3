@@ -5,12 +5,16 @@ package com.google.enterprise.connector.otex;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.text.Format;
+import java.text.MessageFormat;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -76,6 +80,12 @@ class RecArrayResultSet implements ResultSet {
     /** The ISO SQL date format used in database queries. */
     private final SimpleDateFormat sql =
         new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
+
+    /**
+     * The open action URL suffix format used in the google:displayurl
+     * property.
+     */
+    private final MessageFormat openAction;
     
     RecArrayResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, RecArray recArray, Field[] fields)
@@ -87,13 +97,23 @@ class RecArrayResultSet implements ResultSet {
         this.fields = fields;
 
         iso8601.setCalendar(gmtCalendar);
+
+        // We don't control the open action pattern. If the pattern
+        // does not specify the formats to be used for the IDs, we
+        // specify a format that does not use grouping. Note that the
+        // format array is not complete, but it has entries up to the
+        // highest argument actually used in the pattern.
+        openAction = new MessageFormat(connector.getOpenAction());
+        NumberFormat nf = NumberFormat.getIntegerInstance();
+        nf.setGroupingUsed(false);
+        Format[] formats = openAction.getFormatsByArgumentIndex();
+        for (int i = 1; i <= 4 && i < formats.length; i++) {
+            if (formats[i] == null)
+                openAction.setFormatByArgumentIndex(i, nf);
+        }
+
     }
 
-    /** {@inheritDoc} */
-    public Iterator iterator() {
-        return new RecArrayResultSetIterator();
-    }
-    
     /**
      * Livelink only stores timestamps to the nearest second, but LAPI
      * constructs a Date object that includes milliseconds, which are
@@ -141,6 +161,24 @@ class RecArrayResultSet implements ResultSet {
         return sql.format(value);
     }
 
+    /**
+     * Formats the open action URL suffix format used in the
+     * google:displayurl property.
+     *
+     * @param arguments an array of objects to be formatted and substituted
+     * @param buffer the string buffer where text will be appended
+     */
+    private synchronized void formatOpenAction(Object[] args,
+            StringBuffer buffer) {
+        openAction.format(args, buffer, null);
+    }
+
+
+    /** {@inheritDoc} */
+    public Iterator iterator() {
+        return new RecArrayResultSetIterator();
+    }
+    
 
     /**
      * Iterates over a <code>ResultSet</code>, returning each
@@ -161,9 +199,13 @@ class RecArrayResultSet implements ResultSet {
         }
 
         public Object next() {
-            if (row < size)
-                return new RecArrayPropertyMap(row++);
-            else
+            if (row < size) {
+                try {
+                    return new RecArrayPropertyMap(row++);
+                } catch (RepositoryException e) {
+                    throw new RuntimeException(e);
+                }
+            } else
                 throw new NoSuchElementException();
         }
 
@@ -183,27 +225,174 @@ class RecArrayResultSet implements ResultSet {
     class RecArrayPropertyMap implements PropertyMap {
         private final int row;
 
+        /*
+         * I'm using a LinkedHashMap just because it's got a more
+         * predictable ordering when I'm looking at test output.
+         */
         private final Map properties = new LinkedHashMap(fields.length * 2);
-        
-        RecArrayPropertyMap(int row) {
+
+        RecArrayPropertyMap(int row) throws RepositoryException {
             this.row = row;
 
-            // Collect the recarray-based properties.
+            collectRecArrayProperties();
+            collectDerivedProperties();
+        }
+
+        /**
+         * Adds a property to the property map. If the property
+         * already exists in the map, the given value is added to the
+         * list of values in the property.
+         *
+         * @param name a property name
+         * @param value a property value
+         */
+        private void addProperty(String name, Value value) {
+            Object values = properties.get(name);
+            if (values == null) {
+                LinkedList firstValues = new LinkedList();
+                firstValues.add(value);
+                properties.put(name, firstValues);
+            } else
+                ((LinkedList) values).add(value);
+        }
+
+        /** Collects the recarray-based properties. */
+        /*
+         * TODO: Undefined values will not be added to the property
+         * map. We may want some other value, possibly different
+         * default values for each column (e.g., MimeType =
+         * "application/octet-stream").
+         */
+        private void collectRecArrayProperties() throws RepositoryException {
             for (int i = 0; i < fields.length; i++) {
                 if (fields[i].propertyName != null) {
-                    properties.put(fields[i].propertyName,
-                        new RecArrayProperty(row, fields[i]));
+                    RecArray value =
+                        recArray.toValue(row, fields[i].fieldName);
+                    if (value.isDefined()) {
+                        addProperty(fields[i].propertyName,
+                            new RecArrayValue(fields[i].fieldType, value));
+                    }
                 }
             }
         }
+        
+        /** Collects additional properties derived from the recarray. */
+        private void collectDerivedProperties() throws RepositoryException {
+            addProperty(SpiConstants.PROPNAME_ISPUBLIC, VALUE_FALSE);
+
+            int subType = recArray.toInteger(row, "SubType");
+
+            // CONTENT
+            if (LOGGER.isLoggable(Level.FINER))
+                LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
+            Value contentValue;
+
+            // DataSize is the only non-nullable column from
+            // DVersData that appears in the WebNodes view,
+            // but there are cases (such as categories) where
+            // there are rows in DVersData but FetchVersion
+            // fails. So we're guessing here that if MimeType
+            // is non-null then there should be a blob.
+            if (recArray.isDefined(row, "MimeType")) {
+                // FIXME: I think that compound documents are
+                // returning with a MIME type but, obviously,
+                // no versions.
+
+                int objectId = recArray.toInteger(row, "DataID");
+                int volumeId = recArray.toInteger(row, "OwnerID");
+
+                // XXX: This value might be wrong. There are
+                // data size callbacks which can change this
+                // value. For example, the value returned by
+                // GetObjectInfo may be different than the
+                // value retrieved from the database.
+                int size = recArray.toInteger(row, "DataSize");
+
+                // FIXME: Better error handling. Either
+                // uninstalling the Doorways module or calling
+                // this with undefined MimeTypes throws errors
+                // that we might want to handle more
+                // gracefully (e.g., maybe the underlying error
+                // is "no content").
+                contentValue = new InputStreamValue(
+                    contentHandler.getInputStream(LOGGER, volumeId,
+                        objectId, 0, size));
+            } else {
+                String mimeType = null;
+
+                switch (subType) {
+                case Client.TOPICSUBTYPE:
+                case Client.REPLYSUBTYPE: {
+                    int objectId = recArray.toInteger(row, "DataID");
+                    int volumeId = recArray.toInteger(row, "OwnerID");
+                    RecArray objectInfo =
+                        client.GetObjectInfo(LOGGER, volumeId, objectId);
+                    RecArray extendedData = objectInfo.toValue("ExtendedData");
+                    String content = extendedData.toString("Content");
+                    LOGGER.finer("CONTENT = " + content);
+                    contentValue = new SimpleValue(ValueType.STRING, content);
+                    mimeType = "text/plain";
+                    break;
+                }
+
+                case Client.TASKSUBTYPE: {
+                    int objectId = recArray.toInteger(row, "DataID");
+                    int volumeId = recArray.toInteger(row, "OwnerID");
+                    RecArray objectInfo =
+                        client.GetObjectInfo(LOGGER, volumeId, objectId);
+                    RecArray extendedData = objectInfo.toValue("ExtendedData");
+                    String content = extendedData.toString("Instructions");
+                    LOGGER.finer("CONTENT = " + content);
+                    contentValue = new SimpleValue(ValueType.STRING, content);
+                    mimeType = "text/plain";
+
+                    String comments = extendedData.toString("Comments");
+                    addProperty("Comments",
+                        new SimpleValue(ValueType.STRING, comments));
+                    break;
+                }
+                            
+                default:                            
+                    // TODO: This is a workaround for a bug where
+                    // the QueryTraverser requires a content or
+                    // contenturl property.
+                    contentValue = VALUE_EMPTY;
+                    break;
+                }
+
+                if (mimeType != null) {
+                    addProperty(SpiConstants.PROPNAME_MIMETYPE,
+                        new SimpleValue(ValueType.STRING, mimeType));
+                }
+            }
+            addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
+
+            // DISPLAYURL
+            String action = (subType == Client.TOPICSUBTYPE ||
+                subType == Client.REPLYSUBTYPE) ? "view" : "open";
+            int objectId = recArray.toInteger(row, "DataID");
+            int volumeId = recArray.toInteger(row, "OwnerID");
+            int parentId = recArray.toInteger(row, "ParentID");
+            StringBuffer buffer = new StringBuffer();
+            buffer.append(connector.getDisplayUrl());
+            formatOpenAction(new Object[] {
+                action, new Integer(objectId), new Integer(volumeId),
+                new Integer(subType), new Integer(parentId) },
+                buffer);
+            addProperty(SpiConstants.PROPNAME_DISPLAYURL,
+                new SimpleValue(ValueType.STRING, buffer.toString()));
+        }
 
         public Iterator getProperties() {
-            // XXX: Should we use unmodifiableCollection here?
-            return properties.values().iterator();
+            return new RecArrayPropertyMapIterator(properties);
         }
 
         public Property getProperty(String name) {
-            return (Property) properties.get(name);
+            Object values = properties.get(name);
+            if (values == null)
+                return null;
+            else
+                return new RecArrayProperty(name, (LinkedList) values);
         }
 
         /**
@@ -223,86 +412,63 @@ class RecArrayResultSet implements ResultSet {
 
 
     /**
+     * Iterates over a <code>PropertyMap</code>, returning each
+     * <code>Property</code> it contains.
+     */
+    private static class RecArrayPropertyMapIterator implements Iterator {
+        private final Iterator properties;
+
+        RecArrayPropertyMapIterator(Map properties) {
+            this.properties = properties.entrySet().iterator();
+        }
+
+        public boolean hasNext() {
+            return properties.hasNext();
+        }
+
+        public Object next() {
+            Map.Entry property = (Map.Entry) properties.next();
+            return new RecArrayProperty((String) property.getKey(),
+                (LinkedList) property.getValue());
+        }
+
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+
+    /**
      * {@inheritDoc}
      * <p>
-     * This implementation represents a specific property from a
-     * specific row of the underlying recarray. In some cases the
-     * property value is simply a field in the recarray, but it others
-     * it is obtained from the Livelink server using information in
-     * the recarray, most notably the object and volume IDs.
+     * This implementation represents a property that always has one
+     * or more values.
      */
-    private class RecArrayProperty implements Property {
-        private final int row;
-        private final Field column;
+    /*
+     * We could just use SimpleProperty instead, and move the logging
+     * to RecArrayPropertyMapIterator.
+     */
+    private static class RecArrayProperty implements Property {
+        private final String name;
+        private final LinkedList values;
 
-        RecArrayProperty(int row, Field column) {
-            this.row = row;
-            this.column = column;
+        RecArrayProperty(String name, LinkedList values) {
+            this.name = name;
+            this.values = values;
+
+            if (LOGGER.isLoggable(Level.FINEST))
+                LOGGER.finest("PROPERTY: " + name + " = " + values);
         }
 
         public String getName() {
-            return column.propertyName;
+            return name;
         }
 
         public Value getValue() throws RepositoryException {
-            if (column.fieldName == null) {
-                // This column isn't in the recarray, so we need to do
-                // something else to get the value.
-
-                // TODO: Should we cache this? Use a hashed lookup
-                // instead of sequential string comparisons?
-                if (column.propertyName.equals(
-                        SpiConstants.PROPNAME_CONTENT)) {
-                    if (recArray.isDefined(row, "MimeType")) {
-                        // FIXME: I think that compound documents are
-                        // returning with a MIME type but, obviously,
-                        // no versions.
-                        int subType = recArray.toInteger(row, "SubType");
-                        if (LOGGER.isLoggable(Level.FINER))
-                            LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
-
-                        int objectId = recArray.toInteger(row, "DataID");
-                        int volumeId = recArray.toInteger(row, "OwnerID");
-                        int size = recArray.toInteger(row, "DataSize");
-
-                        // FIXME: Better error handling. Either
-                        // uninstalling the Doorways module or calling
-                        // this with undefined MimeTypes throws errors
-                        // that we might want to handle more
-                        // gracefully (e.g., maybe the underlying error
-                        // is "no content").
-                        return new InputStreamValue(
-                            contentHandler.getInputStream(LOGGER, volumeId,
-                                objectId, 0, size));
-                    } else {
-                        // TODO: This is a workaround for a bug where
-                        // the QueryTraverser requires a content or
-                        // contenturl property.
-                        return VALUE_EMPTY;
-                    }
-                } else if (column.propertyName.equals(
-                               SpiConstants.PROPNAME_DISPLAYURL)) {
-                    String displayUrl = connector.getDisplayUrl() +
-                        "?func=ll&objAction=open&objId=";
-                    int objectId = recArray.toInteger(row, "DataID");
-                    return new SimpleValue(ValueType.STRING, displayUrl
-                        + objectId);
-                } else if (column.propertyName.equals(
-                               SpiConstants.PROPNAME_ISPUBLIC)) {
-                    return VALUE_FALSE;
-                } else {
-                    throw new LivelinkException(
-                        "FIXME: Unimplemented property \"" +
-                        column.propertyName + '"', LOGGER);
-                }
-            } else
-                return new RecArrayValue(recArray, row, column);
+            return (Value) values.getFirst();
         }
 
         public Iterator getValues() throws RepositoryException {
-            // TODO: Real implementation, please.
-            ArrayList values = new ArrayList(1);
-            values.add(getValue());
             return values.iterator();
         }
     }
@@ -319,41 +485,30 @@ class RecArrayResultSet implements ResultSet {
      * the behavior of the LLInstance subclasses here.
      */
     private class RecArrayValue implements Value {
+        private final ValueType type;
         private final RecArray recArray;
-        private final int row;
-        private final Field column;
 
-        RecArrayValue(RecArray recArray, int row, Field column) {
+        RecArrayValue(ValueType type, RecArray recArray) {
             this.recArray = recArray;
-            this.row = row;
-            this.column = column;
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                String value;
-                try {
-                    value = getString();
-                } catch (Throwable t) {
-                    value = t.toString();
-                }
-                LOGGER.finest("VALUE: " + column.propertyName + " = " + value);
-            }
+            this.type = type;
         }
 
         public boolean getBoolean() throws RepositoryException {
-            return recArray.toBoolean(row, column.fieldName);
+            return recArray.toBoolean();
         }
 
         public Calendar getDate() throws RepositoryException {
             Calendar c = Calendar.getInstance();
-            c.setTime(recArray.toDate(row, column.fieldName));
+            c.setTime(recArray.toDate());
             return c;
         }
 
         public double getDouble() throws RepositoryException {
-            return recArray.toDouble(row, column.fieldName);
+            return recArray.toDouble();
         }
 
         public long getLong() throws RepositoryException {
-            return recArray.toInteger(row, column.fieldName);
+            return recArray.toInteger();
         }
 
         public InputStream getStream() throws RepositoryException {
@@ -368,14 +523,30 @@ class RecArrayResultSet implements ResultSet {
         }
 
         public String getString() throws RepositoryException {
-            if (column.fieldType == ValueType.DATE)
-                return toIso8601String(recArray.toDate(row, column.fieldName));
+            if (type == ValueType.DATE)
+                return toIso8601String(recArray.toDate());
             else
-                return recArray.toString(row, column.fieldName);
+                return recArray.toString2();
         }
 
         public ValueType getType() {
-            return column.fieldType;
+            return type;
+        }
+
+        /**
+         * {@inheritDoc}
+         * <p>
+         * This implementation returns the string value, or if an
+         * exception is thrown obtaining the value, it returns the
+         * string value of the exception. This is intended for
+         * debugging and logging.
+         */
+        public String toString() {
+            try {
+                return getString();
+            } catch (RepositoryException e) {
+                return e.toString();
+            }
         }
     }
 }

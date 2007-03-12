@@ -97,6 +97,7 @@
                     tofile="${tests.logging.properties}"
                     overwrite="yes"/>
 		<junit>
+			<assertions><enable/></assertions>
 			<classpath>
 				<fileset dir="${thirdparty.jar.dir}">
 					<include name="**/*.jar" />

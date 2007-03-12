@@ -134,6 +134,16 @@ public class LivelinkConnectorType implements ConnectorType {
             buffer.append("<input ");
             appendAttribute(buffer, "type", this.type);
             appendAttribute(buffer, "name", this.name); 
+
+            // TODO: What size should this be? I made it larger to
+            // reasonably handle displayUrl, but arguably it should be
+            // larger than this. One inconsistency is that the
+            // Connector Name field on the form has no size, so it
+            // will have the smaller default size text box. I picked
+            // 50 because the New Connector Manager form has elements
+            // that size.
+            appendAttribute(buffer, "size", "50");
+
             if (value != null)
                 appendAttribute(buffer, "value", value); 
             buffer.append(" />"); 

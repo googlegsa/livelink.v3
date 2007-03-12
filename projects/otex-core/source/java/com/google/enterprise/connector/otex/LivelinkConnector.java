@@ -64,6 +64,9 @@ public class LivelinkConnector implements Connector {
     /** The display URL prefix for the search results. */
     private String displayUrl;
 
+    /** The open action URL suffix for the search results. */
+    private String openAction;
+
     /** The database server type, either "MSSQL" or "Oracle". */
     private String servtype;
     
@@ -292,6 +295,43 @@ public class LivelinkConnector implements Connector {
      */
     public String getDisplayUrl() {
         return displayUrl;
+    }
+    
+    /**
+     * Sets the open action URL suffix for the search results.
+     * The parameters are:
+     * <dl>
+     * <dt> 0
+     * <dd> The default open action, usually <code>"open"</code> but
+     * it may vary; e.g., for discussion topics the default action is
+     * <code>"view"</code>.
+     * <dt> 1
+     * <dd> The object ID.
+     * <dt> 2 
+     * <dd> The volume ID.
+     * <dt> 3
+     * <dd> The subtype.
+     * <dt> 4
+     * <dd> The parent object ID.
+     * </dl>
+     *
+     * <p>The default value is "?func=ll&objAction={0}&objId={1}".
+     * 
+     * @param openAction the open action URL suffix
+     */
+    public void setOpenAction(String openAction) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("DISPLAY URL: " + openAction);
+        this.openAction = openAction;
+    }
+    
+    /**
+     * Gets the open action URL suffix for the search results.
+     *
+     * @return the open action suffix
+     */
+    public String getOpenAction() {
+        return openAction;
     }
     
     /**
@@ -616,7 +656,6 @@ public class LivelinkConnector implements Connector {
         // result to set the character encoding for future clients.
         Client client = clientFactory.createClient();
         String encoding = client.getEncoding(LOGGER);
-        
         if (encoding != null) {
             if (LOGGER.isLoggable(Level.CONFIG))
                 LOGGER.config("ENCODING: " + encoding);
