@@ -1,4 +1,16 @@
-// Copyright (C) 2006-2007 Google Inc.
+// Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex;
 
@@ -44,8 +56,9 @@ import com.google.enterprise.connector.otex.client.RecArray;
  * outermost class.
  */
 class RecArrayResultSet implements ResultSet {
+    /** The logger for this class. */
     private static final Logger LOGGER =
-        Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
+        Logger.getLogger(RecArrayResultSet.class.getName());
 
     /** An immutable empty string value. */
     private static final Value VALUE_EMPTY =
@@ -315,8 +328,8 @@ class RecArrayResultSet implements ResultSet {
                 // gracefully (e.g., maybe the underlying error
                 // is "no content").
                 contentValue = new InputStreamValue(
-                    contentHandler.getInputStream(LOGGER, volumeId,
-                        objectId, 0, size));
+                    contentHandler.getInputStream(volumeId, objectId, 0,
+                        size));
             } else {
                 String mimeType = null;
 
@@ -326,7 +339,7 @@ class RecArrayResultSet implements ResultSet {
                     int objectId = recArray.toInteger(row, "DataID");
                     int volumeId = recArray.toInteger(row, "OwnerID");
                     RecArray objectInfo =
-                        client.GetObjectInfo(LOGGER, volumeId, objectId);
+                        client.GetObjectInfo(volumeId, objectId);
                     RecArray extendedData = objectInfo.toValue("ExtendedData");
                     String content = extendedData.toString("Content");
                     LOGGER.finer("CONTENT = " + content);
@@ -339,7 +352,7 @@ class RecArrayResultSet implements ResultSet {
                     int objectId = recArray.toInteger(row, "DataID");
                     int volumeId = recArray.toInteger(row, "OwnerID");
                     RecArray objectInfo =
-                        client.GetObjectInfo(LOGGER, volumeId, objectId);
+                        client.GetObjectInfo(volumeId, objectId);
                     RecArray extendedData = objectInfo.toValue("ExtendedData");
                     String content = extendedData.toString("Instructions");
                     LOGGER.finer("CONTENT = " + content);

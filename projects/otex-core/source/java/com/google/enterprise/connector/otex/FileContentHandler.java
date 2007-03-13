@@ -1,4 +1,16 @@
-// Copyright (C) 2006-2007 Google Inc.
+// Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex;
 
@@ -21,6 +33,10 @@ import com.google.enterprise.connector.otex.client.Client;
  * @see ContentHandler
  */
 class FileContentHandler implements ContentHandler {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(FileContentHandler.class.getName());
+
     /** The connector contains configuration information. */
     private LivelinkConnector connector;
 
@@ -31,30 +47,29 @@ class FileContentHandler implements ContentHandler {
     }
 
     /** {@inheritDoc} */
-    public void initialize(LivelinkConnector connector, Client client,
-            Logger logger) throws RepositoryException {
+    public void initialize(LivelinkConnector connector, Client client)
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
     }
     
     /** {@inheritDoc} */
-    public InputStream getInputStream(final Logger logger,
-            int volumeId, int objectId, int versionNumber, int size)
-            throws RepositoryException {
+    public InputStream getInputStream(int volumeId, int objectId,
+            int versionNumber, int size) throws RepositoryException {
         try {
             // TODO: Does the new delete before throwing clear up debris?
             // TODO: Use connector working dir here?
             final File temporaryFile =
                 File.createTempFile("gsa-otex-", null);
-            if (logger.isLoggable(Level.FINER))
-                logger.finer("TEMP FILE: " + temporaryFile);
+            if (LOGGER.isLoggable(Level.FINER))
+                LOGGER.finer("TEMP FILE: " + temporaryFile);
             try {
-                client.FetchVersion(logger, volumeId, objectId,
-                    versionNumber, temporaryFile);
+                client.FetchVersion(volumeId, objectId, versionNumber,
+                    temporaryFile);
             } catch (RepositoryException e) {
                 try {
-                    if (logger.isLoggable(Level.FINER))
-                        logger.finer("DELETE: " + temporaryFile);
+                    if (LOGGER.isLoggable(Level.FINER))
+                        LOGGER.finer("DELETE: " + temporaryFile);
                     temporaryFile.delete();
                 } finally {
                     throw e;
@@ -65,14 +80,14 @@ class FileContentHandler implements ContentHandler {
                         try {
                             super.close();
                         } finally {
-                            if (logger.isLoggable(Level.FINER))
-                                logger.finer("DELETE: " + temporaryFile);
+                            if (LOGGER.isLoggable(Level.FINER))
+                                LOGGER.finer("DELETE: " + temporaryFile);
                             temporaryFile.delete();
                         }
                     }
                 };
         } catch (IOException e) {
-            throw new LivelinkException(e, logger);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 }

@@ -1,4 +1,16 @@
 // Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex.client.mock;
 
@@ -15,8 +27,11 @@ import com.google.enterprise.connector.otex.client.RecArray;
 /**
  * A mock client implementation.
  */
-final class MockClient implements Client
-{
+final class MockClient implements Client {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(MockClient.class.getName());
+
     MockClient() {
     }
 
@@ -25,7 +40,7 @@ final class MockClient implements Client
      * <p>
      * This implementation returns <code>null</code>.
      */
-    public String getEncoding(Logger logger) {
+    public String getEncoding() {
         return null;
     }
 
@@ -34,7 +49,7 @@ final class MockClient implements Client
      * <p>
      * This implementation returns an empty string.
      */
-    public String getLLCookie(Logger logger) throws RepositoryException {
+    public String getLLCookie() throws RepositoryException {
         return "";
     }
 
@@ -43,9 +58,8 @@ final class MockClient implements Client
      * <p>
      * This implementation returns an empty <code>RecArray</code>.
      */
-    public RecArray ListNodes(Logger logger, String query,
-            String view, String[] columns) {
-        logger.fine("Entering MockClient.ListNodes");
+    public RecArray ListNodes(String query, String view, String[] columns) {
+        LOGGER.fine("Entering MockClient.ListNodes");
 
         Object[][] values;
         if (query.startsWith("SubType in (") && view.equals("DTree")) {
@@ -73,8 +87,7 @@ final class MockClient implements Client
      * This implementation returns an empty recarray.
      */
     /* TODO: This should return an empty assoc. */
-    public RecArray GetObjectInfo(final Logger logger, int volumeId,
-        int objectId)
+    public RecArray GetObjectInfo(int volumeId, int objectId)
     {
         return new MockRecArray(new String[0], new Object[0][0]);
     }
@@ -84,9 +97,9 @@ final class MockClient implements Client
      * <p>
      * This implementation does nothing.
      */
-    public void FetchVersion(final Logger logger,
-            int volumeId, int objectId, int versionNumber, File path) {
-        logger.fine("Entering MockClient.FetchVersion");
+    public void FetchVersion(int volumeId, int objectId, int versionNumber,
+            File path) {
+        LOGGER.fine("Entering MockClient.FetchVersion");
         // TODO: Make sure that the file exists and is empty.
     }
 
@@ -95,14 +108,13 @@ final class MockClient implements Client
      * <p>
      * This implementation does nothing but close the output stream.
      */
-    public void FetchVersion(final Logger logger, int volumeId,
-            int objectId, int versionNumber, OutputStream out)
-            throws RepositoryException {
-        logger.fine("Entering MockClient.FetchVersion");
+    public void FetchVersion(int volumeId, int objectId, int versionNumber,
+            OutputStream out) throws RepositoryException {
+        LOGGER.fine("Entering MockClient.FetchVersion");
         try {
             out.close();
         } catch (IOException e) {
-            throw new LivelinkException(e, logger);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -111,9 +123,9 @@ final class MockClient implements Client
      * <p>
      * This implementation has no effect.
      */
-    public synchronized void ImpersonateUser(final Logger logger, 
-        String username) throws RepositoryException {
-        logger.fine("Entering MockClient.ImpersonateUser");
+    public synchronized void ImpersonateUser(String username)
+            throws RepositoryException {
+        LOGGER.fine("Entering MockClient.ImpersonateUser");
     }
 
     /**
@@ -121,8 +133,8 @@ final class MockClient implements Client
      * <p>
      * This implementation always returns true.
      */
-    public synchronized boolean ping(final Logger logger) {
-        logger.fine("Entering MockClient.ping");
+    public synchronized boolean ping() {
+        LOGGER.fine("Entering MockClient.ping");
         return true;
     }
 }

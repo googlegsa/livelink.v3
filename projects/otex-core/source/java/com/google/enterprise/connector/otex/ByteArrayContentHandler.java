@@ -1,4 +1,16 @@
 // Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex;
 
@@ -6,7 +18,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -21,6 +32,10 @@ import com.google.enterprise.connector.otex.client.Client;
  * @see ContentHandler
  */
 class ByteArrayContentHandler implements ContentHandler {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(ByteArrayContentHandler.class.getName());
+
     /** The connector contains configuration information. */
     private LivelinkConnector connector;
 
@@ -31,24 +46,22 @@ class ByteArrayContentHandler implements ContentHandler {
     }
 
     /** {@inheritDoc} */
-    public void initialize(LivelinkConnector connector, Client client,
-            Logger logger) throws RepositoryException {
+    public void initialize(LivelinkConnector connector, Client client)
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
     }
     
     /** {@inheritDoc} */
-    public InputStream getInputStream(final Logger logger,
-            int volumeId, int objectId, int versionNumber, int size)
-            throws RepositoryException {
+    public InputStream getInputStream(int volumeId, int objectId,
+            int versionNumber, int size) throws RepositoryException {
         try {
             SharedByteArrayOutputStream out =
                 new SharedByteArrayOutputStream(size);
-            client.FetchVersion(logger, volumeId, objectId, versionNumber,
-                out);
+            client.FetchVersion(volumeId, objectId, versionNumber, out);
             return out.getInputStream();
         } catch (IOException e) {
-            throw new LivelinkException(e, logger);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 

@@ -1,4 +1,16 @@
-// Copyright (C) 2006-2007 Google Inc.
+// Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex;
 
@@ -16,7 +28,7 @@ import junit.framework.TestCase;
 /**
  * Tests LapiClient methods.
  */
-/* This test depends on known object ids. We'd need a standard
+/* This test depends on known object IDs. We'd need a standard
  * set of test data and a way to locate items in the repository
  * to make it more general.
  *
@@ -25,9 +37,9 @@ import junit.framework.TestCase;
  * attributes-reading method turns out to be.
  */
 public class LapiClientTest extends TestCase {
-
-    private static final Logger logger = Logger.getLogger(
-        LapiClientTest.class.getName()); 
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(LapiClientTest.class.getName()); 
 
     private Client client;
 
@@ -53,9 +65,9 @@ public class LapiClientTest extends TestCase {
     /*
     public void testCompareImplementations() throws Exception {
         Map attrs1 = ((LapiClient) client).getCategoryAttributes(
-            logger, 695345);
+            LOGGER, 695345);
         Map attrs2 = ((LapiClient) client).getCategoryAttributes2(
-            logger, 695345);
+            LOGGER, 695345);
         printMap(attrs1); 
         System.out.println("*****************");
         printMap(attrs2); 

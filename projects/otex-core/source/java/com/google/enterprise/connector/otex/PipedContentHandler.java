@@ -1,4 +1,16 @@
 // Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex;
 
@@ -37,6 +49,10 @@ import com.google.enterprise.connector.otex.client.Client;
  * thread closes the input stream before EOF is reached.
  */
 class PipedContentHandler implements ContentHandler, Runnable {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(PipedContentHandler.class.getName());
+
     /** A larger pipe size for a tenfold increase in performance. */
     private static final int PIPE_SIZE = 32768;
     
@@ -45,8 +61,6 @@ class PipedContentHandler implements ContentHandler, Runnable {
 
     /** The client provides access to the server. */
     private Client client;
-
-    private Logger logger;
 
     /** Is the producer thread running? */
     private volatile boolean isRunning = false;
@@ -62,16 +76,13 @@ class PipedContentHandler implements ContentHandler, Runnable {
     
     /** Represents queue entries. */
     private static class Request {
-        private final Logger logger;
         private final int volumeId;
         private final int objectId;
         private final int versionNumber;
         private final PipedOutputStream out;
         private final SafePipedInputStream in;
-        private Request(Logger logger, int volumeId, int objectId,
-                int versionNumber, PipedOutputStream out,
-                SafePipedInputStream in) {
-            this.logger = logger;
+        private Request(int volumeId, int objectId, int versionNumber,
+                PipedOutputStream out, SafePipedInputStream in) {
             this.volumeId = volumeId;
             this.objectId = objectId;
             this.versionNumber = versionNumber;
@@ -88,34 +99,32 @@ class PipedContentHandler implements ContentHandler, Runnable {
      * <p>
      * This implementation starts the producer thread.
      */
-    public void initialize(LivelinkConnector connector, Client client,
-            Logger logger) throws RepositoryException {
+    public void initialize(LivelinkConnector connector, Client client)
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
-        this.logger = logger; // For the producer thread outside of a request.
 
         Thread t = new Thread(this);
         t.setDaemon(true);
         t.start();
-        if (logger.isLoggable(Level.FINE))
-            logger.fine("PIPED CONTENT HANDLER THREAD STARTED: " + t);
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("PIPED CONTENT HANDLER THREAD STARTED: " + t);
     }
     
     /** {@inheritDoc} */
-    public InputStream getInputStream(Logger logger, int volumeId,
-            int objectId, int versionNumber, int size)
-            throws RepositoryException {
+    public InputStream getInputStream(int volumeId, int objectId,
+            int versionNumber, int size) throws RepositoryException {
         if (!isRunning)
-            throw new LivelinkException("No producer thread.", logger);
+            throw new LivelinkException("No producer thread.", LOGGER);
         
         try {
             SafePipedInputStream in = new SafePipedInputStream(PIPE_SIZE);
             PipedOutputStream out = new PipedOutputStream(in);
-            queueRequest(new Request(logger, volumeId, objectId,
-                versionNumber, out, in));
+            queueRequest(new Request(volumeId, objectId, versionNumber,
+                out, in));
             return in;
         } catch (IOException e) {
-            throw new LivelinkException(e, logger);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -144,17 +153,17 @@ class PipedContentHandler implements ContentHandler, Runnable {
      * thread that the request is ready.
      */
     private synchronized void queueRequest(Request request) {
-        if (request.logger.isLoggable(Level.FINE))
-            request.logger.fine("QUEUEING REQUEST: " + request.objectId);
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("QUEUEING REQUEST: " + request.objectId);
         queue.addLast(request);
         notify();
     }
 
     private synchronized Request dequeueRequest() throws InterruptedException {
         while (queue.isEmpty()) {
-            logger.finer("WAITING FOR REQUEST");
+            LOGGER.finer("WAITING FOR REQUEST");
             wait();
-            logger.fine("CHECKING FOR REQUEST");
+            LOGGER.fine("CHECKING FOR REQUEST");
         }
         return (Request) queue.removeFirst();
     }
@@ -165,17 +174,17 @@ class PipedContentHandler implements ContentHandler, Runnable {
      */
     private void processRequest() throws InterruptedException {
         Request request = dequeueRequest();
-        if (request.logger.isLoggable(Level.FINE))
-            request.logger.fine("PROCESSING REQUEST: " + request.objectId);
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("PROCESSING REQUEST: " + request.objectId);
         try {
-            client.FetchVersion(request.logger, request.volumeId,
-                request.objectId, request.versionNumber, request.out);
+            client.FetchVersion(request.volumeId, request.objectId,
+                request.versionNumber, request.out);
         } catch (Throwable t) {
-            request.logger.log(Level.FINE, "CAUGHT EXCEPTION", t);
+            LOGGER.log(Level.FINE, "CAUGHT EXCEPTION", t);
             try {
                 request.in.setException(t, request.out);
             } catch (Throwable tt) {
-                request.logger.log(Level.WARNING,
+                LOGGER.log(Level.WARNING,
                     "CAUGHT EXCEPTION SETTING EXCEPTION", tt);
             }
         }

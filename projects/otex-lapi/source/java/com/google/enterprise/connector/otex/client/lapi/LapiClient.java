@@ -1,9 +1,22 @@
-// Copyright (C) 2006-2007 Google Inc.
+// Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex.client.lapi;
 
 import java.io.File;
 import java.io.OutputStream;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -22,8 +35,11 @@ import com.opentext.api.LLValue;
 /**
  * A direct LAPI client implementation.
  */
-final class LapiClient implements Client
-{
+final class LapiClient implements Client {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(LapiClient.class.getName());
+
     static {
         // Verify that the Client class constants are correct.
         assert TOPICSUBTYPE == LAPI_DOCUMENTS.TOPICSUBTYPE : TOPICSUBTYPE;
@@ -64,30 +80,30 @@ final class LapiClient implements Client
      * encoding.
      */
     /* FIXME: Livelink 9.2 does not return the CharacterEncoding field. */
-    public String getEncoding(Logger logger) throws RepositoryException {
+    public String getEncoding() throws RepositoryException {
         try {
             LLValue value = (new LLValue()).setAssocNotSet();
             if (documents.GetServerInfo(value) != 0)
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             int serverEncoding = value.toInteger("CharacterEncoding");
             if (serverEncoding == LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8)
                 return "UTF-8";
             else
                 return null;
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(e, LOGGER);
         }
     }
 
     /** {@inheritDoc} */
-    public synchronized String getLLCookie(Logger logger)
+    public synchronized String getLLCookie()
             throws RepositoryException {
         LLValue cookies = (new LLValue()).setList();
         try {
             if (users.GetCookieInfo(cookies) != 0)
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(e, LOGGER);
         }
         for (int i = 0; i < cookies.size(); i++) {
             LLValue cookie = cookies.toValue(i);
@@ -100,8 +116,8 @@ final class LapiClient implements Client
     }
     
     /** {@inheritDoc} */
-    public synchronized RecArray ListNodes(Logger logger, String query,
-            String view, String[] columns) throws RepositoryException {
+    public synchronized RecArray ListNodes(String query, String view,
+            String[] columns) throws RepositoryException {
         LLValue recArray = (new LLValue()).setTable();
         try {
             LLValue args = (new LLValue()).setList();
@@ -111,53 +127,51 @@ final class LapiClient implements Client
             if (documents.ListNodes(query, args, view, columnsList, 
                     LAPI_DOCUMENTS.PERM_SEECONTENTS, LLValue.LL_FALSE,
                     recArray) != 0) {
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             }
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(e, LOGGER);
         }
-        return new LapiRecArray(logger, recArray);
+        return new LapiRecArray(recArray);
     }
 
     /** {@inheritDoc} */
-    public synchronized RecArray GetObjectInfo(final Logger logger,
-            int volumeId, int objectId) throws RepositoryException {
+    public synchronized RecArray GetObjectInfo(int volumeId, int objectId)
+            throws RepositoryException {
         try {
             LLValue objectInfo = new LLValue();
             if (documents.GetObjectInfo(volumeId, objectId, objectInfo) != 0) {
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             }
-            return new LapiRecArray(logger, objectInfo);
+            return new LapiRecArray(objectInfo);
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(e, LOGGER);
         }
     }
     
     /** {@inheritDoc} */
-    public synchronized void FetchVersion(final Logger logger,
-            int volumeId, int objectId, int versionNumber, File path)
-            throws RepositoryException {
+    public synchronized void FetchVersion(int volumeId, int objectId,
+            int versionNumber, File path) throws RepositoryException {
         try {
             if (documents.FetchVersion(volumeId, objectId, versionNumber,
                     path.getPath()) != 0) {
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             }
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(e, LOGGER);
         }
     }
 
     /** {@inheritDoc} */
-    public synchronized void FetchVersion(final Logger logger,
-            int volumeId, int objectId, int versionNumber, OutputStream out)
-            throws RepositoryException {
+    public synchronized void FetchVersion(int volumeId, int objectId,
+            int versionNumber, OutputStream out) throws RepositoryException {
         try {
             if (documents.FetchVersion(volumeId, objectId,
                     versionNumber, out) != 0) { 
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             }
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger);
+            throw new LapiException(e, LOGGER);
         }
     }
 
@@ -165,8 +179,7 @@ final class LapiClient implements Client
     /**
      * {@inheritDoc}
      */
-    public synchronized void ImpersonateUser(final Logger logger, 
-            String username) {
+    public synchronized void ImpersonateUser(String username) {
         session.ImpersonateUser(username);
     }
 
@@ -182,15 +195,15 @@ final class LapiClient implements Client
      * of the logged-in user. We might want to use the
      * GetCookieInfo method instead.
      */
-    public synchronized boolean ping(final Logger logger)
+    public synchronized boolean ping()
             throws RepositoryException {
         LLValue info = new LLValue().setAssocNotSet();
         try {
             // TODO: ensure that the LapiClient handles domains.
             if (documents.AccessEnterpriseWSEx(null, info) != 0)
-                throw new LapiException(session, logger); 
+                throw new LapiException(session, LOGGER); 
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger); 
+            throw new LapiException(e, LOGGER); 
         }
         return true;
     }
@@ -204,15 +217,12 @@ final class LapiClient implements Client
      * supported, but nested attribute sets are not. User
      * attributes are resolved into the user or group name.
      *
-     * @param logger the logger
      * @param objId the object id of the Livelink item for which
      * to retrieve category information
      * @return a map of attribute names to lists of values
      * @throws RepositoryException if an error occurs
      */
-    public Map getCategoryAttributes(Logger logger, int objId)
-             throws RepositoryException {
-
+    public Map getCategoryAttributes(int objId) throws RepositoryException {
         HashMap data = new HashMap(); 
         try {
 
@@ -229,7 +239,7 @@ final class LapiClient implements Client
             LLValue categoryIds = new LLValue().setList(); 
             if (documents.ListObjectCategoryIDs(objectIdAssoc,
                     categoryIds) != 0) {
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             }
 
             // Loop over the categories.
@@ -241,7 +251,7 @@ final class LapiClient implements Client
                 // category attributes which can't be read here.
                 int categoryType = categoryId.toInteger("Type");
                 if (LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY != categoryType) {
-                    logger.finer("Unknown category implementation type " +
+                    LOGGER.finer("Unknown category implementation type " +
                         categoryType + "; skipping"); 
                     continue;
                 }
@@ -250,12 +260,12 @@ final class LapiClient implements Client
                 LLValue categoryVersion = new LLValue().setAssocNotSet();
                 if (documents.GetObjectAttributesEx(objectIdAssoc,
                         categoryId, categoryVersion) != 0) {
-                    throw new LapiException(session, logger);
+                    throw new LapiException(session, LOGGER);
                 }
                 LLValue attributeNames = new LLValue().setList();
                 if (attributes.AttrListNames(categoryVersion, null, 
                         attributeNames) != 0) {
-                    throw new LapiException(session, logger);
+                    throw new LapiException(session, LOGGER);
                 }
                 
                 // Loop over the attributes for this category.
@@ -265,21 +275,21 @@ final class LapiClient implements Client
                     LLValue attributeInfo = new LLValue().setAssocNotSet();
                     if (attributes.AttrGetInfo(categoryVersion, attributeName,
                             null, attributeInfo) != 0) {
-                        throw new LapiException(session, logger);
+                        throw new LapiException(session, LOGGER);
                     }
                     int attributeType = attributeInfo.toInteger("Type");
                     if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == attributeType) {
-                        getAttributeSetValues(logger, data, categoryVersion, 
+                        getAttributeSetValues(data, categoryVersion, 
                             attributeName); 
                     }
                     else {
-                        getAttributeValue(logger, data, categoryVersion,
+                        getAttributeValue(data, categoryVersion,
                             attributeName, attributeType, null, attributeInfo);
                     }
                 }
             }
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger); 
+            throw new LapiException(e, LOGGER); 
         }
         return data; 
     }
@@ -287,16 +297,13 @@ final class LapiClient implements Client
     /**
      * Gets the values for attributes contained in an attribute set.
      *
-     * @param logger the logger
      * @param data the object in which to store the values
      * @param categoryVersion the category being read
      * @param attributeName the name of the attribute set
      * @throws RepositoryException if an error occurs
      */
-    private void getAttributeSetValues(Logger logger, Map data,
-            LLValue categoryVersion, String attributeName)
-            throws RepositoryException {
-        
+    private void getAttributeSetValues(Map data, LLValue categoryVersion,
+            String attributeName) throws RepositoryException {
         // The "path" indicates the set attribute name to look
         // inside of in other methods like AttrListNames.
         LLValue attributeSetPath = new LLValue().setList(); 
@@ -309,7 +316,7 @@ final class LapiClient implements Client
         LLValue attributeSetNames = new LLValue().setList(); 
         if (attributes.AttrListNames(categoryVersion, attributeSetPath,
                 attributeSetNames) != 0) {
-            throw new LapiException(session, logger); 
+            throw new LapiException(session, LOGGER); 
         }
         LLValue[] attributeInfo = new LLValue[attributeSetNames.size()];
         for (int i = 0; i < attributeSetNames.size(); i++) {
@@ -317,7 +324,7 @@ final class LapiClient implements Client
             LLValue info = new LLValue().setAssocNotSet();
             if (attributes.AttrGetInfo(categoryVersion, name, 
                     attributeSetPath, info) != 0) {
-                throw new LapiException(session, logger);
+                throw new LapiException(session, LOGGER);
             }
             attributeInfo[i] = info;
         }
@@ -328,7 +335,7 @@ final class LapiClient implements Client
         if (attributes.AttrGetValues(categoryVersion,
                 attributeName, LAPI_ATTRIBUTES.ATTR_DATAVALUES,
                 null, setValues) != 0) {
-            throw new LapiException(session, logger);
+            throw new LapiException(session, LOGGER);
         }
         // Update the path to hold index of the set instance.
         attributeSetPath.setSize(2); 
@@ -340,11 +347,11 @@ final class LapiClient implements Client
             for (int j = 0; j < attributeSetNames.size(); j++) {
                 int type = attributeInfo[j].toInteger("Type");
                 if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == type) {
-                    logger.finer("Nested attributes sets are not supported.");
+                    LOGGER.finer("Nested attributes sets are not supported.");
                     continue;
                 }
                 //System.out.println("      " + attributeSetNames.toString(j));
-                getAttributeValue(logger, data, categoryVersion, 
+                getAttributeValue(data, categoryVersion, 
                     attributeSetNames.toString(j), type,
                     attributeSetPath, attributeInfo[j]); 
             }
@@ -354,7 +361,6 @@ final class LapiClient implements Client
     /**
      * Gets the values for an attribute.
      *
-     * @param logger the logger
      * @param data the object to hold the values
      * @param categoryVersion the category version in which the
      * values are stored 
@@ -367,8 +373,8 @@ final class LapiClient implements Client
      * null
      * throws RepositoryException if an error occurs
      */
-    private void getAttributeValue(Logger logger, Map data, 
-            LLValue categoryVersion, String attributeName, int attributeType,
+    private void getAttributeValue(Map data, LLValue categoryVersion,
+            String attributeName, int attributeType,
             LLValue attributeSetPath, LLValue attributeInfo)
             throws RepositoryException {
 
@@ -382,7 +388,7 @@ final class LapiClient implements Client
         if (attributes.AttrGetValues(categoryVersion,
                 attributeName, LAPI_ATTRIBUTES.ATTR_DATAVALUES,
                 attributeSetPath, attributeValues) != 0) {
-            throw new LapiException(session, logger);
+            throw new LapiException(session, LOGGER);
         }
         // Even a simple attribute type can have multiple values
         // (displayed as rows in the Livelink UI).
@@ -408,8 +414,7 @@ final class LapiClient implements Client
                 if (users.GetUserOrGroupByID(
                         attributeValues.toInteger(k),
                         userInfo) != 0) {
-                    throw new LapiException(session,
-                        logger);
+                    throw new LapiException(session, LOGGER);
                 }
                 valueList.add(userInfo.toString("Name")); 
             } else {
@@ -432,7 +437,6 @@ final class LapiClient implements Client
      * supported, but nested attribute sets are not. User
      * attributes are resolved into the user or group name.
      *
-     * @param logger the logger
      * @param objId the object id of the Livelink item for which
      * to retrieve category information
      * @return a map of attribute names to lists of values
@@ -441,30 +445,30 @@ final class LapiClient implements Client
     /* Alternate implementation of category attribute fetching
      * which uses the underlying Livelink database tables.
      */
-    public Map getCategoryAttributes2(Logger logger, int objId)
-             throws RepositoryException {
-
+    public Map getCategoryAttributes2(int objId) throws RepositoryException {
         HashMap results = new HashMap(); 
         try {
             String[] columns = { "ID", "DefID", "AttrId", "AttrType", 
                                  "EntryNum", "ValInt", "ValReal", 
                                  "ValDate", "ValStr", "ValLong" }; 
-            RecArray attributeData = ListNodes(logger, 
+            RecArray attributeData = ListNodes(
                 "ID=" + objId + " order by DefId,AttrId,EntryNum",
                 "LLAttrData", columns); 
             if (attributeData.size() == 0) {
-                logger.finest("No category data for " + objId); 
+                LOGGER.finest("No category data for " + objId); 
                 return results;
             }
-            Map attributeNames = getAttributeNames2(logger, objId);
+            Map attributeNames = getAttributeNames2(objId);
             for (int i = 0; i < attributeData.size(); i++) {
                 String categoryId = attributeData.toString(i, "DefId");
                 String attributeId = attributeData.toString(i, "AttrId");
                 String attributeName = getAttributeName2(
                     attributeNames, categoryId, attributeId); 
                 if (attributeName == null) {
-                    logger.warning("No attribute name for cat/attr: " + 
-                        categoryId + "/" + attributeId);
+                    if (LOGGER.isLoggable(Level.WARNING)) {
+                        LOGGER.warning("No attribute name for cat/attr: " + 
+                            categoryId + "/" + attributeId);
+                    }
                     continue;
                 }
                 LinkedList valueList = getValueList2(results, attributeName); 
@@ -510,7 +514,7 @@ final class LapiClient implements Client
                         LLValue userInfo = new LLValue().setRecord();
                         int userId = attributeData.toInteger(i, "ValInt");
                         if (users.GetUserOrGroupByID(userId, userInfo) != 0) {
-                            throw new LapiException(session, logger);
+                            throw new LapiException(session, LOGGER);
                         }
                         valueList.add(userInfo.toString("Name"));
                     }
@@ -528,7 +532,7 @@ final class LapiClient implements Client
                     results.remove(attributeName); 
             }
         } catch (RuntimeException e) {
-            throw new LapiException(e, logger); 
+            throw new LapiException(e, LOGGER); 
         }
         return results; 
     }
@@ -573,7 +577,6 @@ final class LapiClient implements Client
      * attribute names. The keys are of the form
      * "categoryId_attributeId".
      *
-     * @param logger the logger
      * @param objId the object id
      * @return an attribute name map
      * @throws RepositoryException if an error occurs
@@ -583,13 +586,11 @@ final class LapiClient implements Client
      * attributeIndex. This method creates a map from keys of the
      * form categoryId + "_" + attributeIndex to the attribute names.
      */
-    private Map getAttributeNames2(Logger logger, int objId)
-            throws RepositoryException {
+    private Map getAttributeNames2(int objId) throws RepositoryException {
         String[] columns = { "CatId", "AttrName", "RegionName" }; 
         String query = "CatId in (select distinct DefId from LLAttrData " +
             "where ID = " + objId + ")";
-        RecArray namesRecArray = ListNodes(logger, query, "CatRegionMap",
-            columns); 
+        RecArray namesRecArray = ListNodes(query, "CatRegionMap", columns); 
         HashMap attributeNames = new HashMap(); 
         for (int i = 0; i < namesRecArray.size(); i++) {
             String categoryId = namesRecArray.toString(i, "CatId");
@@ -598,7 +599,7 @@ final class LapiClient implements Client
             if (u != -1) {
                 String key = region.substring(u + 1);
                 if (!key.matches("\\d+\\_\\d+")) {
-                    logger.warning("Unknown RegionName format: " + region);
+                    LOGGER.warning("Unknown RegionName format: " + region);
                     continue;
                 }
                 if (namesRecArray.isDefined(i, "AttrName")) {
@@ -606,10 +607,10 @@ final class LapiClient implements Client
                                            "AttrName"));
                 }
                 else
-                    logger.warning("No attribute name for " + region); 
+                    LOGGER.warning("No attribute name for " + region); 
             }
             else
-                logger.warning("Unknown RegionName format: " + region);
+                LOGGER.warning("Unknown RegionName format: " + region);
         }
         return attributeNames;
     }

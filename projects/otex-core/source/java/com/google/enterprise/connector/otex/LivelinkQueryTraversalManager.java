@@ -1,4 +1,16 @@
-// Copyright (C) 2006-2007 Google Inc.
+// Copyright (C) 2007 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package com.google.enterprise.connector.otex;
 
@@ -19,7 +31,7 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.RecArray;
 
 class LivelinkQueryTraversalManager implements QueryTraversalManager {
-
+    /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
 
@@ -123,13 +135,12 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             // generic errors when connecting or using ListNodes.
             String query = "1=1"; // ListNodes requires a WHERE clause.
             String[] columns = { "42" };
-            RecArray results =
-                client.ListNodes(LOGGER, query, "KDual", columns);
+            RecArray results = client.ListNodes(query, "KDual", columns);
 
             // Then check an Oracle-specific query.
             boolean isOracle;
             try {
-                results = client.ListNodes(LOGGER, query, "dual", columns);
+                results = client.ListNodes(query, "dual", columns);
                 isOracle = true;
             } catch (RepositoryException e) {
                 isOracle = false;
@@ -227,7 +238,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             String query = "SubType in (" + excludedVolumeTypes + ")";
             String view = "DTree";
             String[] columns = { "DataID", "PermID" };
-            RecArray results = client.ListNodes(LOGGER, query, view, columns);
+            RecArray results = client.ListNodes(query, view, columns);
             volumes = (results.size() == 0) ? null : results;
         } else
             volumes = null;
@@ -287,7 +298,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         } catch (Exception e) {
             throw new LivelinkException(e, LOGGER);
         }
-        contentHandler.initialize(connector, client, LOGGER);
+        contentHandler.initialize(connector, client);
         return contentHandler;
     }
 
@@ -447,7 +458,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             new String[selectArrayList.size()]);
         columns[0] = "top " + batchSize + " " + columns[0];
 
-        return client.ListNodes(LOGGER, query, view, columns);
+        return client.ListNodes(query, view, columns);
     }
 
 
@@ -481,7 +492,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             LOGGER.finer("ORACLE VIEW: " + view);
         String[] columns = new String[] { "*" };
 
-        return client.ListNodes(LOGGER, query, view, columns);
+        return client.ListNodes(query, view, columns);
     }
 
 
