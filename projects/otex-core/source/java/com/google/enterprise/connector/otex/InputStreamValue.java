@@ -15,61 +15,93 @@
 package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
-import java.io.IOException;
 import java.util.Calendar;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 
 /*
- * TODO: Value conversion across types.
+ * This <code>Value</code> implementation represents binary streams,
+ * and only supports the {@link #getStream} method.
  */
-class InputStreamValue implements Value {
-    /** The logger for this class. */
-    private static final Logger LOGGER =
-        Logger.getLogger(InputStreamValue.class.getName());
-
+final class InputStreamValue implements Value {
     /** The wrapped stream. */
-    private final InputStream in;
+    private InputStream in;
 
     InputStreamValue(InputStream in) {
+        if (in == null)
+            throw IllegalArgumentException();
         this.in = in;
     }
 
-    public boolean getBoolean() {
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always throws an
+     * <code>IllegalArgumentException</code>
+     */
+    public boolean getBoolean() throws RepositoryException {
         throw new IllegalArgumentException();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always throws an
+     * <code>IllegalArgumentException</code>
+     */
     public Calendar getDate() {
         throw new IllegalArgumentException();
     }
 
-    public double getDouble() {
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always throws an
+     * <code>IllegalArgumentException</code>
+     */
+    public double getDouble() throws RepositoryException {
         throw new IllegalArgumentException();
     }
 
-    public long getLong() {
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always throws an
+     * <code>IllegalArgumentException</code>
+     */
+    public long getLong() throws RepositoryException {
         throw new IllegalArgumentException();
     }
 
-    public InputStream getStream() {
-        return in;
-    }
-
-    public String getString() throws RepositoryException {
-        byte[] buffer = new byte[32];
-        try {
-            int count = in.read(buffer);
-            return new String(buffer, 0, count);
-        } catch (IOException e) {
-            throw new LivelinkException(e, LOGGER);
+    /** {@inheritDoc} */
+    public synchronized InputStream getStream() throws RepositoryException {
+        if (in == null)
+            throw new IllegalStateException();
+        else {
+            InputStream is = in;
+            in = null;
+            return is;
         }
     }
 
-    public ValueType getType() throws RepositoryException {
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always throws an
+     * <code>IllegalArgumentException</code>
+     */
+    public String getString() throws RepositoryException {
+        throw new IllegalArgumentException();
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation always returns <code>ValueType.BINARY</code>.
+     */     
+    public ValueType getType() {
         return ValueType.BINARY;
     }
 }

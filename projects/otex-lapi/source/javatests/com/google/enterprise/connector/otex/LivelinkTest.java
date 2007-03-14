@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.io.InputStream;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -66,13 +68,31 @@ public class LivelinkTest extends TestCase {
         PropertyMap map = null;
         Iterator it = rs.iterator();
         while (it.hasNext()) {
+            System.out.println();
             map = (PropertyMap) it.next();
             Iterator jt = map.getProperties();
             while (jt.hasNext()) {
                 Property prop = (Property) jt.next();
                 String name = prop.getName();
                 Value value = prop.getValue();
-                System.out.println(name + " = " + value.getString());
+                String printableValue;
+                ValueType type = value.getType();
+                if (type == ValueType.BINARY) {
+                    try {
+                        InputStream in = value.getStream();
+                        byte[] buffer = new byte[32];
+                        int count = in.read(buffer);
+                        in.close();
+                        if (count == -1)
+                            printableValue = "";
+                        else
+                            printableValue = new String(buffer);
+                    } catch (IOException e) {
+                        printableValue = e.toString();
+                    }
+                } else
+                    printableValue = value.getString();
+                System.out.println(name + " = " + printableValue);
             }
         }
         return map;
