@@ -31,7 +31,7 @@ final class InputStreamValue implements Value {
 
     InputStreamValue(InputStream in) {
         if (in == null)
-            throw IllegalArgumentException();
+            throw new IllegalArgumentException();
         this.in = in;
     }
 
