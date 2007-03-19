@@ -27,8 +27,25 @@
                         value="${useUsernamePasswordWithWebServer}"/>
                 <property name="useSeparateAuthentication" 
                         value="${useSeparateAuthentication}"/>
-		<property name="openAction" 
-			value="?func=ll&amp;objAction={0}&amp;objId={1}" />
+		<property name="displayPatterns">
+			<map>
+				<entry key="141" value="?func=llworkspace" />
+				<entry key="142" 
+					value="?func=ll&amp;objtype=142&amp;objAction=browse" />
+				<entry key="default" 
+					value="?func=ll&amp;objId={0}&amp;objAction={3}" />
+			</map>
+		</property>
+		<property name="displayActions">
+			<map>
+				<entry key="0,136" value="browse" />
+				<entry key="130,134,215" value="view" />
+				<entry key="144" value="overview" />
+				<entry key="204" value="BrowseTaskList" />
+				<entry key="206" value="BrowseTask" />
+				<entry key="default" value="properties" />
+			</map>
+		</property>
 		<property name="servtype" value=""/>
 		<property name="excludedNodeTypes" 
 			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>

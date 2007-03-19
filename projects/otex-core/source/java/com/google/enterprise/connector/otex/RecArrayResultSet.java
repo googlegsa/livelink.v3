@@ -17,9 +17,6 @@ package com.google.enterprise.connector.otex;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.text.Format;
-import java.text.MessageFormat;
-import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -94,12 +91,6 @@ class RecArrayResultSet implements ResultSet {
     private final SimpleDateFormat sql =
         new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
 
-    /**
-     * The open action URL suffix format used in the google:displayurl
-     * property.
-     */
-    private final MessageFormat openAction;
-    
     RecArrayResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, RecArray recArray, Field[] fields)
             throws RepositoryException {
@@ -110,21 +101,6 @@ class RecArrayResultSet implements ResultSet {
         this.fields = fields;
 
         iso8601.setCalendar(gmtCalendar);
-
-        // We don't control the open action pattern. If the pattern
-        // does not specify the formats to be used for the IDs, we
-        // specify a format that does not use grouping. Note that the
-        // format array is not complete, but it has entries up to the
-        // highest argument actually used in the pattern.
-        openAction = new MessageFormat(connector.getOpenAction());
-        NumberFormat nf = NumberFormat.getIntegerInstance();
-        nf.setGroupingUsed(false);
-        Format[] formats = openAction.getFormatsByArgumentIndex();
-        for (int i = 1; i <= 4 && i < formats.length; i++) {
-            if (formats[i] == null)
-                openAction.setFormatByArgumentIndex(i, nf);
-        }
-
     }
 
     /**
@@ -157,8 +133,7 @@ class RecArrayResultSet implements ResultSet {
      * time zones and apply the resulting adjustment (in milliseconds)
      * to the Date object.
      */
-    private synchronized String toIso8601String(Date value)
-    {
+    private synchronized String toIso8601String(Date value) {
         return iso8601.format(value);
     }
 
@@ -172,18 +147,6 @@ class RecArrayResultSet implements ResultSet {
      */
     private synchronized String toSqlString(Date value) {
         return sql.format(value);
-    }
-
-    /**
-     * Formats the open action URL suffix format used in the
-     * google:displayurl property.
-     *
-     * @param arguments an array of objects to be formatted and substituted
-     * @param buffer the string buffer where text will be appended
-     */
-    private synchronized void formatOpenAction(Object[] args,
-            StringBuffer buffer) {
-        openAction.format(args, buffer, null);
     }
 
 
@@ -201,8 +164,7 @@ class RecArrayResultSet implements ResultSet {
         private int row;
         private final int size;
 
-        RecArrayResultSetIterator()
-        {
+        RecArrayResultSetIterator() {
             this.row = 0;
             this.size = recArray.size();
         }
@@ -234,8 +196,8 @@ class RecArrayResultSet implements ResultSet {
      * This implementation simply represents a specific row of the
      * underlying recarray.
      */
-    /* TODO: Fields with an undefined value should not appear as properties. */
     class RecArrayPropertyMap implements PropertyMap {
+        /** The row of the recarray this property map is based on. */
         private final int row;
 
         /*
@@ -349,6 +311,15 @@ class RecArrayResultSet implements ResultSet {
                 }
 
                 case Client.TASKSUBTYPE: {
+                    // FIXME: GSA Feed Data Source Log:swift95
+                    // 
+                    // ProcessNode: Content attribute not properly
+                    // specified, skipping record with URL
+                    // googleconnector://swift95.localhost/doc?docid=31352
+                    //
+                    // Caused by issue 30, empty metadata values, in
+                    // this case the Comments field.
+
                     int objectId = recArray.toInteger(row, "DataID");
                     int volumeId = recArray.toInteger(row, "OwnerID");
                     RecArray objectInfo =
@@ -381,19 +352,11 @@ class RecArrayResultSet implements ResultSet {
             addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
 
             // DISPLAYURL
-            String action = (subType == Client.TOPICSUBTYPE ||
-                subType == Client.REPLYSUBTYPE) ? "view" : "open";
             int objectId = recArray.toInteger(row, "DataID");
             int volumeId = recArray.toInteger(row, "OwnerID");
-            int parentId = recArray.toInteger(row, "ParentID");
-            StringBuffer buffer = new StringBuffer();
-            buffer.append(connector.getDisplayUrl());
-            formatOpenAction(new Object[] {
-                action, new Integer(objectId), new Integer(volumeId),
-                new Integer(subType), new Integer(parentId) },
-                buffer);
+            String url = connector.getDisplayUrl(subType, objectId, volumeId);
             addProperty(SpiConstants.PROPNAME_DISPLAYURL,
-                new SimpleValue(ValueType.STRING, buffer.toString()));
+                new SimpleValue(ValueType.STRING, url));
         }
 
         public Iterator getProperties() {

@@ -14,9 +14,16 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.text.Format;
+import java.text.MessageFormat;
+import java.text.NumberFormat;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.google.enterprise.connector.spi.Connector;
@@ -25,6 +32,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.RecArray;
 
 public class LivelinkConnector implements Connector {
     /** The logger for this class. */
@@ -73,11 +81,27 @@ public class LivelinkConnector implements Connector {
      */
     private ClientFactory authenticationClientFactory;
 
-    /** The display URL prefix for the search results. */
+    /** The base display URL for the search results. */
     private String displayUrl;
 
-    /** The open action URL suffix for the search results. */
-    private String openAction;
+    /**
+     * The map from subtypes to relative display URL pattern for the
+     * search results.
+     */
+    private Map displayPatterns = new HashMap(Collections.singletonMap(
+        null, getFormat("?func=ll&objId={0}&objAction={3}")));
+
+    /** The map from subtypes to Livelink display action names. */
+    private Map displayActions =
+        new HashMap(Collections.singletonMap(null, "properties"));
+
+    /**
+     * The non-grouping number format for IDs and subtypes in the
+     * display URL. This is a non-static field to avoid extra thread
+     * contention, and try to balance object creation and
+     * synchronization.
+     */
+    private final NumberFormat nonGroupingNumberFormat;
 
     /** The database server type, either "MSSQL" or "Oracle". */
     private String servtype;
@@ -126,6 +150,8 @@ public class LivelinkConnector implements Connector {
             LOGGER.log(Level.SEVERE, e.getMessage(), e);
             throw new RuntimeException(e); // XXX: More specific exception?
         }
+        nonGroupingNumberFormat = NumberFormat.getIntegerInstance();
+        nonGroupingNumberFormat.setGroupingUsed(false);
     }
 
     /**
@@ -289,7 +315,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the display URL prefix for the search results, e.g.,
+     * Sets the base display URL for the search results, e.g.,
      * "http://myhostname/Livelink/livelink.exe".
      * 
      * @param displayUrl the display URL prefix
@@ -301,51 +327,146 @@ public class LivelinkConnector implements Connector {
     }
     
     /**
-     * Gets the display URL prefix for the search results.
+     * Gets the base display URL for the search results.
      *
      * @return the display URL prefix
      */
-    public String getDisplayUrl() {
+    String getDisplayUrl() {
         return displayUrl;
     }
     
     /**
-     * Sets the open action URL suffix for the search results.
-     * The parameters are:
+     * Sets the relative display URL for each subtype. The map
+     * contains keys that consist of comma-separated subtype integers,
+     * or the special string "default". These are mapped to a {@link
+     * java.text.MessageFormat MessageFormat} pattern. The pattern
+     * arguments are:
      * <dl>
      * <dt> 0
-     * <dd> The default open action, usually <code>"open"</code> but
-     * it may vary; e.g., for discussion topics the default action is
-     * <code>"view"</code>.
-     * <dt> 1
      * <dd> The object ID.
-     * <dt> 2 
+     * <dt> 1
      * <dd> The volume ID.
-     * <dt> 3
+     * <dt> 2 
      * <dd> The subtype.
-     * <dt> 4
-     * <dd> The parent object ID.
+     * <dt> 3
+     * <dd> The display action, which varies by subtype and is
+     * configured by {@link #setDisplayActions}.
      * </dl>
      *
-     * <p>The default value is "?func=ll&objAction={0}&objId={1}".
+     * <p>The default value is a map with one entry mapping "default"
+     * to "?func=ll&objId={0}&objAction={3}".
      * 
-     * @param openAction the open action URL suffix
+     * @param displayPatterns a map from subtypes to relative display
+     * URL patterns
      */
-    public void setOpenAction(String openAction) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("DISPLAY URL: " + openAction);
-        this.openAction = openAction;
+    public void setDisplayPatterns(Map displayPatterns) {
+        setDisplayMap("DISPLAY PATTERNS", displayPatterns,
+            this.displayPatterns, true);
     }
     
     /**
-     * Gets the open action URL suffix for the search results.
+     * Sets the display action for each subtype. The map contains
+     * keys that consist of comma-separated subtype integers, or the
+     * special string "default". These are mapped to Livelink action
+     * names, such as "browse" or "overview".
+     * 
+     * <p>The default value is a map with one entry mapping "default"
+     * to "properties".
      *
-     * @return the open action suffix
+     * @param displayActions a map from subtypes to Livelink actions
      */
-    public String getOpenAction() {
-        return openAction;
+    public void setDisplayActions(Map displayActions) {
+        setDisplayMap("DISPLAY ACTIONS", displayActions,
+            this.displayActions, false);
+    }
+
+    /**
+     * Converts a user-specified map into a system map. The user map
+     * has string keys for each subtype, and the default entry key is
+     * "default." The system map has <code>Integer</code> keys for
+     * each subtype, and the default entry has a <code>null</code>
+     * key. If the user map values are <code>MessageFormat</code>
+     * patterns, then the system map will contain
+     * <code>MessageFormat</code> instances for those patterns.
+     *
+     * @param userMap the user map to read from
+     * @param systemMap the system map to add converted entries to
+     * @param isPatterns <code>true</code> if the map values are
+     * <code>MessageFormat</code> patterns, or <code>false</code>
+     * otherwise
+     */
+    private void setDisplayMap(String logPrefix, Map userMap,
+            Map systemMap, boolean isPatterns) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config(logPrefix + ": " + systemMap);
+        Iterator it = userMap.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry entry = (Map.Entry) it.next();
+            String key = (String) entry.getKey();
+            Object value = entry.getValue();
+            if (isPatterns)
+                value = getFormat((String) value);
+            if ("default".equals(key))
+                systemMap.put(null, value);
+            else {
+                String[] subtypes = sanitizeListOfIntegers(key).split(",");
+                for (int i = 0; i < subtypes.length; i++)
+                    systemMap.put(new Integer(subtypes[i]), value);
+            }
+        }
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine(logPrefix + " PARSED: " + systemMap);
+    }
+
+    /**
+     * We don't control the relative display URL patterns. If the
+     * patterns do not specify the formats to be used for the IDs, we
+     * specify a format that does not use grouping. Note that the
+     * formats array is not complete, but it has entries up to the
+     * highest argument actually used in the pattern.
+     *
+     * @param pattern a <code>MessageFormat</code> pattern
+     * @see #setDisplayPatterns
+     */
+    private MessageFormat getFormat(String pattern) {
+        MessageFormat mf = new MessageFormat(pattern);
+        Format[] formats = mf.getFormatsByArgumentIndex();
+        for (int i = 0; i < 3 && i < formats.length; i++) {
+            if (formats[i] == null)
+                mf.setFormatByArgumentIndex(i, nonGroupingNumberFormat);
+        }
+        return mf;
     }
     
+    /**
+     * Gets the display URL for the google:displayurl property. This
+     * assembles the base display URL and the subtype-specific
+     * relative display URL pattern, which may use the
+     * subtype-specific display action.
+     *
+     * @param subType the subtype, used to select a pattern and an action
+     * @param volumeId the volume ID of the object
+     * @param objectId the object ID of the object
+     */
+    String getDisplayUrl(int subType, int objectId, int volumeId) {
+        Integer subTypeInteger = new Integer(subType);
+        MessageFormat mf = (MessageFormat) displayPatterns.get(subTypeInteger);
+        if (mf == null)
+            mf = (MessageFormat) displayPatterns.get(null);
+        Object action = displayActions.get(subTypeInteger);
+        if (action == null)
+            action = displayActions.get(null);
+
+        StringBuffer buffer = new StringBuffer();
+        buffer.append(displayUrl);
+        Object[] args = { new Integer(objectId), new Integer(volumeId),
+            subTypeInteger, action };
+        synchronized (displayPatterns) {
+            mf.format(args, buffer, null);
+        }
+        return buffer.toString();
+    }
+
     /**
      * Sets a property which indicates that any username and
      * password values which need to be authenticated should be
@@ -429,7 +550,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the excluded node types
      */
-    public String getExcludedNodeTypes() {
+    String getExcludedNodeTypes() {
         return excludedNodeTypes;
     }
     
@@ -451,7 +572,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the excluded volume types
      */
-    public String getExcludedVolumeTypes() {
+    String getExcludedVolumeTypes() {
         return excludedVolumeTypes;
     }
     
@@ -472,7 +593,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the excluded node IDs
      */
-    public String getExcludedLocationNodes() {
+    String getExcludedLocationNodes() {
         return excludedLocationNodes;
     }
     
@@ -649,7 +770,7 @@ public class LivelinkConnector implements Connector {
      * @return the fully-qualified name of the <code>ContentHandler</code>
      * implementation to use
      */
-    public String getContentHandler() {
+    String getContentHandler() {
         return contentHandler;
     }
     
@@ -663,18 +784,86 @@ public class LivelinkConnector implements Connector {
         if (!useSeparateAuthentication)
             authenticationClientFactory = null; 
 
-        // Two birds with one stone. Getting the character encoding
-        // from the server verifies connectivity, and we use the
-        // result to set the character encoding for future clients.
+        // Serveral birds with one stone. Getting the server info
+        // verifies connectivity with the server, and we use the
+        // results to set the character encoding for future clients
+        // and confirm the availability of the overview action.
         Client client = clientFactory.createClient();
-        String encoding = client.getEncoding();
-        if (encoding != null) {
-            if (LOGGER.isLoggable(Level.CONFIG))
-                LOGGER.config("ENCODING: " + encoding);
-            clientFactory.setEncoding(encoding);
-            if (authenticationClientFactory != null)
-                authenticationClientFactory.setEncoding(encoding);
+        RecArray serverInfo = client.GetServerInfo();
+        boolean hasCharacterEncoding; // Set below.
+
+        // Get the server version, which is a string like "9.5.0".
+        String serverVersion = serverInfo.toString("ServerVersion");
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("SERVER VERSION: " + serverVersion);
+        String[] versions = serverVersion.split("\\.");
+        int majorVersion;
+        int minorVersion;
+        if (versions.length >= 2) {
+            majorVersion = Integer.parseInt(versions[0]);
+            minorVersion = Integer.parseInt(versions[1]);
+        } else {
+            if (LOGGER.isLoggable(Level.WARNING)) {
+                LOGGER.warning(
+                    "Unable to parse Livelink server version; assuming 9.5.");
+            }
+            majorVersion = 9;
+            minorVersion = 5;
         }
+
+        // The connector requires Livelink 9.0 or later.
+        if (majorVersion < 9) {
+            throw new RepositoryException(
+                "Livelink 9.0 or later is required.");
+        }
+        
+        // Check for Livelink 9.2 or earlier; omit excluded volumes
+        // and locations if needed. XXX: The DTreeAncestors table was
+        // introduced in Livelink 9.5. Just bailing like this is weak,
+        // but Livelink 9.2 is not officially supported, so there are
+        // limits to how much work is worthwhile here.
+        if (majorVersion == 9 && minorVersion <= 2) {
+            if (LOGGER.isLoggable(Level.WARNING)) {
+                LOGGER.warning("ExcludedVolumeTypes and " +
+                    "ExcludedLocationNodes are not supported under " +
+                    "Livelink 9.2 or earlier.");
+            }
+            excludedVolumeTypes = null;
+            excludedLocationNodes = null;
+
+            // Livelink 9.2 does not return the CharacterEncoding field.
+            hasCharacterEncoding = false;
+        } else
+            hasCharacterEncoding = true;
+
+        // Check for Livelink 9.5 or earlier; change overview action
+        // if needed. We only check for the default entry, because if
+        // the map has been customized, perhaps the user knows what
+        // they are doing. If a user has a Livelink 9.5 with an custom
+        // overview action, they can configure that in the
+        // displayPatterns and we won't see it. We are leaving the
+        // modified entry in the map rather than removing it and
+        // relying on the default action because there are lots and
+        // lots of documents, and this avoids a map lookup miss in
+        // getDisplayUrl for every one of them.
+        if (majorVersion == 9 && minorVersion <= 5) {
+            Integer docSubType = new Integer(144);
+            Object action = displayActions.get(docSubType);
+            if ("overview".equals(action))
+                displayActions.put(docSubType, "properties");
+        }
+        
+        // Set the character encodings in the client factories if needed.
+        if (hasCharacterEncoding) {
+            int serverEncoding = serverInfo.toInteger("CharacterEncoding");
+            if (serverEncoding == Client.CHARACTER_ENCODING_UTF8) {
+                LOGGER.config("ENCODING: UTF-8");
+                clientFactory.setEncoding("UTF-8");
+                if (authenticationClientFactory != null)
+                    authenticationClientFactory.setEncoding("UTF-8");
+            }
+        }
+
         return new LivelinkSession(this, clientFactory, 
             authenticationClientFactory);
     }

@@ -42,9 +42,18 @@ final class LapiClient implements Client {
 
     static {
         // Verify that the Client class constants are correct.
-        assert TOPICSUBTYPE == LAPI_DOCUMENTS.TOPICSUBTYPE : TOPICSUBTYPE;
-        assert REPLYSUBTYPE == LAPI_DOCUMENTS.REPLYSUBTYPE : REPLYSUBTYPE;
-        assert TASKSUBTYPE == LAPI_DOCUMENTS.TASKSUBTYPE : TASKSUBTYPE;
+        assert TOPICSUBTYPE == LAPI_DOCUMENTS.TOPICSUBTYPE :
+            LAPI_DOCUMENTS.TOPICSUBTYPE;
+        assert REPLYSUBTYPE == LAPI_DOCUMENTS.REPLYSUBTYPE :
+            LAPI_DOCUMENTS.REPLYSUBTYPE;
+        assert TASKSUBTYPE == LAPI_DOCUMENTS.TASKSUBTYPE :
+            LAPI_DOCUMENTS.TASKSUBTYPE;
+        assert CHARACTER_ENCODING_NONE ==
+            LAPI_DOCUMENTS.CHARACTER_ENCODING_NONE :
+            LAPI_DOCUMENTS.CHARACTER_ENCODING_NONE;
+        assert CHARACTER_ENCODING_UTF8 ==
+            LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8 :
+            LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8;
     }
     
     /**
@@ -73,26 +82,16 @@ final class LapiClient implements Client {
         this.attributes = new LAPI_ATTRIBUTES(session);
     }
 
-    /**
-     * {@inheritDoc} 
-     * <p>
-     * This implementation calls GetServerInfo to retrieve the server
-     * encoding.
-     */
-    /* FIXME: Livelink 9.2 does not return the CharacterEncoding field. */
-    public String getEncoding() throws RepositoryException {
+    /** {@inheritDoc} */
+    public RecArray GetServerInfo() throws RepositoryException {
+        LLValue value = (new LLValue()).setAssocNotSet();
         try {
-            LLValue value = (new LLValue()).setAssocNotSet();
             if (documents.GetServerInfo(value) != 0)
                 throw new LapiException(session, LOGGER);
-            int serverEncoding = value.toInteger("CharacterEncoding");
-            if (serverEncoding == LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8)
-                return "UTF-8";
-            else
-                return null;
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiRecArray(value);
     }
 
     /** {@inheritDoc} */

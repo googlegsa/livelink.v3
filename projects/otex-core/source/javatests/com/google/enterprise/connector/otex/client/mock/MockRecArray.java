@@ -19,33 +19,60 @@ import java.util.Date;
 import com.google.enterprise.connector.otex.client.RecArray;
 
 /**
- * A mock implementation of an empty <code>RecArray</code>. The size
- * is always zero, and the getter methods always throw an
- * <code>IllegalArgumentException</code>.
+ * A partial mock implementation of a <code>RecArray</code>. Most of
+ * the methods throw an <code>IllegalArgumentException</code>. The
+ * <code>size</code>, <code>toString(int,String)</code>,
+ * <code>toInteger(String)</code>, and<code>toString(String)</code>
+ * methods are implemented.
  */
 public final class MockRecArray implements RecArray {
     private final String[] fieldNames;
-    private final Object[][] values;
+    private final Object[][] tableValues;
+    private final Object[] assocValues;
 
     MockRecArray(String[] fieldNames, Object[][] values) {
         if (values.length > 0 && (fieldNames.length != values[0].length))
             throw new IllegalArgumentException();
         this.fieldNames = fieldNames;
-        this.values = values;
+        this.tableValues = values;
+        this.assocValues = null;
     }
 
-    private Object getValue(int row, String field) {
-        if (row < 0 || row > values.length)
-            throw new IllegalArgumentException(String.valueOf(row));
+    MockRecArray(String[] fieldNames, Object[] values) {
+        if (fieldNames.length != values.length)
+            throw new IllegalArgumentException();
+        this.fieldNames = fieldNames;
+        this.tableValues = null;
+        this.assocValues = values;
+    }
+
+    private Object getField(Object[] values, String field) {
         for (int i = 0; i < fieldNames.length; i++) {
             if (fieldNames[i].equals(field))
-                return values[row][i];
+                return values[i];
         }
         throw new IllegalArgumentException(field);
     }
+
+    private Object getValue(int row, String field) {
+        if (tableValues == null)
+            throw new IllegalArgumentException("RecArray is not a table.");
+        if (row < 0 || row > tableValues.length)
+            throw new IllegalArgumentException(String.valueOf(row));
+        return getField(tableValues[row], field);
+    }
+    
+    private Object getValue(String field) {
+        if (assocValues == null)
+            throw new IllegalArgumentException("RecArray is not an assoc.");
+        return getField(assocValues, field);
+    }
     
     public int size() {
-        return values.length;
+        if (tableValues != null)
+            return tableValues.length;
+        else
+            return assocValues.length;
     }
 
     public boolean isDefined(int row, String field) {
@@ -97,11 +124,15 @@ public final class MockRecArray implements RecArray {
     }
 
     public int toInteger(String field) {
-        throw new IllegalArgumentException();
+        Object v = getValue(field);
+        if (v instanceof Integer)
+            return ((Integer) v).intValue();
+        else
+            return Integer.parseInt(v.toString());
     }
 
     public String toString(String field) {
-        throw new IllegalArgumentException();
+        return getValue(field).toString();
     }
     
     public boolean isDefined() {

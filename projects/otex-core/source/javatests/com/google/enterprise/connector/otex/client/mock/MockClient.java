@@ -38,10 +38,14 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns <code>null</code>.
+     * This implementation returns an assoc containing a
+     * CharacterEncoding of CHARACTER_ENCODING_NONE and a
+     * ServerVersion of "9.5.0".
      */
-    public String getEncoding() {
-        return null;
+    public RecArray GetServerInfo() {
+        return new MockRecArray(
+            new String[] { "CharacterEncoding", "ServerVersion" },
+            new Object[] { new Integer(CHARACTER_ENCODING_NONE), "9.5.0" });
     }
 
     /**
@@ -84,12 +88,11 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns an empty recarray.
+     * This implementation returns an empty assoc.
      */
-    /* TODO: This should return an empty assoc. */
     public RecArray GetObjectInfo(int volumeId, int objectId)
     {
-        return new MockRecArray(new String[0], new Object[0][0]);
+        return new MockRecArray(new String[0], new Object[0]);
     }
 
     /**

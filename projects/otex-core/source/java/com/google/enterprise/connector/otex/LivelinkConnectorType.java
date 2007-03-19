@@ -276,6 +276,8 @@ public class LivelinkConnectorType implements ConnectorType {
         baseEntries.add(new TextInputProperty("database", "Database")); 
         baseEntries.add(new TextInputProperty("username", "Username")); 
         baseEntries.add(new PasswordInputProperty("password", "Password")); 
+        baseEntries.add(new TextInputProperty("domainName", "Livelink Domain"));
+        baseEntries.add(new TextInputProperty("displayUrl", "Display URL")); 
         baseEntries.add(new BooleanSelectProperty("useHttps", "Use HTTPS", 
                             "true")); 
         baseEntries.add(new BooleanSelectProperty("enableNtlm", "Enable NTLM",
@@ -289,12 +291,9 @@ public class LivelinkConnectorType implements ConnectorType {
                             "Verify Server", "true" ));
         baseEntries.add(new TextareaProperty("caRootCerts",
                             "CA Root Certificate")); 
-        baseEntries.add(new TextInputProperty("domainName", "Livelink Domain"));
-        baseEntries.add(new TextInputProperty("displayUrl", "Display URL")); 
         baseEntries.add(new BooleanSelectProperty(
                             "useUsernamePasswordWithWebServer",
                             "Use Credentials With Web Server", "false"));  
-        //baseEntries.add(new TextInputProperty("servtype", "Server Type")); 
         baseEntries.add(
             new BooleanSelectProperty("useSeparateAuthentication", 
                 "Use Different Authentication Configuration", "false"));  
@@ -330,7 +329,7 @@ public class LivelinkConnectorType implements ConnectorType {
         authenticationEntries.add(
             new BooleanSelectProperty(
                 "authenticationUseUsernamePasswordWithWebServer",
-                "[Authentication] Use Credentials With Web Server", "false"));  
+                "[Authentication] Use Credentials With Web Server", "false"));
     }
 
     /**

@@ -36,14 +36,19 @@ public interface Client
     
     /** Task object. */
     int TASKSUBTYPE = 206;
+
+    /** No character encoding. */
+    int CHARACTER_ENCODING_NONE = 0;
+
+    /** UTF-8 character encoding. */
+    int CHARACTER_ENCODING_UTF8 = 1;
     
     /**
-     * Gets the server character encoding, or null if an encoding does
-     * not need to be set on the session.
+     * Gets information about the Livelink server.
      *
      * @throws RepositoryException if an error occurs
      */
-    String getEncoding() throws RepositoryException;
+    RecArray GetServerInfo() throws RepositoryException;
 
     /**
      * Gets the value of the LLCookie for the logged in user.

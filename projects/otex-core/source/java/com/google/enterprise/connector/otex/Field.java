@@ -18,10 +18,7 @@ import com.google.enterprise.connector.spi.ValueType;
 
 /**
  * Describes the properties returned to the caller and the fields
- * in Livelink needed to implement them. A null
- * <code>fieldName</code> indicates a property that is in not in
- * the recarray selected from the database. These properties are
- * implemented separately. A null <code>propertyName</code>
+ * in Livelink needed to implement them. A null <code>propertyName</code>
  * indicates a field that is required from the database but which
  * is not returned as a property to the caller.
  */
@@ -37,4 +34,3 @@ final class Field {
         this.propertyName = propertyName;
     }
 }
-    

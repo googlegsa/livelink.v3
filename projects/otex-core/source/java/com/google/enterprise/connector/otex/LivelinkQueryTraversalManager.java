@@ -48,7 +48,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This implementation requires DataID,
-        // OwnerID, ModifyDate, MimeType, DataSize, and ParentID.
+        // OwnerID, ModifyDate, MimeType, and DataSize.
         ArrayList list = new ArrayList();
 
         list.add(new Field(
@@ -72,8 +72,6 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
         list.add(new Field(
             "DataSize", ValueType.LONG, null));
-        list.add(new Field(
-            "ParentID", ValueType.LONG, null));
         list.add(new Field(
             "PermID", ValueType.LONG, null));
         
