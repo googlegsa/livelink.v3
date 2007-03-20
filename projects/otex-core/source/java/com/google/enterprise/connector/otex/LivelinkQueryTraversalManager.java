@@ -28,7 +28,7 @@ import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 class LivelinkQueryTraversalManager implements QueryTraversalManager {
     /** The logger for this class. */
@@ -133,7 +133,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             // generic errors when connecting or using ListNodes.
             String query = "1=1"; // ListNodes requires a WHERE clause.
             String[] columns = { "42" };
-            RecArray results = client.ListNodes(query, "KDual", columns);
+            ClientValue results = client.ListNodes(query, "KDual", columns);
 
             // Then check an Oracle-specific query.
             boolean isOracle;
@@ -229,14 +229,14 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         } else
             hasNodeTypes = false;
 
-        RecArray volumes;
+        ClientValue volumes;
         String excludedVolumeTypes = connector.getExcludedVolumeTypes();
         if (excludedVolumeTypes != null &&
                 excludedVolumeTypes.length() > 0) {
             String query = "SubType in (" + excludedVolumeTypes + ")";
             String view = "DTree";
             String[] columns = { "DataID", "PermID" };
-            RecArray results = client.ListNodes(query, view, columns);
+            ClientValue results = client.ListNodes(query, view, columns);
             volumes = (results.size() == 0) ? null : results;
         } else
             volumes = null;
@@ -341,7 +341,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * @return a checkpoint string for the given property map
      */
     public String checkpoint(PropertyMap pm) throws RepositoryException {
-        String s = ((RecArrayResultSet.RecArrayPropertyMap) pm).checkpoint();
+        String s = ((LivelinkResultSet.LivelinkPropertyMap) pm).checkpoint();
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("CHECKPOINT: " + s + " @" +
                 Integer.toHexString(System.identityHashCode(this)));
@@ -414,9 +414,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * @return a batch of results starting at the checkpoint, if there
      * is one, or the beginning of the traversal order, otherwise
      */
-    private ResultSet listNodes(String checkpoint) throws RepositoryException
-    {
-        RecArray recArray;
+    private ResultSet listNodes(String checkpoint) throws RepositoryException {
+        ClientValue recArray;
         if (isSqlServer)
             recArray = listNodesSqlServer(checkpoint);
         else
@@ -425,7 +424,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
             LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
                 Integer.toHexString(System.identityHashCode(this)));
         }
-        return new RecArrayResultSet(connector, client, contentHandler,
+        return new LivelinkResultSet(connector, client, contentHandler,
             recArray, FIELDS);
     }
 
@@ -439,7 +438,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
     private static final String ORDER_BY = " order by ModifyDate, DataID";
 
 
-    private RecArray listNodesSqlServer(String checkpoint)
+    private ClientValue listNodesSqlServer(String checkpoint)
             throws RepositoryException {
         String query;
         if (checkpoint == null && excluded == null)
@@ -464,7 +463,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * XXX: We could use FIRST_ROWS(<batchSize>), but I don't know how
      * important that is on this query.
      */
-    private RecArray listNodesOracle(String checkpoint)
+    private ClientValue listNodesOracle(String checkpoint)
             throws RepositoryException {
         String query = "rownum <= " + batchSize;
         StringBuffer buffer = new StringBuffer();

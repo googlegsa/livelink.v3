@@ -16,21 +16,21 @@ package com.google.enterprise.connector.otex.client.mock;
 
 import java.util.Date;
 
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
- * A partial mock implementation of a <code>RecArray</code>. Most of
+ * A partial mock implementation of a <code>ClientValue</code>. Most of
  * the methods throw an <code>IllegalArgumentException</code>. The
  * <code>size</code>, <code>toString(int,String)</code>,
  * <code>toInteger(String)</code>, and<code>toString(String)</code>
  * methods are implemented.
  */
-public final class MockRecArray implements RecArray {
+public final class MockClientValue implements ClientValue {
     private final String[] fieldNames;
     private final Object[][] tableValues;
     private final Object[] assocValues;
 
-    MockRecArray(String[] fieldNames, Object[][] values) {
+    MockClientValue(String[] fieldNames, Object[][] values) {
         if (values.length > 0 && (fieldNames.length != values[0].length))
             throw new IllegalArgumentException();
         this.fieldNames = fieldNames;
@@ -38,7 +38,7 @@ public final class MockRecArray implements RecArray {
         this.assocValues = null;
     }
 
-    MockRecArray(String[] fieldNames, Object[] values) {
+    MockClientValue(String[] fieldNames, Object[] values) {
         if (fieldNames.length != values.length)
             throw new IllegalArgumentException();
         this.fieldNames = fieldNames;
@@ -56,7 +56,7 @@ public final class MockRecArray implements RecArray {
 
     private Object getValue(int row, String field) {
         if (tableValues == null)
-            throw new IllegalArgumentException("RecArray is not a table.");
+            throw new IllegalArgumentException("ClientValue is not a table.");
         if (row < 0 || row > tableValues.length)
             throw new IllegalArgumentException(String.valueOf(row));
         return getField(tableValues[row], field);
@@ -64,7 +64,7 @@ public final class MockRecArray implements RecArray {
     
     private Object getValue(String field) {
         if (assocValues == null)
-            throw new IllegalArgumentException("RecArray is not an assoc.");
+            throw new IllegalArgumentException("ClientValue is not an assoc.");
         return getField(assocValues, field);
     }
     
@@ -79,7 +79,7 @@ public final class MockRecArray implements RecArray {
         throw new IllegalArgumentException();
     }
     
-    public RecArray toValue(int row, String field) {
+    public ClientValue toValue(int row, String field) {
         throw new IllegalArgumentException();
     }
     
@@ -107,7 +107,7 @@ public final class MockRecArray implements RecArray {
         throw new IllegalArgumentException();
     }
     
-    public RecArray toValue(String field) {
+    public ClientValue toValue(String field) {
         throw new IllegalArgumentException();
     }
     

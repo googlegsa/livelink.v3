@@ -28,7 +28,7 @@ import com.google.enterprise.connector.spi.SimpleResultSet;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * Implements an AuthorizationManager for the Livelink connector.
@@ -104,7 +104,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         while (fromIndex < toIndex && toIndex <= docids.size()) {
             String query = getDocidQuery(docids.subList(fromIndex, toIndex));
             LOGGER.finest(query);
-            RecArray results = client.ListNodes(query, "WebNodes",
+            ClientValue results = client.ListNodes(query, "WebNodes",
                 new String[] { "DataID", "PermID" });
             for (int i = 0; i < results.size(); i++)
                 authorized.add(results.toString(i, "DataID"));

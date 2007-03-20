@@ -48,7 +48,7 @@ public interface Client
      *
      * @throws RepositoryException if an error occurs
      */
-    RecArray GetServerInfo() throws RepositoryException;
+    ClientValue GetServerInfo() throws RepositoryException;
 
     /**
      * Gets the value of the LLCookie for the logged in user.
@@ -71,7 +71,7 @@ public interface Client
      * @param columns a SQL select list, used in the SELECT clause
      * @throws RepositoryException if an error occurs
      */
-    RecArray ListNodes(String query, String view, String[] columns)
+    ClientValue ListNodes(String query, String view, String[] columns)
         throws RepositoryException;
 
     /**
@@ -80,7 +80,7 @@ public interface Client
      * @param volumeId the volume ID of the object
      * @param objectId the object ID of the object
      */
-    RecArray GetObjectInfo(int volumeId, int objectId)
+    ClientValue GetObjectInfo(int volumeId, int objectId)
         throws RepositoryException;
 
     /**

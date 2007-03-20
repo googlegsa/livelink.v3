@@ -32,7 +32,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 public class LivelinkConnector implements Connector {
     /** The logger for this class. */
@@ -789,7 +789,7 @@ public class LivelinkConnector implements Connector {
         // results to set the character encoding for future clients
         // and confirm the availability of the overview action.
         Client client = clientFactory.createClient();
-        RecArray serverInfo = client.GetServerInfo();
+        ClientValue serverInfo = client.GetServerInfo();
         boolean hasCharacterEncoding; // Set below.
 
         // Get the server version, which is a string like "9.5.0".

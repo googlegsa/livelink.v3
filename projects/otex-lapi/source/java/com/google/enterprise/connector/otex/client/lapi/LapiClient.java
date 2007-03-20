@@ -24,7 +24,7 @@ import java.util.Map;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 import com.opentext.api.LAPI_ATTRIBUTES;
 import com.opentext.api.LAPI_DOCUMENTS;
@@ -83,7 +83,7 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public RecArray GetServerInfo() throws RepositoryException {
+    public ClientValue GetServerInfo() throws RepositoryException {
         LLValue value = (new LLValue()).setAssocNotSet();
         try {
             if (documents.GetServerInfo(value) != 0)
@@ -91,7 +91,7 @@ final class LapiClient implements Client {
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
-        return new LapiRecArray(value);
+        return new LapiClientValue(value);
     }
 
     /** {@inheritDoc} */
@@ -115,7 +115,7 @@ final class LapiClient implements Client {
     }
     
     /** {@inheritDoc} */
-    public synchronized RecArray ListNodes(String query, String view,
+    public synchronized ClientValue ListNodes(String query, String view,
             String[] columns) throws RepositoryException {
         LLValue recArray = (new LLValue()).setTable();
         try {
@@ -131,18 +131,18 @@ final class LapiClient implements Client {
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
-        return new LapiRecArray(recArray);
+        return new LapiClientValue(recArray);
     }
 
     /** {@inheritDoc} */
-    public synchronized RecArray GetObjectInfo(int volumeId, int objectId)
+    public synchronized ClientValue GetObjectInfo(int volumeId, int objectId)
             throws RepositoryException {
         try {
             LLValue objectInfo = new LLValue();
             if (documents.GetObjectInfo(volumeId, objectId, objectInfo) != 0) {
                 throw new LapiException(session, LOGGER);
             }
-            return new LapiRecArray(objectInfo);
+            return new LapiClientValue(objectInfo);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
@@ -418,7 +418,7 @@ final class LapiClient implements Client {
                 valueList.add(userInfo.toString("Name")); 
             } else {
                 // TODO: what value object should we put here? A
-                // CategoryValue, like the RecArrayValue?
+                // CategoryValue, like the LivelinkValue?
                 valueList.add(attributeValues.toValue(k).toString());
             }
         }
@@ -450,7 +450,7 @@ final class LapiClient implements Client {
             String[] columns = { "ID", "DefID", "AttrId", "AttrType", 
                                  "EntryNum", "ValInt", "ValReal", 
                                  "ValDate", "ValStr", "ValLong" }; 
-            RecArray attributeData = ListNodes(
+            ClientValue attributeData = ListNodes(
                 "ID=" + objId + " order by DefId,AttrId,EntryNum",
                 "LLAttrData", columns); 
             if (attributeData.size() == 0) {
@@ -589,7 +589,7 @@ final class LapiClient implements Client {
         String[] columns = { "CatId", "AttrName", "RegionName" }; 
         String query = "CatId in (select distinct DefId from LLAttrData " +
             "where ID = " + objId + ")";
-        RecArray namesRecArray = ListNodes(query, "CatRegionMap", columns); 
+        ClientValue namesRecArray = ListNodes(query, "CatRegionMap", columns); 
         HashMap attributeNames = new HashMap(); 
         for (int i = 0; i < namesRecArray.size(); i++) {
             String categoryId = namesRecArray.toString(i, "CatId");

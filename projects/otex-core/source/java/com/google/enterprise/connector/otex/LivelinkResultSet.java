@@ -40,7 +40,7 @@ import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * This result set implementation could be trivial, but is not. Since
@@ -52,10 +52,10 @@ import com.google.enterprise.connector.otex.client.RecArray;
  * we use inner classes to share the necessary objects from this
  * outermost class.
  */
-class RecArrayResultSet implements ResultSet {
+class LivelinkResultSet implements ResultSet {
     /** The logger for this class. */
     private static final Logger LOGGER =
-        Logger.getLogger(RecArrayResultSet.class.getName());
+        Logger.getLogger(LivelinkResultSet.class.getName());
 
     /** An immutable empty string value. */
     private static final Value VALUE_EMPTY =
@@ -74,7 +74,7 @@ class RecArrayResultSet implements ResultSet {
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
     
-    private final RecArray recArray;
+    private final ClientValue recArray;
 
     /** The recarray fields. */
     private final Field[] fields;
@@ -91,9 +91,9 @@ class RecArrayResultSet implements ResultSet {
     private final SimpleDateFormat sql =
         new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
 
-    RecArrayResultSet(LivelinkConnector connector, Client client,
-            ContentHandler contentHandler, RecArray recArray, Field[] fields)
-            throws RepositoryException {
+    LivelinkResultSet(LivelinkConnector connector, Client client,
+            ContentHandler contentHandler, ClientValue recArray,
+            Field[] fields) throws RepositoryException {
         this.connector = connector;
         this.client = client;
         this.contentHandler = contentHandler;
@@ -152,7 +152,7 @@ class RecArrayResultSet implements ResultSet {
 
     /** {@inheritDoc} */
     public Iterator iterator() {
-        return new RecArrayResultSetIterator();
+        return new LivelinkResultSetIterator();
     }
     
 
@@ -160,11 +160,11 @@ class RecArrayResultSet implements ResultSet {
      * Iterates over a <code>ResultSet</code>, returning each
      * <code>PropertyMap</code> it contains.
      */
-    private class RecArrayResultSetIterator implements Iterator {
+    private class LivelinkResultSetIterator implements Iterator {
         private int row;
         private final int size;
 
-        RecArrayResultSetIterator() {
+        LivelinkResultSetIterator() {
             this.row = 0;
             this.size = recArray.size();
         }
@@ -176,7 +176,7 @@ class RecArrayResultSet implements ResultSet {
         public Object next() {
             if (row < size) {
                 try {
-                    return new RecArrayPropertyMap(row++);
+                    return new LivelinkPropertyMap(row++);
                 } catch (RepositoryException e) {
                     throw new RuntimeException(e);
                 }
@@ -193,10 +193,11 @@ class RecArrayResultSet implements ResultSet {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation simply represents a specific row of the
-     * underlying recarray.
+     * This implementation accumlated properties from the the
+     * underlying recarray, along with other properties derived from
+     * the recarray.
      */
-    class RecArrayPropertyMap implements PropertyMap {
+    class LivelinkPropertyMap implements PropertyMap {
         /** The row of the recarray this property map is based on. */
         private final int row;
 
@@ -206,7 +207,7 @@ class RecArrayResultSet implements ResultSet {
          */
         private final Map properties = new LinkedHashMap(fields.length * 2);
 
-        RecArrayPropertyMap(int row) throws RepositoryException {
+        LivelinkPropertyMap(int row) throws RepositoryException {
             this.row = row;
 
             collectRecArrayProperties();
@@ -241,11 +242,11 @@ class RecArrayResultSet implements ResultSet {
         private void collectRecArrayProperties() throws RepositoryException {
             for (int i = 0; i < fields.length; i++) {
                 if (fields[i].propertyName != null) {
-                    RecArray value =
+                    ClientValue value =
                         recArray.toValue(row, fields[i].fieldName);
                     if (value.isDefined()) {
                         addProperty(fields[i].propertyName,
-                            new RecArrayValue(fields[i].fieldType, value));
+                            new LivelinkValue(fields[i].fieldType, value));
                     }
                 }
             }
@@ -300,9 +301,10 @@ class RecArrayResultSet implements ResultSet {
                 case Client.REPLYSUBTYPE: {
                     int objectId = recArray.toInteger(row, "DataID");
                     int volumeId = recArray.toInteger(row, "OwnerID");
-                    RecArray objectInfo =
+                    ClientValue objectInfo =
                         client.GetObjectInfo(volumeId, objectId);
-                    RecArray extendedData = objectInfo.toValue("ExtendedData");
+                    ClientValue extendedData =
+                        objectInfo.toValue("ExtendedData");
                     String content = extendedData.toString("Content");
                     LOGGER.finer("CONTENT = " + content);
                     contentValue = new SimpleValue(ValueType.STRING, content);
@@ -322,9 +324,10 @@ class RecArrayResultSet implements ResultSet {
 
                     int objectId = recArray.toInteger(row, "DataID");
                     int volumeId = recArray.toInteger(row, "OwnerID");
-                    RecArray objectInfo =
+                    ClientValue objectInfo =
                         client.GetObjectInfo(volumeId, objectId);
-                    RecArray extendedData = objectInfo.toValue("ExtendedData");
+                    ClientValue extendedData =
+                        objectInfo.toValue("ExtendedData");
                     String content = extendedData.toString("Instructions");
                     LOGGER.finer("CONTENT = " + content);
                     contentValue = new SimpleValue(ValueType.STRING, content);
@@ -360,7 +363,7 @@ class RecArrayResultSet implements ResultSet {
         }
 
         public Iterator getProperties() {
-            return new RecArrayPropertyMapIterator(properties);
+            return new LivelinkPropertyMapIterator(properties);
         }
 
         public Property getProperty(String name) {
@@ -368,7 +371,7 @@ class RecArrayResultSet implements ResultSet {
             if (values == null)
                 return null;
             else
-                return new RecArrayProperty(name, (LinkedList) values);
+                return new LivelinkProperty(name, (LinkedList) values);
         }
 
         /**
@@ -391,10 +394,10 @@ class RecArrayResultSet implements ResultSet {
      * Iterates over a <code>PropertyMap</code>, returning each
      * <code>Property</code> it contains.
      */
-    private static class RecArrayPropertyMapIterator implements Iterator {
+    private static class LivelinkPropertyMapIterator implements Iterator {
         private final Iterator properties;
 
-        RecArrayPropertyMapIterator(Map properties) {
+        LivelinkPropertyMapIterator(Map properties) {
             this.properties = properties.entrySet().iterator();
         }
 
@@ -404,7 +407,7 @@ class RecArrayResultSet implements ResultSet {
 
         public Object next() {
             Map.Entry property = (Map.Entry) properties.next();
-            return new RecArrayProperty((String) property.getKey(),
+            return new LivelinkProperty((String) property.getKey(),
                 (LinkedList) property.getValue());
         }
 
@@ -422,13 +425,13 @@ class RecArrayResultSet implements ResultSet {
      */
     /*
      * We could just use SimpleProperty instead, and move the logging
-     * to RecArrayPropertyMapIterator.
+     * to LivelinkPropertyMapIterator.
      */
-    private static class RecArrayProperty implements Property {
+    private static class LivelinkProperty implements Property {
         private final String name;
         private final LinkedList values;
 
-        RecArrayProperty(String name, LinkedList values) {
+        LivelinkProperty(String name, LinkedList values) {
             this.name = name;
             this.values = values;
 
@@ -453,38 +456,37 @@ class RecArrayResultSet implements ResultSet {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation represents a specific field from a
-     * specific row of the underlying recarray.
+     * This implementation represents an atomic <code>ClientValue</code>.
      */
     /*
      * TODO: Value conversion across types. We're relying on
      * the behavior of the LLInstance subclasses here.
      */
-    private class RecArrayValue implements Value {
+    private class LivelinkValue implements Value {
         private final ValueType type;
-        private final RecArray recArray;
+        private final ClientValue clientValue;
 
-        RecArrayValue(ValueType type, RecArray recArray) {
-            this.recArray = recArray;
+        LivelinkValue(ValueType type, ClientValue clientValue) {
+            this.clientValue = clientValue;
             this.type = type;
         }
 
         public boolean getBoolean() throws RepositoryException {
-            return recArray.toBoolean();
+            return clientValue.toBoolean();
         }
 
         public Calendar getDate() throws RepositoryException {
             Calendar c = Calendar.getInstance();
-            c.setTime(recArray.toDate());
+            c.setTime(clientValue.toDate());
             return c;
         }
 
         public double getDouble() throws RepositoryException {
-            return recArray.toDouble();
+            return clientValue.toDouble();
         }
 
         public long getLong() throws RepositoryException {
-            return recArray.toInteger();
+            return clientValue.toInteger();
         }
 
         public InputStream getStream() throws RepositoryException {
@@ -500,9 +502,9 @@ class RecArrayResultSet implements ResultSet {
 
         public String getString() throws RepositoryException {
             if (type == ValueType.DATE)
-                return toIso8601String(recArray.toDate());
+                return toIso8601String(clientValue.toDate());
             else
-                return recArray.toString2();
+                return clientValue.toString2();
         }
 
         public ValueType getType() {

@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * A mock client implementation.
@@ -42,8 +42,8 @@ final class MockClient implements Client {
      * CharacterEncoding of CHARACTER_ENCODING_NONE and a
      * ServerVersion of "9.5.0".
      */
-    public RecArray GetServerInfo() {
-        return new MockRecArray(
+    public ClientValue GetServerInfo() {
+        return new MockClientValue(
             new String[] { "CharacterEncoding", "ServerVersion" },
             new Object[] { new Integer(CHARACTER_ENCODING_NONE), "9.5.0" });
     }
@@ -60,9 +60,9 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns an empty <code>RecArray</code>.
+     * This implementation returns an empty <code>ClientValue</code>.
      */
-    public RecArray ListNodes(String query, String view, String[] columns) {
+    public ClientValue ListNodes(String query, String view, String[] columns) {
         LOGGER.fine("Entering MockClient.ListNodes");
 
         Object[][] values;
@@ -82,7 +82,8 @@ final class MockClient implements Client {
             }
         } else
             values = new Object[0][0];
-        return new MockRecArray(new String[] { "DataID", "PermID" }, values);
+        return new MockClientValue(new String[] { "DataID", "PermID" },
+            values);
     }
 
     /**
@@ -90,9 +91,8 @@ final class MockClient implements Client {
      * <p>
      * This implementation returns an empty assoc.
      */
-    public RecArray GetObjectInfo(int volumeId, int objectId)
-    {
-        return new MockRecArray(new String[0], new Object[0]);
+    public ClientValue GetObjectInfo(int volumeId, int objectId) {
+        return new MockClientValue(new String[0], new Object[0]);
     }
 
     /**

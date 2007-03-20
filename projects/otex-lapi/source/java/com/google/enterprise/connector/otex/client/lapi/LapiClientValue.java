@@ -21,7 +21,7 @@ import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLValue;
 
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.client.RecArray;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * A wrapper implementation on an <code>LLValue</code>.
@@ -31,10 +31,10 @@ import com.google.enterprise.connector.otex.client.RecArray;
  * times faster. Even building a map and doing a map lookup before
  * each call is five times faster.
  */
-public final class LapiRecArray implements RecArray {
+public final class LapiClientValue implements ClientValue {
     /** The logger for this class. */
     private static final Logger LOGGER =
-        Logger.getLogger(LapiRecArray.class.getName());
+        Logger.getLogger(LapiClientValue.class.getName());
 
     private final LLValue value;
 
@@ -43,7 +43,7 @@ public final class LapiRecArray implements RecArray {
      *
      * @param value the value to wrap
      */
-    LapiRecArray(LLValue value) {
+    LapiClientValue(LLValue value) {
         this.value = value;
     }
     
@@ -65,10 +65,10 @@ public final class LapiRecArray implements RecArray {
     }
 
     /** {@inheritDoc} */
-    public RecArray toValue(int row, String field)
+    public ClientValue toValue(int row, String field)
             throws RepositoryException {
         try {
-            return new LapiRecArray(value.toValue(row, field));
+            return new LapiClientValue(value.toValue(row, field));
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {
@@ -145,9 +145,9 @@ public final class LapiRecArray implements RecArray {
     }
 
     /** {@inheritDoc} */
-    public RecArray toValue(String field) throws RepositoryException {
+    public ClientValue toValue(String field) throws RepositoryException {
         try {
-            return new LapiRecArray(value.toValue(field));
+            return new LapiClientValue(value.toValue(field));
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {

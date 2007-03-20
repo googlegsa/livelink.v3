@@ -21,7 +21,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
 /**
  * A table-like interface for the database results.
  */
-public interface RecArray {
+public interface ClientValue {
     /**
      * Gets the number of records in this recarray.
      *
@@ -41,13 +41,13 @@ public interface RecArray {
     
     /**
      * Gets the named field from the given row as a
-     * <code>RecArray</code> value.
+     * <code>ClientValue</code> value.
      *
      * @param row a zero-based row index
      * @param field a field name
-     * @return a <code>RecArray</code> field value
+     * @return a <code>ClientValue</code> field value
      */
-    RecArray toValue(int row, String field) throws RepositoryException;
+    ClientValue toValue(int row, String field) throws RepositoryException;
 
     /**
      * Gets the named field from the given row as a boolean value.
@@ -105,12 +105,12 @@ public interface RecArray {
     boolean isDefined(String field) throws RepositoryException;
     
     /**
-     * Gets the named field as a <code>RecArray</code> value.
+     * Gets the named field as a <code>ClientValue</code> value.
      *
      * @param field a field name
-     * @return a <code>RecArray</code> field value
+     * @return a <code>ClientValue</code> field value
      */
-    RecArray toValue(String field) throws RepositoryException;
+    ClientValue toValue(String field) throws RepositoryException;
 
     /**
      * Gets the named field as a boolean value.
