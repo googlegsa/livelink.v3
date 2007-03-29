@@ -92,10 +92,19 @@
 	</target>
 
 	<target name="run_tests" depends="compile_tests,jar">
-                <property name="test.suite" value="*"/>
-                <copy file="source/javatests/tests.logging.properties"
-                    tofile="${tests.logging.properties}"
-                    overwrite="yes"/>
+		<property name="test.suite" value="*"/>
+		<property name="logging.file" 
+			location="${tests.todir}/test.log" />
+		<copy file="source/javatests/tests.logging.properties"
+			tofile="${tests.logging.properties}"
+			overwrite="yes">
+			<filterset>
+				<filter token="logging.file"
+					value="${logging.file}"/>
+				</filterset>
+                </copy>
+		<replace file="${tests.logging.properties}" 
+			token="\" value="\\" />
 		<junit>
 			<assertions><enable/></assertions>
 			<classpath>
