@@ -398,7 +398,7 @@ public class LivelinkConnector implements Connector {
     private void setDisplayMap(String logPrefix, Map userMap,
             Map systemMap, boolean isPatterns) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config(logPrefix + ": " + systemMap);
+            LOGGER.config(logPrefix + ": " + userMap);
         Iterator it = userMap.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry entry = (Map.Entry) it.next();
