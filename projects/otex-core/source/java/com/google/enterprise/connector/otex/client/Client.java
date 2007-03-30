@@ -34,9 +34,21 @@ public interface Client
     /** Reply object. */
     int REPLYSUBTYPE = 134;
     
+    /** Project object. */
+    int PROJECTSUBTYPE = 202;
+    
     /** Task object. */
     int TASKSUBTYPE = 206;
 
+    /** Channel object. */
+    int CHANNELSUBTYPE = 207;
+    
+    /** News object. */
+    int NEWSSUBTYPE = 208;
+    
+    /** Poll object. */
+    int POLLSUBTYPE = 218;
+    
     /** No character encoding. */
     int CHARACTER_ENCODING_NONE = 0;
 

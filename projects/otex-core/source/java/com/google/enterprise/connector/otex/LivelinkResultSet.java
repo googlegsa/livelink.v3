@@ -61,6 +61,10 @@ class LivelinkResultSet implements ResultSet {
     private static final Value VALUE_EMPTY =
         new SimpleValue(ValueType.STRING, "");
 
+    /** An immutable string value of "text/html". */
+    private static final Value VALUE_TEXT_HTML =
+        new SimpleValue(ValueType.STRING, "text/html");
+    
     /** An immutable false value. */
     private static final Value VALUE_FALSE =
         new SimpleValue(ValueType.BOOLEAN, "false");
@@ -208,6 +212,11 @@ class LivelinkResultSet implements ResultSet {
         private final Map properties = new LinkedHashMap(fields.length * 2);
 
         LivelinkPropertyMap(int row) throws RepositoryException {
+            if (LOGGER.isLoggable(Level.FINE)) {
+                LOGGER.fine("PROPERTY MAP FOR ID = " +
+                    recArray.toInteger(row, "DataID"));
+            }
+
             this.row = row;
 
             collectRecArrayProperties();
@@ -261,7 +270,6 @@ class LivelinkResultSet implements ResultSet {
             // CONTENT
             if (LOGGER.isLoggable(Level.FINER))
                 LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
-            Value contentValue;
 
             // DataSize is the only non-nullable column from
             // DVersData that appears in the WebNodes view,
@@ -290,69 +298,17 @@ class LivelinkResultSet implements ResultSet {
                 // that we might want to handle more
                 // gracefully (e.g., maybe the underlying error
                 // is "no content").
-                contentValue = new InputStreamValue(
+                Value contentValue = new InputStreamValue(
                     contentHandler.getInputStream(volumeId, objectId, 0,
                         size));
+                addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             } else {
-                String mimeType = null;
-
-                switch (subType) {
-                case Client.TOPICSUBTYPE:
-                case Client.REPLYSUBTYPE: {
-                    int objectId = recArray.toInteger(row, "DataID");
-                    int volumeId = recArray.toInteger(row, "OwnerID");
-                    ClientValue objectInfo =
-                        client.GetObjectInfo(volumeId, objectId);
-                    ClientValue extendedData =
-                        objectInfo.toValue("ExtendedData");
-                    String content = extendedData.toString("Content");
-                    LOGGER.finer("CONTENT = " + content);
-                    contentValue = new SimpleValue(ValueType.STRING, content);
-                    mimeType = "text/plain";
-                    break;
-                }
-
-                case Client.TASKSUBTYPE: {
-                    // FIXME: GSA Feed Data Source Log:swift95
-                    // 
-                    // ProcessNode: Content attribute not properly
-                    // specified, skipping record with URL
-                    // googleconnector://swift95.localhost/doc?docid=31352
-                    //
-                    // Caused by issue 30, empty metadata values, in
-                    // this case the Comments field.
-
-                    int objectId = recArray.toInteger(row, "DataID");
-                    int volumeId = recArray.toInteger(row, "OwnerID");
-                    ClientValue objectInfo =
-                        client.GetObjectInfo(volumeId, objectId);
-                    ClientValue extendedData =
-                        objectInfo.toValue("ExtendedData");
-                    String content = extendedData.toString("Instructions");
-                    LOGGER.finer("CONTENT = " + content);
-                    contentValue = new SimpleValue(ValueType.STRING, content);
-                    mimeType = "text/plain";
-
-                    String comments = extendedData.toString("Comments");
-                    addProperty("Comments",
-                        new SimpleValue(ValueType.STRING, comments));
-                    break;
-                }
-                            
-                default:                            
-                    // TODO: This is a workaround for a bug where
-                    // the QueryTraverser requires a content or
-                    // contenturl property.
-                    contentValue = VALUE_EMPTY;
-                    break;
-                }
-
-                if (mimeType != null) {
-                    addProperty(SpiConstants.PROPNAME_MIMETYPE,
-                        new SimpleValue(ValueType.STRING, mimeType));
-                }
+                // XXX: What about objects that have files associated
+                // with them but also have data in ExtendedData? We
+                // should be extracting the metadata from ExtendedData
+                // but not assembling the HTML content in that case.
+                collectExtendedDataProperties(subType);
             }
-            addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
 
             // DISPLAYURL
             int objectId = recArray.toInteger(row, "DataID");
@@ -362,6 +318,105 @@ class LivelinkResultSet implements ResultSet {
                 new SimpleValue(ValueType.STRING, url));
         }
 
+        /**
+         * Collect properties from the ExtendedData assoc. These
+         * properties are also assembled, together with the object
+         * name, in an HTML content property.
+         *
+         * @param subType the subtype of the item
+         */
+        private void collectExtendedDataProperties(int subType)
+                throws RepositoryException {
+            // TODO: Should this be a map in the XML config, or just a
+            // list of subtypes? For a list, we would just grab all of
+            // the entries in ExtendedData. But in the most general
+            // case, we might want some entries for the content, other
+            // entries just for metadata, and yet other entries not at
+            // all. This could potentially grow up to specify all of
+            // the metadata properties to collect.
+            String[] fields;
+            switch (subType) {
+            case Client.PROJECTSUBTYPE:
+                fields = new String[] {
+                    "Mission", "Goals", "Objectives", "Initiatives" };
+                break;
+                
+            case Client.TOPICSUBTYPE:
+            case Client.REPLYSUBTYPE:
+                fields = new String[] { "Content" };
+                break;
+
+            case Client.NEWSSUBTYPE:
+                // TODO: We should probably use the Headline for the
+                // the HTML title, rather than the Name recarray
+                // column, and not include the Headline in the HTML
+                // content body.
+                fields = new String[] { "Headline", "Story" };
+                break;
+                
+            case Client.TASKSUBTYPE:
+                fields = new String[] { "Instructions", "Comments" };
+                break;
+                            
+            case Client.POLLSUBTYPE:
+                // XXX: What happens with the Questions, which is a
+                // list of assoc?
+                fields = new String[] { "Instruction", "Questions" };
+                break;
+                
+            default:                            
+                fields = null;
+                break;
+            }
+
+            Value contentValue;
+            if (fields == null) {
+                // TODO: This is a workaround for Connector Manager
+                // Issue 21, where the QueryTraverser requires a
+                // content or contenturl property.
+                contentValue = VALUE_EMPTY;
+            } else {
+                // TODO: We need to handle undefined fields here.
+                // During one test run, I saw an undefined
+                // ExtendedData value, but I haven't been able to
+                // reproduce that.
+                String name = recArray.toString(row, "Name");
+                int objectId = recArray.toInteger(row, "DataID");
+                int volumeId = recArray.toInteger(row, "OwnerID");
+                ClientValue objectInfo =
+                    client.GetObjectInfo(volumeId, objectId);
+                ClientValue extendedData =
+                    objectInfo.toValue("ExtendedData");
+
+                StringBuffer buffer = new StringBuffer();
+                buffer.append("<title>");
+                buffer.append(name);
+                buffer.append("</title>\n");
+                for (int i = 0; i < fields.length; i++) {
+                    String value = extendedData.toString(fields[i]);
+
+                    // FIXME: GSA Feed Data Source Log:swift95
+                    // 
+                    // ProcessNode: Content attribute not properly
+                    // specified, skipping record with URL
+                    // googleconnector://swift95.localhost/doc?docid=31352
+                    //
+                    // Caused by issue 30, empty metadata values, in
+                    // this case the Comments field.
+                    addProperty(fields[i],
+                        new SimpleValue(ValueType.STRING, value));
+
+                    buffer.append("<p>");
+                    buffer.append(value);
+                    buffer.append("</p>\n");
+                }
+                contentValue =
+                    new SimpleValue(ValueType.STRING, buffer.toString());
+                addProperty(SpiConstants.PROPNAME_MIMETYPE, VALUE_TEXT_HTML);
+            }
+            addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
+        }
+        
         public Iterator getProperties() {
             return new LivelinkPropertyMapIterator(properties);
         }

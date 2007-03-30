@@ -38,11 +38,14 @@
 		</property>
 		<property name="displayActions">
 			<map>
-				<entry key="0,136" value="browse" />
+				<entry key="0,202,136" value="browse" />
 				<entry key="130,134,215" value="view" />
 				<entry key="144" value="overview" />
 				<entry key="204" value="BrowseTaskList" />
 				<entry key="206" value="BrowseTask" />
+				<entry key="207" value="ViewChannel" />
+				<entry key="208" value="ViewNews" />
+				<entry key="218" value="OpenPoll" />
 				<entry key="default" value="properties" />
 			</map>
 		</property>
