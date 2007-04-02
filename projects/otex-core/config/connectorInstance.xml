@@ -6,27 +6,25 @@
 
 		<property name="hostname" value="${hostname}"/>
 		<property name="port" value="${port}"/>
-                <property name="database" value="${database}"/>
+		<property name="database" value="${database}"/>
 		<property name="username" value="${username}"/>
 		<property name="password" value="${password}"/>
+		<property name="domainName" value="${domainName}"/>
 		<property name="displayUrl" value="${displayUrl}"/>
-                <property name="useHttps" value="${useHttps}"/>
-                <property name="enableNtlm" value="${enableNtlm}"/>
-                <property name="livelinkCgi" value="${livelinkCgi}"/>
-                <property name="httpUsername" value="${httpUsername}"/>
-                <property name="httpPassword" value="${httpPassword}"/>
-                <property name="verifyServer" value="${verifyServer}"/>
-                <!-- FIXME: make this a list -->
-                <property name="caRootCerts">
-                        <list>
-                                <value>${caRootCerts}</value>
-                        </list>
-                </property>
-                <property name="domainName" value="${domainName}"/>
-                <property name="useUsernamePasswordWithWebServer" 
-                        value="${useUsernamePasswordWithWebServer}"/>
-                <property name="useSeparateAuthentication" 
-                        value="${useSeparateAuthentication}"/>
+		<property name="useHttps" value="${useHttps}"/>
+		<property name="livelinkCgi" value="${livelinkCgi}"/>
+		<property name="httpUsername" value="${httpUsername}"/>
+		<property name="httpPassword" value="${httpPassword}"/>
+		<property name="verifyServer" value="${verifyServer}"/>
+		<property name="caRootCerts">
+			<list>
+				<value>${caRootCert}</value>
+			</list>
+		</property>
+		<property name="useUsernamePasswordWithWebServer" 
+			value="${useUsernamePasswordWithWebServer}"/>
+		<property name="useSeparateAuthentication" 
+			value="${useSeparateAuthentication}"/>
 		<property name="displayPatterns">
 			<map>
 				<entry key="141" value="?func=llworkspace" />
@@ -56,29 +54,26 @@
 		<property name="excludedLocationNodes" value=""/>
 
 		<property name="authenticationHostname" 
-                        value="${authenticationHostname}"/>
+			value="${authenticationHostname}"/>
 		<property name="authenticationPort" 
-                        value="${authenticationPort}"/>
-                <property name="authenticationDatabase" 
-                        value="${authenticationDatabase}"/>
-                <property name="authenticationUseHttps" 
-                        value="${authenticationUseHttps}"/>
-                <property name="authenticationEnableNtlm" 
-                        value="${authenticationEnableNtlm}"/>
-                <property name="authenticationLivelinkCgi" 
-                        value="${authenticationLivelinkCgi}"/>
-                <property name="authenticationVerifyServer"
-                        value="${authenticationVerifyServer}"/>
-                <!-- FIXME: make this a list -->
-                <property name="authenticationCaRootCerts">
-                        <list>
-                                <value>${authenticationCaRootCerts}</value>
-                        </list>
-                </property>
-                <property name="authenticationDomainName" 
-                        value="${authenticationDomainName}"/>
-                <property name="authenticationUseUsernamePasswordWithWebServer" 
-                        value="${authenticationUseUsernamePasswordWithWebServer}"/>
-                @constructor-arg@
+			value="${authenticationPort}"/>
+		<property name="authenticationDatabase" 
+			value="${authenticationDatabase}"/>
+		<property name="authenticationDomainName" 
+			value="${authenticationDomainName}"/>
+		<property name="authenticationUseHttps" 
+			value="${authenticationUseHttps}"/>
+		<property name="authenticationLivelinkCgi" 
+			value="${authenticationLivelinkCgi}"/>
+		<property name="authenticationVerifyServer"
+			value="${authenticationVerifyServer}"/>
+		<property name="authenticationCaRootCerts">
+			<list>
+				<value>${authenticationCaRootCert}</value>
+			</list>
+		</property>
+		<property name="authenticationUseUsernamePasswordWithWebServer" 
+			value="${authenticationUseUsernamePasswordWithWebServer}"/>
+		@constructor-arg@
 	</bean>
 </beans>

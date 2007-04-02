@@ -40,27 +40,24 @@ class LivelinkConnectorFactory {
         emptyProperties.put("database", ""); 
         emptyProperties.put("username", ""); 
         emptyProperties.put("password", ""); 
+        emptyProperties.put("domainName", ""); 
+        emptyProperties.put("displayUrl", ""); 
         emptyProperties.put("useHttps", "true"); 
-        emptyProperties.put("enableNtlm", "true"); 
         emptyProperties.put("livelinkCgi", ""); 
         emptyProperties.put("httpUsername", ""); 
         emptyProperties.put("httpPassword", ""); 
         emptyProperties.put("verifyServer", "true"); 
-        emptyProperties.put("caRootCerts", ""); 
-        emptyProperties.put("domainName", ""); 
-        emptyProperties.put("displayUrl", ""); 
+        emptyProperties.put("caRootCert", ""); 
         emptyProperties.put("useUsernamePasswordWithWebServer", "false"); 
-        //emptyProperties.put("servtype", ""); 
         emptyProperties.put("useSeparateAuthentication", "false"); 
         emptyProperties.put("authenticationHostname", ""); 
         emptyProperties.put("authenticationPort", "0"); 
         emptyProperties.put("authenticationDatabase", ""); 
+        emptyProperties.put("authenticationDomainName", ""); 
         emptyProperties.put("authenticationUseHttps", "true"); 
-        emptyProperties.put("authenticationEnableNtlm", "true"); 
         emptyProperties.put("authenticationLivelinkCgi", ""); 
         emptyProperties.put("authenticationVerifyServer", "true"); 
-        emptyProperties.put("authenticationCaRootCerts", ""); 
-        emptyProperties.put("authenticationDomainName", ""); 
+        emptyProperties.put("authenticationCaRootCert", ""); 
         emptyProperties.put("authenticationUseUsernamePasswordWithWebServer", 
             "false"); 
     }
