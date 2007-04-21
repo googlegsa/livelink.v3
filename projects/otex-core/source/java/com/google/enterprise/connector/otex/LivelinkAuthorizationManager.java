@@ -17,6 +17,7 @@ package com.google.enterprise.connector.otex;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.AuthorizationManager;
@@ -92,7 +93,8 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
     */
     public ResultSet authorizeDocids(List docids, String username)
             throws RepositoryException {
-        LOGGER.fine("AUTHORIZE DOCIDS");
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("AUTHORIZE DOCIDS: " + username);
 
         Client client = clientFactory.createClient();
         client.ImpersonateUser(username);
@@ -150,7 +152,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
     private String getDocidQuery(List docids) {
         if (docids == null || docids.size() == 0)
             return null; 
-        StringBuffer query = new StringBuffer("DataId in ("); 
+        StringBuffer query = new StringBuffer("DataID in ("); 
         for (Iterator i = docids.iterator(); i.hasNext(); ) 
             query.append((String) i.next()).append(",");
         int len = query.length() - 1;
