@@ -2,153 +2,157 @@
 
 <project name="otex-lapi" default="build" basedir=".">
 
-	<!-- ========================= PROPERTIES ============================= -->
-	<property name="version" value="1.0" />
-        <property file="${user.home}/google-otex-connector.properties"/>
-        <propertyset id="javatest.properties">
-            <propertyref prefix="javatest."/>
-            <mapper type="glob" from="javatest.*" to="*"/>
-        </propertyset>
+  <!-- ========================= PROPERTIES ============================= -->
+  <property name="version" value="1.0" />
+  <property file="${user.home}/google-enterprise-connector-otex.properties"/>
 
-	<property name="COMPILE_DEBUG_FLAG" value="true" />
-	<property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
+  <propertyset id="javatest.properties">
+    <propertyref prefix="javatest."/>
+    <mapper type="glob" from="javatest.*" to="*"/>
+  </propertyset>
 
-	<!-- Define Directories. -->
-	<property name="build" value="build" />
-	<property name="dist" value="dist" />
-	<property name="src" value="source/java" />
-	<property name="classes" value="${build}/classes" />
-	<property name="config" value="config" />
-	<property name="config.build" value="${build}/config" />
+  <property name="COMPILE_DEBUG_FLAG" value="true" />
+  <property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
 
-	<property name="tests.src" value="source/javatests" />
-	<property name="tests.build" value="build/tests" />
-	<property name="tests.classes" value="${tests.build}/classes" />
-	<property name="tests.todir" value="tests_outdir" />
-        <property name="tests.logging.properties" 
+  <!-- Define Directories. -->
+  <property name="build" value="build" />
+  <property name="dist" value="dist" />
+  <property name="src" value="source/java" />
+  <property name="classes" value="${build}/classes" />
+  <property name="config" value="config" />
+  <property name="config.build" value="${build}/config" />
+
+  <property name="tests.src" value="source/javatests" />
+  <property name="tests.build" value="build/tests" />
+  <property name="tests.classes" value="${tests.build}/classes" />
+  <property name="tests.todir" value="tests_outdir" />
+  <property name="tests.logging.properties" 
             location="${tests.classes}/tests.logging.properties"/>
 
-	<property name="jar.dir"  value="${dist}/jar" />
-	<property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
+  <property name="jar.dir"  value="${dist}/jar" />
+  <property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
 
-        <property name="core.dir" location="../otex-core"/>
-        <property name="core.classes" location="../otex-core/build/classes"/>
+  <property name="core.dir" location="../otex-core"/>
+  <property name="core.classes" location="../otex-core/build/classes"/>
 
-	<property name="connector-manager.dir" location="../../../cm/projects/connector-manager" />
-	<property name="thirdparty.jar.dir" 
-		value="../../../cm/projects/third_party/lib" />
-	<property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
-	<property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
-	<property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
-	<property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
+  <property name="connector-manager-projects.dir"
+            location="${build.connector.manager.home}/projects" />
+  <property name="connector-manager.dir"
+            location="${connector-manager-projects.dir}/connector-manager" />
+  <property name="thirdparty.jar.dir"
+            location="${connector-manager-projects.dir}/third_party/lib" />
+  <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
+  <property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
+  <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
+  <property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
 
-	<property name="lapi.jarfile" location="c:/Program Files/Open Text/LAPI/lib/lapi.jar" />
+  <property name="lapi.jarfile" location="${build.lapi.home}/lib/lapi.jar" />
 
-	<!-- =========================== TASKS =============================== -->
-	<target name="build" depends="init,compile,compile_tests,jar">
-	</target>
+  <!-- =========================== TASKS =============================== -->
+  <target name="build" depends="init,compile,compile_tests,jar">
+  </target>
 
-	<target name="init">
-		<mkdir dir="${build}" />
-		<mkdir dir="${dist}" />
-		<mkdir dir="${classes}" />
-		<mkdir dir="${config.build}" />
-		<mkdir dir="${tests.build}" />
-		<mkdir dir="${tests.classes}" />
-		<mkdir dir="${tests.todir}" />
-		<mkdir dir="${jar.dir}" />
-	</target>
+  <target name="init">
+    <mkdir dir="${build}" />
+    <mkdir dir="${dist}" />
+    <mkdir dir="${classes}" />
+    <mkdir dir="${config.build}" />
+    <mkdir dir="${tests.build}" />
+    <mkdir dir="${tests.classes}" />
+    <mkdir dir="${tests.todir}" />
+    <mkdir dir="${jar.dir}" />
+  </target>
 
-	<target name="compile" depends="init">
-		<!-- compile java source files -->
-		<javac srcdir="${src}" destdir="${classes}" 
-			debug="${COMPILE_DEBUG_FLAG}" 
-			debuglevel="${COMPILE_DEBUG_LEVEL}"
-			target="1.4" source="1.4">
-			<classpath>
-				<pathelement location="${spi.jarfile}" />
-                                <pathelement location="${core.classes}" />
-				<pathelement location="${lapi.jarfile}" />
-			</classpath>
-		</javac>
-	</target>
+  <target name="compile" depends="init">
+    <!-- compile java source files -->
+    <javac srcdir="${src}" destdir="${classes}" 
+           debug="${COMPILE_DEBUG_FLAG}" 
+           debuglevel="${COMPILE_DEBUG_LEVEL}"
+           target="1.4" source="1.4">
+      <classpath>
+        <pathelement location="${spi.jarfile}" />
+        <pathelement location="${core.classes}" />
+        <pathelement location="${lapi.jarfile}" />
+      </classpath>
+    </javac>
+  </target>
 
-	<target name="compile_tests" depends="init,jar">
-		<!-- compile java source files for tests -->
-		<javac srcdir="${tests.src}" destdir="${tests.classes}" 
-			debug="${COMPILE_DEBUG_FLAG}" 
-			debuglevel="${COMPILE_DEBUG_LEVEL}"
-			target="1.4" source="1.4">
-			<classpath>
-				<fileset dir="${thirdparty.jar.dir}">
-					<include name="**/spring.jar" />
-				</fileset>
-                                <pathelement location="${spi.jar.dir}/connector.jar" />
-                                <pathelement location="${spi.jar.dir}/connector_tests.jar" />
-				<pathelement location="${jarfile}" />
-				<pathelement location="${spi.jarfile}" />
-			</classpath>
-		</javac>
-	</target>
+  <target name="compile_tests" depends="init,jar">
+    <!-- compile java source files for tests -->
+    <javac srcdir="${tests.src}" destdir="${tests.classes}" 
+           debug="${COMPILE_DEBUG_FLAG}" 
+           debuglevel="${COMPILE_DEBUG_LEVEL}"
+           target="1.4" source="1.4">
+      <classpath>
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/spring.jar" />
+        </fileset>
+        <pathelement location="${spi.jar.dir}/connector.jar" />
+        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${jarfile}" />
+        <pathelement location="${spi.jarfile}" />
+      </classpath>
+    </javac>
+  </target>
 
-	<target name="run_tests" depends="compile_tests,jar">
-		<property name="test.suite" value="*"/>
-		<property name="logging.file" 
-			location="${tests.todir}/test.log" />
-		<copy file="source/javatests/tests.logging.properties"
-			tofile="${tests.logging.properties}"
-			overwrite="yes">
-			<filterset>
-				<filter token="logging.file"
-					value="${logging.file}"/>
-				</filterset>
-                </copy>
-		<replace file="${tests.logging.properties}" 
-			token="\" value="\\" />
-		<junit>
-			<assertions><enable/></assertions>
-			<classpath>
-				<fileset dir="${thirdparty.jar.dir}">
-					<include name="**/*.jar" />
-				</fileset>
-				<pathelement location="${tests.classes}" />
-                                <pathelement location="${spi.jar.dir}/connector.jar" />
-                                <pathelement location="${spi.jar.dir}/connector_tests.jar" />
-				<pathelement location="${jarfile}" />
-				<pathelement location="${spi.jarfile}" />
-				<pathelement location="${lapi.jarfile}" />
-			</classpath>
-			<formatter type="brief" usefile="no"/>
-			<formatter type="plain" />
-                        <syspropertyset refid="javatest.properties"/>
-                        <sysproperty key="java.util.logging.config.file"
-                                value="${tests.logging.properties}"/>
-			<batchtest fork="yes" todir="${tests.todir}">
-				<fileset dir="${tests.src}">
-					<include name="**/${test.suite}Test.java" />
-				</fileset>
-			</batchtest>
-		</junit>
-	</target>
+  <target name="run_tests" depends="compile_tests,jar">
+    <property name="test.suite" value="*"/>
+    <property name="logging.file" 
+              location="${tests.todir}/test.log" />
+    <copy file="source/javatests/tests.logging.properties"
+          tofile="${tests.logging.properties}"
+          overwrite="yes">
+      <filterset>
+        <filter token="logging.file"
+                value="${logging.file}"/>
+      </filterset>
+    </copy>
+    <replace file="${tests.logging.properties}" 
+             token="\" value="\\" />
+    <junit>
+      <assertions><enable/></assertions>
+      <classpath>
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/*.jar" />
+        </fileset>
+        <pathelement location="${tests.classes}" />
+        <pathelement location="${spi.jar.dir}/connector.jar" />
+        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${jarfile}" />
+        <pathelement location="${spi.jarfile}" />
+        <pathelement location="${lapi.jarfile}" />
+      </classpath>
+      <formatter type="brief" usefile="no"/>
+      <formatter type="plain" />
+      <syspropertyset refid="javatest.properties"/>
+      <sysproperty key="java.util.logging.config.file"
+                   value="${tests.logging.properties}"/>
+      <batchtest fork="yes" todir="${tests.todir}">
+        <fileset dir="${tests.src}">
+          <include name="**/${test.suite}Test.java" />
+        </fileset>
+      </batchtest>
+    </junit>
+  </target>
 
-	<target name="jar" description="livelink-connector" depends="compile">
-		<copy todir="${config.build}">
-			<fileset dir="${core.dir}/config" />
-			<filterset>
-				<filter token="constructor-arg" value="" />
-			</filterset>
-		</copy>
+  <target name="jar" description="livelink-connector" depends="compile">
+    <copy todir="${config.build}">
+      <fileset dir="${core.dir}/config" />
+      <filterset>
+        <filter token="constructor-arg" value="" />
+      </filterset>
+    </copy>
 
-		<jar jarfile="${jarfile}">
-			<fileset dir="${core.classes}"/>
-			<fileset dir="${classes}"/>
-			<fileset dir="${build}" includes="config/**"/>
-		</jar>
-	</target>
+    <jar jarfile="${jarfile}">
+      <fileset dir="${core.classes}"/>
+      <fileset dir="${classes}"/>
+      <fileset dir="${build}" includes="config/**"/>
+    </jar>
+  </target>
 
-	<target name="clean" description="Deletes all build files.">
-		<delete dir="${build}" />
-		<delete dir="${dist}" />
-	</target>
+  <target name="clean" description="Deletes all build files.">
+    <delete dir="${build}" />
+    <delete dir="${dist}" />
+  </target>
 
 </project>
