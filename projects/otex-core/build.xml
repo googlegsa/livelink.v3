@@ -2,122 +2,126 @@
 
 <project name="otex-core" default="build" basedir=".">
 
-	<!-- ========================= PROPERTIES ============================= -->
-	<property name="version" value="1.0" />
+  <!-- ========================= PROPERTIES ============================= -->
+  <property name="version" value="1.0" />
+  <property file="${user.home}/google-enterprise-connector-otex.properties"/>
 
-	<property name="COMPILE_DEBUG_FLAG" value="true" />
-	<property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
+  <property name="COMPILE_DEBUG_FLAG" value="true" />
+  <property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
 
-	<!-- Define Directories. -->
-	<property name="build" value="build" />
-	<property name="dist" value="dist" />
-	<property name="src" value="source/java" />
-	<property name="classes" value="${build}/classes" />
-	<property name="config" value="config" />
-	<property name="config.build" value="${build}/config" />
+  <!-- Define Directories. -->
+  <property name="build" value="build" />
+  <property name="dist" value="dist" />
+  <property name="src" value="source/java" />
+  <property name="classes" value="${build}/classes" />
+  <property name="config" value="config" />
+  <property name="config.build" value="${build}/config" />
 
-	<property name="tests.src" value="source/javatests" />
-	<property name="tests.build" value="build/tests" />
-	<property name="tests.classes" value="${tests.build}/classes" />
-	<property name="tests.todir" value="tests_outdir" />
+  <property name="tests.src" value="source/javatests" />
+  <property name="tests.build" value="build/tests" />
+  <property name="tests.classes" value="${tests.build}/classes" />
+  <property name="tests.todir" value="tests_outdir" />
 
-	<property name="jar.dir"  value="${dist}/jar" />
-	<property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
+  <property name="jar.dir"  value="${dist}/jar" />
+  <property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
 
-	<property name="connector-manager.dir" location="../../../cm/projects/connector-manager" />
-	<property name="thirdparty.jar.dir"
-		value="../../../cm/projects/third_party/lib" />
-	<property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
-	<property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
-	<property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
-	<property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
+  <property name="connector-manager-projects.dir"
+            location="${build.connector.manager.home}/projects" />
+  <property name="connector-manager.dir"
+            location="${connector-manager-projects.dir}/connector-manager" />
+  <property name="thirdparty.jar.dir"
+            location="${connector-manager-projects.dir}/third_party/lib" />
+  <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
+  <property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
+  <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
+  <property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
 
-	<!-- =========================== TASKS =============================== -->
-	<target name="build" depends="init,compile,compile_tests,jar">
-	</target>
+  <!-- =========================== TASKS =============================== -->
+  <target name="build" depends="init,compile,compile_tests,jar">
+  </target>
 
-	<target name="init">
-		<mkdir dir="${build}" />
-		<mkdir dir="${dist}" />
-		<mkdir dir="${classes}" />
-		<mkdir dir="${config.build}" />
-		<mkdir dir="${tests.build}" />
-		<mkdir dir="${tests.classes}" />
-		<mkdir dir="${tests.todir}" />
-		<mkdir dir="${jar.dir}" />
-	</target>
+  <target name="init">
+    <mkdir dir="${build}" />
+    <mkdir dir="${dist}" />
+    <mkdir dir="${classes}" />
+    <mkdir dir="${config.build}" />
+    <mkdir dir="${tests.build}" />
+    <mkdir dir="${tests.classes}" />
+    <mkdir dir="${tests.todir}" />
+    <mkdir dir="${jar.dir}" />
+  </target>
 
-	<target name="compile" depends="init">
-		<!-- compile java source files -->
-		<javac srcdir="${src}" destdir="${classes}" 
-			debug="${COMPILE_DEBUG_FLAG}" 
-			debuglevel="${COMPILE_DEBUG_LEVEL}"
-			target="1.4" source="1.4">
-			<classpath>
-				<pathelement location="${spi.jarfile}" />
-                                <fileset dir="${thirdparty.jar.dir}">
-                                    <include name="**/*.jar" />
-                                </fileset>
-			</classpath>
-		</javac>
-	</target>
+  <target name="compile" depends="init">
+    <!-- compile java source files -->
+    <javac srcdir="${src}" destdir="${classes}" 
+           debug="${COMPILE_DEBUG_FLAG}" 
+           debuglevel="${COMPILE_DEBUG_LEVEL}"
+           target="1.4" source="1.4">
+      <classpath>
+        <pathelement location="${spi.jarfile}" />
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/*.jar" />
+        </fileset>
+      </classpath>
+    </javac>
+  </target>
 
-	<target name="compile_tests" depends="init">
-		<!-- compile java source files for tests -->
-		<javac srcdir="${tests.src}" destdir="${tests.classes}" 
-			debug="${COMPILE_DEBUG_FLAG}" 
-			debuglevel="${COMPILE_DEBUG_LEVEL}"
-			target="1.4" source="1.4">
-			<classpath>
-                                <pathelement location="${spi.jar.dir}/connector.jar" />
-                                <pathelement location="${spi.jar.dir}/connector_tests.jar" />
-				<pathelement location="${spi.jarfile}" />
-				<pathelement location="${classes}" />
-			</classpath>
-		</javac>
-	</target>
+  <target name="compile_tests" depends="init">
+    <!-- compile java source files for tests -->
+    <javac srcdir="${tests.src}" destdir="${tests.classes}" 
+           debug="${COMPILE_DEBUG_FLAG}" 
+           debuglevel="${COMPILE_DEBUG_LEVEL}"
+           target="1.4" source="1.4">
+      <classpath>
+        <pathelement location="${spi.jar.dir}/connector.jar" />
+        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${spi.jarfile}" />
+        <pathelement location="${classes}" />
+      </classpath>
+    </javac>
+  </target>
 
-	<target name="run_tests" depends="compile_tests,jar">
-                <property name="test.suite" value="*"/>
-		<junit>
-			<assertions><enable/></assertions>
-			<classpath>
-                                <pathelement location="${spi.jar.dir}/connector.jar" />
-                                <pathelement location="${spi.jar.dir}/connector_tests.jar" />
-				<pathelement location="${jarfile}" />
-				<pathelement location="${spi.jarfile}" />
-				<pathelement location="${tests.classes}" />
-			</classpath>
-			<formatter type="brief" usefile="no"/>
-			<formatter type="plain" />
-			<batchtest fork="yes" todir="${tests.todir}">
-				<fileset dir="${tests.src}">
-					<include name="**/${test.suite}Test.java" />
-				</fileset>
-			</batchtest>
-		</junit>
-	</target>
+  <target name="run_tests" depends="compile_tests,jar">
+    <property name="test.suite" value="*"/>
+    <junit>
+      <assertions><enable/></assertions>
+      <classpath>
+        <pathelement location="${spi.jar.dir}/connector.jar" />
+        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${jarfile}" />
+        <pathelement location="${spi.jarfile}" />
+        <pathelement location="${tests.classes}" />
+      </classpath>
+      <formatter type="brief" usefile="no"/>
+      <formatter type="plain" />
+      <batchtest fork="yes" todir="${tests.todir}">
+        <fileset dir="${tests.src}">
+          <include name="**/${test.suite}Test.java" />
+        </fileset>
+      </batchtest>
+    </junit>
+  </target>
 
-	<target name="jar" description="livelink-connector" 
-			depends="compile,compile_tests">
-		<copy todir="${config.build}">
-			<fileset dir="${config}" />
-			<filterset>
-				<filter token="constructor-arg" 
-					value="&lt;constructor-arg value=&quot;com.google.enterprise.connector.otex.client.mock.MockClientFactory&quot; /&gt;" />
-			</filterset>
-		</copy>
+  <target name="jar" description="livelink-connector" 
+          depends="compile,compile_tests">
+    <copy todir="${config.build}">
+      <fileset dir="${config}" />
+      <filterset>
+        <filter token="constructor-arg" 
+                value="&lt;constructor-arg value=&quot;com.google.enterprise.connector.otex.client.mock.MockClientFactory&quot; /&gt;" />
+      </filterset>
+    </copy>
 
-		<jar jarfile="${jarfile}">
-			<fileset dir="${classes}"/>
-			<fileset dir="${tests.classes}" includes="**/mock/*" />
-			<fileset dir="${build}" includes="config/**"/>
-		</jar>
-	</target>
+    <jar jarfile="${jarfile}">
+      <fileset dir="${classes}"/>
+      <fileset dir="${tests.classes}" includes="**/mock/*" />
+      <fileset dir="${build}" includes="config/**"/>
+    </jar>
+  </target>
 
-	<target name="clean" description="Deletes all build files.">
-		<delete dir="${build}" />
-		<delete dir="${dist}" />
-	</target>
+  <target name="clean" description="Deletes all build files.">
+    <delete dir="${build}" />
+    <delete dir="${dist}" />
+  </target>
 
 </project>
