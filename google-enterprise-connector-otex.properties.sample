@@ -1,0 +1,31 @@
+## 
+# These properties are specific to the individual's development and test environment.
+# This properties file should be located in your home directory.
+# eg: ~/google-enterprise-connector-otex.properties
+
+
+## 
+# Build Properties
+# Locations of LAPI, Connector Manager, and LiveLink Connector source trees.
+
+# The root installation of an LAPI SDK installation.
+build.lapi.home = ${user.home}/OpenText/LAPI
+
+# The root of the google-enterprise-connector-manager tree
+build.connector.manager.home = ${user.home}/gsa/google-enterprise-connector-manager
+
+# The root of the google-enterprise-connector-otex tree
+build.connector.otex.home = ${user.home}/gsa/google-enterprise-connector-otex
+
+
+
+##
+# Test Framework Properties
+
+javatest.connector.hostname = swift
+javatest.connector.port = 2950
+javatest.connector.username = Admin
+javatest.connector.password = livelink
+javatest.connector.displayUrl = http://swift:9510/Livelink95/livelink
+javatest.connector.servtype = Oracle
+
