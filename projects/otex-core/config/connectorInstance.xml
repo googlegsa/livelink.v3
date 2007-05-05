@@ -11,26 +11,58 @@
 		<property name="password" value="${password}"/>
 		<property name="domainName" value="${domainName}"/>
 		<property name="displayUrl" value="${displayUrl}"/>
-		<property name="useHttps" value="${useHttps}"/>
+
 		<property name="livelinkCgi" value="${livelinkCgi}"/>
 		<property name="httpUsername" value="${httpUsername}"/>
 		<property name="httpPassword" value="${httpPassword}"/>
+		<property name="enableNtlm" value="${enableNtlm}"/>
+		<property name="useHttps" value="${useHttps}"/>
 		<property name="verifyServer" value="${verifyServer}"/>
 		<property name="caRootCerts">
 			<list>
 				<value>${caRootCert}</value>
 			</list>
 		</property>
-		<property name="useUsernamePasswordWithWebServer" 
+		<property name="useUsernamePasswordWithWebServer"
 			value="${useUsernamePasswordWithWebServer}"/>
-		<property name="useSeparateAuthentication" 
+
+		<property name="useSeparateAuthentication"
 			value="${useSeparateAuthentication}"/>
+		<property name="authenticationHostname"
+			value="${authenticationHostname}"/>
+		<property name="authenticationPort"
+			value="${authenticationPort}"/>
+		<property name="authenticationDatabase"
+			value="${authenticationDatabase}"/>
+		<property name="authenticationDomainName"
+			value="${authenticationDomainName}"/>
+		<property name="authenticationLivelinkCgi"
+			value="${authenticationLivelinkCgi}"/>
+		<property name="authenticationEnableNtlm"
+			value="${authenticationEnableNtlm}"/>
+		<property name="authenticationUseHttps"
+			value="${authenticationUseHttps}"/>
+		<property name="authenticationVerifyServer"
+			value="${authenticationVerifyServer}"/>
+		<property name="authenticationCaRootCerts">
+			<list>
+				<value>${authenticationCaRootCert}</value>
+			</list>
+		</property>
+		<property name="authenticationUseUsernamePasswordWithWebServer"
+			value="${authenticationUseUsernamePasswordWithWebServer}"/>
+
+		<property name="servtype" value=""/>
+		<property name="excludedNodeTypes"
+			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
+		<property name="excludedVolumeTypes" value="148,162"/>
+		<property name="excludedLocationNodes" value=""/>
 		<property name="displayPatterns">
 			<map>
 				<entry key="141" value="?func=llworkspace" />
-				<entry key="142" 
+				<entry key="142"
 					value="?func=ll&amp;objtype=142&amp;objAction=browse" />
-				<entry key="default" 
+				<entry key="default"
 					value="?func=ll&amp;objId={0}&amp;objAction={3}" />
 			</map>
 		</property>
@@ -47,33 +79,6 @@
 				<entry key="default" value="properties" />
 			</map>
 		</property>
-		<property name="servtype" value=""/>
-		<property name="excludedNodeTypes" 
-			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
-		<property name="excludedVolumeTypes" value="148,162"/>
-		<property name="excludedLocationNodes" value=""/>
-
-		<property name="authenticationHostname" 
-			value="${authenticationHostname}"/>
-		<property name="authenticationPort" 
-			value="${authenticationPort}"/>
-		<property name="authenticationDatabase" 
-			value="${authenticationDatabase}"/>
-		<property name="authenticationDomainName" 
-			value="${authenticationDomainName}"/>
-		<property name="authenticationUseHttps" 
-			value="${authenticationUseHttps}"/>
-		<property name="authenticationLivelinkCgi" 
-			value="${authenticationLivelinkCgi}"/>
-		<property name="authenticationVerifyServer"
-			value="${authenticationVerifyServer}"/>
-		<property name="authenticationCaRootCerts">
-			<list>
-				<value>${authenticationCaRootCert}</value>
-			</list>
-		</property>
-		<property name="authenticationUseUsernamePasswordWithWebServer" 
-			value="${authenticationUseUsernamePasswordWithWebServer}"/>
 		@constructor-arg@
 	</bean>
 </beans>

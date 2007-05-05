@@ -114,6 +114,7 @@
 
     <jar jarfile="${jarfile}">
       <fileset dir="${classes}"/>
+      <fileset dir="${src}" includes="**/*.properties"/>
       <fileset dir="${tests.classes}" includes="**/mock/*" />
       <fileset dir="${build}" includes="config/**"/>
     </jar>

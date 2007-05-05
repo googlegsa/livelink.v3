@@ -17,10 +17,13 @@ package com.google.enterprise.connector.otex;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.Properties;
+import java.util.ResourceBundle;
 
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorType;
@@ -50,41 +53,76 @@ public class LivelinkConnectorType implements ConnectorType {
      * in the format used by the GSA.
      */
     private static abstract class ConnectorProperty {
+        /** HTML form labels for the configuration properties. */
+        private static final ResourceBundle labels;
+    
+        static {
+            // TODO: Use the language parameters to create the locale
+            // to use here. That means building the resource bundles
+            // more dynamically, instead of a single static bundle.
+            ResourceBundle bundle;
+            try {
+                bundle = ResourceBundle.getBundle(
+                    LivelinkConnectorType.class.getName(), Locale.US);
+            } catch (MissingResourceException e) {
+                LivelinkConnectorType.LOGGER.log(Level.SEVERE,
+                    e.getMessage(), e);
+                bundle = null;
+            }
+            labels = bundle;
+        }
+
+        /**
+         * Gets the display label for the given name.
+         *
+         * @param name a form element name or some other unique key
+         * @return the display label, or if one cannot be found, the name
+         */
+        protected static String getLabel(String name) {
+            if (labels == null)
+                return name;
+            else {
+                try {
+                    return labels.getString(name);
+                } catch (MissingResourceException e) {
+                    return name;
+                }
+            }
+        }
+        
         String name;
         String label;
         String defaultValue;
         
-        protected ConnectorProperty(String name, String label) {
-            this(name, label, null); 
+        protected ConnectorProperty(String name) {
+            this(name, null); 
         }
 
-        protected ConnectorProperty(String name, String label,
-                String defaultValue) {
+        protected ConnectorProperty(String name, String defaultValue) {
             this.name = name;
-            this.label = label;
+            this.label = getLabel(name);
             this.defaultValue = defaultValue;
         }
 
         public final String toString() {
             StringBuffer buffer = new StringBuffer();
-            addToBuffer(buffer); 
+            addToBuffer(buffer, "", "", null); 
             return buffer.toString();
         }
 
         abstract protected void addFormControl(StringBuffer buffer,
             String value);
 
-        public void addToBuffer(StringBuffer buffer) {
-            addToBuffer(buffer, null); 
-        }
-
-        public void addToBuffer(StringBuffer buffer, String value) {
+        public void addToBuffer(StringBuffer buffer, String labelPrefix,
+                String labelSuffix, String value) {
             // TODO: Use CSS here. Better handling of section labels.
-            if (label.indexOf(START_TAG) != -1)
+            if (START_TAG.equals(labelPrefix))
                 buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
             buffer.append("<tr valign='top'>\r\n").
                 append("<td style='white-space: nowrap'>").
+                append(labelPrefix).
                 append(label).
+                append(labelSuffix).
                 append("</td>\r\n"). 
                 append("<td>");
             addFormControl(buffer, value);
@@ -138,12 +176,12 @@ public class LivelinkConnectorType implements ConnectorType {
     private static class TextInputProperty extends ConnectorProperty {
         String type = "text"; 
 
-        TextInputProperty(String name, String label) {
-            this(name, label, null); 
+        TextInputProperty(String name) {
+            this(name, null); 
         }
 
-        TextInputProperty(String name, String label, String defaultValue) {
-            super(name, label, defaultValue); 
+        TextInputProperty(String name, String defaultValue) {
+            super(name, defaultValue); 
         }
 
         protected void addFormControl(StringBuffer buffer, String value) {
@@ -177,8 +215,8 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class PasswordInputProperty extends TextInputProperty {
 
-        PasswordInputProperty(String name, String label) {
-            super(name, label); 
+        PasswordInputProperty(String name) {
+            super(name);
             this.type = "password";
         }
     }
@@ -189,11 +227,12 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class HiddenInputProperty extends TextInputProperty {
         HiddenInputProperty(ConnectorProperty prop) {
-            super(prop.name, prop.label, prop.defaultValue); 
+            super(prop.name, prop.defaultValue); 
             this.type = "hidden";
         }
 
-        public void addToBuffer(StringBuffer buffer, String value) {
+        public void addToBuffer(StringBuffer buffer, String labelPrefix,
+                String labelSuffix, String value) {
             buffer.append("<tr style='display:none'>\r\n").
                 append("<td></td>\r\n<td>");
             addFormControl(buffer, value);
@@ -206,8 +245,8 @@ public class LivelinkConnectorType implements ConnectorType {
      * input element.
      */
     private static class TextareaProperty extends ConnectorProperty {
-        TextareaProperty(String name, String label) {
-            super(name, label); 
+        TextareaProperty(String name) {
+            super(name); 
         }
 
         protected void addFormControl(StringBuffer buffer, String value) {
@@ -234,24 +273,18 @@ public class LivelinkConnectorType implements ConnectorType {
      * instantiating the bean.
      */
     private static class BooleanSelectProperty extends ConnectorProperty {
-        BooleanSelectProperty(String name, String label, String defaultValue) {
-            super(name, label, defaultValue); 
+        BooleanSelectProperty(String name, String defaultValue) {
+            super(name, defaultValue); 
         }
 
         protected void addFormControl(StringBuffer buffer, String value) {
-            boolean isTrue;
-            if (value == null && defaultValue != null) 
-                isTrue = new Boolean(defaultValue).booleanValue();
-            else 
-                isTrue = new Boolean(value).booleanValue();
-            if (false) {
-                buffer.append("<select ");
-                appendAttribute(buffer, "name", name);
-                buffer.append(">"); 
-                appendOption(buffer, "false", "False", !isTrue); 
-                appendOption(buffer, "true", "True", isTrue); 
-                buffer.append("</select>");
-            } else if (name.startsWith("enable")) {
+            if (value == null && defaultValue != null)
+                value = defaultValue;
+            boolean isTrue = new Boolean(value).booleanValue();
+
+            // FIXME: Uh, maybe we don't want to depend on the
+            // property name here, eh?
+            if (name.startsWith("enable") && !name.equals("enableNtlm")) {
                 // TODO: Split out a CheckboxProperty class for this.
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "checkbox");
@@ -261,8 +294,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 if (isTrue)
                     buffer.append("checked");
                 buffer.append("> ");
-                appendLabel(buffer, name + "true",
-                    "Show and enable additional parameters");
+                appendLabel(buffer, name + "true", getLabel("enable"));
             } else {
                 // XXX: Surely this could be cleaner.
                 buffer.append("<input ");
@@ -273,7 +305,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 if (isTrue)
                     buffer.append("checked");
                 buffer.append("> ");
-                appendLabel(buffer, name + "true", "True");
+                appendLabel(buffer, name + "true", getLabel("true"));
                 buffer.append("<br>");
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "radio");
@@ -283,12 +315,12 @@ public class LivelinkConnectorType implements ConnectorType {
                 if (!isTrue)
                     buffer.append("checked");
                 buffer.append("> ");
-                appendLabel(buffer, name + "false", "False");
+                appendLabel(buffer, name + "false", getLabel("false"));
             }
         }
 
         protected void appendLabel(StringBuffer buffer, String element,
-            String label) {
+                String label) {
             buffer.append("<label ");
             appendAttribute(buffer, "for", element);
             buffer.append(">");
@@ -343,94 +375,82 @@ public class LivelinkConnectorType implements ConnectorType {
     
     static {
         baseEntries = new ArrayList();
-        baseEntries.add(new TextInputProperty("hostname", "Hostname")); 
-        baseEntries.add(new TextInputProperty("port", "Port", "2099")); 
-        baseEntries.add(new TextInputProperty("database", "Database")); 
-        baseEntries.add(new TextInputProperty("username", "Username")); 
-        baseEntries.add(new PasswordInputProperty("password", "Password")); 
-        baseEntries.add(new TextInputProperty("domainName",
-                            "Livelink Domain"));
-        baseEntries.add(new TextInputProperty("displayUrl", "Display URL")); 
+        baseEntries.add(new TextInputProperty("hostname")); 
+        baseEntries.add(new TextInputProperty("port", "2099")); 
+        baseEntries.add(new TextInputProperty("database")); 
+        baseEntries.add(new TextInputProperty("username")); 
+        baseEntries.add(new PasswordInputProperty("password")); 
+        baseEntries.add(new TextInputProperty("domainName"));
+        baseEntries.add(new TextInputProperty("displayUrl")); 
 
         // These record the state of the enablers. They are a little
-        // from each other, because the useHttpTunneling property is
-        // only used by LivelinkConnectorType and its helpers. The
-        // useSeparateAuthentication property, on the other hand, is
-        // passed along through the connectorInstance.xml file to the
-        // LivelinkConnector class, which uses it to determine whether
-        // any of the authentication parameters should be used.
+        // different from each other, because the useHttpTunneling
+        // property is only used by LivelinkConnectorType and its
+        // helpers. The useSeparateAuthentication property, on the
+        // other hand, is passed along through the
+        // connectorInstance.xml file to the LivelinkConnector class,
+        // which uses it to determine whether any of the
+        // authentication parameters should be used.
         hiddenEntries = new ArrayList();
         hiddenEntries.add(
-            new BooleanSelectProperty("useHttpTunneling", 
-                "Use HTTP Tunneling", "false"));
+            new BooleanSelectProperty("useHttpTunneling", "false"));
         hiddenEntries.add(
-            new BooleanSelectProperty("useSeparateAuthentication", 
-                "Use Different Authentication Configuration", "false"));
+            new BooleanSelectProperty("useSeparateAuthentication", "false"));
 
-        tunnelingEnabler = new BooleanSelectProperty("enableHttpTunneling", 
-                START_TAG + "HTTP Tunneling" + END_TAG, "false");
+        tunnelingEnabler =
+            new BooleanSelectProperty("enableHttpTunneling", "false");
         tunnelingEntries = new ArrayList();
-        tunnelingEntries.add(new BooleanSelectProperty("useHttps",
-                                 INDENTATION + "Use HTTPS", "true")); 
-        tunnelingEntries.add(new TextInputProperty("livelinkCgi",
-                                 INDENTATION + "Livelink CGI"));
-        tunnelingEntries.add(new TextInputProperty("httpUsername", 
-                                 INDENTATION + "HTTP Username")); 
-        tunnelingEntries.add(new PasswordInputProperty("httpPassword",
-                                 INDENTATION + "HTTP Password")); 
-        tunnelingEntries.add(new BooleanSelectProperty("verifyServer",
-                                 INDENTATION + "Verify Server", "true" ));
-        tunnelingEntries.add(new TextareaProperty("caRootCert",
-                                 INDENTATION + "CA Root Certificate")); 
+        tunnelingEntries.add(new TextInputProperty("livelinkCgi"));
+        tunnelingEntries.add(new TextInputProperty("httpUsername")); 
+        tunnelingEntries.add(new PasswordInputProperty("httpPassword")); 
+        tunnelingEntries.add(new BooleanSelectProperty("enableNtlm", "true")); 
+        tunnelingEntries.add(new BooleanSelectProperty("useHttps", "true")); 
+        tunnelingEntries.add(
+            new BooleanSelectProperty("verifyServer", "true" ));
+        tunnelingEntries.add(new TextareaProperty("caRootCert")); 
         tunnelingEntries.add(
             new BooleanSelectProperty("useUsernamePasswordWithWebServer",
-                INDENTATION + "Pass Credentials to Web Server", "false"));
+                "false"));
         
-        authenticationEnabler = new BooleanSelectProperty(
-            "enableSeparateAuthentication", 
-            START_TAG + "Separate Authentication" + END_TAG, "false");
+        authenticationEnabler =
+            new BooleanSelectProperty("enableSeparateAuthentication", "false");
         authenticationEntries = new ArrayList();
         authenticationEntries.add(
-            new TextInputProperty("authenticationHostname", 
-                INDENTATION + "Hostname")); 
+            new TextInputProperty("authenticationHostname")); 
         authenticationEntries.add(
-            new TextInputProperty("authenticationPort", 
-                INDENTATION + "Port", "443")); 
+            new TextInputProperty("authenticationPort", "443")); 
         authenticationEntries.add(
-            new TextInputProperty("authenticationDatabase",
-                INDENTATION + "Database")); 
+            new TextInputProperty("authenticationDatabase")); 
         authenticationEntries.add(
-            new BooleanSelectProperty("authenticationUseHttps", 
-                INDENTATION + "Use HTTPS", "true")); 
+            new TextInputProperty("authenticationDomainName"));
         authenticationEntries.add(
-            new TextInputProperty("authenticationLivelinkCgi", 
-                INDENTATION + "Livelink CGI")); 
+            new TextInputProperty("authenticationLivelinkCgi")); 
         authenticationEntries.add(
-            new BooleanSelectProperty("authenticationVerifyServer", 
-                INDENTATION + "Verify Server", "true")); 
+            new BooleanSelectProperty("authenticationEnableNtlm", "true")); 
         authenticationEntries.add(
-            new TextareaProperty("authenticationCaRootCert",
-                INDENTATION + "CA Root Certificate")); 
+            new BooleanSelectProperty("authenticationUseHttps", "true")); 
         authenticationEntries.add(
-            new TextInputProperty("authenticationDomainName", 
-                INDENTATION + "Livelink Domain"));
+            new BooleanSelectProperty("authenticationVerifyServer", "true")); 
+        authenticationEntries.add(
+            new TextareaProperty("authenticationCaRootCert")); 
         authenticationEntries.add(
             new BooleanSelectProperty(
-                "authenticationUseUsernamePasswordWithWebServer",
-                INDENTATION + "Pass Credentials to Web Server", "false"));
+                "authenticationUseUsernamePasswordWithWebServer", "false"));
     }
 
     /**
      * The Livelink Connector configuration form.
      */
     private static class Form {
+        private String message;
         private Map data; 
 
         Form() {
-            this(new HashMap()); 
+            this(null, new HashMap()); 
         }
 
-        Form(Map data) {
+        Form(String message, Map data) {
+            this.message = message;
             this.data = data;
         }
 
@@ -439,20 +459,19 @@ public class LivelinkConnectorType implements ConnectorType {
         }
         
         private void addEntries(StringBuffer buffer, ArrayList entries,
-                boolean hide) {
+                boolean hide, String labelPrefix, String labelSuffix) {
             for (Iterator i = entries.iterator(); i.hasNext(); ) {
                 ConnectorProperty prop = (ConnectorProperty) i.next();
-                addEntry(buffer, prop, hide);
+                addEntry(buffer, prop, hide, labelPrefix, labelSuffix);
             }
         }
 
         private void addEntry(StringBuffer buffer, ConnectorProperty prop,
-                boolean hide) {
-            if (hide) {
-                new HiddenInputProperty(prop).addToBuffer(buffer, 
-                    getProperty(prop.name));
-            } else
-                prop.addToBuffer(buffer, getProperty(prop.name));
+                boolean hide, String labelPrefix, String labelSuffix) {
+            if (hide)
+                prop = new HiddenInputProperty(prop);
+            prop.addToBuffer(buffer, labelPrefix, labelSuffix,
+                getProperty(prop.name));
         }
         
         private boolean hide(String name) {
@@ -461,14 +480,21 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         String getForm() {
-            StringBuffer buffer = new StringBuffer(4096); 
-            addEntries(buffer, baseEntries, false);
-            addEntries(buffer, hiddenEntries, true);
-            addEntry(buffer, tunnelingEnabler, false);
-            addEntries(buffer, tunnelingEntries, hide("useHttpTunneling"));
-            addEntry(buffer, authenticationEnabler, false);
+            StringBuffer buffer = new StringBuffer(4096);
+            if (message != null) {
+                buffer.append("<tr valign='top'>\r\n").
+                    append("<td colspan='2' style='color: red'>").
+                    append(message).
+                    append("</td>\r\n</tr>\r\n");
+            }
+            addEntries(buffer, baseEntries, false, "", "");
+            addEntries(buffer, hiddenEntries, true, null, null);
+            addEntry(buffer, tunnelingEnabler, false, START_TAG, END_TAG);
+            addEntries(buffer, tunnelingEntries, hide("useHttpTunneling"),
+                INDENTATION, "");
+            addEntry(buffer, authenticationEnabler, false, START_TAG, END_TAG);
             addEntries(buffer, authenticationEntries,
-                hide("useSeparateAuthentication"));
+                hide("useSeparateAuthentication"), INDENTATION, "");
             return buffer.toString(); 
         }
     }
@@ -484,7 +510,8 @@ public class LivelinkConnectorType implements ConnectorType {
      * {@inheritDoc}
      */
     public ConfigureResponse getConfigForm(String language) {
-        LOGGER.config("method entry"); 
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("getConfigForm language: " + language); 
         return new ConfigureResponse(null, new Form().getForm()); 
     }
 
@@ -493,8 +520,10 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     public ConfigureResponse getPopulatedConfigForm(Map configData,
             String language) {
-        if (LOGGER.isLoggable(Level.CONFIG)) 
-            LOGGER.config("getPopulatedConfigForm data: " + configData); 
+        if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("getPopulatedConfigForm data: " + configData);
+            LOGGER.config("getPopulatedConfigForm language: " + language);
+        }
         return getResponse(null, configData, language);
     }
 
@@ -513,7 +542,7 @@ public class LivelinkConnectorType implements ConnectorType {
             String language) {
         if (LOGGER.isLoggable(Level.CONFIG)) 
             LOGGER.config("Response data: " + configData); 
-        Form form = new Form(configData);
+        Form form = new Form(message, configData);
         return new ConfigureResponse(message, form.getForm()); 
     }
 
@@ -555,27 +584,27 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     public ConfigureResponse validateConfig(Map configData,
             String language) {
-        if (LOGGER.isLoggable(Level.CONFIG)) 
+        if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("validateConfig data: " + configData); 
+            LOGGER.config("validateConfig language: " + language);
+        }
 
+        // The configData object is actually a Properties
+        // object, but since they don't tell us that
+        // officially, we'll copy the data.
+        Properties p = new Properties();
+        p.putAll(configData); 
+
+        // Update the properties to copy the enabler properties to
+        // the uses.
+        boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
+            "enableHttpTunneling");
+        boolean changeAuth = changeFormDisplay(p,
+            "useSeparateAuthentication", "enableSeparateAuthentication");
+            
         // Instantiate a LivelinkConnector to check connectivity. 
         LivelinkConnector conn = null; 
         try {
-            // The configData object is actually a Properties
-            // object, but since they don't tell us that
-            // officially, we'll copy the data.
-            Properties p = new Properties();
-            p.putAll(configData); 
-
-            // Beware the short-circuiting OR, my son! The jaws that
-            // bite, the claws that catch!
-            boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
-                "enableHttpTunneling");
-            boolean changeAuth = changeFormDisplay(p,
-                "useSeparateAuthentication", "enableSeparateAuthentication");
-            if (changeHttp || changeAuth)
-                return getResponse(null, p, language); 
-            
             // TODO: be able to locate connectorInstance.xml
             // elsewhere outside the jar file to support
             // hand-edits.
@@ -588,7 +617,7 @@ public class LivelinkConnectorType implements ConnectorType {
             cfg.postProcessBeanFactory(factory);
             conn = (LivelinkConnector) factory.getBean("livelink-connector");
         } catch (Throwable t) {
-            LOGGER.warning("Failed to create connector");
+            LOGGER.log(Level.WARNING, "Failed to create connector", t);
             t = t.getCause();
             while (t != null) {
                 if (t instanceof PropertyAccessExceptionsException) {
@@ -602,17 +631,21 @@ public class LivelinkConnectorType implements ConnectorType {
                 t = t.getCause();
             }
             return getResponse("Failed to instantiate connector",
-                configData, language); 
+                p, language); 
         }
 
         try {
             conn.login(); 
         } catch (Throwable t) {
-            LOGGER.warning("Failed to connect: " + t);
-            return getResponse("Failed to connect: " + t, configData,
-                language); 
+            LOGGER.log(Level.WARNING, "Error in configuration", t);
+            return getResponse("Error in configuration: " + t.getMessage(),
+                p, language); 
         }
-        return null; 
+
+        if (changeHttp || changeAuth)
+            return getResponse(null, p, language); 
+        else
+            return null; 
     }
 
     /**
@@ -630,7 +663,8 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private boolean changeFormDisplay(Properties p, String useName,
             String enableName) {
-        LOGGER.fine("ENABLED: " + p.getProperty(enableName));
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("ENABLED: " + p.getProperty(enableName));
         boolean enable = new Boolean(p.getProperty(enableName)).booleanValue();
         boolean use = new Boolean(p.getProperty(useName)).booleanValue();
         if (enable != use) {
