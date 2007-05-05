@@ -120,11 +120,18 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             String docid = (String) i.next(); 
             pm.putProperty(
                 new SimpleProperty(SpiConstants.PROPNAME_DOCID, docid));
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.finest("AUTHORIZED " + docid + ": " +
+                    authorized.contains(docid));
+            }
             pm.putProperty(
                 new SimpleProperty(SpiConstants.PROPNAME_AUTH_VIEWPERMIT,
                     authorized.contains(docid)));
             rs.add(pm);
         }
+        // TODO: This is a nice idea, but SimplePropertyMap does not
+        // have a toString method that would make this work.
+        // LOGGER.finest(rs.toString());
         return rs;
     }
 
