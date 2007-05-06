@@ -142,6 +142,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * @param docids the list of tokens
      * @param username the username for which to check authorization
      * @throws RepositoryException if an error occurs
+     * @deprecated
      */
     public ResultSet authorizeTokens(List docids, String username) {
         LOGGER.fine("AUTHORIZE TOKENS");

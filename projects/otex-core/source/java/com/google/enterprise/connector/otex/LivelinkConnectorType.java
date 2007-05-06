@@ -57,9 +57,9 @@ public class LivelinkConnectorType implements ConnectorType {
         private static final ResourceBundle labels;
     
         static {
-            // TODO: Use the language parameters to create the locale
-            // to use here. That means building the resource bundles
-            // more dynamically, instead of a single static bundle.
+            // TODO: Use the locale parameters here. That means
+            // building the resource bundles more dynamically, instead
+            // of a single static bundle.
             ResourceBundle bundle;
             try {
                 bundle = ResourceBundle.getBundle(
@@ -509,9 +509,9 @@ public class LivelinkConnectorType implements ConnectorType {
     /**
      * {@inheritDoc}
      */
-    public ConfigureResponse getConfigForm(String language) {
+    public ConfigureResponse getConfigForm(Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("getConfigForm language: " + language); 
+            LOGGER.config("getConfigForm locale: " + locale); 
         return new ConfigureResponse(null, new Form().getForm()); 
     }
 
@@ -519,12 +519,12 @@ public class LivelinkConnectorType implements ConnectorType {
      * {@inheritDoc}
      */
     public ConfigureResponse getPopulatedConfigForm(Map configData,
-            String language) {
+            Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("getPopulatedConfigForm data: " + configData);
-            LOGGER.config("getPopulatedConfigForm language: " + language);
+            LOGGER.config("getPopulatedConfigForm locale: " + locale);
         }
-        return getResponse(null, configData, language);
+        return getResponse(null, configData, locale);
     }
 
     /**
@@ -534,12 +534,12 @@ public class LivelinkConnectorType implements ConnectorType {
      * @param message A message to be included to the user along with the form
      * @param configData A map of name, value pairs (String, String)
      * of configuration data
-     * @param language A locale string, such as "en" or "fr_CA" which
-     * the implementation may use to produce appropriate descriptions
-     * and messages
+     * @param locale A <code>java.util.Locale</code> which the
+     * implementation may use to produce appropriate descriptions and
+     * messages
      */
     private ConfigureResponse getResponse(String message, Map configData,
-            String language) {
+            Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) 
             LOGGER.config("Response data: " + configData); 
         Form form = new Form(message, configData);
@@ -582,11 +582,10 @@ public class LivelinkConnectorType implements ConnectorType {
      * our parameter set? Should we preserve any other fields as
      * hidden data?
      */
-    public ConfigureResponse validateConfig(Map configData,
-            String language) {
+    public ConfigureResponse validateConfig(Map configData, Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("validateConfig data: " + configData); 
-            LOGGER.config("validateConfig language: " + language);
+            LOGGER.config("validateConfig locale: " + locale);
         }
 
         // The configData object is actually a Properties
@@ -630,8 +629,7 @@ public class LivelinkConnectorType implements ConnectorType {
                     LOGGER.warning(t.toString());
                 t = t.getCause();
             }
-            return getResponse("Failed to instantiate connector",
-                p, language); 
+            return getResponse("Failed to instantiate connector", p, locale);
         }
 
         try {
@@ -639,11 +637,11 @@ public class LivelinkConnectorType implements ConnectorType {
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in configuration", t);
             return getResponse("Error in configuration: " + t.getMessage(),
-                p, language); 
+                p, locale); 
         }
 
         if (changeHttp || changeAuth)
-            return getResponse(null, p, language); 
+            return getResponse(null, p, locale); 
         else
             return null; 
     }
