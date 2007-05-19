@@ -91,6 +91,7 @@
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
+        <pathelement location="${thirdparty.jar.dir}/junit.jar" />
       </classpath>
     </javac>
   </target>
@@ -121,6 +122,7 @@
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${lapi.jarfile}" />
+        <pathelement location="${thirdparty.jar.dir}/junit.jar" />
       </classpath>
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
