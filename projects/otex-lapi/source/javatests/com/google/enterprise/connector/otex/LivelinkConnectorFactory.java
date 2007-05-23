@@ -44,6 +44,7 @@ class LivelinkConnectorFactory {
         emptyProperties.put("displayUrl", ""); 
         emptyProperties.put("useHttps", "true"); 
         emptyProperties.put("livelinkCgi", ""); 
+        emptyProperties.put("enableNtlm", "false"); 
         emptyProperties.put("httpUsername", ""); 
         emptyProperties.put("httpPassword", ""); 
         emptyProperties.put("verifyServer", "true"); 
@@ -56,6 +57,7 @@ class LivelinkConnectorFactory {
         emptyProperties.put("authenticationDomainName", ""); 
         emptyProperties.put("authenticationUseHttps", "true"); 
         emptyProperties.put("authenticationLivelinkCgi", ""); 
+        emptyProperties.put("authenticationEnableNtlm", "false"); 
         emptyProperties.put("authenticationVerifyServer", "true"); 
         emptyProperties.put("authenticationCaRootCert", ""); 
         emptyProperties.put("authenticationUseUsernamePasswordWithWebServer", 
