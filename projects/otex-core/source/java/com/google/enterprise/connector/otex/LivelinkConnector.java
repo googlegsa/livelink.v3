@@ -27,8 +27,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.google.enterprise.connector.spi.Connector;
-import com.google.enterprise.connector.spi.LoginException;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
@@ -775,7 +775,8 @@ public class LivelinkConnector implements Connector {
     }
     
     /** {@inheritDoc} */
-    public Session login() throws LoginException, RepositoryException {
+    public Session login()
+            throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("LOGIN");
         
