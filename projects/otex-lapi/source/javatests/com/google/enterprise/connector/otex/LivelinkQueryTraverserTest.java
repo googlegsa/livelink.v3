@@ -24,10 +24,10 @@ import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.DocPusher;
 import com.google.enterprise.connector.pusher.MockPusher;
 import com.google.enterprise.connector.pusher.MockFeedConnection;
-import com.google.enterprise.connector.spi.LoginException;
+import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.QueryTraversalManager;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.traversal.QueryTraverser;
 import com.google.enterprise.connector.traversal.Traverser;
 
@@ -60,8 +60,9 @@ public class LivelinkQueryTraverserTest extends TestCase {
      * #runBatch(int)}.
      * @throws InterruptedException 
      */
-    public final void testRunBatch() throws IOException, LoginException,
-            RepositoryException, InterruptedException {
+    public final void testRunBatch() throws IOException,
+            RepositoryLoginException, RepositoryException,
+            InterruptedException {
     
         runTestBatches(1);
         runTestBatches(5);
@@ -73,10 +74,11 @@ public class LivelinkQueryTraverserTest extends TestCase {
 
 
     private void runTestBatches(int batchSize) throws IOException,
-            LoginException, RepositoryException, InterruptedException {
+            RepositoryLoginException, RepositoryException,
+            InterruptedException {
 
         Session sess = conn.login();
-        QueryTraversalManager qtm = sess.getQueryTraversalManager();
+        TraversalManager qtm = sess.getTraversalManager();
 
         String connectorName = "livelink";
         PrintStream out =

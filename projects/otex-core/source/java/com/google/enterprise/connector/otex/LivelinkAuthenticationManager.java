@@ -18,9 +18,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.LogRecord;
 
+import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
-import com.google.enterprise.connector.spi.LoginException;
+import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.RepositoryLoginException;
+import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 /**
@@ -52,19 +55,23 @@ class LivelinkAuthenticationManager implements AuthenticationManager {
      * @param username the username to check
      * @param password the user's password
      * @returns true if the user can be authenticated
-     * @throws LoginException not currently thrown
+     * @throws RepositoryLoginException not currently thrown
      * @throws RepositoryException if an exception occured during
      * authentication
      */
-    public boolean authenticate(String username, String password)
-            throws LoginException, RepositoryException {
+    public AuthenticationResponse authenticate(AuthenticationIdentity identity)
+            throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHENTICATE: " + username);
+            LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
         try {
-            return clientFactory.createClient(username, password).ping();
+            // XXX: Pass the identity to the ClientFactory?
+            Client client = clientFactory.createClient(
+                identity.getUsername(), identity.getPassword());
+            boolean isValid = client.ping();
+            return new AuthenticationResponse(isValid, null);
         } catch (RepositoryException e) {
-            LOGGER.warning("Authentication failed for " + username + "; " +
-                e.getMessage()); 
+            LOGGER.warning("Authentication failed for " +
+                identity.getUsername() + "; " + e.getMessage()); 
             throw e;
         }
     }

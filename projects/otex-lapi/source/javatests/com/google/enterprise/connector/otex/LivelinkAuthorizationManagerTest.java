@@ -21,14 +21,16 @@ import java.util.Set;
 
 import junit.framework.TestCase;
 
+import com.google.enterprise.connector.spi.AuthenticationIdentity;
+import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.QueryTraversalManager;
+import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.ResultSet;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 
@@ -66,6 +68,21 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
 
     /**
+     * Authorizes a user for a list of documents.
+     * 
+     * @param docids a list of document IDs
+     * @param username the username to authorize
+     */
+    private List authorizeDocids(List docids, final String username)
+            throws RepositoryException {
+        AuthenticationIdentity identity = new AuthenticationIdentity() {
+                public String getUsername() { return username; }
+                public String getPassword() { return null; }
+            };
+        return authManager.authorizeDocids(docids, identity);
+    }
+
+    /**
      * Tests a couple of known docids for a couple of users.
      *
      * @throws RepositoryException if an error occurs
@@ -79,9 +96,9 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         ArrayList docids = new ArrayList();
         for (int i = 0; i < data.size(); i++)
             docids.add(((IdAuth) data.get(i)).id);
-        ResultSet rs; 
-        rs = authManager.authorizeDocids(docids, "llglobal");
-        mCheckForUser("llglobal", data, rs); 
+        List authzList; 
+        authzList = authorizeDocids(docids, "llglobal");
+        mCheckForUser("llglobal", data, authzList); 
 
         // Put Admin second to tell if we can open up permissions
         // after impersonating llglobal (in a test scenario where
@@ -89,8 +106,8 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         // instead of a client per call to authorizeDocids). Yes,
         // it seems that we can.
         ((IdAuth) data.get(0)).auth = true;
-        rs = authManager.authorizeDocids(docids, "Admin");
-        mCheckForUser("Admin", data, rs); 
+        authzList = authorizeDocids(docids, "Admin");
+        mCheckForUser("Admin", data, authzList); 
     }
 
 
@@ -103,15 +120,12 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      * @throws RepositoryException if an error occurs
      */
     private void mCheckForUser(String username, List expected,
-            ResultSet actual) throws RepositoryException {
+            List actual) throws RepositoryException {
         int i = 0;
         for (Iterator a = actual.iterator(); a.hasNext(); i++) {
-            PropertyMap map = (PropertyMap) a.next();
-            String docid = map.getProperty(
-                SpiConstants.PROPNAME_DOCID).getValue().getString(); 
-            boolean auth = map.getProperty(
-                SpiConstants.PROPNAME_AUTH_VIEWPERMIT).getValue().
-                getBoolean(); 
+            AuthorizationResponse authz = (AuthorizationResponse) a.next();
+            String docid = authz.getDocid(); 
+            boolean auth = authz.isValid(); 
             String expectedDocid = ((IdAuth) expected.get(i)).id;
             boolean expectedAuth = ((IdAuth) expected.get(i)).auth;
 
@@ -129,11 +143,11 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     public void testPerformance() throws Exception {
         // Traverse the repository for a bunch of ids.
         final int batchHint = 100000;
-        QueryTraversalManager qtm = session.getQueryTraversalManager();
-        qtm.setBatchHint(batchHint);
-        ResultSet rs = qtm.startTraversal();
+        TraversalManager tm = session.getTraversalManager();
+        tm.setBatchHint(batchHint);
+        PropertyMapList pmList = tm.startTraversal();
         ArrayList docids = new ArrayList();
-        for (Iterator i = rs.iterator(); i.hasNext(); ) {
+        for (Iterator i = pmList.iterator(); i.hasNext(); ) {
             Property p = ((PropertyMap) i.next()).getProperty(
                 SpiConstants.PROPNAME_DOCID); 
             docids.add(p.getValue().getString()); 
@@ -143,21 +157,21 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         long end = 0; 
 
         start = System.currentTimeMillis();
-        authManager.authorizeDocids(docids, "Admin");
+        authorizeDocids(docids, "Admin");
         end = System.currentTimeMillis();
         long adminTime = end - start;
         //System.out.println("authorizeDocids (Admin): docs/time = " + 
         //    docids.size() + "/" + adminTime); 
 
         start = System.currentTimeMillis();
-        authManager.authorizeDocids(docids, "llglobal");
+        authorizeDocids(docids, "llglobal");
         end = System.currentTimeMillis();
         long llglobalTime = end - start;
         //System.out.println("authorizeDocids (llglobal): docs/time = " + 
         //    docids.size() + "/" + llglobalTime); 
 
         start = System.currentTimeMillis();
-        authManager.authorizeDocids(docids, "llglobal-external");
+        authorizeDocids(docids, "llglobal-external");
         end = System.currentTimeMillis();
         long llglobalExternalTime = end - start;
         //System.out.println(

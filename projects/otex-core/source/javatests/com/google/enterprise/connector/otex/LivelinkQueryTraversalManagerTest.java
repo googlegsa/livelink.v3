@@ -33,7 +33,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertNull(excluded, excluded);
@@ -47,7 +47,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertNull(excluded, excluded);
@@ -59,7 +59,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertNull(excluded, excluded);
@@ -72,7 +72,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertEquals((Object) "SubType not in " +
@@ -85,7 +85,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertTrue(excluded, excluded.indexOf("SubType not in") == -1);
@@ -98,7 +98,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertEquals((Object) "DataID not in (select DataID from " + 
@@ -108,7 +108,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
         conn.setExcludedLocationNodes("13832");
 
         sess = conn.login();
-        lqtm = (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+        lqtm = (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded2 = lqtm.getExcluded();
 
         assertEquals((Object) excluded, excluded2);
@@ -122,7 +122,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertTrue(excluded, excluded.startsWith("SubType not in " +
@@ -137,7 +137,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertTrue(excluded, excluded.indexOf("SubType not in") == -1);
@@ -153,7 +153,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertEquals((Object) "SubType not in " +
@@ -171,7 +171,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
-            (LivelinkQueryTraversalManager) sess.getQueryTraversalManager();
+            (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
         assertTrue(excluded, excluded.startsWith("SubType not in " +

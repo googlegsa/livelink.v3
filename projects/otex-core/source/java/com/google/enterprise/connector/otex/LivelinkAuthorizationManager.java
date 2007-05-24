@@ -14,19 +14,17 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
+import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.ResultSet;
-import com.google.enterprise.connector.spi.SimpleProperty;
-import com.google.enterprise.connector.spi.SimplePropertyMap;
-import com.google.enterprise.connector.spi.SimpleResultSet;
-import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -56,10 +54,14 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * Returns authorization information for a list of docids.
      *
      * @param docids the list of docids
-     * @param username the username for which to check authorization
+     * @param identity the user identity for which to check authorization
      * @throws RepositoryException if an error occurs
      */
     /*
+      Using ListNodes to authorize docids in bulk is much faster (up
+      to 300 times faster in testing) that authorizing a single docid
+      at a time.
+      
       There are limits to the size of the SQL query in the
       backing databases. They're pretty big, but on general
       principles we're breaking the query into pieces.
@@ -91,13 +93,13 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       server, we could consider synchronizing access to the
       ListNodes call on the class object or something.
     */
-    public ResultSet authorizeDocids(List docids, String username)
+    public List authorizeDocids(List docids, AuthenticationIdentity identity)
             throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHORIZE DOCIDS: " + username);
+            LOGGER.fine("AUTHORIZE DOCIDS: " + identity.getUsername());
 
         Client client = clientFactory.createClient();
-        client.ImpersonateUser(username);
+        client.ImpersonateUser(identity.getUsername());
         
         HashSet authorized = new HashSet(); 
         final int chunkSize = 10000;
@@ -114,39 +116,20 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             toIndex = Math.min(docids.size(), toIndex + chunkSize); 
         }
 
-        SimpleResultSet rs = new SimpleResultSet();
+        List authzList = new ArrayList(docids.size());
         for (Iterator i = docids.iterator(); i.hasNext(); ) {
-            SimplePropertyMap pm = new SimplePropertyMap();
             String docid = (String) i.next(); 
-            pm.putProperty(
-                new SimpleProperty(SpiConstants.PROPNAME_DOCID, docid));
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("AUTHORIZED " + docid + ": " +
                     authorized.contains(docid));
             }
-            pm.putProperty(
-                new SimpleProperty(SpiConstants.PROPNAME_AUTH_VIEWPERMIT,
-                    authorized.contains(docid)));
-            rs.add(pm);
+            authzList.add(
+                new AuthorizationResponse(authorized.contains(docid), docid));
         }
-        // TODO: This is a nice idea, but SimplePropertyMap does not
+        // TODO: This is a nice idea, but AuthorizationResponse does not
         // have a toString method that would make this work.
-        // LOGGER.finest(rs.toString());
-        return rs;
-    }
-
-
-    /**
-     * Stub implementation of interface method.
-     *
-     * @param docids the list of tokens
-     * @param username the username for which to check authorization
-     * @throws RepositoryException if an error occurs
-     * @deprecated
-     */
-    public ResultSet authorizeTokens(List docids, String username) {
-        LOGGER.fine("AUTHORIZE TOKENS");
-        return new SimpleResultSet();
+        // LOGGER.finest(authzList.toString());
+        return authzList;
     }
 
 
@@ -167,26 +150,4 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         query.replace(len, len + 1, ")");
         return query.toString();
     }
-    /*
-    // This method is much slower than using ListNodes. 
-    public ResultSet authorizeDocids1(List docids, String username)
-            throws RepositoryException {
-        System.out.println("method 1"); 
-        Client client = clientFactory.createClient();
-        client.ImpersonateUser(username); 
-
-        SimpleResultSet rs = new SimpleResultSet();
-        for (Iterator i = docids.iterator(); i.hasNext(); ) {
-            SimplePropertyMap pm = new SimplePropertyMap();
-            String docid = (String) i.next(); 
-            pm.putProperty(
-                new SimpleProperty(SpiConstants.PROPNAME_DOCID, docid));
-            pm.putProperty(
-                new SimpleProperty(SpiConstants.PROPNAME_AUTH_VIEWPERMIT,
-                    client.canSeeContents(LOGGER, docid)));
-            rs.add(pm);
-        }
-        return rs;
-    }
-    */
 }

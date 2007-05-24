@@ -21,16 +21,16 @@ import java.util.logging.Logger;
 import java.util.Map;
 
 import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.QueryTraversalManager;
+import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.ResultSet;
 import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
-class LivelinkQueryTraversalManager implements QueryTraversalManager {
+class LivelinkQueryTraversalManager implements TraversalManager {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
@@ -54,7 +54,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
         list.add(new Field(
             "DataID", ValueType.LONG, SpiConstants.PROPNAME_DOCID));
         list.add(new Field(
-            "ModifyDate", ValueType.DATE, SpiConstants.PROPNAME_LASTMODIFY));
+            "ModifyDate", ValueType.DATE, SpiConstants.PROPNAME_LASTMODIFIED));
         list.add(new Field(
             "MimeType", ValueType.STRING, SpiConstants.PROPNAME_MIMETYPE));
 
@@ -321,7 +321,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
 
     /** {@inheritDoc} */
-    public ResultSet startTraversal() throws RepositoryException {
+    public PropertyMapList startTraversal() throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("START @" +
                 Integer.toHexString(System.identityHashCode(this)));
@@ -351,7 +351,7 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
 
 
     /** {@inheritDoc} */
-    public ResultSet resumeTraversal(String checkpoint)
+    public PropertyMapList resumeTraversal(String checkpoint)
             throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("RESUME: " + checkpoint + " @" +
@@ -414,7 +414,8 @@ class LivelinkQueryTraversalManager implements QueryTraversalManager {
      * @return a batch of results starting at the checkpoint, if there
      * is one, or the beginning of the traversal order, otherwise
      */
-    private ResultSet listNodes(String checkpoint) throws RepositoryException {
+    private PropertyMapList listNodes(String checkpoint)
+            throws RepositoryException {
         ClientValue recArray;
         if (isSqlServer)
             recArray = listNodesSqlServer(checkpoint);

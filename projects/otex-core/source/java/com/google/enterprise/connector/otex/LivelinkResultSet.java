@@ -33,8 +33,8 @@ import java.util.TimeZone;
 
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.PropertyMap;
+import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.ResultSet;
 import com.google.enterprise.connector.spi.SimpleValue;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
@@ -44,15 +44,15 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * This result set implementation could be trivial, but is not. Since
- * a <code>ResultSet</code> in this implementation is a wrapper on a
+ * a <code>PropertyMapList</code> in this implementation is a wrapper on a
  * recarray, we need the recarray and other things in the
- * <code>ResultSet</code>, <code>PropertyMap</code>,
+ * <code>PropertyMapList</code>, <code>PropertyMap</code>,
  * <code>Property</code>, and <code>Value</code> implementations,
  * along with the associated <code>Iterator</code> implementations. So
  * we use inner classes to share the necessary objects from this
  * outermost class.
  */
-class LivelinkResultSet implements ResultSet {
+class LivelinkResultSet implements PropertyMapList {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkResultSet.class.getName());
@@ -125,7 +125,7 @@ class LivelinkResultSet implements ResultSet {
      * objects in instance fields to balance object creation, not
      * frequent at just once per result set, and synchronization,
      * which is fast in the absence of contention. It is extremely
-     * unlikely that <code>ResultSet</code> instances or their
+     * unlikely that <code>PropertyMapList</code> instances or their
      * children will be called from multiple threads, but there's no
      * need to cut corners here.
      * 
@@ -161,7 +161,7 @@ class LivelinkResultSet implements ResultSet {
     
 
     /**
-     * Iterates over a <code>ResultSet</code>, returning each
+     * Iterates over a <code>PropertyMapList</code>, returning each
      * <code>PropertyMap</code> it contains.
      */
     private class LivelinkResultSetIterator implements Iterator {

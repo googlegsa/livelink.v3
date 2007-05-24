@@ -17,6 +17,7 @@ package com.google.enterprise.connector.otex;
 import java.lang.reflect.Method;
 import junit.framework.TestCase;
 
+import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 
@@ -141,10 +142,14 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
         return authenticate(username, password, false); 
     }
     
-    private boolean authenticate(String username, String password,
+    private boolean authenticate(final String username, final String password,
             boolean log) {
         try {
-            return authManager.authenticate(username, password);
+            AuthenticationIdentity identity = new AuthenticationIdentity() {
+                    public String getUsername() { return username; }
+                    public String getPassword() { return password; }
+                };
+            return authManager.authenticate(identity).isValid();
         }
         catch (RepositoryException e) {
             if (log)

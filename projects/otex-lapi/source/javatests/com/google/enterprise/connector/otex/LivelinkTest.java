@@ -25,10 +25,10 @@ import junit.framework.TestCase;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.QueryTraversalManager;
+import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.ResultSet;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
@@ -47,26 +47,26 @@ public class LivelinkTest extends TestCase {
     public void testTraversal() throws RepositoryException {
         Session sess = conn.login();
 
-        QueryTraversalManager mgr = sess.getQueryTraversalManager();
+        TraversalManager mgr = sess.getTraversalManager();
         mgr.setBatchHint(20);
 
         System.out.println("============ startTraversal ============");
-        ResultSet rs = mgr.startTraversal();
-        PropertyMap lastNode = processResultSet(rs);
+        PropertyMapList pmList = mgr.startTraversal();
+        PropertyMap lastNode = processResultSet(pmList);
         while (lastNode != null)
         {
             String checkpoint = mgr.checkpoint(lastNode);
             System.out.println("============ resumeTraversal ============");
-            rs = mgr.resumeTraversal(checkpoint);
-            lastNode = processResultSet(rs);
+            pmList = mgr.resumeTraversal(checkpoint);
+            lastNode = processResultSet(pmList);
         }
     }
 
-    private PropertyMap processResultSet(ResultSet rs)
+    private PropertyMap processResultSet(PropertyMapList pmList)
             throws RepositoryException {
         // XXX: What's supposed to happen if the result set is empty?
         PropertyMap map = null;
-        Iterator it = rs.iterator();
+        Iterator it = pmList.iterator();
         while (it.hasNext()) {
             System.out.println();
             map = (PropertyMap) it.next();
@@ -109,7 +109,7 @@ public class LivelinkTest extends TestCase {
     public void testResumeTraversal() throws RepositoryException {
         Session sess = conn.login();
 
-        QueryTraversalManager mgr = sess.getQueryTraversalManager();
+        TraversalManager mgr = sess.getTraversalManager();
 
         // If time comparisons aren't working, then a batch size of
         // one will produce one row for each unique timestamp, so a
@@ -122,12 +122,12 @@ public class LivelinkTest extends TestCase {
             mgr.setBatchHint(batchHints[i]);
 
             rowCount = 0;
-            ResultSet rs = mgr.startTraversal();
-            PropertyMap lastNode = countResultSet(rs);
+            PropertyMapList pmList = mgr.startTraversal();
+            PropertyMap lastNode = countResultSet(pmList);
             while (lastNode != null) {
                 String checkpoint = mgr.checkpoint(lastNode);
-                rs = mgr.resumeTraversal(checkpoint);
-                lastNode = countResultSet(rs);
+                pmList = mgr.resumeTraversal(checkpoint);
+                lastNode = countResultSet(pmList);
             }
             long after = System.currentTimeMillis();
             System.out.println("TIME: " + (after - before));
@@ -140,10 +140,10 @@ public class LivelinkTest extends TestCase {
         }
     }
 
-    private PropertyMap countResultSet(ResultSet rs)
+    private PropertyMap countResultSet(PropertyMapList pmList)
             throws RepositoryException {
         PropertyMap map = null;
-        Iterator it = rs.iterator();
+        Iterator it = pmList.iterator();
         while (it.hasNext()) {
             rowCount++;
             map = (PropertyMap) it.next();
@@ -154,22 +154,22 @@ public class LivelinkTest extends TestCase {
     public void testDuplicates() throws RepositoryException {
         Session sess = conn.login();
 
-        QueryTraversalManager mgr = sess.getQueryTraversalManager();
+        TraversalManager mgr = sess.getTraversalManager();
 
         HashSet nodes = new HashSet();
-        ResultSet rs = mgr.startTraversal();
-        PropertyMap lastNode = processResultSet(rs, nodes);
+        PropertyMapList pmList = mgr.startTraversal();
+        PropertyMap lastNode = processResultSet(pmList, nodes);
         while (lastNode != null) {
             String checkpoint = mgr.checkpoint(lastNode);
-            rs = mgr.resumeTraversal(checkpoint);
-            lastNode = processResultSet(rs, nodes);
+            pmList = mgr.resumeTraversal(checkpoint);
+            lastNode = processResultSet(pmList, nodes);
         }
     }
 
-    private PropertyMap processResultSet(ResultSet rs, Set nodes)
+    private PropertyMap processResultSet(PropertyMapList pmList, Set nodes)
             throws RepositoryException {
         PropertyMap map = null;
-        Iterator it = rs.iterator();
+        Iterator it = pmList.iterator();
         while (it.hasNext()) {
             map = (PropertyMap) it.next();
             Property prop = map.getProperty(SpiConstants.PROPNAME_DOCID);

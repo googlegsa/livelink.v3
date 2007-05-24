@@ -21,9 +21,9 @@ import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
-import com.google.enterprise.connector.spi.QueryTraversalManager;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 class LivelinkSession implements Session {
@@ -58,12 +58,12 @@ class LivelinkSession implements Session {
     }
 
     /**
-     * Gets a QueryTraversalManager to implement query-based traversal
+     * Gets a TraversalManager to implement query-based traversal
      * 
-     * @return a QueryTraversalManager
+     * @return a TraversalManager
      * @throws RepositoryException
      */
-    public QueryTraversalManager getQueryTraversalManager()
+    public TraversalManager getTraversalManager()
         throws RepositoryException
     {
         return new LivelinkQueryTraversalManager(connector, clientFactory);
