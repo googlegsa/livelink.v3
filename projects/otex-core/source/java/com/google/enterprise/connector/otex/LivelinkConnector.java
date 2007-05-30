@@ -62,8 +62,11 @@ public class LivelinkConnector implements Connector {
     static String sanitizeListOfIntegers(String list) {
         if (LIST_OF_INTEGERS.matcher(list).matches())
             return list.replaceAll("[\\s{}]", "");
-        else
-            throw new IllegalArgumentException(list);
+        else {
+            RuntimeException e = new IllegalArgumentException(list);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            throw e;
+        }
     }
 
     
@@ -114,6 +117,9 @@ public class LivelinkConnector implements Connector {
 
     /** The node IDs that you want to exclude from traversal. */
     private String excludedLocationNodes;
+
+    /** The node IDs that you want to include in the traversal. */
+    private String includedLocationNodes;
 
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler =
@@ -595,6 +601,27 @@ public class LivelinkConnector implements Connector {
      */
     String getExcludedLocationNodes() {
         return excludedLocationNodes;
+    }
+    
+    /**
+     * Sets the node IDs that you want to included in the traversal.
+     * 
+     * @param includedLocationNodes the included node IDs
+     */
+    public void setIncludedLocationNodes(String includedLocationNodes) {
+        this.includedLocationNodes =
+            sanitizeListOfIntegers(includedLocationNodes);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("INCLUDED NODE IDS: " + this.includedLocationNodes);
+    }
+    
+    /**
+     * Gets the node IDs that you want to include in the traversal.
+     *
+     * @return the included node IDs
+     */
+    String getIncludedLocationNodes() {
+        return includedLocationNodes;
     }
     
     /**

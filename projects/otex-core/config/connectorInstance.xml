@@ -11,6 +11,8 @@
 		<property name="password" value="${password}"/>
 		<property name="domainName" value="${domainName}"/>
 		<property name="displayUrl" value="${displayUrl}"/>
+		<property name="includedLocationNodes"
+			value="${includedLocationNodes}"/>
 
 		<property name="livelinkCgi" value="${livelinkCgi}"/>
 		<property name="httpUsername" value="${httpUsername}"/>

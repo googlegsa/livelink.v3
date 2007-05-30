@@ -382,6 +382,7 @@ public class LivelinkConnectorType implements ConnectorType {
         baseEntries.add(new PasswordInputProperty("password")); 
         baseEntries.add(new TextInputProperty("domainName"));
         baseEntries.add(new TextInputProperty("displayUrl")); 
+        baseEntries.add(new TextInputProperty("includedLocationNodes")); 
 
         // These record the state of the enablers. They are a little
         // different from each other, because the useHttpTunneling
