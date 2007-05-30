@@ -42,6 +42,7 @@ class LivelinkConnectorFactory {
         emptyProperties.put("password", ""); 
         emptyProperties.put("domainName", ""); 
         emptyProperties.put("displayUrl", ""); 
+        emptyProperties.put("includedLocationNodes", ""); 
         emptyProperties.put("useHttps", "true"); 
         emptyProperties.put("livelinkCgi", ""); 
         emptyProperties.put("enableNtlm", "false"); 
