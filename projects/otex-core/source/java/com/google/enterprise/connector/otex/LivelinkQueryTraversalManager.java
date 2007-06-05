@@ -30,6 +30,17 @@ import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
+/**
+ * This implementation of <code>TraversalManager</code> requires
+ * the <code>LAPI_DOCUMENTS.ListNodes</code> method, which
+ * is an undocumented LAPI method.
+ *
+ * The SQL queries used here are designed to work with SQL Server 7.0
+ * or later, and with Oracle 8i Release 2 (8.1.6). This enables the
+ * code to work with Livelink 9.0 or later. The exception to this is
+ * that Sybase, which is supported by Livelink 9.2.0.1 and earlier, is
+ * not supported here.
+ */
 class LivelinkQueryTraversalManager implements TraversalManager {
     /** The logger for this class. */
     private static final Logger LOGGER =
@@ -404,10 +415,11 @@ class LivelinkQueryTraversalManager implements TraversalManager {
      * also by SQL Server 2005, but that's too limiting, and it's
      * likely to be much slower than TOP or ROWNUM. The standard SQL
      * <code>SET ROWCOUNT</em> statement is supported by SQL Server
-     * 6.5, but not by Oracle, and I don't know of a way to execute it
-     * from LAPI. A final complication is that ROWNUM limits the rows
-     * before the ORDER BY clause is applied, so a subquery is needed
-     * to do the ordering before the limit is applied.
+     * 6.5 and by Sybase, but not by Oracle, and I don't know of a way
+     * to execute it from LAPI. A final complication is that ROWNUM
+     * limits the rows before the ORDER BY clause is applied, so a
+     * subquery is needed to do the ordering before the limit is
+     * applied.
      *
      * @param checkpoint a checkpoint string, or <code>null</code> if
      * a new traversal should be started
@@ -486,8 +498,8 @@ class LivelinkQueryTraversalManager implements TraversalManager {
         buffer.append(ORDER_BY);
         buffer.append(')');
         String view = buffer.toString();
-        if (LOGGER.isLoggable(Level.FINER))
-            LOGGER.finer("ORACLE VIEW: " + view);
+        if (LOGGER.isLoggable(Level.FINEST))
+            LOGGER.finest("ORACLE VIEW: " + view);
         String[] columns = new String[] { "*" };
 
         return client.ListNodes(query, view, columns);
@@ -504,7 +516,10 @@ class LivelinkQueryTraversalManager implements TraversalManager {
      */
     /*
      * The TIMESTAMP literal, part of the SQL standard, was first
-     * supported by Oracle 9i, and not at all by SQL Server.
+     * supported by Oracle 9i, and not at all by SQL Server. SQL
+     * Server doesn't require a prefix on timestamp literals, and
+     * we're using TO_DATE with Oracle in order to work with Oracle
+     * 8i, and therefore with Livelink 9.0 or later.
      *
      * TODO: Validate the checkpoint. We could move the validatation
      * to resumeTraversal, which is the only place a non-null
@@ -517,12 +532,18 @@ class LivelinkQueryTraversalManager implements TraversalManager {
             throw new LivelinkException("Invalid checkpoint " + checkpoint,
                 LOGGER);
         } else {
-            String ts = isSqlServer ? "" : "TIMESTAMP";
             String modifyDate = checkpoint.substring(0, index);
             String dataId = checkpoint.substring(index + 1);
-            return "ModifyDate > " + ts + '\'' + modifyDate + 
-                "' or (ModifyDate = " + ts + '\'' + modifyDate +
-                "' and DataID > " + dataId + ')';
+            if (isSqlServer) {
+                return "ModifyDate > '" + modifyDate + 
+                    "' or (ModifyDate = '" + modifyDate +
+                    "' and DataID > " + dataId + ')';
+            } else {
+                return "ModifyDate > TO_DATE('" + modifyDate + 
+                    "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('" +
+                    modifyDate + "', 'YYYY-MM-DD HH24:MI:SS') and DataID > " +
+                    dataId + ')';
+            }
         }
     }
 }
