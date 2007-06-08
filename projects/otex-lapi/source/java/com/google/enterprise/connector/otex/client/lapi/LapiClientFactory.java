@@ -33,9 +33,9 @@ public final class LapiClientFactory implements ClientFactory {
     private static final Logger LOGGER =
         Logger.getLogger(LapiClientFactory.class.getName());
 
-    private String hostname = null;
+    private String server = null;
     private int port = 0;
-    private String database = null;
+    private String connection = null;
     private String username = null;
     private String password = null;
     private LLValue config = null;
@@ -43,8 +43,8 @@ public final class LapiClientFactory implements ClientFactory {
     private boolean useUsernamePasswordWithWebServer = false;
     
     /** {@inheritDoc} */
-    public void setHostname(String value) {
-        hostname = value;
+    public void setServer(String value) {
+        server = value;
     }
 
     /** {@inheritDoc} */
@@ -53,8 +53,8 @@ public final class LapiClientFactory implements ClientFactory {
     }
 
     /** {@inheritDoc} */
-    public void setDatabase(String value) {
-        database = value;
+    public void setConnection(String value) {
+        connection = value;
     }
 
     /** {@inheritDoc} */
@@ -83,10 +83,8 @@ public final class LapiClientFactory implements ClientFactory {
     }
 
     /** {@inheritDoc} */
-    // FIXME: how do we want to handle this? From an
-    // administrator's perspective, they're answering yes or no,
-    // but LAPI wants an integer.
-    public void setUseHttps(boolean value) {
+    public void setHttps(boolean value) {
+        // We've treated this as a boolean, but LAPI wants an integer.
         setConfig("HTTPS", value ? 1 : 0);
     }
 
@@ -180,7 +178,7 @@ public final class LapiClientFactory implements ClientFactory {
         // to avoid having to pass all of the constructor arguments to
         // LapiClient.
         logProperties(username, password, config); 
-        LLSession session = new LLSession(hostname, port, database, username,
+        LLSession session = new LLSession(server, port, connection, username,
             password, config);
         return new LapiClient(session);
     }
@@ -231,7 +229,7 @@ public final class LapiClientFactory implements ClientFactory {
             localConfig.add("HTTPPassword", providedPassword); 
         }
         logProperties(providedUsername, providedPassword, localConfig); 
-        LLSession session = new LLSession(hostname, port, database, 
+        LLSession session = new LLSession(server, port, connection, 
             providedUsername, providedPassword, localConfig);
         return new LapiClient(session);
     }
@@ -260,9 +258,9 @@ public final class LapiClientFactory implements ClientFactory {
                 }
                 configString.append("}"); 
             }
-            LOGGER.finer("hostname=" + hostname + "; port=" + port +
-                "; database=" + database + "; username=" + currentUsername +
-                "; password=[" +
+            LOGGER.finer("server=" + server + "; port=" + port +
+                "; connection=" + connection + "; username=" +
+                currentUsername + "; password=[" +
                 (currentPassword == null ? 0 : currentPassword.length()) +
                 "]; useUsernameForWebServer: " + 
                 useUsernamePasswordWithWebServer + "; " + configString);

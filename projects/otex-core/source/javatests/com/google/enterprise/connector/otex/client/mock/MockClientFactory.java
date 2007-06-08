@@ -23,7 +23,7 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
  */
 public class MockClientFactory implements ClientFactory {
     /** {@inheritDoc} */
-    public void setHostname(String value) {
+    public void setServer(String value) {
     }
 
     /** {@inheritDoc} */
@@ -39,7 +39,7 @@ public class MockClientFactory implements ClientFactory {
     }
 
     /** {@inheritDoc} */
-    public void setDatabase(String value) {
+    public void setConnection(String value) {
     }
 
     /** {@inheritDoc} */
@@ -55,7 +55,7 @@ public class MockClientFactory implements ClientFactory {
     }
 
     /** {@inheritDoc} */
-    public void setUseHttps(boolean value) {
+    public void setHttps(boolean value) {
     }
 
     /** {@inheritDoc} */

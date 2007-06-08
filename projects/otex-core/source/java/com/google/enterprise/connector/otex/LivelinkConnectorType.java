@@ -375,9 +375,9 @@ public class LivelinkConnectorType implements ConnectorType {
     
     static {
         baseEntries = new ArrayList();
-        baseEntries.add(new TextInputProperty("hostname")); 
+        baseEntries.add(new TextInputProperty("server")); 
         baseEntries.add(new TextInputProperty("port", "2099")); 
-        baseEntries.add(new TextInputProperty("database")); 
+        baseEntries.add(new TextInputProperty("connection")); 
         baseEntries.add(new TextInputProperty("username")); 
         baseEntries.add(new PasswordInputProperty("password")); 
         baseEntries.add(new TextInputProperty("domainName"));
@@ -405,7 +405,7 @@ public class LivelinkConnectorType implements ConnectorType {
         tunnelingEntries.add(new TextInputProperty("httpUsername")); 
         tunnelingEntries.add(new PasswordInputProperty("httpPassword")); 
         tunnelingEntries.add(new BooleanSelectProperty("enableNtlm", "true")); 
-        tunnelingEntries.add(new BooleanSelectProperty("useHttps", "true")); 
+        tunnelingEntries.add(new BooleanSelectProperty("https", "true")); 
         tunnelingEntries.add(
             new BooleanSelectProperty("verifyServer", "true" ));
         tunnelingEntries.add(new TextareaProperty("caRootCert")); 
@@ -417,11 +417,11 @@ public class LivelinkConnectorType implements ConnectorType {
             new BooleanSelectProperty("enableSeparateAuthentication", "false");
         authenticationEntries = new ArrayList();
         authenticationEntries.add(
-            new TextInputProperty("authenticationHostname")); 
+            new TextInputProperty("authenticationServer")); 
         authenticationEntries.add(
             new TextInputProperty("authenticationPort", "443")); 
         authenticationEntries.add(
-            new TextInputProperty("authenticationDatabase")); 
+            new TextInputProperty("authenticationConnection")); 
         authenticationEntries.add(
             new TextInputProperty("authenticationDomainName"));
         authenticationEntries.add(
@@ -429,7 +429,7 @@ public class LivelinkConnectorType implements ConnectorType {
         authenticationEntries.add(
             new BooleanSelectProperty("authenticationEnableNtlm", "true")); 
         authenticationEntries.add(
-            new BooleanSelectProperty("authenticationUseHttps", "true")); 
+            new BooleanSelectProperty("authenticationHttps", "true")); 
         authenticationEntries.add(
             new BooleanSelectProperty("authenticationVerifyServer", "true")); 
         authenticationEntries.add(
@@ -615,7 +615,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 new PropertyPlaceholderConfigurer();
             cfg.setProperties(p);
             cfg.postProcessBeanFactory(factory);
-            conn = (LivelinkConnector) factory.getBean("livelink-connector");
+            conn = (LivelinkConnector) factory.getBean("Livelink");
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Failed to create connector", t);
             t = t.getCause();

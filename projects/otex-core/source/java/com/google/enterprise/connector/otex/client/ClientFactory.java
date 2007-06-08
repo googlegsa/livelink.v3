@@ -21,7 +21,7 @@ package com.google.enterprise.connector.otex.client;
  */
 public interface ClientFactory {
     /** Required property. */
-    void setHostname(String value);
+    void setServer(String value);
 
     /** Required property. */
     void setPort(int value);
@@ -33,7 +33,7 @@ public interface ClientFactory {
     void setPassword(String value);
 
     /** Optional property. */
-    void setDatabase(String value);
+    void setConnection(String value);
 
     /** Optional property. */
     void setDomainName(String value);
@@ -45,7 +45,7 @@ public interface ClientFactory {
     void setLivelinkCgi(String value); 
 
     /** Optional property. */
-    void setUseHttps(boolean value); 
+    void setHttps(boolean value); 
 
     /** Optional property. */
     void setHttpUsername(String value);

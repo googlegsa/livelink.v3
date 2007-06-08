@@ -43,9 +43,9 @@ public class LapiClientFactoryTest extends TestCase {
      */
     public void setUp() throws Exception {
         factory = new LapiClientFactory(); 
-        factory.setHostname(getName()); 
+        factory.setServer(getName()); 
         factory.setPort(1111);
-        factory.setDatabase("testDatabase");
+        factory.setConnection("testConnection");
     }
 
 
@@ -115,7 +115,7 @@ public class LapiClientFactoryTest extends TestCase {
         factory.setLivelinkCgi("/testLivelinkCgi/livelink");
         factory.setHttpUsername("testHttpUsername"); 
         factory.setHttpPassword("testHttpPassword"); 
-        factory.setUseHttps(true); 
+        factory.setHttps(true); 
         factory.createClient();
     }
 
@@ -129,7 +129,7 @@ public class LapiClientFactoryTest extends TestCase {
         factory.setLivelinkCgi("/testLivelinkCgi/livelink");
         factory.setHttpUsername("testHttpUsername"); 
         factory.setHttpPassword("testHttpPassword"); 
-        factory.setUseHttps(true);
+        factory.setHttps(true);
         factory.setVerifyServer(true);
         ArrayList certs = new ArrayList();
         certs.add("test cert");

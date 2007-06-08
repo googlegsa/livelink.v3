@@ -161,14 +161,14 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the hostname of the Livelink server.
+     * Sets the host name or IP address of the server.
      * 
-     * @param hostname the host name to set
+     * @param server the host name or IP address of the server
      */
-    public void setHostname(String hostname) {
+    public void setServer(String server) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("HOSTNAME: " + hostname);
-        clientFactory.setHostname(hostname);
+            LOGGER.config("SERVER: " + server);
+        clientFactory.setServer(server);
     }
 
     /**
@@ -176,7 +176,7 @@ public class LivelinkConnector implements Connector {
      * port, unless HTTP tunneling is used, in which case it
      * should be the HTTP port.
      * 
-     * @param port the port number to set
+     * @param port the port number
      */
     public void setPort(int port) {
         if (LOGGER.isLoggable(Level.CONFIG))
@@ -187,18 +187,18 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the database connection to use. This property is optional.
      * 
-     * @param database the database name to set
+     * @param connection the database name
      */
-    public void setDatabase(String database) {
+    public void setConnection(String connection) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("DATABASE: " + database);
-        clientFactory.setDatabase(database);
+            LOGGER.config("CONNECTION: " + connection);
+        clientFactory.setConnection(connection);
     }
 
     /**
      * Sets the Livelink username.
      * 
-     * @param username the username to set
+     * @param username the username
      */
     public void setUsername(String username) {
         if (LOGGER.isLoggable(Level.CONFIG))
@@ -209,7 +209,7 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the Livelink password.
      * 
-     * @param password the password to set
+     * @param password the password
      */
     public void setPassword(String password) {
         if (LOGGER.isLoggable(Level.CONFIG))
@@ -218,7 +218,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the UseHTTPS property. Set to true to use HTTPS when
+     * Sets the HTTPS property. Set to true to use HTTPS when
      * tunneling through a web server. The default value for this
      * property is "true". If this property is set to true, the
      * LivelinkCGI property is set, and Livelink Secure Connect
@@ -226,10 +226,10 @@ public class LivelinkConnector implements Connector {
      *
      * @param useHttps true if HTTPS should be used; false otherwise
      */
-    public void setUseHttps(boolean useHttps) {
+    public void setHttps(boolean useHttps) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("USE HTTPS: " + useHttps);
-        clientFactory.setUseHttps(useHttps);
+            LOGGER.config("HTTPS: " + useHttps);
+        clientFactory.setHttps(useHttps);
     }
 
     /**
@@ -287,7 +287,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the VerifyServer property. This property may be used
-     * with {@link #setUseHttps} and {@link #setCaRootCerts}.
+     * with {@link #setHttps} and {@link #setCaRootCerts}.
      *
      * @param verifyServer true if the server certificate should
      * be verified
@@ -312,7 +312,7 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the Livelink domain name. This property is optional.
      * 
-     * @param domainName the domain name to set
+     * @param domainName the domain name
      */
     public void setDomainName(String domainName) {
         if (LOGGER.isLoggable(Level.CONFIG))
@@ -649,21 +649,22 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the hostname for authentication. See {@link #setHostname}. 
+     * Sets the host name or IP address for authentication. See {@link
+     * #setServer}.
      * 
-     * @param hostname the host name to set
+     * @param server the host name or IP address of the server
      */
-    public void setAuthenticationHostname(String hostname) {
+    public void setAuthenticationServer(String server) {
         createAuthenticationClientFactory();
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("AUTHENTICATION HOSTNAME: " + hostname);
-        authenticationClientFactory.setHostname(hostname);
+            LOGGER.config("AUTHENTICATION SERVER: " + server);
+        authenticationClientFactory.setServer(server);
     }
 
     /**
      * Sets the port to use. See {@link #setPort}. 
      * 
-     * @param port the port number to set
+     * @param port the port number
      */
     public void setAuthenticationPort(int port) {
         createAuthenticationClientFactory();
@@ -674,27 +675,27 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the database connection to use when
-     * authenticating. See {@link #setDatabase}. 
+     * authenticating. See {@link #setConnection}. 
      * 
-     * @param database the database name to set
+     * @param connection the database name
      */
-    public void setAuthenticationDatabase(String database) {
+    public void setAuthenticationConnection(String connection) {
         createAuthenticationClientFactory();
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("AUTHENTICATION DATABASE: " + database);
-        authenticationClientFactory.setDatabase(database);
+            LOGGER.config("AUTHENTICATION CONNECTION: " + connection);
+        authenticationClientFactory.setConnection(connection);
     }
 
     /**
-     * Sets the UseHTTPS property. See {@link #setUseHttps}. 
+     * Sets the HTTPS property. See {@link #setHttps}. 
      *
      * @param useHttps true if HTTPS should be used; false otherwise
      */
-    public void setAuthenticationUseHttps(boolean useHttps) {
+    public void setAuthenticationHttps(boolean useHttps) {
         createAuthenticationClientFactory();
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("AUTHENTICATION USE HTTPS: " + useHttps);
-        authenticationClientFactory.setUseHttps(useHttps);
+            LOGGER.config("AUTHENTICATION HTTPS: " + useHttps);
+        authenticationClientFactory.setHttps(useHttps);
     }
 
     /**
@@ -750,7 +751,7 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the Livelink domain name. See {@link #setDomainName}. 
      * 
-     * @param domainName the domain name to set
+     * @param domainName the domain name
      */
     public void setAuthenticationDomainName(String domainName) {
         createAuthenticationClientFactory();
