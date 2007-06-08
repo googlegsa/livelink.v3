@@ -35,15 +35,15 @@ class LivelinkConnectorFactory {
     static final Properties emptyProperties = new Properties();
 
     static {
-        emptyProperties.put("hostname", ""); 
+        emptyProperties.put("server", ""); 
         emptyProperties.put("port", ""); 
-        emptyProperties.put("database", ""); 
+        emptyProperties.put("connection", ""); 
         emptyProperties.put("username", ""); 
         emptyProperties.put("password", ""); 
         emptyProperties.put("domainName", ""); 
         emptyProperties.put("displayUrl", ""); 
         emptyProperties.put("includedLocationNodes", ""); 
-        emptyProperties.put("useHttps", "true"); 
+        emptyProperties.put("https", "true"); 
         emptyProperties.put("livelinkCgi", ""); 
         emptyProperties.put("enableNtlm", "false"); 
         emptyProperties.put("httpUsername", ""); 
@@ -52,11 +52,11 @@ class LivelinkConnectorFactory {
         emptyProperties.put("caRootCert", ""); 
         emptyProperties.put("useUsernamePasswordWithWebServer", "false"); 
         emptyProperties.put("useSeparateAuthentication", "false"); 
-        emptyProperties.put("authenticationHostname", ""); 
+        emptyProperties.put("authenticationServer", ""); 
         emptyProperties.put("authenticationPort", "0"); 
-        emptyProperties.put("authenticationDatabase", ""); 
+        emptyProperties.put("authenticationConnection", ""); 
         emptyProperties.put("authenticationDomainName", ""); 
-        emptyProperties.put("authenticationUseHttps", "true"); 
+        emptyProperties.put("authenticationHttps", "true"); 
         emptyProperties.put("authenticationLivelinkCgi", ""); 
         emptyProperties.put("authenticationEnableNtlm", "false"); 
         emptyProperties.put("authenticationVerifyServer", "true"); 
@@ -92,6 +92,6 @@ class LivelinkConnectorFactory {
         cfg.setProperties(p);
         cfg.postProcessBeanFactory(factory);
 
-        return (LivelinkConnector) factory.getBean("livelink-connector");
+        return (LivelinkConnector) factory.getBean("Livelink");
     }
 }
