@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.enterprise.connector.spi.Connector;
@@ -39,14 +40,35 @@ public class LivelinkConnector implements Connector {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnector.class.getName());
 
+    /** A value type of string in a configuration map. */
+    private static final int STRING = 0;
+
+    /**
+     * A value type of <code>MessageFormat</code> pattern in a
+     * configuration map.
+     */
+    private static final int PATTERN = 1;
+
+    /** A value type of list of strings in a configuration map. */
+    private static final int LIST_OF_STRINGS = 2;
+       
     /**
      * A pattern describing a comma-separated list of unsigned
      * integers, with optional whitespace and brace delimiters. The
      * list may be empty or consist entirely of whitespace. The
      * delimiters do not need to appear in a matching pair.
      */
-    private static final Pattern LIST_OF_INTEGERS =
+    private static final Pattern LIST_OF_INTEGERS_PATTERN =
         Pattern.compile("\\s*\\{?\\s*(?:\\d+\\s*(?:,\\s*\\d+\\s*)*)?\\}?\\s*");
+
+    /**
+     * A pattern describing a comma-separated list of strings, with
+     * optional whitespace and brace delimiters. The list may be empty
+     * or consist entirely of whitespace. The delimiters do not need
+     * to appear in a matching pair.
+     */
+    private static final Pattern LIST_OF_STRINGS_PATTERN =
+        Pattern.compile("\\s*\\{?\\s*([^{}]*?)\\s*\\}?\\s*");
 
 
     /**
@@ -60,9 +82,32 @@ public class LivelinkConnector implements Connector {
      */
     /* This method has package access so that it can be unit tested. */
     static String sanitizeListOfIntegers(String list) {
-        if (LIST_OF_INTEGERS.matcher(list).matches())
+        if (LIST_OF_INTEGERS_PATTERN.matcher(list).matches())
             return list.replaceAll("[\\s{}]", "");
         else {
+            RuntimeException e = new IllegalArgumentException(list);
+            LOGGER.log(Level.SEVERE, e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * Sanitizes a list of strings by checking for invalid characters
+     * in the string and removing all surrounding whitespace. Leading
+     * and trailing whitespace, and whitespace around the commas is
+     * removed. Any whitespace inside of non-whitespace strings is
+     * kept.
+     *
+     * @param list a list of comma-separated strings
+     * @return the list with surrounding whitespace characters removed
+     */
+    /* This method has package access so that it can be unit tested. */
+    static String sanitizeListOfStrings(String list) {
+        Matcher matcher = LIST_OF_STRINGS_PATTERN.matcher(list);
+        if (matcher.matches()) {
+            String trimmed = matcher.group(1);
+            return trimmed.replaceAll("\\s*,\\s*", ",");
+        } else {
             RuntimeException e = new IllegalArgumentException(list);
             LOGGER.log(Level.SEVERE, e.getMessage(), e);
             throw e;
@@ -120,6 +165,9 @@ public class LivelinkConnector implements Connector {
 
     /** The node IDs that you want to include in the traversal. */
     private String includedLocationNodes;
+
+    /** The map from subtypes to ExtendedData assoc keys. */
+    private Map extendedDataKeys = new HashMap();
 
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler =
@@ -366,8 +414,8 @@ public class LivelinkConnector implements Connector {
      * URL patterns
      */
     public void setDisplayPatterns(Map displayPatterns) {
-        setDisplayMap("DISPLAY PATTERNS", displayPatterns,
-            this.displayPatterns, true);
+        setSubtypeMap("DISPLAY PATTERNS", displayPatterns,
+            this.displayPatterns, PATTERN);
     }
     
     /**
@@ -382,14 +430,14 @@ public class LivelinkConnector implements Connector {
      * @param displayActions a map from subtypes to Livelink actions
      */
     public void setDisplayActions(Map displayActions) {
-        setDisplayMap("DISPLAY ACTIONS", displayActions,
-            this.displayActions, false);
+        setSubtypeMap("DISPLAY ACTIONS", displayActions,
+            this.displayActions, STRING);
     }
 
     /**
      * Converts a user-specified map into a system map. The user map
      * has string keys for each subtype, and the default entry key is
-     * "default." The system map has <code>Integer</code> keys for
+     * "default". The system map has <code>Integer</code> keys for
      * each subtype, and the default entry has a <code>null</code>
      * key. If the user map values are <code>MessageFormat</code>
      * patterns, then the system map will contain
@@ -397,12 +445,11 @@ public class LivelinkConnector implements Connector {
      *
      * @param userMap the user map to read from
      * @param systemMap the system map to add converted entries to
-     * @param isPatterns <code>true</code> if the map values are
-     * <code>MessageFormat</code> patterns, or <code>false</code>
-     * otherwise
+     * @param valueType one of the value type constants, <code>STRING</code>,
+     * <code>PATTERN</code>, or <code>LIST_OF_STRINGS</code>
      */
-    private void setDisplayMap(String logPrefix, Map userMap,
-            Map systemMap, boolean isPatterns) {
+    private void setSubtypeMap(String logPrefix, Map userMap,
+            Map systemMap, int valueType) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config(logPrefix + ": " + userMap);
         Iterator it = userMap.entrySet().iterator();
@@ -410,8 +457,20 @@ public class LivelinkConnector implements Connector {
             Map.Entry entry = (Map.Entry) it.next();
             String key = (String) entry.getKey();
             Object value = entry.getValue();
-            if (isPatterns)
+
+            switch (valueType) {
+            case STRING:
+                break;
+            case PATTERN:
                 value = getFormat((String) value);
+                break;
+            case LIST_OF_STRINGS:
+                value = sanitizeListOfStrings((String) value).split(",");
+                break;
+            default:
+                throw new AssertionError("This can't happen.");
+            }
+
             if ("default".equals(key))
                 systemMap.put(null, value);
             else {
@@ -622,6 +681,44 @@ public class LivelinkConnector implements Connector {
      */
     String getIncludedLocationNodes() {
         return includedLocationNodes;
+    }
+    
+    /**
+     * Sets the fields from ExtendedData to index for each subtype.
+     * The map contains keys that consist of comma-separated subtype
+     * integers. The special string "default" is not supported. The
+     * values are comma-separated lists of attribute names in the
+     * ExtendedData assoc for that subtype.
+     * 
+     * <p>The default value is an empty map.
+     *
+     * @param displayActions a map from subtypes to ExtendedData assoc keys
+     */
+    /*
+     * XXX: If we support pulling metadata from ExtendedData without
+     * constructing HTML content, then it might make sense to support
+     * the default key here. See the call to
+     * collectExtendedDataProperties in LivelinkPropertyMap.
+     *
+     * XXX: Note that the lack of support for "default" is not
+     * enforced here, but maybe it should be. If there's a null key in
+     * the map, it's just ignored. All lookups are done by subtype.
+     * (For the details, see collectExtendedDataProperties in Livelink
+     * PropertyMap.)
+     */
+    public void setIncludedExtendedData(Map extendedDataKeys) {
+        setSubtypeMap("EXTENDEDDATA KEYS", extendedDataKeys,
+            this.extendedDataKeys, LIST_OF_STRINGS);
+    }
+
+    /**
+     * Gets the fields from ExtendedData to index.
+     *
+     * @param subType the subtype of the item
+     * @return the map from integer subtypes 
+     */
+    public String[] getExtendedDataKeys(int subType) {
+        return (String[]) extendedDataKeys.get(new Integer(subType));
     }
     
     /**

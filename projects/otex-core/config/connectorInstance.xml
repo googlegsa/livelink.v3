@@ -59,6 +59,17 @@
 			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
 		<property name="excludedVolumeTypes" value="148,162"/>
 		<property name="excludedLocationNodes" value=""/>
+		<property name="includedExtendedData">
+			<map>
+				<entry key="130,134" value="Content" />
+				<entry key="202" 
+					value="Mission,Goals,Objectives,Initiatives" />
+				<entry key="206" value="Instructions,Comments" />
+				<entry key="208" value="Headline,Story" />
+
+				<entry key="218" value="Instruction,Questions" />
+			</map>
+		</property>
 		<property name="displayPatterns">
 			<map>
 				<entry key="141" value="?func=llworkspace" />

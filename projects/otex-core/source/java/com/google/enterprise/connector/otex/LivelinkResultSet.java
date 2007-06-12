@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -327,48 +328,10 @@ class LivelinkResultSet implements PropertyMapList {
          */
         private void collectExtendedDataProperties(int subType)
                 throws RepositoryException {
-            // TODO: Should this be a map in the XML config, or just a
-            // list of subtypes? For a list, we would just grab all of
-            // the entries in ExtendedData. But in the most general
-            // case, we might want some entries for the content, other
-            // entries just for metadata, and yet other entries not at
-            // all. This could potentially grow up to specify all of
-            // the metadata properties to collect.
-            String[] fields;
-            switch (subType) {
-            case Client.PROJECTSUBTYPE:
-                fields = new String[] {
-                    "Mission", "Goals", "Objectives", "Initiatives" };
-                break;
-                
-            case Client.TOPICSUBTYPE:
-            case Client.REPLYSUBTYPE:
-                fields = new String[] { "Content" };
-                break;
-
-            case Client.NEWSSUBTYPE:
-                // TODO: We should probably use the Headline for the
-                // the HTML title, rather than the Name recarray
-                // column, and not include the Headline in the HTML
-                // content body.
-                fields = new String[] { "Headline", "Story" };
-                break;
-                
-            case Client.TASKSUBTYPE:
-                fields = new String[] { "Instructions", "Comments" };
-                break;
-                            
-            case Client.POLLSUBTYPE:
-                // XXX: What happens with the Questions, which is a
-                // list of assoc?
-                fields = new String[] { "Instruction", "Questions" };
-                break;
-                
-            default:                            
-                fields = null;
-                break;
-            }
-
+            // TODO: In the most general case, we might want some
+            // entries for the content, other entries just for
+            // metadata, and yet other entries not at all.
+            String[] fields = connector.getExtendedDataKeys(subType);
             Value contentValue;
             if (fields == null) {
                 // TODO: This is a workaround for Connector Manager
@@ -385,15 +348,23 @@ class LivelinkResultSet implements PropertyMapList {
                 int volumeId = recArray.toInteger(row, "OwnerID");
                 ClientValue objectInfo =
                     client.GetObjectInfo(volumeId, objectId);
-                ClientValue extendedData =
-                    objectInfo.toValue("ExtendedData");
+                ClientValue extendedData = objectInfo.toValue("ExtendedData");
 
                 StringBuffer buffer = new StringBuffer();
                 buffer.append("<title>");
                 buffer.append(name);
                 buffer.append("</title>\n");
                 for (int i = 0; i < fields.length; i++) {
-                    String value = extendedData.toString(fields[i]);
+                    ClientValue value = extendedData.toValue(fields[i]);
+
+                    // XXX: For polls, the Questions field is a
+                    // stringified list of assoc. We're only handling
+                    // this one case, rather than handling stringified
+                    // values generally.
+                    if (subType == Client.POLLSUBTYPE &&
+                            fields[i].equals("Questions")) {
+                        value = value.stringToValue();
+                    }
 
                     // FIXME: GSA Feed Data Source Log:swift95
                     // 
@@ -403,18 +374,89 @@ class LivelinkResultSet implements PropertyMapList {
                     //
                     // Caused by issue 30, empty metadata values, in
                     // this case the Comments field.
-                    addProperty(fields[i],
-                        new SimpleValue(ValueType.STRING, value));
-
-                    buffer.append("<p>");
-                    buffer.append(value);
-                    buffer.append("</p>\n");
+                    collectValueContent(fields[i], value, "<div>",
+                        "</div>\n", buffer);
                 }
                 contentValue =
                     new SimpleValue(ValueType.STRING, buffer.toString());
                 addProperty(SpiConstants.PROPNAME_MIMETYPE, VALUE_TEXT_HTML);
             }
             addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
+        }
+
+        /**
+         * Collects properties in an LLValue. These properties are
+         * also assembled, together with the object name, in an HTML
+         * content property.
+         *
+         * @param name the property name
+         * @param value the property value
+         * @param openTag the HTML open tag to wrap the value in
+         * @param closeTag the HTML close tag to wrap the value in
+         * @param buffer the buffer to assemble the HTML content in
+         * @see #collectExtendedDataProperties
+         */
+        private void collectValueContent(String name, ClientValue value,
+                String openTag, String closeTag, StringBuffer buffer)
+                throws RepositoryException {
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.finest("Type: " + value.type() + "; value: " +
+                    value.toString2());
+            }
+            
+            switch (value.type()) {
+            case ClientValue.LIST:
+                buffer.append(openTag);
+                buffer.append("<ul>");
+                for (int i = 0; i < value.size(); i++) {
+                    collectValueContent(name, value.toValue(i), "<li>",
+                        "</li>\n", buffer);
+                }
+                buffer.append("</ul>\n");
+                buffer.append(closeTag);
+                break;
+
+            case ClientValue.ASSOC:
+                buffer.append(openTag);
+                buffer.append("<ul>");
+                Enumeration keys = value.enumerateNames();
+                while (keys.hasMoreElements()) {
+                    String key = (String) keys.nextElement();
+                    collectValueContent(key, value.toValue(key), "<li>",
+                        "</li>\n", buffer);
+                }
+                buffer.append("</ul>\n");
+                buffer.append(closeTag);
+                break;
+
+            case ClientValue.BOOLEAN:
+            case ClientValue.DATE:
+            case ClientValue.DOUBLE:
+            case ClientValue.INTEGER:
+            case ClientValue.STRING:
+                buffer.append(openTag);
+                buffer.append("<p>");
+                buffer.append(value.toString2());
+                buffer.append("</p>\n");
+                buffer.append(closeTag);
+
+                ValueType type;
+                switch (value.type()) {
+                case ClientValue.BOOLEAN: type = ValueType.BOOLEAN; break;
+                case ClientValue.DATE: type = ValueType.DATE; break;
+                case ClientValue.DOUBLE: type = ValueType.DOUBLE; break;
+                case ClientValue.INTEGER: type = ValueType.LONG; break;
+                case ClientValue.STRING: type = ValueType.STRING; break;
+                default:
+                    throw new AssertionError("This can't happen.");
+                }
+                addProperty(name, new SimpleValue(type, value.toString2()));
+                break;
+
+            default:
+                LOGGER.finest("Ignoring an unimplemented type.");
+                break;
+            }
         }
         
         public Iterator getProperties() {
