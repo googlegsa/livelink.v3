@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import java.util.Date;
+import java.util.Enumeration;
 
 import com.google.enterprise.connector.otex.client.ClientValue;
 
@@ -75,6 +76,29 @@ public final class MockClientValue implements ClientValue {
             return assocValues.length;
     }
 
+    public int type() {
+        if (tableValues != null)
+            return TABLE;
+        else
+            return ASSOC;
+    }
+        
+    public Enumeration enumerateNames() {
+        return new Enumeration() {
+                private int i = 0;
+                public boolean hasMoreElements() {
+                    return i < fieldNames.length;
+                }
+                public Object nextElement() {
+                    return fieldNames[i++];
+                }
+            };
+    }
+
+    public ClientValue stringToValue() {
+        return this;
+    }
+
     public boolean isDefined(int row, String field) {
         throw new IllegalArgumentException();
     }
@@ -133,6 +157,34 @@ public final class MockClientValue implements ClientValue {
 
     public String toString(String field) {
         return getValue(field).toString();
+    }
+    
+    public boolean isDefined(int index) {
+        throw new IllegalArgumentException();
+    }
+    
+    public ClientValue toValue(int index) {
+        throw new IllegalArgumentException();
+    }
+    
+    public boolean toBoolean(int index) {
+        throw new IllegalArgumentException();
+    }
+
+    public Date toDate(int index) {
+        throw new IllegalArgumentException();
+    }
+
+    public double toDouble(int index) {
+        throw new IllegalArgumentException();
+    }
+
+    public int toInteger(int index) {
+        throw new IllegalArgumentException();
+    }
+
+    public String toString(int index) {
+        throw new IllegalArgumentException();
     }
     
     public boolean isDefined() {

@@ -14,10 +14,16 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
+import java.io.ByteArrayInputStream;
+import java.io.PushbackInputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Date;
+import java.util.Enumeration;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.opentext.api.LLIllegalOperationException;
+import com.opentext.api.LLInputStream;
 import com.opentext.api.LLValue;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -36,6 +42,22 @@ public final class LapiClientValue implements ClientValue {
     private static final Logger LOGGER =
         Logger.getLogger(LapiClientValue.class.getName());
 
+    static {
+        // Verify that the ClientValue class constants are correct.
+        assert ASSOC == LLValue.LL_ASSOC : LLValue.LL_ASSOC;
+        assert BOOLEAN == LLValue.LL_BOOLEAN : LLValue.LL_BOOLEAN;
+        assert DATE == LLValue.LL_DATE : LLValue.LL_DATE;
+        assert DOUBLE == LLValue.LL_DOUBLE : LLValue.LL_DOUBLE;
+        assert ERROR == LLValue.LL_ERROR : LLValue.LL_ERROR;
+        assert INTEGER == LLValue.LL_INTEGER : LLValue.LL_INTEGER;
+        assert LIST == LLValue.LL_LIST : LLValue.LL_LIST;
+        assert NOTSET == LLValue.LL_NOTSET : LLValue.LL_NOTSET;
+        assert RECORD == LLValue.LL_RECORD : LLValue.LL_RECORD;
+        assert STRING == LLValue.LL_STRING : LLValue.LL_STRING;
+        assert TABLE == LLValue.LL_TABLE : LLValue.LL_TABLE;
+        assert UNDEFINED == LLValue.LL_UNDEFINED : LLValue.LL_UNDEFINED;
+    }
+    
     private final LLValue value;
 
     /**
@@ -52,6 +74,46 @@ public final class LapiClientValue implements ClientValue {
         return value.size();
     }
 
+    /** {@inheritDoc} */
+    public int type() {
+        return value.type();
+    }
+    
+    /** {@inheritDoc} */
+    public Enumeration enumerateNames() {
+        final Enumeration names = value.enumerateNames();
+        return new Enumeration() {
+                public boolean hasMoreElements() {
+                    return names.hasMoreElements();
+                }
+                public Object nextElement() {
+                    return names.nextElement().toString();
+                }
+            };
+    }
+
+    /** {@inheritDoc} */
+    public ClientValue stringToValue() throws RepositoryException {
+        String s = value.toString();
+        try {
+            LLValue sv = LLValue.crack(
+                new LLInputStream(
+                    new PushbackInputStream(
+                        new ByteArrayInputStream(s.getBytes("UTF-8"))),
+                    "UTF-8"));
+            if (LOGGER.isLoggable(Level.FINEST))
+                LOGGER.finest("Converted: " + s + " to: " + sv);
+            return new LapiClientValue(sv);
+        } catch (UnsupportedEncodingException e) {
+            // This can't happen.
+            RuntimeException re = new IllegalArgumentException();
+            re.initCause(e);
+            throw re;
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    
     /** {@inheritDoc} */
     public boolean isDefined(int row, String field)
             throws RepositoryException {
@@ -203,6 +265,83 @@ public final class LapiClientValue implements ClientValue {
     public String toString(String field) throws RepositoryException {
         try {
             return value.toString(field);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean isDefined(int index) throws RepositoryException {
+        try {
+            return value.toValue(index).isDefined();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public ClientValue toValue(int index) throws RepositoryException {
+        try {
+            return new LapiClientValue(value.toValue(index));
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean toBoolean(int index) throws RepositoryException {
+        try {
+            return value.toBoolean(index);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public Date toDate(int index) throws RepositoryException {
+        try {
+            return value.toDate(index);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public double toDouble(int index) throws RepositoryException {
+        try {
+            return value.toDouble(index);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public int toInteger(int index) throws RepositoryException {
+        try {
+            return value.toInteger(index);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public String toString(int index) throws RepositoryException {
+        try {
+            return value.toString(index);
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {
