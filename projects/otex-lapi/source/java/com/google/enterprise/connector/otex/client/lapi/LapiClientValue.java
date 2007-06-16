@@ -42,6 +42,7 @@ public final class LapiClientValue implements ClientValue {
     private static final Logger LOGGER =
         Logger.getLogger(LapiClientValue.class.getName());
 
+
     static {
         // Verify that the ClientValue class constants are correct.
         assert ASSOC == LLValue.LL_ASSOC : LLValue.LL_ASSOC;
@@ -58,8 +59,11 @@ public final class LapiClientValue implements ClientValue {
         assert UNDEFINED == LLValue.LL_UNDEFINED : LLValue.LL_UNDEFINED;
     }
     
+
+    /** The Actual LAPI Value object encapsulated by this ClientValue */
     private final LLValue value;
 
+    
     /**
      * Wraps an <code>LLValue</code>.
      *
@@ -69,9 +73,42 @@ public final class LapiClientValue implements ClientValue {
         this.value = value;
     }
     
+
+    /**
+     * Quick way to get the LLValue from a ClientValue.
+     * Best used when passing an LLValue back and forth
+     * accross the Client API.
+     */
+    LLValue getLLValue() {
+        return this.value;
+    }
+
     /** {@inheritDoc} */
     public int size() {
         return value.size();
+    }
+
+    /** {@inheritDoc} */
+    public void setSize(int size) throws RepositoryException {
+        try {
+            value.setSize(size);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+
+    /** {@inheritDoc} */
+    public void setInteger(int index, int val) throws RepositoryException {
+        try {
+            value.setInteger(index, val);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
     }
 
     /** {@inheritDoc} */
@@ -91,6 +128,35 @@ public final class LapiClientValue implements ClientValue {
                 }
             };
     }
+
+    /** {@inheritDoc} */
+    public boolean isDefined(int row, String field)
+            throws RepositoryException {
+        try {
+            return value.toValue(row, field).isDefined();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public boolean hasValue() {
+        try {
+            if (this.value == null)
+                return false;
+            int dataType = this.value.type();
+            if (LLValue.LL_UNDEFINED == dataType ||
+                LLValue.LL_ERROR == dataType ||
+                LLValue.LL_NOTSET == dataType)
+                return false;
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+    
 
     /** {@inheritDoc} */
     public ClientValue stringToValue() throws RepositoryException {
@@ -114,18 +180,6 @@ public final class LapiClientValue implements ClientValue {
         }
     }
     
-    /** {@inheritDoc} */
-    public boolean isDefined(int row, String field)
-            throws RepositoryException {
-        try {
-            return value.toValue(row, field).isDefined();
-        } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
-        } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
-        }
-    }
-
     /** {@inheritDoc} */
     public ClientValue toValue(int row, String field)
             throws RepositoryException {
@@ -407,11 +461,251 @@ public final class LapiClientValue implements ClientValue {
     /** {@inheritDoc} */
     public String toString2() throws RepositoryException {
         try {
-            return value.toString();
+            return value.toString(); // + " (type = " + value.type() + ")";
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
     }
+
+    /** {@inheritDoc} */
+    public int add(String key, boolean obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, char obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, int obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, long obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, float obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, double obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, Boolean obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, Double obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, Float obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, Integer obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, Long obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, String obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String key, java.util.Date obj) throws RepositoryException {
+        try {
+            return this.value.add(key, obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+
+    /** {@inheritDoc} */
+    public int add(boolean obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(char obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(int obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(long obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(float obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(double obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(Boolean obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(Double obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(Float obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(Integer obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(Long obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(String obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    public int add(java.util.Date obj) throws RepositoryException {
+        try {
+            return this.value.add(obj);
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
 }

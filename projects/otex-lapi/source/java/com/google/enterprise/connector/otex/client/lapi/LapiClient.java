@@ -25,6 +25,7 @@ import java.util.Map;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
 import com.opentext.api.LAPI_ATTRIBUTES;
 import com.opentext.api.LAPI_DOCUMENTS;
@@ -62,6 +63,38 @@ final class LapiClient implements Client {
         assert CHARACTER_ENCODING_UTF8 ==
             LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8 :
             LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8;
+        assert ATTR_DATAVALUES == LAPI_ATTRIBUTES.ATTR_DATAVALUES :
+            LAPI_ATTRIBUTES.ATTR_DATAVALUES ;
+        assert ATTR_DEFAULTVALUES == LAPI_ATTRIBUTES.ATTR_DEFAULTVALUES :
+            LAPI_ATTRIBUTES.ATTR_DEFAULTVALUES ;
+        assert ATTR_TYPE_BOOL == LAPI_ATTRIBUTES.ATTR_TYPE_BOOL :
+            LAPI_ATTRIBUTES.ATTR_TYPE_BOOL ;
+        assert ATTR_TYPE_DATE == LAPI_ATTRIBUTES.ATTR_TYPE_DATE :
+            LAPI_ATTRIBUTES.ATTR_TYPE_DATE ;
+        assert ATTR_TYPE_DATEPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP :
+            LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP ;
+        assert ATTR_TYPE_REAL == LAPI_ATTRIBUTES.ATTR_TYPE_REAL :
+            LAPI_ATTRIBUTES.ATTR_TYPE_REAL ;
+        assert ATTR_TYPE_REALPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP :
+            LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP ;
+        assert ATTR_TYPE_INTPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP :
+            LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP ;
+        assert ATTR_TYPE_SET == LAPI_ATTRIBUTES.ATTR_TYPE_SET :
+            LAPI_ATTRIBUTES.ATTR_TYPE_SET ;
+        assert ATTR_TYPE_STRFIELD == LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD :
+            LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD ;
+        assert ATTR_TYPE_STRMULTI == LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI :
+            LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI ;
+        assert ATTR_TYPE_STRPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP :
+            LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP ;
+        assert ATTR_TYPE_USER == LAPI_ATTRIBUTES.ATTR_TYPE_USER :
+            LAPI_ATTRIBUTES.ATTR_TYPE_USER ;
+        assert CATEGORY_TYPE_LIBRARY == LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY :
+            LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY ;
+        assert CATEGORY_TYPE_WORKFLOW ==
+            LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW :
+            LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW ;
+        
     }
     
     /**
@@ -89,6 +122,13 @@ final class LapiClient implements Client {
         this.users = new LAPI_USERS(session);
         this.attributes = new LAPI_ATTRIBUTES(session);
     }
+
+
+    /** {@inheritDoc} */
+    public ClientValueFactory getClientValueFactory() throws RepositoryException {
+        return new LapiClientValueFactory();
+    }
+
 
     /** {@inheritDoc} */
     public ClientValue GetServerInfo() throws RepositoryException {
@@ -123,6 +163,20 @@ final class LapiClient implements Client {
     }
     
     /** {@inheritDoc} */
+    public synchronized ClientValue GetUserOrGroupByID(int id)
+            throws RepositoryException {
+        LLValue userInfo = new LLValue().setRecord();
+        try {
+            if (users.GetUserOrGroupByID(id, userInfo) != 0) {
+                throw new LapiException(session, LOGGER);
+            }
+            return new LapiClientValue(userInfo);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
     public synchronized ClientValue ListNodes(String query, String view,
             String[] columns) throws RepositoryException {
         LLValue recArray = (new LLValue()).setTable();
@@ -156,6 +210,101 @@ final class LapiClient implements Client {
         }
     }
     
+    /** {@inheritDoc} */
+    public synchronized ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
+                                                          ClientValue categoryIdAssoc)
+            throws RepositoryException {
+        try {
+            LLValue categoryVersion = new LLValue().setAssocNotSet();
+            LLValue objIDa = ((LapiClientValue)objectIdAssoc).getLLValue();
+            LLValue catIDa = ((LapiClientValue)categoryIdAssoc).getLLValue();
+            if (documents.GetObjectAttributesEx(objIDa, catIDa,
+                                                categoryVersion) != 0) {
+                throw new LapiException(session, LOGGER);
+            }
+            return new LapiClientValue(categoryVersion);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    
+    
+    /** {@inheritDoc} */
+    public synchronized ClientValue AttrListNames(ClientValue categoryVersion,
+                                                  ClientValue attributeSetPath)
+            throws RepositoryException {
+        try {
+            LLValue catVersion = ((LapiClientValue)categoryVersion).getLLValue();
+            LLValue attrPath = (attributeSetPath == null) ? null :
+                ((LapiClientValue)attributeSetPath).getLLValue();
+            LLValue attrNames = new LLValue().setList(); 
+            if (attributes.AttrListNames(catVersion, attrPath, attrNames) != 0) {
+                throw new LapiException(session, LOGGER); 
+            }
+            return new LapiClientValue(attrNames);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    
+    
+    /** {@inheritDoc} */
+    public synchronized ClientValue AttrGetInfo(ClientValue categoryVersion,
+                                                String attributeName,
+                                                ClientValue attributeSetPath)
+        throws RepositoryException {
+        try {
+            LLValue catVersion = ((LapiClientValue)categoryVersion).getLLValue();
+            LLValue attrPath = (attributeSetPath == null) ? null :
+                ((LapiClientValue)attributeSetPath).getLLValue();
+            LLValue info = new LLValue().setAssocNotSet();
+            if (attributes.AttrGetInfo(catVersion, attributeName, attrPath, info) != 0)
+                throw new LapiException(session, LOGGER);
+            return new LapiClientValue(info);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    
+    
+    /** {@inheritDoc} */
+    public synchronized ClientValue AttrGetValues(ClientValue categoryVersion,
+                                                  String attributeName,
+                                                  ClientValue attributeSetPath)
+        throws RepositoryException {
+        try {
+            LLValue catVersion = ((LapiClientValue)categoryVersion).getLLValue();
+            LLValue attrPath = (attributeSetPath == null) ? null :
+                ((LapiClientValue)attributeSetPath).getLLValue();
+            LLValue attrValues = new LLValue().setList();
+            if (attributes.AttrGetValues(catVersion, attributeName,
+                                         LAPI_ATTRIBUTES.ATTR_DATAVALUES,
+                                         attrPath, attrValues) != 0) {
+                throw new LapiException(session, LOGGER);
+            }
+            return new LapiClientValue(attrValues);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+
+    /** {@inheritDoc} */
+    public synchronized ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
+            throws RepositoryException {
+        try {
+            LLValue objIDa = ((LapiClientValue)objectIdAssoc).getLLValue();
+            LLValue categoryIds = new LLValue().setList(); 
+            if (documents.ListObjectCategoryIDs(objIDa, categoryIds) != 0) {
+                throw new LapiException(session, LOGGER);
+            }
+            return new LapiClientValue(categoryIds);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+    
+
     /** {@inheritDoc} */
     public synchronized void FetchVersion(int volumeId, int objectId,
             int versionNumber, File path) throws RepositoryException {

@@ -50,7 +50,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
 
     private LivelinkConnector conn;
     
-    public void setUp() {
+    public void setUp() throws RepositoryException {
         conn = LivelinkConnectorFactory.getConnector("connector.");
     }
 

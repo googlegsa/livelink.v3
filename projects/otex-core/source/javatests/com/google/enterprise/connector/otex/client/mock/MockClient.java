@@ -23,17 +23,26 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
 /**
  * A mock client implementation.
  */
 final class MockClient implements Client {
+
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
 
     MockClient() {
     }
+
+
+    /** {@inheritDoc} */
+    public ClientValueFactory getClientValueFactory() throws RepositoryException {
+        return new MockClientValueFactory();
+    }
+
 
     /**
      * {@inheritDoc}
@@ -55,6 +64,12 @@ final class MockClient implements Client {
      */
     public String getLLCookie() throws RepositoryException {
         return "";
+    }
+
+    /** {@inheritDoc} */
+    public synchronized ClientValue GetUserOrGroupByID(int id)
+            throws RepositoryException {
+        return new MockClientValue( new String[] {"Name"}, new String[] {"admin"} );
     }
 
     /**
@@ -94,6 +109,68 @@ final class MockClient implements Client {
     public ClientValue GetObjectInfo(int volumeId, int objectId) {
         return new MockClientValue(new String[0], new Object[0]);
     }
+
+    /** {@inheritDoc} */
+    public synchronized ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
+                                                          ClientValue categoryIdAssoc)
+            throws RepositoryException {
+        try {
+            return new MockClientValue(new String[0], new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+    
+    
+    /** {@inheritDoc} */
+    public synchronized ClientValue AttrListNames(ClientValue categoryVersion,
+                                                  ClientValue attributeSetPath)
+            throws RepositoryException {
+        try {
+            return new MockClientValue(null, new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+    
+    
+    /** {@inheritDoc} */
+    public synchronized ClientValue AttrGetInfo(ClientValue categoryVersion,
+                                                String attributeName,
+                                                ClientValue attributeSetPath)
+        throws RepositoryException {
+        try {
+            return new MockClientValue(new String[0], new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+    
+    
+    /** {@inheritDoc} */
+    public synchronized ClientValue AttrGetValues(ClientValue categoryVersion,
+                                                  String attributeName,
+                                                  ClientValue attributeSetPath)
+        throws RepositoryException {
+        try {
+            return new MockClientValue(null, new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+
+
+    /** {@inheritDoc} */
+    public synchronized ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
+            throws RepositoryException {
+        try {
+            return new MockClientValue(null, new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+    
+
 
     /**
      * {@inheritDoc}

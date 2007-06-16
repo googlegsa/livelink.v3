@@ -29,7 +29,7 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 public final class MockClientValue implements ClientValue {
     private final String[] fieldNames;
     private final Object[][] tableValues;
-    private final Object[] assocValues;
+    private final Object[] assocValues;	// if fieldNames is null, assocValues is a List
 
     MockClientValue(String[] fieldNames, Object[][] values) {
         if (values.length > 0 && (fieldNames.length != values[0].length))
@@ -69,11 +69,28 @@ public final class MockClientValue implements ClientValue {
         return getField(assocValues, field);
     }
     
+    private Object getValue(int index) {
+        if (assocValues == null) 
+            throw new IllegalArgumentException("ClientValue is not a list.");
+        return assocValues[index];
+    }
+    
+
     public int size() {
         if (tableValues != null)
             return tableValues.length;
         else
             return assocValues.length;
+    }
+
+    public void setSize(int size) {
+        throw new IllegalArgumentException();
+    }
+
+
+    /** {@inheritDoc} */
+    public void setInteger(int index, int value) {
+        throw new IllegalArgumentException();
     }
 
     public int type() {
@@ -102,6 +119,11 @@ public final class MockClientValue implements ClientValue {
     public boolean isDefined(int row, String field) {
         throw new IllegalArgumentException();
     }
+    
+    public boolean hasValue() {
+        return ((tableValues != null) || (assocValues != null));
+    }
+    
     
     public ClientValue toValue(int row, String field) {
         throw new IllegalArgumentException();
@@ -210,4 +232,94 @@ public final class MockClientValue implements ClientValue {
     public String toString2() {
         throw new IllegalArgumentException();
     }
+
+    /** {@inheritDoc} */
+    public int add(String key, boolean obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, char obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, int obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, long obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, float obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, double obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, Object obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, Boolean obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, Double obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, Float obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, Integer obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, Long obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, String obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String key, java.util.Date obj) {
+        throw new IllegalArgumentException();
+    }
+
+
+    /** {@inheritDoc} */
+    public int add(Object obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(boolean obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(char obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(int obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(long obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(float obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(double obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(Boolean obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(Double obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(Float obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(Integer obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(Long obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(String obj) {
+        throw new IllegalArgumentException();
+    }
+    public int add(java.util.Date obj) {
+        throw new IllegalArgumentException();
+    }
+
 }

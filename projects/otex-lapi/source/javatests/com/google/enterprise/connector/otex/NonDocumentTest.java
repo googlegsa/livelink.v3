@@ -36,7 +36,7 @@ import com.google.enterprise.connector.spi.ValueType;
 public class NonDocumentTest extends TestCase {
     private LivelinkConnector conn;
 
-    public void setUp() {
+    public void setUp() throws RepositoryException {
         conn = LivelinkConnectorFactory.getConnector("connector.");
     }
     
@@ -44,7 +44,7 @@ public class NonDocumentTest extends TestCase {
         Session sess = conn.login();
 
         TraversalManager mgr = sess.getTraversalManager();
-        mgr.setBatchHint(30);
+        mgr.setBatchHint(3000);
 
         String checkpoint = "2007-02-16 14:39:09,31257";
         PropertyMapList rs = mgr.resumeTraversal(checkpoint);

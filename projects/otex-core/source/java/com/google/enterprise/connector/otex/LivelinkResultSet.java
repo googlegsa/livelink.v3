@@ -30,6 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.TimeZone;
 
 import com.google.enterprise.connector.spi.Property;
@@ -73,6 +74,9 @@ class LivelinkResultSet implements PropertyMapList {
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
+    /** This povides a mechanism to extract document Category Attributes */
+    private final LivelinkAttributes cattr;
+
     /** The client provides access to the server. */
     private final Client client;
 
@@ -104,7 +108,7 @@ class LivelinkResultSet implements PropertyMapList {
         this.contentHandler = contentHandler;
         this.recArray = recArray;
         this.fields = fields;
-
+        this.cattr = new LivelinkAttributes(connector, client, contentHandler);
         iso8601.setCalendar(gmtCalendar);
     }
 
@@ -206,6 +210,10 @@ class LivelinkResultSet implements PropertyMapList {
         /** The row of the recarray this property map is based on. */
         private final int row;
 
+        /** The ObjectID and VolumeID of the repository object */
+        private final int objectId;
+        private final int volumeId;
+        
         /*
          * I'm using a LinkedHashMap just because it's got a more
          * predictable ordering when I'm looking at test output.
@@ -213,15 +221,18 @@ class LivelinkResultSet implements PropertyMapList {
         private final Map properties = new LinkedHashMap(fields.length * 2);
 
         LivelinkPropertyMap(int row) throws RepositoryException {
+            this.row = row;
+            this.objectId = recArray.toInteger(row, "DataID");
+            this.volumeId = recArray.toInteger(row, "OwnerID");
+
             if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.fine("PROPERTY MAP FOR ID = " +
-                    recArray.toInteger(row, "DataID"));
+                LOGGER.fine("PROPERTY MAP FOR ID = " + objectId);
             }
 
-            this.row = row;
 
             collectRecArrayProperties();
             collectDerivedProperties();
+            //collectCategoryAttributes();
         }
 
         /**
@@ -283,9 +294,6 @@ class LivelinkResultSet implements PropertyMapList {
                 // returning with a MIME type but, obviously,
                 // no versions.
 
-                int objectId = recArray.toInteger(row, "DataID");
-                int volumeId = recArray.toInteger(row, "OwnerID");
-
                 // XXX: This value might be wrong. There are
                 // data size callbacks which can change this
                 // value. For example, the value returned by
@@ -312,8 +320,6 @@ class LivelinkResultSet implements PropertyMapList {
             }
 
             // DISPLAYURL
-            int objectId = recArray.toInteger(row, "DataID");
-            int volumeId = recArray.toInteger(row, "OwnerID");
             String url = connector.getDisplayUrl(subType, objectId, volumeId);
             addProperty(SpiConstants.PROPNAME_DISPLAYURL,
                 new SimpleValue(ValueType.STRING, url));
@@ -344,8 +350,6 @@ class LivelinkResultSet implements PropertyMapList {
                 // ExtendedData value, but I haven't been able to
                 // reproduce that.
                 String name = recArray.toString(row, "Name");
-                int objectId = recArray.toInteger(row, "DataID");
-                int volumeId = recArray.toInteger(row, "OwnerID");
                 ClientValue objectInfo =
                     client.GetObjectInfo(volumeId, objectId);
                 ClientValue extendedData = objectInfo.toValue("ExtendedData");
@@ -402,6 +406,7 @@ class LivelinkResultSet implements PropertyMapList {
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
                     value.toString2());
+
             }
             
             switch (value.type()) {
@@ -440,17 +445,7 @@ class LivelinkResultSet implements PropertyMapList {
                 buffer.append("</p>\n");
                 buffer.append(closeTag);
 
-                ValueType type;
-                switch (value.type()) {
-                case ClientValue.BOOLEAN: type = ValueType.BOOLEAN; break;
-                case ClientValue.DATE: type = ValueType.DATE; break;
-                case ClientValue.DOUBLE: type = ValueType.DOUBLE; break;
-                case ClientValue.INTEGER: type = ValueType.LONG; break;
-                case ClientValue.STRING: type = ValueType.STRING; break;
-                default:
-                    throw new AssertionError("This can't happen.");
-                }
-                addProperty(name, new SimpleValue(type, value.toString2()));
+                addProperty(name, new LivelinkValue(value));
                 break;
 
             default:
@@ -459,6 +454,31 @@ class LivelinkResultSet implements PropertyMapList {
             }
         }
         
+        /**
+         * Collect Category Attributes from the CategoryAttributes Map.
+         */
+        private void collectCategoryAttributes() throws RepositoryException {
+            Map attrmap = cattr.getCategoryAttributes(objectId);
+            if (attrmap.isEmpty())
+                return;
+
+            // Iterate over the category attributes, adding them to the property map
+            Iterator i = attrmap.entrySet().iterator(); 
+            Map.Entry attr;
+            while ((attr = (Map.Entry) i.next()) != null) {
+
+                System.out.println("CategoryAttribute: " + attr.toString());
+
+                String attrName = attr.getKey().toString();
+
+                ClientValue attrValue = (ClientValue) attr.getValue();
+
+                addProperty(attrName, new LivelinkValue(attrValue));
+
+                attr = null;
+            }
+        }
+
         public Iterator getProperties() {
             return new LivelinkPropertyMapIterator(properties);
         }
@@ -562,6 +582,19 @@ class LivelinkResultSet implements PropertyMapList {
     private class LivelinkValue implements Value {
         private final ValueType type;
         private final ClientValue clientValue;
+
+        LivelinkValue(ClientValue clientValue) {
+            switch (clientValue.type()) {
+            case ClientValue.BOOLEAN: type = ValueType.BOOLEAN; break;
+            case ClientValue.DATE: type = ValueType.DATE; break;
+            case ClientValue.DOUBLE: type = ValueType.DOUBLE; break;
+            case ClientValue.INTEGER: type = ValueType.LONG; break;
+            case ClientValue.STRING: type = ValueType.STRING; break;
+            default:
+                throw new AssertionError("This can't happen.");
+            }
+            this.clientValue = clientValue;
+        }
 
         LivelinkValue(ValueType type, ClientValue clientValue) {
             this.clientValue = clientValue;

@@ -21,6 +21,8 @@ import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
+import com.google.enterprise.connector.spi.RepositoryException;
+
 /**
  * Instatiates a <code>LivelinkConnector</code> using Spring together
  * with the connectorInstance.xml in the classpath and the system
@@ -71,22 +73,32 @@ class LivelinkConnectorFactory {
      * @param prefix the prefix on the names of the system properties
      * to be used to configure the bean, e.g., <code>"connector."</code>
      */
-    public static LivelinkConnector getConnector(String prefix) {
-        Resource res = new ClassPathResource("config/connectorInstance.xml");
-        XmlBeanFactory factory = new XmlBeanFactory(res);
+    public static LivelinkConnector getConnector(String prefix) throws RepositoryException {
 
         Properties p = new Properties(emptyProperties);
         Properties system = System.getProperties();
         Enumeration names = system.propertyNames();
+        boolean prefixFound = false;
+
         while (names.hasMoreElements()) {
             String name = (String) names.nextElement();
             if (name.startsWith(prefix)) {
+                prefixFound = true;
                 System.out.println("PROPERTY: " + name);
                 p.setProperty(name.substring(prefix.length()),
                     system.getProperty(name));
             }
         }
        
+        // If there is no connector configured by this name, bail early.
+        if (!prefixFound) {
+            throw new RepositoryException("No javatest." + prefix +
+                                "* properties specified for connector.");
+        }
+
+        Resource res = new ClassPathResource("config/connectorInstance.xml");
+        XmlBeanFactory factory = new XmlBeanFactory(res);
+
         PropertyPlaceholderConfigurer cfg =
             new PropertyPlaceholderConfigurer();
         cfg.setProperties(p);

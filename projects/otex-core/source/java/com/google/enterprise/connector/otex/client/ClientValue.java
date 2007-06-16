@@ -24,6 +24,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
  * arrays, and record arrays.
  */
 public interface ClientValue {
+
     /** Associative array of key-value pairs. */
     int ASSOC = -18;
 
@@ -60,6 +61,7 @@ public interface ClientValue {
     /** Undefined value (string value "?"). */
     int UNDEFINED = 0;
 
+
     /**
      * Gets the number of elements in this value.
      *
@@ -68,6 +70,29 @@ public interface ClientValue {
      * or the number of records in a recarray
      */
     int size();
+
+
+    /**
+     * Sets the number of records in this recarray/list/assoc.
+     */
+    void setSize(int size) throws RepositoryException;
+
+
+    /**
+     * Sets the value of a specific item in recarray/list/assoc
+     */
+    void setInteger(int index, int value) throws RepositoryException;
+
+
+    /**
+     * Tests whether the ClientValue encapsulates a valid repository value.
+     *
+     * @return <code>true</code> if the value is a valid value.
+     * <code>false</code> if the repository value is non-null object, 
+     * is an error, is undefined, or is not set.
+     */
+    boolean hasValue();
+    
 
     /**
      * Gets the type of this value.
@@ -109,6 +134,33 @@ public interface ClientValue {
      * @return a <code>ClientValue</code> field value
      */
     ClientValue toValue(int row, String field) throws RepositoryException;
+
+    /**
+     * Gets the ordinal item from this ordered container as a 
+     * <code>ClientValue</code> value.
+     *
+     * @param index a zero-based item index
+     * @return a <code>ClientValue</code> field value
+     */
+    ClientValue toValue(int index) throws RepositoryException;
+
+    /**
+     * Gets the ordinal item from this ordered container as a 
+     * <code>String</code> value.
+     *
+     * @param index a zero-based item index
+     * @return a <code>String</code> field value
+     */
+    String toString(int index) throws RepositoryException;
+
+    /**
+     * Gets the ordinal item from this ordered container as a 
+     * <code>int</code> value.
+     *
+     * @param index a zero-based item index
+     * @return a <code>int</code> field value
+     */
+    int toInteger(int index) throws RepositoryException;
 
     /**
      * Gets the named field from the given row as a boolean value.
@@ -223,14 +275,6 @@ public interface ClientValue {
     boolean isDefined(int index) throws RepositoryException;
     
     /**
-     * Gets the named field as a <code>ClientValue</code> value.
-     *
-     * @param index a 0-based array index
-     * @return a <code>ClientValue</code> field value
-     */
-    ClientValue toValue(int index) throws RepositoryException;
-
-    /**
      * Gets the named field as a boolean value.
      *
      * @param index a 0-based array index
@@ -254,22 +298,6 @@ public interface ClientValue {
      */
     double toDouble(int index) throws RepositoryException;
 
-    /**
-     * Gets the named field as an integer value.
-     *
-     * @param index a 0-based array index
-     * @return an integer field value
-     */
-    int toInteger(int index) throws RepositoryException;
-
-    /**
-     * Gets the named field as a string value.
-     *
-     * @param index a 0-based array index
-     * @return a string field value
-     */
-    String toString(int index) throws RepositoryException;
-    
     /**
      * Gets whether the value has a defined value.
      *
@@ -317,4 +345,49 @@ public interface ClientValue {
      * RepositoryExceptions.
      */
     String toString2() throws RepositoryException;
+
+    
+    /**
+     * Add and item to a Assoc ClientValue.  This method is
+     * overloaded to allow adding many different types.
+     *
+     * @param key the key associated with the following value
+     * @param obj the object to add to the Assoc
+     * @returns the new count of items in the Assoc
+     */
+    int add(String key, boolean obj) throws RepositoryException;
+    int add(String key, char obj) throws RepositoryException;
+    int add(String key, int obj) throws RepositoryException;
+    int add(String key, long obj) throws RepositoryException;
+    int add(String key, float obj) throws RepositoryException;
+    int add(String key, double obj) throws RepositoryException;
+    int add(String key, Boolean obj) throws RepositoryException;
+    int add(String key, Double obj) throws RepositoryException;
+    int add(String key, Float obj) throws RepositoryException;
+    int add(String key, Integer obj) throws RepositoryException;
+    int add(String key, Long obj) throws RepositoryException;
+    int add(String key, String obj) throws RepositoryException;
+    int add(String key, java.util.Date obj) throws RepositoryException;
+
+    /**
+     * Add and item to a List ClientValue.  This method is
+     * overloaded to allow adding many different types.
+     *
+     * @param obj the object to add to the List
+     * @returns the new count of items in the List
+     */
+    int add(Boolean obj) throws RepositoryException;
+    int add(Double obj) throws RepositoryException;
+    int add(Float obj) throws RepositoryException;
+    int add(Integer obj) throws RepositoryException;
+    int add(Long obj) throws RepositoryException;
+    int add(String obj) throws RepositoryException;
+    int add(java.util.Date obj) throws RepositoryException;
+    int add(boolean obj) throws RepositoryException;
+    int add(char obj) throws RepositoryException;
+    int add(int obj) throws RepositoryException;
+    int add(long obj) throws RepositoryException;
+    int add(float obj) throws RepositoryException;
+    int add(double obj) throws RepositoryException;
+
 }
