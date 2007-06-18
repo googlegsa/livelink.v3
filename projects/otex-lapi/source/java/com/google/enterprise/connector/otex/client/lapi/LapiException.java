@@ -17,7 +17,6 @@ package com.google.enterprise.connector.otex.client.lapi;
 import java.text.MessageFormat;
 import java.util.logging.Logger;
 
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 
 import com.opentext.api.LLSession;
@@ -26,8 +25,7 @@ import com.opentext.api.LLSession;
  * Extends <code>LivelinkException</code> to implement retrieving
  * error messages from the Livelink server.
  */
-class LapiException extends LivelinkException
-{
+class LapiException extends LivelinkException {
     /**
      * Builds a message from the various pieces of information
      * provided by the Livelink server.
