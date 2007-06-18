@@ -64,37 +64,36 @@ final class LapiClient implements Client {
             LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8 :
             LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8;
         assert ATTR_DATAVALUES == LAPI_ATTRIBUTES.ATTR_DATAVALUES :
-            LAPI_ATTRIBUTES.ATTR_DATAVALUES ;
+            LAPI_ATTRIBUTES.ATTR_DATAVALUES;
         assert ATTR_DEFAULTVALUES == LAPI_ATTRIBUTES.ATTR_DEFAULTVALUES :
-            LAPI_ATTRIBUTES.ATTR_DEFAULTVALUES ;
+            LAPI_ATTRIBUTES.ATTR_DEFAULTVALUES;
         assert ATTR_TYPE_BOOL == LAPI_ATTRIBUTES.ATTR_TYPE_BOOL :
-            LAPI_ATTRIBUTES.ATTR_TYPE_BOOL ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_BOOL;
         assert ATTR_TYPE_DATE == LAPI_ATTRIBUTES.ATTR_TYPE_DATE :
-            LAPI_ATTRIBUTES.ATTR_TYPE_DATE ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_DATE;
         assert ATTR_TYPE_DATEPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP :
-            LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP;
         assert ATTR_TYPE_REAL == LAPI_ATTRIBUTES.ATTR_TYPE_REAL :
-            LAPI_ATTRIBUTES.ATTR_TYPE_REAL ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_REAL;
         assert ATTR_TYPE_REALPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP :
-            LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP;
         assert ATTR_TYPE_INTPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP :
-            LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP;
         assert ATTR_TYPE_SET == LAPI_ATTRIBUTES.ATTR_TYPE_SET :
-            LAPI_ATTRIBUTES.ATTR_TYPE_SET ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_SET;
         assert ATTR_TYPE_STRFIELD == LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD :
-            LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD;
         assert ATTR_TYPE_STRMULTI == LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI :
-            LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI;
         assert ATTR_TYPE_STRPOPUP == LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP :
-            LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP;
         assert ATTR_TYPE_USER == LAPI_ATTRIBUTES.ATTR_TYPE_USER :
-            LAPI_ATTRIBUTES.ATTR_TYPE_USER ;
+            LAPI_ATTRIBUTES.ATTR_TYPE_USER;
         assert CATEGORY_TYPE_LIBRARY == LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY :
-            LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY ;
+            LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY;
         assert CATEGORY_TYPE_WORKFLOW ==
             LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW :
-            LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW ;
-        
+            LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW;
     }
     
     /**
@@ -123,16 +122,15 @@ final class LapiClient implements Client {
         this.attributes = new LAPI_ATTRIBUTES(session);
     }
 
-
     /** {@inheritDoc} */
-    public ClientValueFactory getClientValueFactory() throws RepositoryException {
+    public ClientValueFactory getClientValueFactory()
+            throws RepositoryException {
         return new LapiClientValueFactory();
     }
 
-
     /** {@inheritDoc} */
     public ClientValue GetServerInfo() throws RepositoryException {
-        LLValue value = (new LLValue()).setAssocNotSet();
+        LLValue value = new LLValue();
         try {
             if (documents.GetServerInfo(value) != 0)
                 throw new LapiException(session, LOGGER);
@@ -143,9 +141,8 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public synchronized String getLLCookie()
-            throws RepositoryException {
-        LLValue cookies = (new LLValue()).setList();
+    public synchronized String getLLCookie() throws RepositoryException {
+        LLValue cookies = new LLValue();
         try {
             if (users.GetCookieInfo(cookies) != 0)
                 throw new LapiException(session, LOGGER);
@@ -165,21 +162,21 @@ final class LapiClient implements Client {
     /** {@inheritDoc} */
     public synchronized ClientValue GetUserOrGroupByID(int id)
             throws RepositoryException {
-        LLValue userInfo = new LLValue().setRecord();
+        LLValue userInfo = new LLValue();
         try {
             if (users.GetUserOrGroupByID(id, userInfo) != 0) {
                 throw new LapiException(session, LOGGER);
             }
-            return new LapiClientValue(userInfo);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(userInfo);
     }
 
     /** {@inheritDoc} */
     public synchronized ClientValue ListNodes(String query, String view,
             String[] columns) throws RepositoryException {
-        LLValue recArray = (new LLValue()).setTable();
+        LLValue recArray = new LLValue();
         try {
             LLValue args = (new LLValue()).setList();
             LLValue columnsList = (new LLValue()).setList();
@@ -199,109 +196,111 @@ final class LapiClient implements Client {
     /** {@inheritDoc} */
     public synchronized ClientValue GetObjectInfo(int volumeId, int objectId)
             throws RepositoryException {
+        LLValue objectInfo = new LLValue();
         try {
-            LLValue objectInfo = new LLValue();
             if (documents.GetObjectInfo(volumeId, objectId, objectInfo) != 0) {
                 throw new LapiException(session, LOGGER);
             }
-            return new LapiClientValue(objectInfo);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(objectInfo);
     }
     
     /** {@inheritDoc} */
-    public synchronized ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
-                                                          ClientValue categoryIdAssoc)
+    public synchronized ClientValue GetObjectAttributesEx(
+            ClientValue objectIdAssoc, ClientValue categoryIdAssoc)
             throws RepositoryException {
+        LLValue categoryVersion = new LLValue();
         try {
-            LLValue categoryVersion = new LLValue().setAssocNotSet();
-            LLValue objIDa = ((LapiClientValue)objectIdAssoc).getLLValue();
-            LLValue catIDa = ((LapiClientValue)categoryIdAssoc).getLLValue();
+            LLValue objIDa = ((LapiClientValue) objectIdAssoc).getLLValue();
+            LLValue catIDa = ((LapiClientValue) categoryIdAssoc).getLLValue();
             if (documents.GetObjectAttributesEx(objIDa, catIDa,
-                                                categoryVersion) != 0) {
+                    categoryVersion) != 0) {
                 throw new LapiException(session, LOGGER);
             }
-            return new LapiClientValue(categoryVersion);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(categoryVersion);
     }
     
     
     /** {@inheritDoc} */
     public synchronized ClientValue AttrListNames(ClientValue categoryVersion,
-                                                  ClientValue attributeSetPath)
-            throws RepositoryException {
+            ClientValue attributeSetPath) throws RepositoryException {
+        LLValue attrNames = new LLValue();
         try {
-            LLValue catVersion = ((LapiClientValue)categoryVersion).getLLValue();
+            LLValue catVersion =
+                ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
-                ((LapiClientValue)attributeSetPath).getLLValue();
-            LLValue attrNames = new LLValue().setList(); 
-            if (attributes.AttrListNames(catVersion, attrPath, attrNames) != 0) {
+                ((LapiClientValue) attributeSetPath).getLLValue();
+            if (attributes.AttrListNames(catVersion, attrPath,
+                    attrNames) != 0) {
                 throw new LapiException(session, LOGGER); 
             }
-            return new LapiClientValue(attrNames);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(attrNames);
     }
     
     
     /** {@inheritDoc} */
     public synchronized ClientValue AttrGetInfo(ClientValue categoryVersion,
-                                                String attributeName,
-                                                ClientValue attributeSetPath)
-        throws RepositoryException {
+            String attributeName, ClientValue attributeSetPath)
+            throws RepositoryException {
+        LLValue info = new LLValue();
         try {
-            LLValue catVersion = ((LapiClientValue)categoryVersion).getLLValue();
+            LLValue catVersion =
+                ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
-                ((LapiClientValue)attributeSetPath).getLLValue();
-            LLValue info = new LLValue().setAssocNotSet();
-            if (attributes.AttrGetInfo(catVersion, attributeName, attrPath, info) != 0)
+                ((LapiClientValue) attributeSetPath).getLLValue();
+            if (attributes.AttrGetInfo(catVersion, attributeName, attrPath,
+                    info) != 0) {
                 throw new LapiException(session, LOGGER);
-            return new LapiClientValue(info);
+            }
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(info);
     }
     
     
     /** {@inheritDoc} */
     public synchronized ClientValue AttrGetValues(ClientValue categoryVersion,
-                                                  String attributeName,
-                                                  ClientValue attributeSetPath)
-        throws RepositoryException {
+            String attributeName, ClientValue attributeSetPath)
+            throws RepositoryException {
+        LLValue attrValues = new LLValue();
         try {
-            LLValue catVersion = ((LapiClientValue)categoryVersion).getLLValue();
+            LLValue catVersion =
+                ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
-                ((LapiClientValue)attributeSetPath).getLLValue();
-            LLValue attrValues = new LLValue().setList();
+                ((LapiClientValue) attributeSetPath).getLLValue();
             if (attributes.AttrGetValues(catVersion, attributeName,
-                                         LAPI_ATTRIBUTES.ATTR_DATAVALUES,
-                                         attrPath, attrValues) != 0) {
+                    LAPI_ATTRIBUTES.ATTR_DATAVALUES, attrPath,
+                    attrValues) != 0) {
                 throw new LapiException(session, LOGGER);
             }
-            return new LapiClientValue(attrValues);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(attrValues);
     }
 
 
     /** {@inheritDoc} */
-    public synchronized ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
-            throws RepositoryException {
+    public synchronized ClientValue ListObjectCategoryIDs(
+            ClientValue objectIdAssoc) throws RepositoryException {
+        LLValue categoryIds = new LLValue();
         try {
-            LLValue objIDa = ((LapiClientValue)objectIdAssoc).getLLValue();
-            LLValue categoryIds = new LLValue().setList(); 
-            if (documents.ListObjectCategoryIDs(objIDa, categoryIds) != 0) {
+            LLValue objIDa = ((LapiClientValue) objectIdAssoc).getLLValue();
+            if (documents.ListObjectCategoryIDs(objIDa, categoryIds) != 0)
                 throw new LapiException(session, LOGGER);
-            }
-            return new LapiClientValue(categoryIds);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
+        return new LapiClientValue(categoryIds);
     }
     
 
@@ -351,9 +350,8 @@ final class LapiClient implements Client {
      * of the logged-in user. We might want to use the
      * GetCookieInfo method instead.
      */
-    public synchronized boolean ping()
-            throws RepositoryException {
-        LLValue info = new LLValue().setAssocNotSet();
+    public synchronized boolean ping() throws RepositoryException {
+        LLValue info = new LLValue();
         try {
             // TODO: ensure that the LapiClient handles domains.
             if (documents.AccessEnterpriseWSEx(null, info) != 0)
@@ -392,7 +390,7 @@ final class LapiClient implements Client {
             // version).
             LLValue objectIdAssoc = new LLValue().setAssoc();
             objectIdAssoc.add("ID", objId); 
-            LLValue categoryIds = new LLValue().setList(); 
+            LLValue categoryIds = new LLValue(); 
             if (documents.ListObjectCategoryIDs(objectIdAssoc,
                     categoryIds) != 0) {
                 throw new LapiException(session, LOGGER);
@@ -413,12 +411,12 @@ final class LapiClient implements Client {
                 }
                 //System.out.println(categoryId.toString("DisplayName")); 
 
-                LLValue categoryVersion = new LLValue().setAssocNotSet();
+                LLValue categoryVersion = new LLValue();
                 if (documents.GetObjectAttributesEx(objectIdAssoc,
                         categoryId, categoryVersion) != 0) {
                     throw new LapiException(session, LOGGER);
                 }
-                LLValue attributeNames = new LLValue().setList();
+                LLValue attributeNames = new LLValue();
                 if (attributes.AttrListNames(categoryVersion, null, 
                         attributeNames) != 0) {
                     throw new LapiException(session, LOGGER);
@@ -428,7 +426,7 @@ final class LapiClient implements Client {
                 int numAttributes = attributeNames.size();
                 for (int j = 0; j < numAttributes; j++) {
                     String attributeName = attributeNames.toString(j);
-                    LLValue attributeInfo = new LLValue().setAssocNotSet();
+                    LLValue attributeInfo = new LLValue();
                     if (attributes.AttrGetInfo(categoryVersion, attributeName,
                             null, attributeInfo) != 0) {
                         throw new LapiException(session, LOGGER);
@@ -469,7 +467,7 @@ final class LapiClient implements Client {
         // set. Look up and store the types to avoid repeating
         // the type lookup when there's more than one instance of
         // the attribute set.
-        LLValue attributeSetNames = new LLValue().setList(); 
+        LLValue attributeSetNames = new LLValue(); 
         if (attributes.AttrListNames(categoryVersion, attributeSetPath,
                 attributeSetNames) != 0) {
             throw new LapiException(session, LOGGER); 
@@ -477,7 +475,7 @@ final class LapiClient implements Client {
         LLValue[] attributeInfo = new LLValue[attributeSetNames.size()];
         for (int i = 0; i < attributeSetNames.size(); i++) {
             String name = attributeSetNames.toString(i); 
-            LLValue info = new LLValue().setAssocNotSet();
+            LLValue info = new LLValue();
             if (attributes.AttrGetInfo(categoryVersion, name, 
                     attributeSetPath, info) != 0) {
                 throw new LapiException(session, LOGGER);
@@ -487,7 +485,7 @@ final class LapiClient implements Client {
 
         // List the values for the set attribute itself. There
         // may be multiple instances of the set.
-        LLValue setValues = new LLValue().setList();
+        LLValue setValues = new LLValue();
         if (attributes.AttrGetValues(categoryVersion,
                 attributeName, LAPI_ATTRIBUTES.ATTR_DATAVALUES,
                 null, setValues) != 0) {
@@ -540,7 +538,7 @@ final class LapiClient implements Client {
         if (!attributeInfo.toBoolean("Search"))
             return;
 
-        LLValue attributeValues = new LLValue().setList();
+        LLValue attributeValues = new LLValue();
         if (attributes.AttrGetValues(categoryVersion,
                 attributeName, LAPI_ATTRIBUTES.ATTR_DATAVALUES,
                 attributeSetPath, attributeValues) != 0) {
@@ -566,7 +564,7 @@ final class LapiClient implements Client {
                 continue;
             }
             if (LAPI_ATTRIBUTES.ATTR_TYPE_USER == attributeType) {
-                LLValue userInfo = new LLValue().setRecord();
+                LLValue userInfo = new LLValue();
                 if (users.GetUserOrGroupByID(
                         attributeValues.toInteger(k),
                         userInfo) != 0) {
@@ -667,7 +665,7 @@ final class LapiClient implements Client {
                 case LAPI_ATTRIBUTES.ATTR_TYPE_USER:
                     if (attributeData.isDefined(i, "ValInt"))
                     {
-                        LLValue userInfo = new LLValue().setRecord();
+                        LLValue userInfo = new LLValue();
                         int userId = attributeData.toInteger(i, "ValInt");
                         if (users.GetUserOrGroupByID(userId, userInfo) != 0) {
                             throw new LapiException(session, LOGGER);
