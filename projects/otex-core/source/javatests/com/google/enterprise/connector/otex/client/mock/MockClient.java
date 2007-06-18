@@ -29,7 +29,6 @@ import com.google.enterprise.connector.otex.client.ClientValueFactory;
  * A mock client implementation.
  */
 final class MockClient implements Client {
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
@@ -37,12 +36,11 @@ final class MockClient implements Client {
     MockClient() {
     }
 
-
     /** {@inheritDoc} */
-    public ClientValueFactory getClientValueFactory() throws RepositoryException {
+    public ClientValueFactory getClientValueFactory()
+            throws RepositoryException {
         return new MockClientValueFactory();
     }
-
 
     /**
      * {@inheritDoc}
@@ -60,16 +58,16 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns an empty string.
+     * This implementation returns an empty list.
      */
-    public String getLLCookie() throws RepositoryException {
-        return "";
+    public ClientValue GetCookieInfo() throws RepositoryException {
+        return new MockClientValue(null, new Object[0]);
     }
 
     /** {@inheritDoc} */
-    public synchronized ClientValue GetUserOrGroupByID(int id)
-            throws RepositoryException {
-        return new MockClientValue( new String[] {"Name"}, new String[] {"admin"} );
+    public ClientValue GetUserOrGroupByID(int id) throws RepositoryException {
+        return new MockClientValue(
+            new String[] {"Name"}, new String[] {"admin"} );
     }
 
     /**
@@ -111,8 +109,28 @@ final class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public synchronized ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
-                                                          ClientValue categoryIdAssoc)
+    public ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
+            ClientValue categoryIdAssoc) throws RepositoryException {
+        try {
+            return new MockClientValue(new String[0], new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+    
+    /** {@inheritDoc} */
+    public ClientValue AttrListNames(ClientValue categoryVersion,
+            ClientValue attributeSetPath) throws RepositoryException {
+        try {
+            return new MockClientValue(null, new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+    
+    /** {@inheritDoc} */
+    public ClientValue AttrGetInfo(ClientValue categoryVersion,
+            String attributeName, ClientValue attributeSetPath)
             throws RepositoryException {
         try {
             return new MockClientValue(new String[0], new Object[0]);
@@ -121,10 +139,19 @@ final class MockClient implements Client {
         }
     }
     
-    
     /** {@inheritDoc} */
-    public synchronized ClientValue AttrListNames(ClientValue categoryVersion,
-                                                  ClientValue attributeSetPath)
+    public ClientValue AttrGetValues(ClientValue categoryVersion,
+            String attributeName, ClientValue attributeSetPath)
+            throws RepositoryException {
+        try {
+            return new MockClientValue(null, new Object[0]);
+        } catch (RuntimeException e) {
+            throw new LivelinkException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    public ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
             throws RepositoryException {
         try {
             return new MockClientValue(null, new Object[0]);
@@ -133,45 +160,6 @@ final class MockClient implements Client {
         }
     }
     
-    
-    /** {@inheritDoc} */
-    public synchronized ClientValue AttrGetInfo(ClientValue categoryVersion,
-                                                String attributeName,
-                                                ClientValue attributeSetPath)
-        throws RepositoryException {
-        try {
-            return new MockClientValue(new String[0], new Object[0]);
-        } catch (RuntimeException e) {
-            throw new LivelinkException(e, LOGGER);
-        }
-    }
-    
-    
-    /** {@inheritDoc} */
-    public synchronized ClientValue AttrGetValues(ClientValue categoryVersion,
-                                                  String attributeName,
-                                                  ClientValue attributeSetPath)
-        throws RepositoryException {
-        try {
-            return new MockClientValue(null, new Object[0]);
-        } catch (RuntimeException e) {
-            throw new LivelinkException(e, LOGGER);
-        }
-    }
-
-
-    /** {@inheritDoc} */
-    public synchronized ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
-            throws RepositoryException {
-        try {
-            return new MockClientValue(null, new Object[0]);
-        } catch (RuntimeException e) {
-            throw new LivelinkException(e, LOGGER);
-        }
-    }
-    
-
-
     /**
      * {@inheritDoc}
      * <p>
@@ -203,8 +191,7 @@ final class MockClient implements Client {
      * <p>
      * This implementation has no effect.
      */
-    public synchronized void ImpersonateUser(String username)
-            throws RepositoryException {
+    public void ImpersonateUser(String username) throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUser");
     }
 
@@ -213,7 +200,7 @@ final class MockClient implements Client {
      * <p>
      * This implementation always returns true.
      */
-    public synchronized boolean ping() {
+    public boolean ping() {
         LOGGER.fine("Entering MockClient.ping");
         return true;
     }

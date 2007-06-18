@@ -88,12 +88,11 @@ public interface Client
     ClientValue GetServerInfo() throws RepositoryException;
 
     /**
-     * Gets the value of the LLCookie for the logged in user.
+     * Gets the value of the cookies for the logged in user.
      *
-     * @throws RepositoryException if an error occurs or if the
-     * LLCookie is missing
+     * @throws RepositoryException if an error occurs
      */
-    String getLLCookie() throws RepositoryException;
+    ClientValue GetCookieInfo() throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_USERS.GetUserOrGroupByID</code> method.

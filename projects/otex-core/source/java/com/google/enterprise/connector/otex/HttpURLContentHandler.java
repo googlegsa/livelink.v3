@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * This content handler implementation uses a Livelink download URL.
@@ -55,9 +56,26 @@ class HttpURLContentHandler implements ContentHandler {
         this.connector = connector;
         this.client = client;
 
-        llCookie = client.getLLCookie();
+        llCookie = getLLCookie();
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("LLCOOKIE: " + llCookie);
+    }
+
+    /**
+     * Gets the LLCookie value for this session.
+     *
+     * @return the cookie value
+     * @throws RepositoryException if the cookie is not set
+     */
+    private String getLLCookie() throws RepositoryException {
+        ClientValue cookies = client.GetCookieInfo();
+        for (int i = 0; i < cookies.size(); i++) {
+            ClientValue cookie = cookies.toValue(i);
+            if ("LLCookie".equalsIgnoreCase(cookie.toString("Name"))) {
+                return cookie.toString("Value");
+            }
+        }
+        throw new RepositoryException("Missing LLCookie");
     }
     
     /** {@inheritDoc} */

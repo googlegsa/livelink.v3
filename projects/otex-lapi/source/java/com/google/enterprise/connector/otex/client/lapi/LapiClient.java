@@ -141,7 +141,8 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public synchronized String getLLCookie() throws RepositoryException {
+    public synchronized ClientValue GetCookieInfo()
+            throws RepositoryException {
         LLValue cookies = new LLValue();
         try {
             if (users.GetCookieInfo(cookies) != 0)
@@ -149,14 +150,7 @@ final class LapiClient implements Client {
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
-        for (int i = 0; i < cookies.size(); i++) {
-            LLValue cookie = cookies.toValue(i);
-            if ("LLCookie".equalsIgnoreCase(cookie.toString("Name"))) {
-                return cookie.toString("Value");
-            }
-        }
-        // XXX: Or return null and have the caller do this?
-        throw new RepositoryException("Missing LLCookie");
+        return new LapiClientValue(cookies);
     }
     
     /** {@inheritDoc} */
