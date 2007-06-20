@@ -225,10 +225,8 @@ class LivelinkResultSet implements PropertyMapList {
             this.objectId = recArray.toInteger(row, "DataID");
             this.volumeId = recArray.toInteger(row, "OwnerID");
 
-            if (LOGGER.isLoggable(Level.FINE)) {
+            if (LOGGER.isLoggable(Level.FINE))
                 LOGGER.fine("PROPERTY MAP FOR ID = " + objectId);
-            }
-
 
             collectRecArrayProperties();
             collectDerivedProperties();
@@ -253,6 +251,24 @@ class LivelinkResultSet implements PropertyMapList {
                 ((LinkedList) values).add(value);
         }
 
+        /**
+         * Adds a property to the property map. If the property
+         * already exists in the map, the given value is added to the
+         * list of values in the property.
+         *
+         * @param field a field definition, possibly including
+         * multiple property names
+         * @param value a <code>ClientValue</code>, which must be
+         * wrapped as a <code>LivelinkValue</code>
+         */
+        private void addProperty(Field field, ClientValue value) {
+            String[] names = field.propertyNames;
+            for (int j = 0; j < names.length; j++) {
+                addProperty(names[j],
+                    new LivelinkValue(field.fieldType, value));
+            }
+        }
+        
         /** Collects the recarray-based properties. */
         /*
          * TODO: Undefined values will not be added to the property
@@ -262,12 +278,27 @@ class LivelinkResultSet implements PropertyMapList {
          */
         private void collectRecArrayProperties() throws RepositoryException {
             for (int i = 0; i < fields.length; i++) {
-                if (fields[i].propertyName != null) {
+                if (fields[i].propertyNames.length > 0) {
                     ClientValue value =
                         recArray.toValue(row, fields[i].fieldName);
                     if (value.isDefined()) {
-                        addProperty(fields[i].propertyName,
-                            new LivelinkValue(fields[i].fieldType, value));
+                        // FIXME: This is a hack. See Field for how
+                        // this is set. When more user IDs might be
+                        // returned, we need to fix this.
+                        if (fields[i].isUserId) {
+                            ClientValue userInfo =
+                                client.GetUserOrGroupByID(value.toInteger());
+                            ClientValue userName = userInfo.toValue("Name");
+                            if (userName.isDefined())
+                                addProperty(fields[i], userName);
+                            else if (LOGGER.isLoggable(Level.WARNING)) {
+                                LOGGER.warning(
+                                    "No username found for user ID " +
+                                    value.toInteger());
+                            }
+                        } else
+                            addProperty(fields[i], value);
+
                     }
                 }
             }
@@ -312,7 +343,7 @@ class LivelinkResultSet implements PropertyMapList {
                         size));
                 addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             } else {
-                // XXX: What about objects that have files associated
+                // TODO: What about objects that have files associated
                 // with them but also have data in ExtendedData? We
                 // should be extracting the metadata from ExtendedData
                 // but not assembling the HTML content in that case.
@@ -349,6 +380,9 @@ class LivelinkResultSet implements PropertyMapList {
                 // During one test run, I saw an undefined
                 // ExtendedData value, but I haven't been able to
                 // reproduce that.
+                // TODO: When we implemented configurable metadata, we
+                // may need to call GetObjectInfo elsewhere, so we
+                // should only do that once, and only if needed.
                 String name = recArray.toString(row, "Name");
                 ClientValue objectInfo =
                     client.GetObjectInfo(volumeId, objectId);
@@ -406,7 +440,6 @@ class LivelinkResultSet implements PropertyMapList {
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
                     value.toString2());
-
             }
             
             switch (value.type()) {
@@ -502,7 +535,7 @@ class LivelinkResultSet implements PropertyMapList {
          */
         public String checkpoint() throws RepositoryException {
             return toSqlString(recArray.toDate(row, "ModifyDate")) +
-                ','  + recArray.toString(row, "DataID");
+                ','  + objectId;
         }
     }
 
@@ -583,6 +616,12 @@ class LivelinkResultSet implements PropertyMapList {
         private final ValueType type;
         private final ClientValue clientValue;
 
+        /**
+         * Wraps a <code>ClientValue</code> as an SPI
+         * <code>Value</code>.
+         *
+         * @param clientValue the value to be wrapped
+         */
         LivelinkValue(ClientValue clientValue) {
             switch (clientValue.type()) {
             case ClientValue.BOOLEAN: type = ValueType.BOOLEAN; break;
@@ -596,9 +635,22 @@ class LivelinkResultSet implements PropertyMapList {
             this.clientValue = clientValue;
         }
 
+        /**
+         * Wraps a <code>ClientValue</code> as an SPI
+         * <code>Value</code>.
+         *
+         * @param type the expected value type
+         * @param clientValue the value to be wrapped
+         */
         LivelinkValue(ValueType type, ClientValue clientValue) {
-            this.clientValue = clientValue;
-            this.type = type;
+            this(clientValue);
+
+            // This isn't a functional problem, I don't think, but it
+            // might be nice to know if this can happen.
+            if (this.type != type && LOGGER.isLoggable(Level.WARNING)) {
+                LOGGER.warning("Unexpected property type, expected: " +
+                    type + "; got " + this.type);
+            }
         }
 
         public boolean getBoolean() throws RepositoryException {
@@ -651,7 +703,7 @@ class LivelinkResultSet implements PropertyMapList {
          */
         public String toString() {
             try {
-                return getString();
+                return getString() + " #" + getType();
             } catch (RepositoryException e) {
                 return e.toString();
             }

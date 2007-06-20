@@ -50,41 +50,35 @@ class LivelinkQueryTraversalManager implements TraversalManager {
      * The primary store for property names that we want to map from
      * the database to the PropertyMap. This is an array of
      * <code>Field</code> objects that include the record array field
-     * name, the record array field type, and the the GSA property
-     * name. If the property name is <code>null</code>, then the field
-     * will not be returned in the property map.
+     * name, the record array field type, and the Google and Livelink
+     * property names. If no property names are provided, then the
+     * field will not be returned in the property map.
      */
     private static final Field[] FIELDS;
 
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This implementation requires DataID,
-        // OwnerID, ModifyDate, MimeType, and DataSize.
+        // ModifyDate, MimeType, Name, SubType, OwnerID, and DataSize.
         ArrayList list = new ArrayList();
 
-        list.add(new Field(
-            "DataID", ValueType.LONG, SpiConstants.PROPNAME_DOCID));
-        list.add(new Field(
-            "ModifyDate", ValueType.DATE, SpiConstants.PROPNAME_LASTMODIFIED));
-        list.add(new Field(
-            "MimeType", ValueType.STRING, SpiConstants.PROPNAME_MIMETYPE));
+        list.add(new Field("DataID", ValueType.LONG, "ID",
+            SpiConstants.PROPNAME_DOCID));
+        list.add(new Field("ModifyDate", ValueType.DATE, "ModifyDate",
+            SpiConstants.PROPNAME_LASTMODIFIED));
+        list.add(new Field("MimeType", ValueType.STRING, "MimeType",
+            SpiConstants.PROPNAME_MIMETYPE));
 
-        // XXX: We should get the VerComment and add it as a value
-        // here, but WebNodes doesn't include VerComment. Is it worth
-        // the user's time to retrieve it separately?
-        list.add(new Field(
-            "DComment", ValueType.STRING, "Comment"));
-        list.add(new Field(
-            "Name", ValueType.STRING, "Name"));
-        list.add(new Field(
-            "OwnerID", ValueType.LONG, "OwnerID"));
-        list.add(new Field(
-            "SubType", ValueType.LONG, "SubType"));
+        list.add(new Field("DComment", ValueType.STRING, "Comment"));
+        list.add(new Field("CreateDate", ValueType.DATE, "CreateDate"));
+        list.add(new Field("OwnerName", ValueType.STRING, "CreatedBy"));
+        list.add(new Field("Name", ValueType.STRING, "Name"));
+        list.add(new Field("SubType", ValueType.LONG, "SubType"));
+        list.add(new Field("OwnerID", ValueType.LONG, "VolumeID"));
+        list.add(new Field("UserID", ValueType.STRING, "UserID"));
 
-        list.add(new Field(
-            "DataSize", ValueType.LONG, null));
-        list.add(new Field(
-            "PermID", ValueType.LONG, null));
+        list.add(new Field("DataSize"));
+        list.add(new Field("PermID"));
         
         FIELDS = (Field[]) list.toArray(new Field[0]);
     }

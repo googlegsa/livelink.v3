@@ -17,20 +17,89 @@ package com.google.enterprise.connector.otex;
 import com.google.enterprise.connector.spi.ValueType;
 
 /**
- * Describes the properties returned to the caller and the fields
- * in Livelink needed to implement them. A null <code>propertyName</code>
- * indicates a field that is required from the database but which
- * is not returned as a property to the caller.
+ * Describes the properties returned to the caller and the fields in
+ * Livelink needed to implement them. A field with no property names
+ * indicates a field that is required from the database but which is
+ * not returned as a property to the caller.
  */
 final class Field {
+    /** The WebNodes column name. */
     public final String fieldName;
-    public final ValueType fieldType;
-    public final String propertyName;
 
-    public Field(String fieldName, ValueType fieldType,
-        String propertyName) {
+    /**
+     * The expected column type, for error checking. May be
+     * <code>null</code> if there are no property names.
+     */
+    public final ValueType fieldType;
+
+    /**
+     * The property names to publish the value as. May be an empty
+     * array, but it must not be <code>null</code>.
+     */
+    public final String[] propertyNames;
+
+    /** Indicates whether this is this the UserID field. */
+    public final boolean isUserId;
+
+    /**
+     * Creates a field with no corresponding property names.
+     *
+     * @param fieldName the recarray field name
+     */
+    public Field(String fieldName) {
+        this(fieldName, null, new String[0]);
+    }
+
+    /**
+     * Creates a field with one corresponding property name.
+     *
+     * @param fieldName the recarray field name
+     * @param fieldType the expected field type
+     * @param propertyName the output property name
+     */
+    public Field(String fieldName, ValueType fieldType, String propertyName) {
+        this(fieldName, fieldType, new String[] { propertyName });
+    }
+
+    /**
+     * Creates a field with two corresponding property names. The
+     * multiple property names are not ordered in any way.
+     *
+     * @param fieldName the recarray field name
+     * @param fieldType the expected field type
+     * @param propertyName1 one output property name
+     * @param propertyName2 another output property name
+     */
+    /* Close enough to varargs for our purposes. */
+    public Field(String fieldName, ValueType fieldType, String propertyName1,
+            String propertyName2) {
+        this(fieldName, fieldType,
+            new String[] { propertyName1, propertyName2 });
+    }
+
+    /**
+     * Creates a field with multiple corresponding property names. The
+     * multiple property names are not ordered in any way.
+     *
+     * @param fieldName the recarray field name
+     * @param fieldType the expected field type
+     * @param propertyNames the output property names
+     */
+    private Field(String fieldName, ValueType fieldType,
+            String[] propertyNames) {
+        // This is obvious by inspection here, but code elsewhere
+        // depends on this.
+        assert propertyNames != null : fieldName;
+        
         this.fieldName = fieldName;
         this.fieldType = fieldType;
-        this.propertyName = propertyName;
+        this.propertyNames = propertyNames;
+
+        // FIXME: Hack based on one user ID field. We need to know
+        // which possible fields are user IDs when we support
+        // configurable ObjectInfo and VersionInfo attributes. What
+        // about system attributes? (Category attributes are already
+        // handled.)
+        isUserId = fieldName.equals("UserID");
     }
 }
