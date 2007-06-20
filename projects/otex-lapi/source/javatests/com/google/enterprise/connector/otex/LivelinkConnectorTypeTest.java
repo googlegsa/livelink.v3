@@ -166,13 +166,13 @@ public class LivelinkConnectorTypeTest extends TestCase {
      */
     public void testGetConfigForm() throws Exception {
         HashMap form = getForm(connectorType.getConfigForm(null)); 
-        assertNotNull("Missing hostname element", form.get("hostname")); 
-        assertBooleanIsTrue(form, "useHttps"); 
+        assertNotNull("Missing server element", form.get("server")); 
+        assertBooleanIsTrue(form, "https"); 
         assertBooleanIsTrue(form, "enableNtlm"); 
         assertBooleanIsTrue(form, "verifyServer"); 
         assertBooleanIsFalse(form, "useUsernamePasswordWithWebServer"); 
         assertBooleanIsFalse(form, "useSeparateAuthentication"); 
-        assertIsHidden(form, "authenticationHostname"); 
+        assertIsHidden(form, "authenticationServer"); 
     }
 
     /**
@@ -180,14 +180,14 @@ public class LivelinkConnectorTypeTest extends TestCase {
      */
     public void testGetPopulatedConfigForm() throws Exception {
         HashMap data = new HashMap();
-        data.put("hostname", "myhostname");
+        data.put("server", "myhostname");
         data.put("port", "myport");
-        data.put("useHttps", "false"); 
+        data.put("https", "false"); 
         HashMap form = getForm(
             connectorType.getPopulatedConfigForm(data, null));
-        assertValue(form, "hostname", "myhostname"); 
-        assertIsHidden(form, "authenticationHostname"); 
-        assertBooleanIsFalse(form, "useHttps"); 
+        assertValue(form, "server", "myhostname"); 
+        assertIsHidden(form, "authenticationServer"); 
+        assertBooleanIsFalse(form, "https"); 
     }
 
     /**
@@ -197,18 +197,18 @@ public class LivelinkConnectorTypeTest extends TestCase {
     public void testGetPopulatedConfigFormWithAuthentication()
             throws Exception {
         HashMap data = new HashMap();
-        data.put("hostname", "myhostname");
+        data.put("server", "myhostname");
         data.put("port", "111"); 
         data.put("useSeparateAuthentication", "true"); 
-        data.put("authenticationHostname", "myauthhostname");
+        data.put("authenticationServer", "myauthhostname");
         data.put("authenticationPort", "222"); 
         HashMap form = getForm(
             connectorType.getPopulatedConfigForm(data, null));
-        assertValue(form, "hostname", "myhostname"); 
+        assertValue(form, "server", "myhostname"); 
         assertValue(form, "port", "111"); 
-        assertValue(form, "authenticationHostname", "myauthhostname"); 
+        assertValue(form, "authenticationServer", "myauthhostname"); 
         assertValue(form, "authenticationPort", "222"); 
-        assertIsNotHidden(form, "authenticationHostname"); 
+        assertIsNotHidden(form, "authenticationServer"); 
     }
 
     /**
@@ -223,9 +223,9 @@ public class LivelinkConnectorTypeTest extends TestCase {
             connectorType.validateConfig(emptyProperties, null);
         assertNotNull("Missing ConfigureResponse", response); 
         HashMap form = getForm(response);
-        assertValue(form, "hostname", ""); 
-        assertIsHidden(form, "authenticationHostname"); 
-        assertBooleanIsTrue(form, "useHttps"); 
+        assertValue(form, "server", ""); 
+        assertIsHidden(form, "authenticationServer"); 
+        assertBooleanIsTrue(form, "https"); 
     }
 
     /**
@@ -234,7 +234,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
      */
     public void testValidateConfigInvalidLivelinkInput() throws Exception {
         HashMap props = new HashMap(emptyProperties);
-        props.put("hostname", "myhost"); 
+        props.put("server", "myhost"); 
         props.put("port", "123");
         props.put("username", "me");
         props.put("password", "pw"); 
@@ -242,12 +242,12 @@ public class LivelinkConnectorTypeTest extends TestCase {
             connectorType.validateConfig(props, null);
         assertNotNull("Missing ConfigureResponse", response); 
         HashMap form = getForm(response);
-        assertValue(form, "hostname", "myhost"); 
+        assertValue(form, "server", "myhost"); 
         assertValue(form, "port", "123"); 
         assertValue(form, "username", "me");
         assertValue(form, "password", "pw"); 
-        assertBooleanIsTrue(form, "useHttps");
-        assertIsHidden(form, "authenticationHostname"); 
+        assertBooleanIsTrue(form, "https");
+        assertIsHidden(form, "authenticationServer"); 
     }
 
     /**
@@ -256,7 +256,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
      */
     public void testValidateConfigValidLivelinkInput() throws Exception {
         HashMap props = new HashMap(emptyProperties);
-        props.put("hostname", System.getProperty("connector.hostname")); 
+        props.put("server", System.getProperty("connector.server")); 
         props.put("port", System.getProperty("connector.port"));
         props.put("username", System.getProperty("connector.username"));
         props.put("password", System.getProperty("connector.password")); 
