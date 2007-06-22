@@ -88,18 +88,6 @@ class LivelinkResultSet implements PropertyMapList {
     /** The recarray fields. */
     private final Field[] fields;
 
-    /** A GMT calendar for converting timestamps to UTC. */
-    private final Calendar gmtCalendar =
-        Calendar.getInstance(TimeZone.getTimeZone("GMT+0"));
-
-    /** The ISO 8601 date format returned in property values. */
-    private final SimpleDateFormat iso8601 =
-        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-
-    /** The ISO SQL date format used in database queries. */
-    private final SimpleDateFormat sql =
-        new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
-
     LivelinkResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields) throws RepositoryException {
@@ -109,53 +97,6 @@ class LivelinkResultSet implements PropertyMapList {
         this.recArray = recArray;
         this.fields = fields;
         this.cattr = new LivelinkAttributes(connector, client, contentHandler);
-        iso8601.setCalendar(gmtCalendar);
-    }
-
-    /**
-     * Livelink only stores timestamps to the nearest second, but LAPI
-     * constructs a Date object that includes milliseconds, which are
-     * taken from the current time. So we need to avoid using the
-     * milliseconds in the parameter.
-     *
-     * @param value a Livelink date
-     * @return an ISO 8601 formatted string representation,
-     *     using the pattern "yyyy-MM-dd'T'HH:mm:ss'Z'"
-     * @see toSqlString
-     */
-    /*
-     * This method is synchronized to emphasize safety over speed.
-     * <code>Calendar</code> and <code>SimpleDateFormat</code> objects
-     * are not thread-safe. We've put these calendar and date format
-     * objects in instance fields to balance object creation, not
-     * frequent at just once per result set, and synchronization,
-     * which is fast in the absence of contention. It is extremely
-     * unlikely that <code>PropertyMapList</code> instances or their
-     * children will be called from multiple threads, but there's no
-     * need to cut corners here.
-     * 
-     * TODO: LAPI converts the database local time to UTC using the
-     * default Java time zone, so if the database time zone is different
-     * from the Java time zone, we need to adjust the given Date
-     * accordingly. In order to account for Daylight Savings, we
-     * probably need to subtract the offsets for the date under both
-     * time zones and apply the resulting adjustment (in milliseconds)
-     * to the Date object.
-     */
-    private synchronized String toIso8601String(Date value) {
-        return iso8601.format(value);
-    }
-
-    /**
-     * Converts a local time date to an ISO SQL local time string.
-     *
-     * @param value a timestamp where local time is database local time
-     * @return an ISO SQL string using the pattern
-     * "yyyy-MM-dd' 'HH:mm:ss"
-     * @see #toIso8601String
-     */
-    private synchronized String toSqlString(Date value) {
-        return sql.format(value);
     }
 
 
@@ -170,8 +111,18 @@ class LivelinkResultSet implements PropertyMapList {
      * <code>PropertyMap</code> it contains.
      */
     private class LivelinkResultSetIterator implements Iterator {
+        /** The current row of the recarray. */
         private int row;
         private final int size;
+
+        /** The ObjectID and VolumeID of the current repository object */
+        private int objectId;
+        private int volumeId;
+
+        /** The PropertyMap associated with the current row */
+        private LivelinkPropertyMap props;
+
+        /** Iterator Interface */
 
         LivelinkResultSetIterator() {
             this.row = 0;
@@ -185,7 +136,23 @@ class LivelinkResultSet implements PropertyMapList {
         public Object next() {
             if (row < size) {
                 try {
-                    return new LivelinkPropertyMap(row++);
+                    objectId = recArray.toInteger(row, "DataID");
+                    volumeId = recArray.toInteger(row, "OwnerID");
+                    props = new LivelinkPropertyMap(objectId, fields.length*2);
+
+                    /* establish the checkpoint string for this row */
+                    Date date = recArray.toDate(row, "ModifyDate");
+                    String cp = LivelinkDateFormat.getInstance().toSqlString(date) +
+                        ','  + objectId;
+                    props.setCheckpoint(cp);
+
+                    /* collect the various properties for this row */
+                    collectRecArrayProperties();
+                    collectDerivedProperties();
+                    //                    collectCategoryAttributes();
+
+                    row++;
+                    return props;
                 } catch (RepositoryException e) {
                     throw new RuntimeException(e);
                 }
@@ -196,78 +163,9 @@ class LivelinkResultSet implements PropertyMapList {
         public void remove() {
             throw new UnsupportedOperationException();
         }
-    }
 
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation accumlated properties from the the
-     * underlying recarray, along with other properties derived from
-     * the recarray.
-     */
-    class LivelinkPropertyMap implements PropertyMap {
-        /** The row of the recarray this property map is based on. */
-        private final int row;
-
-        /** The ObjectID and VolumeID of the repository object */
-        private final int objectId;
-        private final int volumeId;
-        
-        /*
-         * I'm using a LinkedHashMap just because it's got a more
-         * predictable ordering when I'm looking at test output.
-         */
-        private final Map properties = new LinkedHashMap(fields.length * 2);
-
-        LivelinkPropertyMap(int row) throws RepositoryException {
-            this.row = row;
-            this.objectId = recArray.toInteger(row, "DataID");
-            this.volumeId = recArray.toInteger(row, "OwnerID");
-
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.fine("PROPERTY MAP FOR ID = " + objectId);
-
-            collectRecArrayProperties();
-            collectDerivedProperties();
-            //collectCategoryAttributes();
-        }
-
-        /**
-         * Adds a property to the property map. If the property
-         * already exists in the map, the given value is added to the
-         * list of values in the property.
-         *
-         * @param name a property name
-         * @param value a property value
-         */
-        private void addProperty(String name, Value value) {
-            Object values = properties.get(name);
-            if (values == null) {
-                LinkedList firstValues = new LinkedList();
-                firstValues.add(value);
-                properties.put(name, firstValues);
-            } else
-                ((LinkedList) values).add(value);
-        }
-
-        /**
-         * Adds a property to the property map. If the property
-         * already exists in the map, the given value is added to the
-         * list of values in the property.
-         *
-         * @param field a field definition, possibly including
-         * multiple property names
-         * @param value a <code>ClientValue</code>, which must be
-         * wrapped as a <code>LivelinkValue</code>
-         */
-        private void addProperty(Field field, ClientValue value) {
-            String[] names = field.propertyNames;
-            for (int j = 0; j < names.length; j++) {
-                addProperty(names[j],
-                    new LivelinkValue(field.fieldType, value));
-            }
-        }
+       /** Collect properties for the current Iterator item */
         
         /** Collects the recarray-based properties. */
         /*
@@ -290,23 +188,24 @@ class LivelinkResultSet implements PropertyMapList {
                                 client.GetUserOrGroupByID(value.toInteger());
                             ClientValue userName = userInfo.toValue("Name");
                             if (userName.isDefined())
-                                addProperty(fields[i], userName);
+                                props.addProperty(fields[i], userName);
                             else if (LOGGER.isLoggable(Level.WARNING)) {
                                 LOGGER.warning(
                                     "No username found for user ID " +
                                     value.toInteger());
                             }
                         } else
-                            addProperty(fields[i], value);
+                            props.addProperty(fields[i], value);
 
                     }
                 }
             }
         }
         
+
         /** Collects additional properties derived from the recarray. */
         private void collectDerivedProperties() throws RepositoryException {
-            addProperty(SpiConstants.PROPNAME_ISPUBLIC, VALUE_FALSE);
+            props.addProperty(SpiConstants.PROPNAME_ISPUBLIC, VALUE_FALSE);
 
             int subType = recArray.toInteger(row, "SubType");
 
@@ -339,9 +238,9 @@ class LivelinkResultSet implements PropertyMapList {
                 // gracefully (e.g., maybe the underlying error
                 // is "no content").
                 Value contentValue = new InputStreamValue(
-                    contentHandler.getInputStream(volumeId, objectId, 0,
+                        contentHandler.getInputStream(volumeId, objectId, 0,
                         size));
-                addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
+                props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             } else {
                 // TODO: What about objects that have files associated
                 // with them but also have data in ExtendedData? We
@@ -352,9 +251,10 @@ class LivelinkResultSet implements PropertyMapList {
 
             // DISPLAYURL
             String url = connector.getDisplayUrl(subType, objectId, volumeId);
-            addProperty(SpiConstants.PROPNAME_DISPLAYURL,
-                new SimpleValue(ValueType.STRING, url));
+            props.addProperty(SpiConstants.PROPNAME_DISPLAYURL,
+                              new SimpleValue(ValueType.STRING, url));
         }
+
 
         /**
          * Collect properties from the ExtendedData assoc. These
@@ -417,9 +317,10 @@ class LivelinkResultSet implements PropertyMapList {
                 }
                 contentValue =
                     new SimpleValue(ValueType.STRING, buffer.toString());
-                addProperty(SpiConstants.PROPNAME_MIMETYPE, VALUE_TEXT_HTML);
+                props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
+                                  VALUE_TEXT_HTML);
             }
-            addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
+            props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
         }
 
         /**
@@ -440,6 +341,7 @@ class LivelinkResultSet implements PropertyMapList {
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
                     value.toString2());
+
             }
             
             switch (value.type()) {
@@ -478,7 +380,7 @@ class LivelinkResultSet implements PropertyMapList {
                 buffer.append("</p>\n");
                 buffer.append(closeTag);
 
-                addProperty(name, new LivelinkValue(value));
+                props.addProperty(name, new LivelinkValue(value));
                 break;
 
             default:
@@ -506,206 +408,9 @@ class LivelinkResultSet implements PropertyMapList {
 
                 ClientValue attrValue = (ClientValue) attr.getValue();
 
-                addProperty(attrName, new LivelinkValue(attrValue));
+                props.addProperty(attrName, new LivelinkValue(attrValue));
 
                 attr = null;
-            }
-        }
-
-        public Iterator getProperties() {
-            return new LivelinkPropertyMapIterator(properties);
-        }
-
-        public Property getProperty(String name) {
-            Object values = properties.get(name);
-            if (values == null)
-                return null;
-            else
-                return new LivelinkProperty(name, (LinkedList) values);
-        }
-
-        /**
-         * Gets a string of the form "yyyy-MM-dd HH:mm:ss,nnnnnn" where
-         * nnnnnn is the object ID of the item represented by this property
-         * map.
-         *
-         * @return a checkpoint string for this property map
-         * @throws RepositoryException if an error occurs retrieving
-         * the field data
-         */
-        public String checkpoint() throws RepositoryException {
-            return toSqlString(recArray.toDate(row, "ModifyDate")) +
-                ','  + objectId;
-        }
-    }
-
-
-    /**
-     * Iterates over a <code>PropertyMap</code>, returning each
-     * <code>Property</code> it contains.
-     */
-    private static class LivelinkPropertyMapIterator implements Iterator {
-        private final Iterator properties;
-
-        LivelinkPropertyMapIterator(Map properties) {
-            this.properties = properties.entrySet().iterator();
-        }
-
-        public boolean hasNext() {
-            return properties.hasNext();
-        }
-
-        public Object next() {
-            Map.Entry property = (Map.Entry) properties.next();
-            return new LivelinkProperty((String) property.getKey(),
-                (LinkedList) property.getValue());
-        }
-
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation represents a property that always has one
-     * or more values.
-     */
-    /*
-     * We could just use SimpleProperty instead, and move the logging
-     * to LivelinkPropertyMapIterator.
-     */
-    private static class LivelinkProperty implements Property {
-        private final String name;
-        private final LinkedList values;
-
-        LivelinkProperty(String name, LinkedList values) {
-            this.name = name;
-            this.values = values;
-
-            if (LOGGER.isLoggable(Level.FINEST))
-                LOGGER.finest("PROPERTY: " + name + " = " + values);
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Value getValue() throws RepositoryException {
-            return (Value) values.getFirst();
-        }
-
-        public Iterator getValues() throws RepositoryException {
-            return values.iterator();
-        }
-    }
-
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation represents an atomic <code>ClientValue</code>.
-     */
-    /*
-     * TODO: Value conversion across types. We're relying on
-     * the behavior of the LLInstance subclasses here.
-     */
-    private class LivelinkValue implements Value {
-        private final ValueType type;
-        private final ClientValue clientValue;
-
-        /**
-         * Wraps a <code>ClientValue</code> as an SPI
-         * <code>Value</code>.
-         *
-         * @param clientValue the value to be wrapped
-         */
-        LivelinkValue(ClientValue clientValue) {
-            switch (clientValue.type()) {
-            case ClientValue.BOOLEAN: type = ValueType.BOOLEAN; break;
-            case ClientValue.DATE: type = ValueType.DATE; break;
-            case ClientValue.DOUBLE: type = ValueType.DOUBLE; break;
-            case ClientValue.INTEGER: type = ValueType.LONG; break;
-            case ClientValue.STRING: type = ValueType.STRING; break;
-            default:
-                throw new AssertionError("This can't happen.");
-            }
-            this.clientValue = clientValue;
-        }
-
-        /**
-         * Wraps a <code>ClientValue</code> as an SPI
-         * <code>Value</code>.
-         *
-         * @param type the expected value type
-         * @param clientValue the value to be wrapped
-         */
-        LivelinkValue(ValueType type, ClientValue clientValue) {
-            this(clientValue);
-
-            // This isn't a functional problem, I don't think, but it
-            // might be nice to know if this can happen.
-            if (this.type != type && LOGGER.isLoggable(Level.WARNING)) {
-                LOGGER.warning("Unexpected property type, expected: " +
-                    type + "; got " + this.type);
-            }
-        }
-
-        public boolean getBoolean() throws RepositoryException {
-            return clientValue.toBoolean();
-        }
-
-        public Calendar getDate() throws RepositoryException {
-            Calendar c = Calendar.getInstance();
-            c.setTime(clientValue.toDate());
-            return c;
-        }
-
-        public double getDouble() throws RepositoryException {
-            return clientValue.toDouble();
-        }
-
-        public long getLong() throws RepositoryException {
-            return clientValue.toInteger();
-        }
-
-        public InputStream getStream() throws RepositoryException {
-            try {
-                return new ByteArrayInputStream(getString().getBytes("UTF8"));
-            } catch (UnsupportedEncodingException e) {
-                // This can't happen.
-                RuntimeException re = new IllegalArgumentException();
-                re.initCause(e);
-                throw re;
-            }
-        }
-
-        public String getString() throws RepositoryException {
-            if (type == ValueType.DATE)
-                return toIso8601String(clientValue.toDate());
-            else
-                return clientValue.toString2();
-        }
-
-        public ValueType getType() {
-            return type;
-        }
-
-        /**
-         * {@inheritDoc}
-         * <p>
-         * This implementation returns the string value, or if an
-         * exception is thrown obtaining the value, it returns the
-         * string value of the exception. This is intended for
-         * debugging and logging.
-         */
-        public String toString() {
-            try {
-                return getString() + " #" + getType();
-            } catch (RepositoryException e) {
-                return e.toString();
             }
         }
     }

@@ -346,7 +346,7 @@ class LivelinkQueryTraversalManager implements TraversalManager {
      * @return a checkpoint string for the given property map
      */
     public String checkpoint(PropertyMap pm) throws RepositoryException {
-        String s = ((LivelinkResultSet.LivelinkPropertyMap) pm).checkpoint();
+        String s = ((LivelinkPropertyMap) pm).checkpoint();
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("CHECKPOINT: " + s + " @" +
                 Integer.toHexString(System.identityHashCode(this)));
