@@ -43,6 +43,7 @@ import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
 /**
  * This result set implementation could be trivial, but is not. Since
@@ -83,16 +84,20 @@ class LivelinkResultSet implements PropertyMapList {
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
     
+    /** The concrete ClientValue implementation associated with this Client */
+    private final ClientValueFactory valueFactory;
+
     private final ClientValue recArray;
 
     /** The recarray fields. */
     private final Field[] fields;
 
     LivelinkResultSet(LivelinkConnector connector, Client client,
-            ContentHandler contentHandler, ClientValue recArray,
-            Field[] fields) throws RepositoryException {
+                      ContentHandler contentHandler, ClientValue recArray,
+                      Field[] fields) throws RepositoryException {
         this.connector = connector;
         this.client = client;
+        this.valueFactory = client.getClientValueFactory();
         this.contentHandler = contentHandler;
         this.recArray = recArray;
         this.fields = fields;
@@ -149,7 +154,7 @@ class LivelinkResultSet implements PropertyMapList {
                     /* collect the various properties for this row */
                     collectRecArrayProperties();
                     collectDerivedProperties();
-                    //                    collectCategoryAttributes();
+                    collectCategoryAttributes();
 
                     row++;
                     return props;
@@ -165,7 +170,7 @@ class LivelinkResultSet implements PropertyMapList {
         }
 
 
-       /** Collect properties for the current Iterator item */
+        /** Collect properties for the current Iterator item */
         
         /** Collects the recarray-based properties. */
         /*
@@ -191,8 +196,8 @@ class LivelinkResultSet implements PropertyMapList {
                                 props.addProperty(fields[i], userName);
                             else if (LOGGER.isLoggable(Level.WARNING)) {
                                 LOGGER.warning(
-                                    "No username found for user ID " +
-                                    value.toInteger());
+                                               "No username found for user ID " +
+                                               value.toInteger());
                             }
                         } else
                             props.addProperty(fields[i], value);
@@ -238,8 +243,8 @@ class LivelinkResultSet implements PropertyMapList {
                 // gracefully (e.g., maybe the underlying error
                 // is "no content").
                 Value contentValue = new InputStreamValue(
-                        contentHandler.getInputStream(volumeId, objectId, 0,
-                        size));
+                   contentHandler.getInputStream(volumeId, objectId, 0, size));
+                                                                                        
                 props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             } else {
                 // TODO: What about objects that have files associated
@@ -264,7 +269,7 @@ class LivelinkResultSet implements PropertyMapList {
          * @param subType the subtype of the item
          */
         private void collectExtendedDataProperties(int subType)
-                throws RepositoryException {
+            throws RepositoryException {
             // TODO: In the most general case, we might want some
             // entries for the content, other entries just for
             // metadata, and yet other entries not at all.
@@ -300,7 +305,7 @@ class LivelinkResultSet implements PropertyMapList {
                     // this one case, rather than handling stringified
                     // values generally.
                     if (subType == Client.POLLSUBTYPE &&
-                            fields[i].equals("Questions")) {
+                        fields[i].equals("Questions")) {
                         value = value.stringToValue();
                     }
 
@@ -313,7 +318,7 @@ class LivelinkResultSet implements PropertyMapList {
                     // Caused by issue 30, empty metadata values, in
                     // this case the Comments field.
                     collectValueContent(fields[i], value, "<div>",
-                        "</div>\n", buffer);
+                                        "</div>\n", buffer);
                 }
                 contentValue =
                     new SimpleValue(ValueType.STRING, buffer.toString());
@@ -336,11 +341,12 @@ class LivelinkResultSet implements PropertyMapList {
          * @see #collectExtendedDataProperties
          */
         private void collectValueContent(String name, ClientValue value,
-                String openTag, String closeTag, StringBuffer buffer)
-                throws RepositoryException {
+                                         String openTag, String closeTag,
+                                         StringBuffer buffer)
+            throws RepositoryException {
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
-                    value.toString2());
+                              value.toString2());
 
             }
             
@@ -350,7 +356,7 @@ class LivelinkResultSet implements PropertyMapList {
                 buffer.append("<ul>");
                 for (int i = 0; i < value.size(); i++) {
                     collectValueContent(name, value.toValue(i), "<li>",
-                        "</li>\n", buffer);
+                                        "</li>\n", buffer);
                 }
                 buffer.append("</ul>\n");
                 buffer.append(closeTag);
@@ -363,7 +369,7 @@ class LivelinkResultSet implements PropertyMapList {
                 while (keys.hasMoreElements()) {
                     String key = (String) keys.nextElement();
                     collectValueContent(key, value.toValue(key), "<li>",
-                        "</li>\n", buffer);
+                                        "</li>\n", buffer);
                 }
                 buffer.append("</ul>\n");
                 buffer.append(closeTag);
@@ -389,28 +395,182 @@ class LivelinkResultSet implements PropertyMapList {
             }
         }
         
+
         /**
-         * Collect Category Attributes from the CategoryAttributes Map.
+         * Gets the category attribute values for the indicated
+         * object. Each attribute name is mapped to a linked list of
+         * values for each occurrence of that attribute. Attributes
+         * with the same name in different categories will have their
+         * values merged into a single list. Attribute sets are
+         * supported, but nested attribute sets are not. User
+         * attributes are resolved into the user or group name.
+         *
+         * @throws RepositoryException if an error occurs
          */
         private void collectCategoryAttributes() throws RepositoryException {
-            Map attrmap = cattr.getCategoryAttributes(objectId);
-            if (attrmap.isEmpty())
+
+            // List the categories. LAPI requires us to use this
+            // Assoc containing the id instead of just passing in
+            // the id. The Assoc may have two other values, Type,
+            // which specifies the kind of object being looked up
+            // (there's only one legal value currently) and
+            // Version, which specifies which version of the
+            // object to use (the default is the current
+            // version).
+            ClientValue objIdAssoc = valueFactory.createAssoc();
+            objIdAssoc.add("ID", objectId); 
+        
+            ClientValue categoryIds = client.ListObjectCategoryIDs(objIdAssoc);
+        
+            // Loop over the categories.
+            int numCategories = categoryIds.size();
+            for (int i = 0; i < numCategories; i++) {
+                ClientValue categoryId = categoryIds.toValue(i);
+                // Make sure we know what type of categoryId
+                // object we have. There are also Workflow
+                // category attributes which can't be read here.
+                int categoryType = categoryId.toInteger("Type");
+                if (Client.CATEGORY_TYPE_LIBRARY != categoryType) {
+                    LOGGER.finer("Unknown category implementation type " +
+                                 categoryType + "; skipping"); 
+                    continue;
+                }
+                //System.out.println(categoryId.toString("DisplayName")); 
+            
+                ClientValue categoryVersion;
+                categoryVersion = client.GetObjectAttributesEx(objIdAssoc, categoryId);
+                ClientValue attrNames = client.AttrListNames(categoryVersion, null);
+            
+                // Loop over the attributes for this category.
+                int numAttributes = attrNames.size();
+                for (int j = 0; j < numAttributes; j++) {
+                    String attrName = attrNames.toString(j);
+                    ClientValue attrInfo = client.AttrGetInfo(categoryVersion,
+                                                              attrName, null);
+                    int attrType = attrInfo.toInteger("Type");
+                    if (Client.ATTR_TYPE_SET == attrType) {
+                        getAttributeSetValues(categoryVersion, attrName);
+                    }
+                    else {
+                        getAttributeValue(categoryVersion, attrName, attrType,
+                                          null, attrInfo);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Gets the values for attributes contained in an attribute set.
+         *
+         * @param categoryVersion the category being read
+         * @param attributeName the name of the attribute set
+         * @throws RepositoryException if an error occurs
+         */
+        private void getAttributeSetValues(ClientValue categoryVersion,
+                                           String attrName)
+            throws RepositoryException {
+
+            // The "path" indicates the set attribute name to look
+            // inside of in other methods like AttrListNames.
+            ClientValue attrSetPath = valueFactory.createList();
+            attrSetPath.add(attrName); 
+
+            // Get a list of the names of the attributes in the
+            // set. Look up and store the types to avoid repeating
+            // the type lookup when there's more than one instance of
+            // the attribute set.
+            ClientValue attrSetNames = client.AttrListNames(categoryVersion,
+                                                            attrSetPath);
+
+            ClientValue[] attrInfo = new ClientValue[attrSetNames.size()];
+            for (int i = 0; i < attrSetNames.size(); i++) {
+                String name = attrSetNames.toString(i); 
+                attrInfo[i] = client.AttrGetInfo(categoryVersion, name,
+                                                 attrSetPath);
+            }
+
+            // List the values for the set attribute itself. There
+            // may be multiple instances of the set.
+            ClientValue setValues = client.AttrGetValues(categoryVersion,
+                                                         attrName, null);
+
+            // Update the path to hold index of the set instance.
+            attrSetPath.setSize(2); 
+            int numSets = setValues.size();
+            for (int i = 0; i < numSets; i++) {
+                attrSetPath.setInteger(1, i); 
+                // For each instance (row) of the attribute set, loop
+                // over the attribute names.
+                for (int j = 0; j < attrSetNames.size(); j++) {
+                    int type = attrInfo[j].toInteger("Type");
+                    if (Client.ATTR_TYPE_SET == type) {
+                        LOGGER.finer("Nested attributes sets are not supported.");
+                        continue;
+                    }
+                    //System.out.println("      " + attributeSetNames.toString(j));
+                    getAttributeValue(categoryVersion, 
+                                      attrSetNames.toString(j), type,
+                                      attrSetPath, attrInfo[j]); 
+                }
+            }
+        }
+
+        /**
+         * Gets the values for an attribute.
+         *
+         * @param categoryVersion the category version in which the
+         * values are stored 
+         * @param attributeName the name of the attribute whose
+         * values are being read
+         * @param attributeType the type of the attribute data; may not be "SET"
+         * @param attributeSetPath if the attribute is contained
+         * within an attribute set, this is a list containing the set
+         * name and set instance index; otherwise, this should be
+         * null
+         * throws RepositoryException if an error occurs
+         */
+        private void getAttributeValue(ClientValue categoryVersion,
+                                       String attrName, int attrType,
+                                       ClientValue attrSetPath,
+                                       ClientValue attrInfo)
+            throws RepositoryException {
+
+            if (Client.ATTR_TYPE_SET == attrType)
+                throw new IllegalArgumentException("attrType = SET"); 
+
+            // Skip attributes marked as not searchable.
+            if (!attrInfo.toBoolean("Search"))
                 return;
 
-            // Iterate over the category attributes, adding them to the property map
-            Iterator i = attrmap.entrySet().iterator(); 
-            Map.Entry attr;
-            while ((attr = (Map.Entry) i.next()) != null) {
+            //System.out.println("getAttributeValue: attrName = " + attrName);
 
-                System.out.println("CategoryAttribute: " + attr.toString());
+            ClientValue attrValues = client.AttrGetValues(categoryVersion,
+                                                          attrName,
+                                                          attrSetPath);
+        
+            // Even a simple attribute type can have multiple values
+            // (displayed as rows in the Livelink UI).
+            int numValues = attrValues.size();
+            if (numValues == 0)
+                return;
 
-                String attrName = attr.getKey().toString();
+            // System.out.println("getAttributeValue: numValues = " + numValues);
 
-                ClientValue attrValue = (ClientValue) attr.getValue();
-
-                props.addProperty(attrName, new LivelinkValue(attrValue));
-
-                attr = null;
+            for (int k = 0; k < numValues; k++) {
+                ClientValue value = attrValues.toValue(k);
+                // Avoid errors if the attribute hasn't been set.
+                if (!value.hasValue())
+                    continue;
+                // System.out.println("getAttributeValue: k = " + k + " ; value = " + value.toString2());
+                if (Client.ATTR_TYPE_USER == attrType) {
+                    int userId = value.toInteger();
+                    ClientValue userInfo = client.GetUserOrGroupByID(userId);
+                    props.addProperty(attrName, userInfo.toValue("Name")); 
+                } else {
+                    // TODO: what value object should we put here? 
+                    // A CategoryValue, like the LivelinkValue?
+                    props.addProperty(attrName, value);
+                }
             }
         }
     }

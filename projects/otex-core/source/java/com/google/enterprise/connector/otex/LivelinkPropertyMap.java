@@ -103,6 +103,18 @@ class LivelinkPropertyMap implements PropertyMap {
      * already exists in the map, the given value is added to the
      * list of values in the property.
      *
+     * @param name a property name
+     * @param value a property value
+     */
+    public void addProperty(String name, ClientValue value) {
+        addProperty(name, new LivelinkValue(value));
+    }
+
+    /**
+     * Adds a property to the property map. If the property
+     * already exists in the map, the given value is added to the
+     * list of values in the property.
+     *
      * @param field a field definition, possibly including
      * multiple property names
      * @param value a <code>ClientValue</code>, which must be
