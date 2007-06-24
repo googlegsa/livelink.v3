@@ -113,6 +113,11 @@ public class LivelinkConnectorType implements ConnectorType {
         abstract protected void addFormControl(StringBuffer buffer,
             String value);
 
+        /*
+         * XXX: Make the valign dependent on the control type? We want
+         * it for radio buttons and text areas, but maybe not for
+         * simple text and password fields.
+         */
         public void addToBuffer(StringBuffer buffer, String labelPrefix,
                 String labelSuffix, String value) {
             // TODO: Use CSS here. Better handling of section labels.
@@ -615,7 +620,8 @@ public class LivelinkConnectorType implements ConnectorType {
                 new PropertyPlaceholderConfigurer();
             cfg.setProperties(p);
             cfg.postProcessBeanFactory(factory);
-            conn = (LivelinkConnector) factory.getBean("Livelink");
+            conn = (LivelinkConnector)
+                factory.getBean("Livelink_Enterprise_Server");
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Failed to create connector", t);
             t = t.getCause();

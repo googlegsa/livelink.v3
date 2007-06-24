@@ -73,8 +73,8 @@ class LivelinkConnectorFactory {
      * @param prefix the prefix on the names of the system properties
      * to be used to configure the bean, e.g., <code>"connector."</code>
      */
-    public static LivelinkConnector getConnector(String prefix) throws RepositoryException {
-
+    public static LivelinkConnector getConnector(String prefix)
+            throws RepositoryException {
         Properties p = new Properties(emptyProperties);
         Properties system = System.getProperties();
         Enumeration names = system.propertyNames();
@@ -104,6 +104,7 @@ class LivelinkConnectorFactory {
         cfg.setProperties(p);
         cfg.postProcessBeanFactory(factory);
 
-        return (LivelinkConnector) factory.getBean("Livelink");
+        return (LivelinkConnector)
+            factory.getBean("Livelink_Enterprise_Server");
     }
 }
