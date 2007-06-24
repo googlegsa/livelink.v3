@@ -136,12 +136,10 @@ public class LivelinkConnector implements Connector {
      * The map from subtypes to relative display URL pattern for the
      * search results.
      */
-    private Map displayPatterns = new HashMap(Collections.singletonMap(
-        null, getFormat("?func=ll&objId={0}&objAction={3}")));
+    private Map displayPatterns = new HashMap();
 
     /** The map from subtypes to Livelink display action names. */
-    private Map displayActions =
-        new HashMap(Collections.singletonMap(null, "properties"));
+    private Map displayActions = new HashMap();
 
     /**
      * The non-grouping number format for IDs and subtypes in the
@@ -170,8 +168,7 @@ public class LivelinkConnector implements Connector {
     private Map extendedDataKeys = new HashMap();
 
     /** The <code>ContentHandler</code> implementation class. */
-    private String contentHandler =
-        "com.google.enterprise.connector.otex.FileContentHandler";
+    private String contentHandler;
 
     /** The flag indicating that this connector has a separate
      * set of authentication parameters. 
@@ -182,7 +179,6 @@ public class LivelinkConnector implements Connector {
     /**
      * Constructs a connector instance for a specific Livelink
      * repository, using the default client factory class.
-
      */
     LivelinkConnector() {
         this("com.google.enterprise.connector.otex.client.lapi." +
@@ -267,10 +263,9 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the HTTPS property. Set to true to use HTTPS when
-     * tunneling through a web server. The default value for this
-     * property is "true". If this property is set to true, the
-     * LivelinkCGI property is set, and Livelink Secure Connect
-     * is not installed, connections will fail.
+     * tunneling through a web server. If this property is set to
+     * true, the LivelinkCGI property is set, and Livelink Secure
+     * Connect is not installed, connections will fail.
      *
      * @param useHttps true if HTTPS should be used; false otherwise
      */
@@ -281,7 +276,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the EnableNTLM property. The default Livelink value is true.
+     * Sets the EnableNTLM property.
      *
      * @param enableNtlm true if the NTLM subsystem should be used
      */
@@ -406,9 +401,6 @@ public class LivelinkConnector implements Connector {
      * <dd> The display action, which varies by subtype and is
      * configured by {@link #setDisplayActions}.
      * </dl>
-     *
-     * <p>The default value is a map with one entry mapping "default"
-     * to "?func=ll&objId={0}&objAction={3}".
      * 
      * @param displayPatterns a map from subtypes to relative display
      * URL patterns
@@ -423,9 +415,6 @@ public class LivelinkConnector implements Connector {
      * keys that consist of comma-separated subtype integers, or the
      * special string "default". These are mapped to Livelink action
      * names, such as "browse" or "overview".
-     * 
-     * <p>The default value is a map with one entry mapping "default"
-     * to "properties".
      *
      * @param displayActions a map from subtypes to Livelink actions
      */
@@ -689,8 +678,6 @@ public class LivelinkConnector implements Connector {
      * integers. The special string "default" is not supported. The
      * values are comma-separated lists of attribute names in the
      * ExtendedData assoc for that subtype.
-     * 
-     * <p>The default value is an empty map.
      *
      * @param displayActions a map from subtypes to ExtendedData assoc keys
      */
@@ -726,7 +713,8 @@ public class LivelinkConnector implements Connector {
      * authentication configuration parameters. This will use the
      * same implementation class as the default client factory.
      */
-    /* Assumes that there aren't multiple threads configuring a 
+    /*
+     * Assumes that there aren't multiple threads configuring a 
      * single LivelinkConnector instance. 
      */
     private void createAuthenticationClientFactory() {
