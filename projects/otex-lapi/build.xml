@@ -108,6 +108,10 @@
                 value="${logging.file}"/>
       </filterset>
     </copy>
+    <copy file="source/javatests/LivelinkConnectorType_test.properties"
+          todir="${tests.classes}/com/google/enterprise/connector/otex"
+          overwrite="yes">
+    </copy>
     <replace file="${tests.logging.properties}" 
              token="\" value="\\" />
     <junit>

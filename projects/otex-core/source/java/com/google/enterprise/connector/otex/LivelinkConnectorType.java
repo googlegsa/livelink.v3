@@ -53,32 +53,13 @@ public class LivelinkConnectorType implements ConnectorType {
      * in the format used by the GSA.
      */
     private static abstract class ConnectorProperty {
-        /** HTML form labels for the configuration properties. */
-        private static final ResourceBundle labels;
-    
-        static {
-            // TODO: Use the locale parameters here. That means
-            // building the resource bundles more dynamically, instead
-            // of a single static bundle.
-            ResourceBundle bundle;
-            try {
-                bundle = ResourceBundle.getBundle(
-                    LivelinkConnectorType.class.getName(), Locale.US);
-            } catch (MissingResourceException e) {
-                LivelinkConnectorType.LOGGER.log(Level.SEVERE,
-                    e.getMessage(), e);
-                bundle = null;
-            }
-            labels = bundle;
-        }
-
         /**
          * Gets the display label for the given name.
          *
          * @param name a form element name or some other unique key
          * @return the display label, or if one cannot be found, the name
          */
-        protected static String getLabel(String name) {
+        protected static String getLabel(String name, ResourceBundle labels) {
             if (labels == null)
                 return name;
             else {
@@ -89,29 +70,27 @@ public class LivelinkConnectorType implements ConnectorType {
                 }
             }
         }
-        
+
         String name;
-        String label;
         String defaultValue;
-        
+
         protected ConnectorProperty(String name) {
-            this(name, null); 
+            this(name, null);
         }
 
         protected ConnectorProperty(String name, String defaultValue) {
             this.name = name;
-            this.label = getLabel(name);
             this.defaultValue = defaultValue;
         }
 
         public final String toString() {
             StringBuffer buffer = new StringBuffer();
-            addToBuffer(buffer, "", "", null); 
+            addToBuffer(buffer, "", "", null, null);
             return buffer.toString();
         }
 
         abstract protected void addFormControl(StringBuffer buffer,
-            String value);
+            String value, ResourceBundle labels);
 
         /*
          * XXX: Make the valign dependent on the control type? We want
@@ -119,18 +98,20 @@ public class LivelinkConnectorType implements ConnectorType {
          * simple text and password fields.
          */
         public void addToBuffer(StringBuffer buffer, String labelPrefix,
-                String labelSuffix, String value) {
+                String labelSuffix, String value, ResourceBundle labels) {
+            String label = getLabel(name, labels);
+
             // TODO: Use CSS here. Better handling of section labels.
             if (START_TAG.equals(labelPrefix))
                 buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
             buffer.append("<tr valign='top'>\r\n").
                 append("<td style='white-space: nowrap'>").
-                append(labelPrefix).
-                append(label).
-                append(labelSuffix).
-                append("</td>\r\n"). 
+                append(labelPrefix);
+            appendLabel(buffer, name, label);
+                buffer.append(labelSuffix).
+                append("</td>\r\n").
                 append("<td>");
-            addFormControl(buffer, value);
+            addFormControl(buffer, value, labels);
             buffer.append("</td>\r\n</tr>\r\n");
         }
 
@@ -142,7 +123,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 buffer.append("selected");
             buffer.append(">");
             escapeAndAppend(buffer, text);
-            buffer.append("</option>"); 
+            buffer.append("</option>");
         }
 
         /* We need to use double quotes around the attribute
@@ -153,11 +134,11 @@ public class LivelinkConnectorType implements ConnectorType {
          * ConnectionManagerGetServlet.writeConfigureResponse and
          * ServletUtil.prependCmPrefix.
          */
-        protected void appendAttribute(StringBuffer buffer, String name, 
+        protected void appendAttribute(StringBuffer buffer, String name,
                 String value) {
             buffer.append(name).append("=\"");
             escapeAndAppend(buffer, value);
-            buffer.append("\" "); 
+            buffer.append("\" ");
         }
 
         protected void escapeAndAppend(StringBuffer buffer, String data) {
@@ -168,9 +149,18 @@ public class LivelinkConnectorType implements ConnectorType {
                 case '&': buffer.append("&amp;"); break;
                 case '<': buffer.append("&lt;"); break;
                 case '>': buffer.append("&gt;"); break;
-                default: buffer.append(data.charAt(i)); 
+                default: buffer.append(data.charAt(i));
                 }
             }
+        }
+
+        protected void appendLabel(StringBuffer buffer, String element,
+                String label) {
+            buffer.append("<label ");
+            appendAttribute(buffer, "for", element);
+            buffer.append(">");
+            buffer.append(label);
+            buffer.append("</label>");
         }
     }
 
@@ -179,20 +169,22 @@ public class LivelinkConnectorType implements ConnectorType {
      * input element.
      */
     private static class TextInputProperty extends ConnectorProperty {
-        String type = "text"; 
+        String type = "text";
 
         TextInputProperty(String name) {
-            this(name, null); 
+            this(name, null);
         }
 
         TextInputProperty(String name, String defaultValue) {
-            super(name, defaultValue); 
+            super(name, defaultValue);
         }
 
-        protected void addFormControl(StringBuffer buffer, String value) {
+        protected void addFormControl(StringBuffer buffer, String value,
+            ResourceBundle labels) {
+
             buffer.append("<input ");
             appendAttribute(buffer, "type", type);
-            appendAttribute(buffer, "name", name); 
+            appendAttribute(buffer, "name", name);
 
             // TODO: What size should this be? I made it larger to
             // reasonably handle displayUrl, but arguably it should be
@@ -209,8 +201,8 @@ public class LivelinkConnectorType implements ConnectorType {
                 else
                     value = "";
             }
-            appendAttribute(buffer, "value", value); 
-            buffer.append(" />"); 
+            appendAttribute(buffer, "value", value);
+            buffer.append(" />");
         }
     }
 
@@ -232,15 +224,15 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class HiddenInputProperty extends TextInputProperty {
         HiddenInputProperty(ConnectorProperty prop) {
-            super(prop.name, prop.defaultValue); 
+            super(prop.name, prop.defaultValue);
             this.type = "hidden";
         }
 
         public void addToBuffer(StringBuffer buffer, String labelPrefix,
-                String labelSuffix, String value) {
+                String labelSuffix, String value, ResourceBundle labels) {
             buffer.append("<tr style='display:none'>\r\n").
                 append("<td></td>\r\n<td>");
-            addFormControl(buffer, value);
+            addFormControl(buffer, value, labels);
             buffer.append("</td>\r\n</tr>\r\n");
         }
     }
@@ -251,23 +243,25 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class TextareaProperty extends ConnectorProperty {
         TextareaProperty(String name) {
-            super(name); 
+            super(name);
         }
 
-        protected void addFormControl(StringBuffer buffer, String value) {
+        protected void addFormControl(StringBuffer buffer, String value,
+            ResourceBundle labels) {
+
             buffer.append("<textarea ");
             appendAttribute(buffer, "rows", "5");
             appendAttribute(buffer, "cols", "40");
             appendAttribute(buffer, "name", name);
             buffer.append(">");
             if (value != null)
-                escapeAndAppend(buffer, value); 
+                escapeAndAppend(buffer, value);
             buffer.append("</textarea>");
         }
     }
 
     /**
-     * Holder for a property which should be rendered as a select 
+     * Holder for a property which should be rendered as a select
      * list with two values, "true" and "false".
      */
     /*
@@ -279,10 +273,12 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class BooleanSelectProperty extends ConnectorProperty {
         BooleanSelectProperty(String name, String defaultValue) {
-            super(name, defaultValue); 
+            super(name, defaultValue);
         }
 
-        protected void addFormControl(StringBuffer buffer, String value) {
+        protected void addFormControl(StringBuffer buffer, String value,
+            ResourceBundle labels) {
+
             if (value == null && defaultValue != null)
                 value = defaultValue;
             boolean isTrue = new Boolean(value).booleanValue();
@@ -293,44 +289,35 @@ public class LivelinkConnectorType implements ConnectorType {
                 // TODO: Split out a CheckboxProperty class for this.
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "checkbox");
-                appendAttribute(buffer, "name", name); 
-                appendAttribute(buffer, "id", name + "true"); 
+                appendAttribute(buffer, "name", name);
+                appendAttribute(buffer, "id", name + "true");
                 appendAttribute(buffer, "value", "true");
                 if (isTrue)
                     buffer.append("checked");
                 buffer.append("> ");
-                appendLabel(buffer, name + "true", getLabel("enable"));
+                appendLabel(buffer, name + "true", getLabel("enable", labels));
             } else {
                 // XXX: Surely this could be cleaner.
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "radio");
-                appendAttribute(buffer, "name", name); 
-                appendAttribute(buffer, "id", name + "true"); 
+                appendAttribute(buffer, "name", name);
+                appendAttribute(buffer, "id", name + "true");
                 appendAttribute(buffer, "value", "true");
                 if (isTrue)
                     buffer.append("checked");
                 buffer.append("> ");
-                appendLabel(buffer, name + "true", getLabel("true"));
+                appendLabel(buffer, name + "true", getLabel("true", labels));
                 buffer.append("<br>");
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "radio");
-                appendAttribute(buffer, "name", name); 
-                appendAttribute(buffer, "id", name + "false"); 
+                appendAttribute(buffer, "name", name);
+                appendAttribute(buffer, "id", name + "false");
                 appendAttribute(buffer, "value", "false");
                 if (!isTrue)
                     buffer.append("checked");
                 buffer.append("> ");
-                appendLabel(buffer, name + "false", getLabel("false"));
+                appendLabel(buffer, name + "false", getLabel("false", labels));
             }
-        }
-
-        protected void appendLabel(StringBuffer buffer, String element,
-                String label) {
-            buffer.append("<label ");
-            appendAttribute(buffer, "for", element);
-            buffer.append(">");
-            buffer.append(label);
-            buffer.append("</label>");
         }
     }
 
@@ -342,7 +329,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
     /** Flag property for enabling the HTTP tunneling properties. */
     private static final ConnectorProperty tunnelingEnabler;
-    
+
     /**
      * Configuration properties for HTTP tunneling; displayed when the
      * useHttpTunneling property is set to "true".
@@ -351,7 +338,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
     /** Flag property for enabling the separate authentication properties. */
     private static final ConnectorProperty authenticationEnabler;
-    
+
     /**
      * Configuration properties which are used for authentication;
      * displayed when the useSeparateAuthentication property was set
@@ -364,30 +351,30 @@ public class LivelinkConnectorType implements ConnectorType {
      * authentication enabler labels.
      */
     private static final String START_TAG = "<b>";
-    
+
     /**
      * End tag wrapper for the nested HTTP tunneling and separate
      * authentication enabler labels.
      */
     private static final String END_TAG = "</b>";
-    
+
     /**
      * Form indentation for the nested HTTP tunneling and separate
      * authentication property labels.
      */
     private static final String INDENTATION =
         "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-    
+
     static {
         baseEntries = new ArrayList();
-        baseEntries.add(new TextInputProperty("server")); 
-        baseEntries.add(new TextInputProperty("port", "2099")); 
-        baseEntries.add(new TextInputProperty("connection")); 
-        baseEntries.add(new TextInputProperty("username")); 
-        baseEntries.add(new PasswordInputProperty("password")); 
+        baseEntries.add(new TextInputProperty("server"));
+        baseEntries.add(new TextInputProperty("port", "2099"));
+        baseEntries.add(new TextInputProperty("connection"));
+        baseEntries.add(new TextInputProperty("username"));
+        baseEntries.add(new PasswordInputProperty("password"));
         baseEntries.add(new TextInputProperty("domainName"));
-        baseEntries.add(new TextInputProperty("displayUrl")); 
-        baseEntries.add(new TextInputProperty("includedLocationNodes")); 
+        baseEntries.add(new TextInputProperty("displayUrl"));
+        baseEntries.add(new TextInputProperty("includedLocationNodes"));
 
         // These record the state of the enablers. They are a little
         // different from each other, because the useHttpTunneling
@@ -407,38 +394,38 @@ public class LivelinkConnectorType implements ConnectorType {
             new BooleanSelectProperty("enableHttpTunneling", "false");
         tunnelingEntries = new ArrayList();
         tunnelingEntries.add(new TextInputProperty("livelinkCgi"));
-        tunnelingEntries.add(new TextInputProperty("httpUsername")); 
-        tunnelingEntries.add(new PasswordInputProperty("httpPassword")); 
-        tunnelingEntries.add(new BooleanSelectProperty("enableNtlm", "true")); 
-        tunnelingEntries.add(new BooleanSelectProperty("https", "true")); 
+        tunnelingEntries.add(new TextInputProperty("httpUsername"));
+        tunnelingEntries.add(new PasswordInputProperty("httpPassword"));
+        tunnelingEntries.add(new BooleanSelectProperty("enableNtlm", "true"));
+        tunnelingEntries.add(new BooleanSelectProperty("https", "true"));
         tunnelingEntries.add(
             new BooleanSelectProperty("verifyServer", "true" ));
-        tunnelingEntries.add(new TextareaProperty("caRootCert")); 
+        tunnelingEntries.add(new TextareaProperty("caRootCert"));
         tunnelingEntries.add(
             new BooleanSelectProperty("useUsernamePasswordWithWebServer",
                 "false"));
-        
+
         authenticationEnabler =
             new BooleanSelectProperty("enableSeparateAuthentication", "false");
         authenticationEntries = new ArrayList();
         authenticationEntries.add(
-            new TextInputProperty("authenticationServer")); 
+            new TextInputProperty("authenticationServer"));
         authenticationEntries.add(
-            new TextInputProperty("authenticationPort", "443")); 
+            new TextInputProperty("authenticationPort", "443"));
         authenticationEntries.add(
-            new TextInputProperty("authenticationConnection")); 
+            new TextInputProperty("authenticationConnection"));
         authenticationEntries.add(
             new TextInputProperty("authenticationDomainName"));
         authenticationEntries.add(
-            new TextInputProperty("authenticationLivelinkCgi")); 
+            new TextInputProperty("authenticationLivelinkCgi"));
         authenticationEntries.add(
-            new BooleanSelectProperty("authenticationEnableNtlm", "true")); 
+            new BooleanSelectProperty("authenticationEnableNtlm", "true"));
         authenticationEntries.add(
-            new BooleanSelectProperty("authenticationHttps", "true")); 
+            new BooleanSelectProperty("authenticationHttps", "true"));
         authenticationEntries.add(
-            new BooleanSelectProperty("authenticationVerifyServer", "true")); 
+            new BooleanSelectProperty("authenticationVerifyServer", "true"));
         authenticationEntries.add(
-            new TextareaProperty("authenticationCaRootCert")); 
+            new TextareaProperty("authenticationCaRootCert"));
         authenticationEntries.add(
             new BooleanSelectProperty(
                 "authenticationUseUsernamePasswordWithWebServer", "false"));
@@ -449,21 +436,35 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class Form {
         private String message;
-        private Map data; 
+        private Map data;
+        private ResourceBundle labels;
 
-        Form() {
-            this(null, new HashMap()); 
+        Form(Locale locale) {
+            this(null, new HashMap(), locale);
         }
 
-        Form(String message, Map data) {
+        Form(String message, Map data, Locale locale) {
             this.message = message;
             this.data = data;
+
+            // get the local-specific labels for the form
+            ResourceBundle bundle;
+
+            try {
+                bundle = ResourceBundle.getBundle(
+                    LivelinkConnectorType.class.getName(), locale);
+            } catch (MissingResourceException e) {
+                LivelinkConnectorType.LOGGER.log(Level.SEVERE,
+                    e.getMessage(), e);
+                bundle = null;
+            }
+            labels = bundle;
         }
 
         private String getProperty(String name) {
             return (String) data.get(name);
         }
-        
+
         private void addEntries(StringBuffer buffer, ArrayList entries,
                 boolean hide, String labelPrefix, String labelSuffix) {
             for (Iterator i = entries.iterator(); i.hasNext(); ) {
@@ -477,12 +478,12 @@ public class LivelinkConnectorType implements ConnectorType {
             if (hide)
                 prop = new HiddenInputProperty(prop);
             prop.addToBuffer(buffer, labelPrefix, labelSuffix,
-                getProperty(prop.name));
+                getProperty(prop.name), labels);
         }
-        
+
         private boolean hide(String name) {
             String value = getProperty(name);
-            return value == null || ! new Boolean(value).booleanValue(); 
+            return value == null || ! new Boolean(value).booleanValue();
         }
 
         String getForm() {
@@ -501,7 +502,7 @@ public class LivelinkConnectorType implements ConnectorType {
             addEntry(buffer, authenticationEnabler, false, START_TAG, END_TAG);
             addEntries(buffer, authenticationEntries,
                 hide("useSeparateAuthentication"), INDENTATION, "");
-            return buffer.toString(); 
+            return buffer.toString();
         }
     }
 
@@ -511,14 +512,14 @@ public class LivelinkConnectorType implements ConnectorType {
     public LivelinkConnectorType() {
         super();
     }
-    
+
     /**
      * {@inheritDoc}
      */
     public ConfigureResponse getConfigForm(Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("getConfigForm locale: " + locale); 
-        return new ConfigureResponse(null, new Form().getForm()); 
+            LOGGER.config("getConfigForm locale: " + locale);
+        return new ConfigureResponse(null, new Form(locale).getForm());
     }
 
     /**
@@ -546,10 +547,10 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private ConfigureResponse getResponse(String message, Map configData,
             Locale locale) {
-        if (LOGGER.isLoggable(Level.CONFIG)) 
-            LOGGER.config("Response data: " + configData); 
-        Form form = new Form(message, configData);
-        return new ConfigureResponse(message, form.getForm()); 
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("Response data: " + configData);
+        Form form = new Form(message, configData, locale);
+        return new ConfigureResponse(message, form.getForm());
     }
 
     /**
@@ -590,7 +591,7 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     public ConfigureResponse validateConfig(Map configData, Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("validateConfig data: " + configData); 
+            LOGGER.config("validateConfig data: " + configData);
             LOGGER.config("validateConfig locale: " + locale);
         }
 
@@ -598,7 +599,7 @@ public class LivelinkConnectorType implements ConnectorType {
         // object, but since they don't tell us that
         // officially, we'll copy the data.
         Properties p = new Properties();
-        p.putAll(configData); 
+        p.putAll(configData);
 
         // Update the properties to copy the enabler properties to
         // the uses.
@@ -606,14 +607,14 @@ public class LivelinkConnectorType implements ConnectorType {
             "enableHttpTunneling");
         boolean changeAuth = changeFormDisplay(p,
             "useSeparateAuthentication", "enableSeparateAuthentication");
-            
-        // Instantiate a LivelinkConnector to check connectivity. 
-        LivelinkConnector conn = null; 
+
+        // Instantiate a LivelinkConnector to check connectivity.
+        LivelinkConnector conn = null;
         try {
             // TODO: be able to locate connectorInstance.xml
             // elsewhere outside the jar file to support
             // hand-edits.
-            Resource res = 
+            Resource res =
                 new ClassPathResource("config/connectorInstance.xml");
             XmlBeanFactory factory = new XmlBeanFactory(res);
             PropertyPlaceholderConfigurer cfg =
@@ -627,7 +628,7 @@ public class LivelinkConnectorType implements ConnectorType {
             t = t.getCause();
             while (t != null) {
                 if (t instanceof PropertyAccessExceptionsException) {
-                    PropertyAccessException[] pae = 
+                    PropertyAccessException[] pae =
                         ((PropertyAccessExceptionsException) t).
                         getPropertyAccessExceptions();
                     for (int i = 0; i < pae.length; i++)
@@ -640,17 +641,17 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         try {
-            conn.login(); 
+            conn.login();
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in configuration", t);
             return getResponse("Error in configuration: " + t.getMessage(),
-                p, locale); 
+                p, locale);
         }
 
         if (changeHttp || changeAuth)
-            return getResponse(null, p, locale); 
+            return getResponse(null, p, locale);
         else
-            return null; 
+            return null;
     }
 
     /**
@@ -677,5 +678,5 @@ public class LivelinkConnectorType implements ConnectorType {
             return true;
         } else
             return false;
-    }            
+    }
 }
