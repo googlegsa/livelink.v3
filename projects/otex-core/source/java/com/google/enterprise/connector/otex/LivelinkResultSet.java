@@ -75,9 +75,6 @@ class LivelinkResultSet implements PropertyMapList {
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
-    /** This povides a mechanism to extract document Category Attributes */
-    private final LivelinkAttributes cattr;
-
     /** The client provides access to the server. */
     private final Client client;
 
@@ -101,7 +98,6 @@ class LivelinkResultSet implements PropertyMapList {
         this.contentHandler = contentHandler;
         this.recArray = recArray;
         this.fields = fields;
-        this.cattr = new LivelinkAttributes(connector, client, contentHandler);
     }
 
 
@@ -507,7 +503,7 @@ class LivelinkResultSet implements PropertyMapList {
                         LOGGER.finer("Nested attributes sets are not supported.");
                         continue;
                     }
-                    //System.out.println("      " + attributeSetNames.toString(j));
+                    //System.out.println("      " + attrSetNames.toString(j));
                     getAttributeValue(categoryVersion, 
                                       attrSetNames.toString(j), type,
                                       attrSetPath, attrInfo[j]); 
