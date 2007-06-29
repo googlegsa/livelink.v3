@@ -60,10 +60,6 @@ class LivelinkResultSet implements PropertyMapList {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkResultSet.class.getName());
 
-    /** An immutable empty string value. */
-    private static final Value VALUE_EMPTY =
-        new SimpleValue(ValueType.STRING, "");
-
     /** An immutable string value of "text/html". */
     private static final Value VALUE_TEXT_HTML =
         new SimpleValue(ValueType.STRING, "text/html");
@@ -270,13 +266,7 @@ class LivelinkResultSet implements PropertyMapList {
             // entries for the content, other entries just for
             // metadata, and yet other entries not at all.
             String[] fields = connector.getExtendedDataKeys(subType);
-            Value contentValue;
-            if (fields == null) {
-                // TODO: This is a workaround for Connector Manager
-                // Issue 21, where the QueryTraverser requires a
-                // content or contenturl property.
-                contentValue = VALUE_EMPTY;
-            } else {
+            if (fields != null) {
                 // TODO: We need to handle undefined fields here.
                 // During one test run, I saw an undefined
                 // ExtendedData value, but I haven't been able to
@@ -305,23 +295,15 @@ class LivelinkResultSet implements PropertyMapList {
                         value = value.stringToValue();
                     }
 
-                    // FIXME: GSA Feed Data Source Log:swift95
-                    // 
-                    // ProcessNode: Content attribute not properly
-                    // specified, skipping record with URL
-                    // googleconnector://swift95.localhost/doc?docid=31352
-                    //
-                    // Caused by issue 30, empty metadata values, in
-                    // this case the Comments field.
                     collectValueContent(fields[i], value, "<div>",
                                         "</div>\n", buffer);
                 }
-                contentValue =
-                    new SimpleValue(ValueType.STRING, buffer.toString());
                 props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
                                   VALUE_TEXT_HTML);
+                props.addProperty(SpiConstants.PROPNAME_CONTENT,
+                                  new SimpleValue(ValueType.STRING,
+                                                  buffer.toString()));
             }
-            props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
         }
 
         /**

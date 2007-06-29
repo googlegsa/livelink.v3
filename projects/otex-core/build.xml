@@ -30,7 +30,7 @@
   <property name="connector-manager.dir"
             location="${connector-manager-projects.dir}/connector-manager" />
   <property name="thirdparty.jar.dir"
-            location="${connector-manager-projects.dir}/third_party/lib" />
+            location="${connector-manager-projects.dir}/connector-manager/third-party" />
   <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
   <property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
   <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
@@ -77,7 +77,7 @@
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${classes}" />
-        <pathelement location="${thirdparty.jar.dir}/junit.jar" />
+        <pathelement location="${thirdparty.jar.dir}/**/junit.jar" />
       </classpath>
     </javac>
   </target>
@@ -92,7 +92,7 @@
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${tests.classes}" />
-        <pathelement location="${thirdparty.jar.dir}/junit.jar" />
+        <pathelement location="${thirdparty.jar.dir}/**/junit.jar" />
       </classpath>
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />

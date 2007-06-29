@@ -40,7 +40,7 @@
   <property name="connector-manager.dir"
             location="${connector-manager-projects.dir}/connector-manager" />
   <property name="thirdparty.jar.dir"
-            location="${connector-manager-projects.dir}/third_party/lib" />
+            location="${connector-manager-projects.dir}/connector-manager/third-party" />
   <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
   <property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
   <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
@@ -86,12 +86,12 @@
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
           <include name="**/spring.jar" />
+          <include name="**/junit.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
-        <pathelement location="${thirdparty.jar.dir}/junit.jar" />
       </classpath>
     </javac>
   </target>
@@ -126,13 +126,14 @@
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${lapi.jarfile}" />
-        <pathelement location="${thirdparty.jar.dir}/junit.jar" />
       </classpath>
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
       <syspropertyset refid="javatest.properties"/>
       <sysproperty key="java.util.logging.config.file"
                    value="${tests.logging.properties}"/>
+      <sysproperty key="test.docid" value="${test.docid}" />
+
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tests.src}">
           <include name="**/${test.suite}Test.java" />
