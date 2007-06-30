@@ -3,7 +3,7 @@
 <beans>
 	<bean id="Livelink_Enterprise_Server"
 		class="com.google.enterprise.connector.otex.LivelinkConnector"
-		dependency-check="simple">
+		dependency-check="simple" singleton="false">
 
 		<property name="server" value="${server}"/>
 		<property name="port" value="${port}"/>
