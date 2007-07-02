@@ -34,6 +34,8 @@
 
   <property name="core.dir" location="../otex-core"/>
   <property name="core.classes" location="../otex-core/build/classes"/>
+  <property name="core.tests.classes" 
+            location="../otex-core/build/tests/classes" />
 
   <property name="connector-manager-projects.dir"
             location="${build.connector.manager.home}/projects" />
@@ -88,6 +90,7 @@
           <include name="**/spring.jar" />
           <include name="**/junit.jar" />
         </fileset>
+        <pathelement location="${core.tests.classes}" />
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${jarfile}" />
@@ -100,17 +103,13 @@
     <property name="test.suite" value="*"/>
     <property name="logging.file" 
               location="${tests.todir}/test.log" />
-    <copy file="source/javatests/tests.logging.properties"
+    <copy file="${core.dir}/source/javatests/tests.logging.properties"
           tofile="${tests.logging.properties}"
           overwrite="yes">
       <filterset>
         <filter token="logging.file"
                 value="${logging.file}"/>
       </filterset>
-    </copy>
-    <copy file="source/javatests/LivelinkConnectorType_test.properties"
-          todir="${tests.classes}/com/google/enterprise/connector/otex"
-          overwrite="yes">
     </copy>
     <replace file="${tests.logging.properties}" 
              token="\" value="\\" />
@@ -121,6 +120,7 @@
           <include name="**/*.jar" />
         </fileset>
         <pathelement location="${tests.classes}" />
+        <pathelement location="${core.tests.classes}" />
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${jarfile}" />
@@ -133,7 +133,6 @@
       <sysproperty key="java.util.logging.config.file"
                    value="${tests.logging.properties}"/>
       <sysproperty key="test.docid" value="${test.docid}" />
-
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tests.src}">
           <include name="**/${test.suite}Test.java" />

@@ -22,9 +22,8 @@ import junit.framework.TestCase;
 public class LivelinkQueryTraversalManagerTest extends TestCase {
     private LivelinkConnector conn;
     
-    public void setUp() {
-        conn = new LivelinkConnector("com.google.enterprise.connector." +
-            "otex.client.mock.MockClientFactory");
+    public void setUp() throws RepositoryException {
+        conn = LivelinkConnectorFactory.getConnector("connector.");
     }
 
     
@@ -36,13 +35,17 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
             (LivelinkQueryTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded();
 
-        assertNull(excluded, excluded);
+        assertTrue(excluded, excluded.startsWith("SubType not in " +
+            "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
+            "DataID not in (select DataID from " + 
+            "DTreeAncestors where AncestorID in ("));
+        assertTrue(excluded, excluded.endsWith("))"));
     }    
 
 
     public void testExcludedNodes2() throws RepositoryException {
-        conn.setExcludedNodeTypes("");
         conn.setExcludedVolumeTypes("");
+        conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("");
 
         Session sess = conn.login();
@@ -56,6 +59,8 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
     public void testExcludedNodes3() throws RepositoryException {
         conn.setExcludedVolumeTypes("2001,4104");
+        conn.setExcludedNodeTypes("");
+        conn.setExcludedLocationNodes("");
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
@@ -67,8 +72,10 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
 
     public void testExcludedNodes4() throws RepositoryException {
+        conn.setExcludedVolumeTypes("");
         conn.setExcludedNodeTypes(
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
+        conn.setExcludedLocationNodes("");
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
@@ -82,6 +89,8 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
     public void testExcludedNodes5() throws RepositoryException {
         conn.setExcludedVolumeTypes("148,162");
+        conn.setExcludedNodeTypes("");
+        conn.setExcludedLocationNodes("");
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
@@ -94,6 +103,8 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
 
     public void testExcludedNodes6() throws RepositoryException {
+        conn.setExcludedVolumeTypes("");
+        conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("13832");
 
         Session sess = conn.login();
@@ -116,9 +127,10 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
 
     public void testExcludedNodes7() throws RepositoryException {
+        conn.setExcludedVolumeTypes("148,162");
         conn.setExcludedNodeTypes(
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
-        conn.setExcludedVolumeTypes("148,162");
+        conn.setExcludedLocationNodes("");
 
         Session sess = conn.login();
         LivelinkQueryTraversalManager lqtm =
@@ -133,6 +145,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
     public void testExcludedNodes8() throws RepositoryException {
         conn.setExcludedVolumeTypes("148,162");
+        conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("13832");
 
         Session sess = conn.login();
@@ -147,6 +160,7 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
 
     public void testExcludedNodes9() throws RepositoryException {
+        conn.setExcludedVolumeTypes("");
         conn.setExcludedNodeTypes(
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
         conn.setExcludedLocationNodes("13832");
@@ -164,9 +178,9 @@ public class LivelinkQueryTraversalManagerTest extends TestCase {
 
 
     public void testExcludedNodes10() throws RepositoryException {
+        conn.setExcludedVolumeTypes("148,162");
         conn.setExcludedNodeTypes(
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
-        conn.setExcludedVolumeTypes("148,162");
         conn.setExcludedLocationNodes("13832");
 
         Session sess = conn.login();

@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.Enumeration;
+import java.util.logging.Logger;
 import java.util.Properties;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
@@ -34,6 +35,10 @@ import com.google.enterprise.connector.spi.RepositoryException;
  * Spring instantiation.
  */
 class LivelinkConnectorFactory {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(LivelinkConnectorFactory.class.getName());
+
     static final Properties emptyProperties = new Properties();
 
     static {
@@ -84,7 +89,7 @@ class LivelinkConnectorFactory {
             String name = (String) names.nextElement();
             if (name.startsWith(prefix)) {
                 prefixFound = true;
-                System.out.println("PROPERTY: " + name);
+                LOGGER.config("PROPERTY: " + name);
                 p.setProperty(name.substring(prefix.length()),
                     system.getProperty(name));
             }

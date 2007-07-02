@@ -6,6 +6,11 @@
   <property name="version" value="1.0" />
   <property file="${user.home}/google-enterprise-connector-otex.properties"/>
 
+  <propertyset id="javatest.properties">
+    <propertyref prefix="javatest."/>
+    <mapper type="glob" from="javatest.*" to="*"/>
+  </propertyset>
+
   <property name="COMPILE_DEBUG_FLAG" value="true" />
   <property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
 
@@ -21,6 +26,8 @@
   <property name="tests.build" value="build/tests" />
   <property name="tests.classes" value="${tests.build}/classes" />
   <property name="tests.todir" value="tests_outdir" />
+  <property name="tests.logging.properties" 
+            location="${tests.classes}/tests.logging.properties"/>
 
   <property name="jar.dir"  value="${dist}/jar" />
   <property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
@@ -73,6 +80,9 @@
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="1.4" source="1.4">
       <classpath>
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/spring.jar" />
+        </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${spi.jarfile}" />
@@ -80,13 +90,34 @@
         <pathelement location="${thirdparty.jar.dir}/**/junit.jar" />
       </classpath>
     </javac>
+    <copy todir="${tests.classes}"
+          overwrite="yes">
+      <fileset dir="${tests.src}">
+          <include name="**/LivelinkConnectorType_test.properties" />
+      </fileset>
+    </copy>
   </target>
 
   <target name="run_tests" depends="compile_tests,jar">
     <property name="test.suite" value="*"/>
+    <property name="logging.file" 
+              location="${tests.todir}/test.log" />
+    <copy file="source/javatests/tests.logging.properties"
+          tofile="${tests.logging.properties}"
+          overwrite="yes">
+      <filterset>
+        <filter token="logging.file"
+                value="${logging.file}"/>
+      </filterset>
+    </copy>
+    <replace file="${tests.logging.properties}" 
+             token="\" value="\\" />
     <junit>
       <assertions><enable/></assertions>
       <classpath>
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/*.jar" />
+        </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector_tests.jar" />
         <pathelement location="${jarfile}" />
@@ -96,6 +127,9 @@
       </classpath>
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
+      <syspropertyset refid="javatest.properties"/>
+      <sysproperty key="java.util.logging.config.file"
+                   value="${tests.logging.properties}"/>
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tests.src}">
           <include name="**/${test.suite}Test.java" />

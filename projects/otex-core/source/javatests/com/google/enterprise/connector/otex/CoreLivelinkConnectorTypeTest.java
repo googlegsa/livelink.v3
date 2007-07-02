@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.logging.Logger;
 import java.util.MissingResourceException;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -34,7 +35,10 @@ import junit.framework.TestCase;
 /**
  * Tests the LivelinkConnectorType implementation.
  */
-public class LivelinkConnectorTypeTest extends TestCase {
+public class CoreLivelinkConnectorTypeTest extends TestCase {
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(CoreLivelinkConnectorTypeTest.class.getName());
 
     /**
      * Processes the Livelink Connector configuration form and
@@ -148,7 +152,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
                 currentText = new StringBuffer();
             }
             else {
-                System.out.println("<" + tag + ">");
+                LOGGER.fine("<" + tag + ">");
                 //fail("Unexpected HTML tag " + tag);
             }
         }
@@ -156,7 +160,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
         public void handleText(char[] data, int pos) {
             if (currentText != null) {
                 currentText.append(data);
-                System.out.println(data);
+                LOGGER.fine(new String(data));
             }
         }
 
@@ -186,10 +190,10 @@ public class LivelinkConnectorTypeTest extends TestCase {
         }
     };
 
-    private static final Properties emptyProperties =
+    protected static final Properties emptyProperties =
         LivelinkConnectorFactory.emptyProperties;
 
-    private LivelinkConnectorType connectorType;
+    protected LivelinkConnectorType connectorType;
 
     protected void setUp() {
         connectorType = new LivelinkConnectorType();
@@ -197,7 +201,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
 
 
     /** The default locale for use in creating config forms. */
-    private static final Locale defaultLocale = Locale.getDefault();
+    protected static final Locale defaultLocale = Locale.getDefault();
 
 
     /**
@@ -302,8 +306,10 @@ public class LivelinkConnectorTypeTest extends TestCase {
     }
 
     /**
-     * Tests the validateConfig method with input which doesn't
-     * map to a valid Livelink server.
+     * Tests the validateConfig method with input which doesn't map to
+     * a valid Livelink server. In this mock world, we don't detect
+     * this as an error. In the LAPI world, we override this method
+     * and expect an error.
      */
     public void testValidateConfigInvalidLivelinkInput() throws Exception {
         HashMap props = new HashMap(emptyProperties);
@@ -313,19 +319,12 @@ public class LivelinkConnectorTypeTest extends TestCase {
         props.put("password", "pw");
         ConfigureResponse response =
             connectorType.validateConfig(props, defaultLocale);
-        assertNotNull("Missing ConfigureResponse", response);
-        HashMap form = getForm(response);
-        assertValue(form, "server", "myhost");
-        assertValue(form, "port", "123");
-        assertValue(form, "username", "me");
-        assertValue(form, "password", "pw");
-        assertBooleanIsTrue(form, "https");
-        assertIsHidden(form, "authenticationServer");
+        assertNull("Missing ConfigureResponse", response);
     }
 
     /**
-     * Tests the validateConfig method with input which doesn't
-     * map to a valid Livelink server.
+     * Tests the validateConfig method with input that maps to a valid
+     * Livelink server.
      */
     public void testValidateConfigValidLivelinkInput() throws Exception {
         HashMap props = new HashMap(emptyProperties);
@@ -338,7 +337,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
         assertNull("Got ConfigureResponse with valid input", response);
     }
 
-    private HashMap getForm(ConfigureResponse response) throws Exception {
+    protected HashMap getForm(ConfigureResponse response) throws Exception {
         String snippet = response.getFormSnippet();
         if (Boolean.getBoolean("printform")) {
             System.out.println(snippet);
@@ -351,7 +350,7 @@ public class LivelinkConnectorTypeTest extends TestCase {
         return callback.getProperties();
     }
 
-    private void assertValue(HashMap form, String name,
+    protected void assertValue(HashMap form, String name,
             String expectedValue) {
         HashMap element = (HashMap) form.get(name);
         assertNotNull("Missing " + name, element);
@@ -360,32 +359,32 @@ public class LivelinkConnectorTypeTest extends TestCase {
         assertEquals("Unexpected value for " + name, expectedValue, value);
     }
 
-    private void assertIsHidden(HashMap form, String name) {
+    protected void assertIsHidden(HashMap form, String name) {
         HashMap element = (HashMap) form.get(name);
         assertNotNull("Missing " + name, element);
         assertEquals("Type not hidden for " + name, "hidden",
             element.get("type"));
     }
 
-    private void assertIsNotHidden(HashMap form, String name) {
+    protected void assertIsNotHidden(HashMap form, String name) {
         HashMap element = (HashMap) form.get(name);
         assertNotNull("Missing " + name, element);
         assertFalse("Type is hidden for " + name,
             "hidden".equals(element.get("type")));
     }
 
-    private void assertBooleanIsTrue(HashMap form, String name) {
+    protected void assertBooleanIsTrue(HashMap form, String name) {
         booleanIs(form, name, true);
     }
 
-    private void assertBooleanIsFalse(HashMap form, String name) {
+    protected void assertBooleanIsFalse(HashMap form, String name) {
         booleanIs(form, name, false);
     }
 
     /* Verify that the given input has the given boolean value.  How
      * to do that will depend on the type of input.
      */
-    private void booleanIs(HashMap form, String name, boolean expected) {
+    protected void booleanIs(HashMap form, String name, boolean expected) {
         HashMap element = (HashMap) form.get(name);
         assertNotNull("Missing " + name, element);
 
