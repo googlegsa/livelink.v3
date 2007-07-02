@@ -61,13 +61,13 @@ final class MockClient implements Client {
      * This implementation returns an empty list.
      */
     public ClientValue GetCookieInfo() throws RepositoryException {
-        return new MockClientValue(null, new Object[0]);
+        return new MockClientValue(new Object[0]);
     }
 
     /** {@inheritDoc} */
     public ClientValue GetUserOrGroupByID(int id) throws RepositoryException {
         return new MockClientValue(
-            new String[] {"Name"}, new String[] {"admin"} );
+            new String[] { "Name" }, new String[] { "Admin" });
     }
 
     /**
@@ -122,7 +122,7 @@ final class MockClient implements Client {
     public ClientValue AttrListNames(ClientValue categoryVersion,
             ClientValue attributeSetPath) throws RepositoryException {
         try {
-            return new MockClientValue(null, new Object[0]);
+            return new MockClientValue(new Object[0]);
         } catch (RuntimeException e) {
             throw new LivelinkException(e, LOGGER);
         }
@@ -144,7 +144,7 @@ final class MockClient implements Client {
             String attributeName, ClientValue attributeSetPath)
             throws RepositoryException {
         try {
-            return new MockClientValue(null, new Object[0]);
+            return new MockClientValue(new Object[0]);
         } catch (RuntimeException e) {
             throw new LivelinkException(e, LOGGER);
         }
@@ -154,7 +154,7 @@ final class MockClient implements Client {
     public ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
             throws RepositoryException {
         try {
-            return new MockClientValue(null, new Object[0]);
+            return new MockClientValue(new Object[0]);
         } catch (RuntimeException e) {
             throw new LivelinkException(e, LOGGER);
         }

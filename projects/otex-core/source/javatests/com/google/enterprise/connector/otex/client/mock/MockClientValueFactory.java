@@ -42,7 +42,7 @@ public final class MockClientValueFactory implements ClientValueFactory {
      */
     public ClientValue createAssoc() throws RepositoryException {
         try {
-            return new MockClientValue( new String[0], new Object[0] );
+            return new MockClientValue(new String[0], new Object[0]);
         } catch (Exception e) {
             throw new IllegalArgumentException();
         } 
@@ -53,11 +53,10 @@ public final class MockClientValueFactory implements ClientValueFactory {
      */
     public ClientValue createList() throws RepositoryException {
         try {
-            return new MockClientValue( null, new Object[0] );
+            return new MockClientValue(new Object[0]);
         } catch (Exception e) {
             throw new IllegalArgumentException();
         } 
     }
-
 }
 

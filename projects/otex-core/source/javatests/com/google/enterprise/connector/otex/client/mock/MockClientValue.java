@@ -29,20 +29,37 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 public final class MockClientValue implements ClientValue {
     private final String[] fieldNames;
     private final Object[][] tableValues;
-    private final Object[] assocValues;	// if fieldNames is null, assocValues is a List
 
+    /** If fieldNames is null, assocValues is a List. */
+    private final Object[] assocValues;
+
+    /** Constructs a Recarray. */
     MockClientValue(String[] fieldNames, Object[][] values) {
-        if (values.length > 0 && (fieldNames.length != values[0].length))
+        if (fieldNames == null || values == null ||
+                values.length > 0 && (fieldNames.length != values[0].length)) {
             throw new IllegalArgumentException();
+        }
         this.fieldNames = fieldNames;
         this.tableValues = values;
         this.assocValues = null;
     }
 
+    /** Constructs an Assoc. */
     MockClientValue(String[] fieldNames, Object[] values) {
-        if (fieldNames.length != values.length)
+        if (fieldNames == null || values == null ||
+                fieldNames.length != values.length) {
             throw new IllegalArgumentException();
+        }
         this.fieldNames = fieldNames;
+        this.tableValues = null;
+        this.assocValues = values;
+    }
+
+    /** Constructs a List. */
+    MockClientValue(Object[] values) {
+        if (values == null)
+            throw new IllegalArgumentException();
+        this.fieldNames = null;
         this.tableValues = null;
         this.assocValues = values;
     }
@@ -75,7 +92,6 @@ public final class MockClientValue implements ClientValue {
         return assocValues[index];
     }
     
-
     public int size() {
         if (tableValues != null)
             return tableValues.length;
@@ -86,7 +102,6 @@ public final class MockClientValue implements ClientValue {
     public void setSize(int size) {
         throw new IllegalArgumentException();
     }
-
 
     /** {@inheritDoc} */
     public void setInteger(int index, int value) {
@@ -276,7 +291,6 @@ public final class MockClientValue implements ClientValue {
     public int add(String key, java.util.Date obj) {
         throw new IllegalArgumentException();
     }
-
 
     /** {@inheritDoc} */
     public int add(Object obj) {
