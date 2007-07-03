@@ -215,10 +215,8 @@ class LivelinkResultSet implements PropertyMapList {
             // there are rows in DVersData but FetchVersion
             // fails. So we're guessing here that if MimeType
             // is non-null then there should be a blob.
-            if (recArray.isDefined(row, "MimeType")) {
-                // FIXME: I think that compound documents are
-                // returning with a MIME type but, obviously,
-                // no versions.
+            if (subType != Client.COMPOUNDDOCUMENTSUBTYPE &&
+                recArray.isDefined(row, "MimeType")) {
 
                 // XXX: This value might be wrong. There are
                 // data size callbacks which can change this
@@ -226,24 +224,35 @@ class LivelinkResultSet implements PropertyMapList {
                 // GetObjectInfo may be different than the
                 // value retrieved from the database.
                 int size = recArray.toInteger(row, "DataSize");
+                if (size > 0) {
+                    try {
+                        InputStream is;
+                        is = contentHandler.getInputStream(volumeId, objectId,
+                                                           0, size);
+                        props.addProperty(SpiConstants.PROPNAME_CONTENT,
+                                          new InputStreamValue(is));
+                    } catch (Exception e) {
+                        LOGGER.warning("FAILED to retrieve content for DocId: "
+                                       + objectId + " - " + e.getMessage());
+                    }
+                }
 
-                // FIXME: Better error handling. Either
-                // uninstalling the Doorways module or calling
-                // this with undefined MimeTypes throws errors
-                // that we might want to handle more
-                // gracefully (e.g., maybe the underlying error
-                // is "no content").
-                Value contentValue = new InputStreamValue(
-                    contentHandler.getInputStream(volumeId, objectId, 0,
-                        size));
-                props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             } else {
-                // TODO: What about objects that have files associated
-                // with them but also have data in ExtendedData? We
-                // should be extracting the metadata from ExtendedData
-                // but not assembling the HTML content in that case.
-                collectExtendedDataProperties(subType);
+                // FIXME: Until the GSA pays attention to the Name property...
+                // The default name of a document for the GSA is the quite
+                // uninformative URL.  Since we know the name of this item,
+                // even though it has no content, push a Title tag so that
+                // the GSA can at least display a meaningful name.
+                String name = recArray.toString(row, "Name");
+                props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
+                                  VALUE_TEXT_HTML);
+                props.addProperty(SpiConstants.PROPNAME_CONTENT,
+                                  new SimpleValue(ValueType.STRING, 
+                                  "<title>" + name + "</title>\n"));
             }
+
+            // Add the ExtendedData as MetaData properties.
+            collectExtendedDataProperties(subType);
 
             // DISPLAYURL
             String url = connector.getDisplayUrl(subType, objectId, volumeId);
@@ -260,46 +269,39 @@ class LivelinkResultSet implements PropertyMapList {
          */
         private void collectExtendedDataProperties(int subType)
                 throws RepositoryException {
+
             // TODO: In the most general case, we might want some
             // entries for the content, other entries just for
             // metadata, and yet other entries not at all.
             String[] fields = connector.getExtendedDataKeys(subType);
-            if (fields != null) {
-                // TODO: We need to handle undefined fields here.
-                // During one test run, I saw an undefined
-                // ExtendedData value, but I haven't been able to
-                // reproduce that.
-                // TODO: When we implement configurable metadata, we
-                // may need to call GetObjectInfo elsewhere, so we
-                // should only do that once, and only if needed.
-                String name = recArray.toString(row, "Name");
-                ClientValue objectInfo =
-                    client.GetObjectInfo(volumeId, objectId);
-                ClientValue extendedData = objectInfo.toValue("ExtendedData");
+            if (fields == null)
+                return;
 
-                StringBuffer buffer = new StringBuffer();
-                buffer.append("<title>");
-                buffer.append(name);
-                buffer.append("</title>\n");
-                for (int i = 0; i < fields.length; i++) {
-                    ClientValue value = extendedData.toValue(fields[i]);
+            // TODO: When we implement configurable metadata, we
+            // may need to call GetObjectInfo elsewhere, so we
+            // should only do that once, and only if needed.
+            ClientValue objectInfo = client.GetObjectInfo(volumeId, objectId);
+            ClientValue extendedData = objectInfo.toValue("ExtendedData");
+            if (extendedData == null || !extendedData.hasValue())
+                return;
 
+            // Decompose the ExtendedData into its atomic values,
+            // and add them as properties.
+            for (int i = 0; i < fields.length; i++) {
+                ClientValue value = extendedData.toValue(fields[i]);
+                if (value != null && value.hasValue()) {
+                    
                     // XXX: For polls, the Questions field is a
                     // stringified list of assoc. We're only handling
                     // this one case, rather than handling stringified
                     // values generally.
                     if (subType == Client.POLLSUBTYPE &&
-                            fields[i].equals("Questions")) {
+                        fields[i].equals("Questions")) {
                         value = value.stringToValue();
                     }
-
-                    collectValueContent(fields[i], value, "<div>",
-                        "</div>\n", buffer);
+                    
+                    collectValueContent(fields[i], value);
                 }
-                props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
-                    VALUE_TEXT_HTML);
-                props.addProperty(SpiConstants.PROPNAME_CONTENT,
-                    new SimpleValue(ValueType.STRING, buffer.toString()));
             }
         }
 
@@ -310,13 +312,9 @@ class LivelinkResultSet implements PropertyMapList {
          *
          * @param name the property name
          * @param value the property value
-         * @param openTag the HTML open tag to wrap the value in
-         * @param closeTag the HTML close tag to wrap the value in
-         * @param buffer the buffer to assemble the HTML content in
          * @see #collectExtendedDataProperties
          */
-        private void collectValueContent(String name, ClientValue value,
-                String openTag, String closeTag, StringBuffer buffer)
+        private void collectValueContent(String name, ClientValue value)
                 throws RepositoryException {
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
@@ -325,27 +323,16 @@ class LivelinkResultSet implements PropertyMapList {
             
             switch (value.type()) {
             case ClientValue.LIST:
-                buffer.append(openTag);
-                buffer.append("<ul>");
-                for (int i = 0; i < value.size(); i++) {
-                    collectValueContent(name, value.toValue(i), "<li>",
-                        "</li>\n", buffer);
-                }
-                buffer.append("</ul>\n");
-                buffer.append(closeTag);
+                for (int i = 0; i < value.size(); i++)
+                    collectValueContent(name, value.toValue(i));
                 break;
 
             case ClientValue.ASSOC:
-                buffer.append(openTag);
-                buffer.append("<ul>");
                 Enumeration keys = value.enumerateNames();
                 while (keys.hasMoreElements()) {
                     String key = (String) keys.nextElement();
-                    collectValueContent(key, value.toValue(key), "<li>",
-                        "</li>\n", buffer);
+                    collectValueContent(key, value.toValue(key));
                 }
-                buffer.append("</ul>\n");
-                buffer.append(closeTag);
                 break;
 
             case ClientValue.BOOLEAN:
@@ -353,12 +340,6 @@ class LivelinkResultSet implements PropertyMapList {
             case ClientValue.DOUBLE:
             case ClientValue.INTEGER:
             case ClientValue.STRING:
-                buffer.append(openTag);
-                buffer.append("<p>");
-                buffer.append(value.toString2());
-                buffer.append("</p>\n");
-                buffer.append(closeTag);
-
                 props.addProperty(name, new LivelinkValue(value));
                 break;
 
