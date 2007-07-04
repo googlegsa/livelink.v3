@@ -56,12 +56,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      */
     public void testLapi() throws Exception {
         setUpLapi();
-        assertTrue("Valid user",
-            authenticate("llglobal", "Gibson", true)); 
-        assertFalse("Valid user, invalid password", 
-            authenticate("llglobal", "foo")); 
-        assertFalse("Invalid user", 
-            authenticate("foo", "foo")); 
+        testAuthentication("llglobal", "Gibson");
     }
 
 
@@ -72,12 +67,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      */
     public void testCgi() throws Exception {
         setUpCgi();
-        assertTrue("Valid user", 
-            authenticate("llglobal", "Gibson", true)); 
-        assertFalse("Valid user, invalid password", 
-            authenticate("llglobal", "foo")); 
-        assertFalse("Invalid user", 
-            authenticate("foo", "foo")); 
+        testAuthentication("llglobal", "Gibson");
     }
 
 
@@ -89,12 +79,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      */
     public void testProxy() throws Exception {
         setUpProxy();
-        assertTrue("Valid user", 
-            authenticate("llglobal", "Gibson", true)); 
-        assertFalse("Valid user, invalid password", 
-            authenticate("llglobal", "foo")); 
-        assertFalse("Invalid user", 
-            authenticate("foo", "foo")); 
+        testAuthentication("llglobal", "Gibson");
     }
 
 
@@ -106,12 +91,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      */
     public void testDirectoryServicesExternal() throws Exception {
         setUpDsExternal();
-        assertTrue("Valid user", 
-            authenticate("llglobal-external", "Gibson", true)); 
-        assertFalse("Valid user, invalid password", 
-            authenticate("llglobal-external", "foo")); 
-        assertFalse("Invalid user",
-            authenticate("foo", "foo")); 
+        testAuthentication("llglobal-external", "Gibson");
         assertFalse("Internal user who shouldn't be able to log in " +
             "through the external web server", 
             authenticate("llglobal", "Gibson")); 
@@ -126,17 +106,27 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      */
     public void testDirectoryServicesInternal() throws Exception {
         setUpDsInternal();
-        assertTrue("Valid user", 
-            authenticate("Admin", "livelink", true)); 
-        assertFalse("Valid user, invalid password", 
-            authenticate("Admin", "foo")); 
-        assertFalse("Invalid user",
-            authenticate("foo", "foo")); 
+        testAuthentication("Admin", "livelink");
         assertFalse("External user who shouldn't be able to log in " +
             "through the internal web server", 
             authenticate("llglobal-external", "Gibson")); 
     }
 
+
+    private void testAuthentication(String username, String password)
+            throws Exception {
+        assertTrue("Valid user", 
+            authenticate("llglobal", "Gibson", true)); 
+        assertFalse("Valid user, invalid password", 
+            authenticate("llglobal", "foo")); 
+        assertFalse("Invalid user", 
+            authenticate("foo", "foo"));
+
+        // FIXME: llnobody only exists on Livelink 9.5 on swift.
+        assertTrue("No Enterprise workspace access", 
+            authenticate("llnobody", "Gibson", true)); 
+    }
+    
 
     private boolean authenticate(String username, String password) {
         return authenticate(username, password, false); 

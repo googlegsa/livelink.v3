@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex.client;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.OutputStream;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -59,22 +58,22 @@ public interface Client
     int CHARACTER_ENCODING_UTF8 = 1;
     
     /** Constants corresponding to LAPI_ATTRIBUTES.* */
-	int ATTR_DATAVALUES = 0;
-	int ATTR_DEFAULTVALUES = 1;
-	int ATTR_TYPE_BOOL = 5;
-	int ATTR_TYPE_DATE = -7;
-	int ATTR_TYPE_DATEPOPUP = 13;
-	int ATTR_TYPE_INT = 2;
-	int ATTR_TYPE_REAL = -4;
-	int ATTR_TYPE_REALPOPUP = 20;
-	int ATTR_TYPE_INTPOPUP = 12;
-	int ATTR_TYPE_SET = -18;
-	int ATTR_TYPE_STRFIELD = -1;
-	int ATTR_TYPE_STRMULTI = 11;
-	int ATTR_TYPE_STRPOPUP = 10;
-	int ATTR_TYPE_USER = 14;
-	int CATEGORY_TYPE_LIBRARY = 0;
-	int CATEGORY_TYPE_WORKFLOW = 2;
+    int ATTR_DATAVALUES = 0;
+    int ATTR_DEFAULTVALUES = 1;
+    int ATTR_TYPE_BOOL = 5;
+    int ATTR_TYPE_DATE = -7;
+    int ATTR_TYPE_DATEPOPUP = 13;
+    int ATTR_TYPE_INT = 2;
+    int ATTR_TYPE_REAL = -4;
+    int ATTR_TYPE_REALPOPUP = 20;
+    int ATTR_TYPE_INTPOPUP = 12;
+    int ATTR_TYPE_SET = -18;
+    int ATTR_TYPE_STRFIELD = -1;
+    int ATTR_TYPE_STRMULTI = 11;
+    int ATTR_TYPE_STRPOPUP = 10;
+    int ATTR_TYPE_USER = 14;
+    int CATEGORY_TYPE_LIBRARY = 0;
+    int CATEGORY_TYPE_WORKFLOW = 2;
 
 
     /**
@@ -102,16 +101,13 @@ public interface Client
      * All of the arguments of that method are exposed here.
      * 
      * @param id the ID of a user or group.
-     * @returns a Record containing information about a user
-     * 			or group corresponding to the specified ID.
-     *			The Type attribute of the returned record
-     *			identifies whether the returned information
-     *			is for a user or a group.
+     * @returns a Record containing information about a user or group
+     * corresponding to the specified ID. The Type attribute of the
+     * returned record identifies whether the returned information is
+     * for a user or a group.
      * @throws RepositoryException if an error occurs
      */
-    ClientValue GetUserOrGroupByID(int id)
-        throws RepositoryException;
-
+    ClientValue GetUserOrGroupByID(int id) throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_DOCUMENTS.ListNodes</code> method.
@@ -143,97 +139,90 @@ public interface Client
      * Wraps the <code>LAPI_DOCUMENTS.GetObjectAttributesEx</code> method.
      * All of the arguments of that method are exposed here.
      *
-     * @param objectIdAssoc an Assoc Value that designates the object whose
-     *		  list of Category Attribute values are being retrieved.
-     * @param categoryIdAssoc an Assoc Value that designates the Category
-     *		  version on the node object that will be retrieved.
+     * @param objectIdAssoc an Assoc Value that designates the object
+     * whose list of Category Attribute values are being retrieved.
+     * @param categoryIdAssoc an Assoc Value that designates the
+     * Category version on the node object that will be retrieved.
      * @returns an Assoc Value that contains the retrieved Category version.
      * @throws RepositoryException if an error occurs
      */
     ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
-                                      ClientValue categoryIdAssoc)
-        throws RepositoryException;
-
+        ClientValue categoryIdAssoc) throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_ATTRIBUTES.AttrListNames</code> method.
      * All of the arguments of that method are exposed here.
      *
-     * @param categoryVersion an Assoc Value that designates the Category
-     *		  version (returned from <code>GetObjectAttributesEx</code>).
-     * @param attributeSetPath a List Value - only used when the attribute
-     *		  specified by the attrName parameter is a member of a parent
-     *		  Set attribute.  If this parameter is not of type List, is
-     *		  null, or is empty, it is ignored.
-     * @returns a List Value that contains display names for an attribute
-     *		  that is a direct child of the category or of a Set attribute
-     *		  within the category.
+     * @param categoryVersion an Assoc Value that designates the
+     * Category version (returned from
+     * <code>GetObjectAttributesEx</code>).
+     * @param attributeSetPath a List Value - only used when the
+     * attribute specified by the attrName parameter is a member of a
+     * parent Set attribute. If this parameter is not of type List, is
+     * null, or is empty, it is ignored.
+     * @returns a List Value that contains display names for an
+     * attribute that is a direct child of the category or of a Set
+     * attribute within the category.
      * @throws RepositoryException if an error occurs
      */
     ClientValue AttrListNames(ClientValue categoryVersion,
-                              ClientValue attributeSetPath)
-        throws RepositoryException;
-
+        ClientValue attributeSetPath) throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_ATTRIBUTES.AttrGetInfo</code> method.
      * All of the arguments of that method are exposed here.
      *
-     * @param categoryVersion an Assoc Value that designates the Category
-     *		  version (returned from <code>GetObjectAttributesEx</code>).
-     * @param attributeName the display name of the attribute for which
-     *		  information is to be retrieved.
-     * @param attributeSetPath a List Value - only used when the attribute
-     *		  specified by the attributeName parameter is a member of a parent
-     *		  Set attribute.  If this parameter is not of type List, is
-     *		  null, or is empty, it is ignored.
-     * @returns a List Value that contains display names for an attribute
-     *		  that is a direct child of the category or of a Set attribute
-     *		  within the category.
+     * @param categoryVersion an Assoc Value that designates the
+     * Category version (returned from
+     * <code>GetObjectAttributesEx</code>).
+     * @param attributeName the display name of the attribute for
+     * which information is to be retrieved.
+     * @param attributeSetPath a List Value - only used when the
+     * attribute specified by the attributeName parameter is a member
+     * of a parent Set attribute. If this parameter is not of type
+     * List, is null, or is empty, it is ignored.
+     * @returns a List Value that contains display names for an
+     * attribute that is a direct child of the category or of a Set
+     * attribute within the category.
      * @throws RepositoryException if an error occurs
      */
     ClientValue AttrGetInfo(ClientValue categoryVersion,
-                            String attributeName,
-                            ClientValue attributeSetPath)
+        String attributeName, ClientValue attributeSetPath)
         throws RepositoryException;
-
 
     /**
      * Wraps the <code>LAPI_ATTRIBUTES.AttrGetValues</code> method.
      * Not all of the arguments of that method are exposed here.
      *
-     * @param categoryVersion an Assoc Value that designates the Category
-     *		  version (returned from <code>GetObjectAttributesEx</code>).
-     * @param attributeName the display name of the attribute for which
-     *		  information is to be retrieved.
-     * @param attributeSetPath a List Value - only used when the attribute
-     *		  specified by the attributeName parameter is a member of a parent
-     *		  Set attribute.  If this parameter is not of type List, is
-     *		  null, or is empty, it is ignored.
-     * @returns a List Value that holds the updated data or default attribute
-     *		  values.
+     * @param categoryVersion an Assoc Value that designates the
+     * Category version (returned from
+     * <code>GetObjectAttributesEx</code>).
+     * @param attributeName the display name of the attribute for
+     * which information is to be retrieved.
+     * @param attributeSetPath a List Value - only used when the
+     * attribute specified by the attributeName parameter is a member
+     * of a parent Set attribute. If this parameter is not of type
+     * List, is null, or is empty, it is ignored.
+     * @returns a List Value that holds the updated data or default
+     * attribute values.
      * @throws RepositoryException if an error occurs
      */
     ClientValue AttrGetValues(ClientValue categoryVersion,
-                              String attributeName,
-                              ClientValue attributeSetPath)
+        String attributeName, ClientValue attributeSetPath)
         throws RepositoryException;
-
 
     /**
      * Wraps the <code>LAPI_DOCUMENTS.ListObjectCategoryIDs</code>
      * method.  All of the arguments of that method are exposed here.
      *
-     * @param objectIdAssoc an Assoc Value that designates the object whose
-     *		  list of Category Attribute values are being retrieved.
-     * @returns a List Value that contains the list of category identifiers
-     *		  for the categories assigned to the object.
+     * @param objectIdAssoc an Assoc Value that designates the object
+     * whose list of Category Attribute values are being retrieved.
+     * @returns a List Value that contains the list of category
+     * identifiers for the categories assigned to the object.
      * @throws RepositoryException if an error occurs
      */
     ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
         throws RepositoryException;
-
-
 
     /**
      * Wraps the <code>LAPI_DOCUMENTS.FetchVersion</code> method.
@@ -271,15 +260,4 @@ public interface Client
      * @throws RepositoryException if an error occurs
      */
     void ImpersonateUser(String username) throws RepositoryException;
-
-    /**
-     * Verifies that the current session can call a method which
-     * accesses the repository. This method may be used to ensure
-     * that the current user can access the repository, or that
-     * the repository is available.
-     *
-     * @return true if the client can access the repository; false otherwise
-     * @throws RepositoryException if an error occurs
-     */
-    boolean ping() throws RepositoryException; 
 }

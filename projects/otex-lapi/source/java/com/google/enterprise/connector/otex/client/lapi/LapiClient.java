@@ -326,36 +326,11 @@ final class LapiClient implements Client {
         }
     }
 
-
     /**
      * {@inheritDoc}
      */
     public synchronized void ImpersonateUser(String username) {
         session.ImpersonateUser(username);
-    }
-
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>This implementation uses AccessEnterpriseWSEx.</p>
-     */
-    /* User access to the Personal Workspace can be disabled, so
-     * try the Enterprise Workspace.  Passing null for the domain
-     * parameter should cause the domain to default to the domain
-     * of the logged-in user. We might want to use the
-     * GetCookieInfo method instead.
-     */
-    public synchronized boolean ping() throws RepositoryException {
-        LLValue info = new LLValue();
-        try {
-            // TODO: ensure that the LapiClient handles domains.
-            if (documents.AccessEnterpriseWSEx(null, info) != 0)
-                throw new LapiException(session, LOGGER); 
-        } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER); 
-        }
-        return true;
     }
 
     /**

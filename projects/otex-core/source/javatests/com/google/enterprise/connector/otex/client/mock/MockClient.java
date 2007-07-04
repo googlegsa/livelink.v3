@@ -194,14 +194,4 @@ final class MockClient implements Client {
     public void ImpersonateUser(String username) throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUser");
     }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation always returns true.
-     */
-    public boolean ping() {
-        LOGGER.fine("Entering MockClient.ping");
-        return true;
-    }
 }

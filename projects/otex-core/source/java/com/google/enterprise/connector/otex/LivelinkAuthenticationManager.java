@@ -25,6 +25,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * Implements an AuthenticationManager for the Livelink connector.
@@ -67,8 +68,14 @@ class LivelinkAuthenticationManager implements AuthenticationManager {
             // XXX: Pass the identity to the ClientFactory?
             Client client = clientFactory.createClient(
                 identity.getUsername(), identity.getPassword());
-            boolean isValid = client.ping();
-            return new AuthenticationResponse(isValid, null);
+
+            // Verify connectivity by calling GetServerInfo, just like
+            // LivelinkConnector.login does.
+            // TODO: We will want to use GetCookieInfo when we need to
+            // return the client data. Until then, GetServerInfo is
+            // faster.
+            ClientValue serverInfo = client.GetServerInfo();
+            return new AuthenticationResponse(serverInfo.hasValue(), null);
         } catch (RepositoryException e) {
             LOGGER.warning("Authentication failed for " +
                 identity.getUsername() + "; " + e.getMessage()); 
