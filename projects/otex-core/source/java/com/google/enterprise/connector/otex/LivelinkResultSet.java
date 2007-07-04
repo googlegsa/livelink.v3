@@ -93,8 +93,7 @@ class LivelinkResultSet implements PropertyMapList {
     LivelinkResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, TraversalContext traversalContext)
-        throws RepositoryException {
-
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
         this.valueFactory = client.getClientValueFactory();
@@ -214,7 +213,7 @@ class LivelinkResultSet implements PropertyMapList {
             int subType = recArray.toInteger(row, "SubType");
 
             // Fetch the content.  Returns null if no content.
-            Value contentValue = collectContentValue(subType);
+            Value contentValue = collectContentProperty(subType);
 
             // FIXME: Until the GSA pays attention to the Name property...
             // The default name of a document for the GSA is the quite
@@ -224,10 +223,10 @@ class LivelinkResultSet implements PropertyMapList {
             if (contentValue == null) {
                 String name = recArray.toString(row, "Name");
                 props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
-                                  VALUE_TEXT_HTML);
+                    VALUE_TEXT_HTML);
                 props.addProperty(SpiConstants.PROPNAME_CONTENT,
-                                  new SimpleValue(ValueType.STRING, 
-                                  "<title>" + name + "</title>\n"));
+                    new SimpleValue(ValueType.STRING, 
+                        "<title>" + name + "</title>\n"));
             }
 
             // Add the ExtendedData as MetaData properties.
@@ -240,7 +239,7 @@ class LivelinkResultSet implements PropertyMapList {
         }
 
         /**
-         * Collect the contentValue property for the item.
+         * Collect the content property for the item.
          * If the item does not (or must not) have content, then no
          * content property is generated.  If the item's content is
          * not acceptable according to the TraversalContext, then no
@@ -248,12 +247,10 @@ class LivelinkResultSet implements PropertyMapList {
          * inserted into the property map, but is also returned.
          *
          * @param subType the subtype of the item
-         * @returns contentValue object, null if no content
+         * @returns content Value object, null if no content
          */
-        private Value collectContentValue(int subType)
-            throws RepositoryException {
-
-            // CONTENT
+        private Value collectContentProperty(int subType)
+                throws RepositoryException {
             if (LOGGER.isLoggable(Level.FINER))
                 LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
 
@@ -265,11 +262,6 @@ class LivelinkResultSet implements PropertyMapList {
             // is non-null then there should be a blob.
             ClientValue mimeType = recArray.toValue(row, "MimeType");
             if (!mimeType.isDefined())
-                return null;
-
-            // Compound Documents do not have content, but may
-            // have a spurious mimetype defined?!
-            if (subType == Client.COMPOUNDDOCUMENTSUBTYPE)
                 return null;
 
             // XXX: This value might be wrong. There are
@@ -296,14 +288,13 @@ class LivelinkResultSet implements PropertyMapList {
 
             // If we pass the gauntlet, create a content stream property
             // and add it to the property map.
-            InputStream is;
-            is = contentHandler.getInputStream(volumeId, objectId, 0, size);
+            InputStream is =
+                contentHandler.getInputStream(volumeId, objectId, 0, size);
             Value contentValue = new InputStreamValue(is);
             props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             return contentValue;
         }
         
-         
         /**
          * Collect properties from the ExtendedData assoc.
          *
@@ -311,7 +302,6 @@ class LivelinkResultSet implements PropertyMapList {
          */
         private void collectExtendedDataProperties(int subType)
                 throws RepositoryException {
-
             // TODO: In the most general case, we might want some
             // entries for the content, other entries just for
             // metadata, and yet other entries not at all.
@@ -332,17 +322,16 @@ class LivelinkResultSet implements PropertyMapList {
             for (int i = 0; i < fields.length; i++) {
                 ClientValue value = extendedData.toValue(fields[i]);
                 if (value != null && value.hasValue()) {
-                    
                     // XXX: For polls, the Questions field is a
                     // stringified list of assoc. We're only handling
                     // this one case, rather than handling stringified
                     // values generally.
                     if (subType == Client.POLLSUBTYPE &&
-                        fields[i].equals("Questions")) {
+                            fields[i].equals("Questions")) {
                         value = value.stringToValue();
                     }
                     
-                    collectValueContent(fields[i], value);
+                    collectValueProperties(fields[i], value);
                 }
             }
         }
@@ -354,7 +343,7 @@ class LivelinkResultSet implements PropertyMapList {
          * @param value the property value
          * @see #collectExtendedDataProperties
          */
-        private void collectValueContent(String name, ClientValue value)
+        private void collectValueProperties(String name, ClientValue value)
                 throws RepositoryException {
             if (LOGGER.isLoggable(Level.FINEST)) {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
@@ -364,14 +353,14 @@ class LivelinkResultSet implements PropertyMapList {
             switch (value.type()) {
             case ClientValue.LIST:
                 for (int i = 0; i < value.size(); i++)
-                    collectValueContent(name, value.toValue(i));
+                    collectValueProperties(name, value.toValue(i));
                 break;
 
             case ClientValue.ASSOC:
                 Enumeration keys = value.enumerateNames();
                 while (keys.hasMoreElements()) {
                     String key = (String) keys.nextElement();
-                    collectValueContent(key, value.toValue(key));
+                    collectValueProperties(key, value.toValue(key));
                 }
                 break;
 

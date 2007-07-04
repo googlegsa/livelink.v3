@@ -33,9 +33,6 @@ public interface Client
     /** Reply object. */
     int REPLYSUBTYPE = 134;
     
-    /** Compound Document object. */
-    int COMPOUNDDOCUMENTSUBTYPE = 136;
-    
     /** Project object. */
     int PROJECTSUBTYPE = 202;
     
