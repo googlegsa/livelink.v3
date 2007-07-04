@@ -39,6 +39,7 @@ import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SimpleValue;
 import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
@@ -85,15 +86,22 @@ class LivelinkResultSet implements PropertyMapList {
     /** The recarray fields. */
     private final Field[] fields;
 
+    /** The TraversalContext from TraversalContextAware Interface */
+    private final TraversalContext traversalContext;
+
+
     LivelinkResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
-            Field[] fields) throws RepositoryException {
+            Field[] fields, TraversalContext traversalContext)
+        throws RepositoryException {
+
         this.connector = connector;
         this.client = client;
         this.valueFactory = client.getClientValueFactory();
         this.contentHandler = contentHandler;
         this.recArray = recArray;
         this.fields = fields;
+        this.traversalContext = traversalContext;
     }
 
 
@@ -205,44 +213,15 @@ class LivelinkResultSet implements PropertyMapList {
 
             int subType = recArray.toInteger(row, "SubType");
 
-            // CONTENT
-            if (LOGGER.isLoggable(Level.FINER))
-                LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
+            // Fetch the content.  Returns null if no content.
+            Value contentValue = collectContentValue(subType);
 
-            // DataSize is the only non-nullable column from
-            // DVersData that appears in the WebNodes view,
-            // but there are cases (such as categories) where
-            // there are rows in DVersData but FetchVersion
-            // fails. So we're guessing here that if MimeType
-            // is non-null then there should be a blob.
-            if (subType != Client.COMPOUNDDOCUMENTSUBTYPE &&
-                recArray.isDefined(row, "MimeType")) {
-
-                // XXX: This value might be wrong. There are
-                // data size callbacks which can change this
-                // value. For example, the value returned by
-                // GetObjectInfo may be different than the
-                // value retrieved from the database.
-                int size = recArray.toInteger(row, "DataSize");
-                if (size > 0) {
-                    try {
-                        InputStream is;
-                        is = contentHandler.getInputStream(volumeId, objectId,
-                                                           0, size);
-                        props.addProperty(SpiConstants.PROPNAME_CONTENT,
-                                          new InputStreamValue(is));
-                    } catch (Exception e) {
-                        LOGGER.warning("FAILED to retrieve content for DocId: "
-                                       + objectId + " - " + e.getMessage());
-                    }
-                }
-
-            } else {
-                // FIXME: Until the GSA pays attention to the Name property...
-                // The default name of a document for the GSA is the quite
-                // uninformative URL.  Since we know the name of this item,
-                // even though it has no content, push a Title tag so that
-                // the GSA can at least display a meaningful name.
+            // FIXME: Until the GSA pays attention to the Name property...
+            // The default name of a document for the GSA is the quite
+            // uninformative URL.  Since we know the name of this item,
+            // even though it has no content, push a Title tag so that
+            // the GSA can at least display a meaningful name.
+            if (contentValue == null) {
                 String name = recArray.toString(row, "Name");
                 props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
                                   VALUE_TEXT_HTML);
@@ -261,9 +240,72 @@ class LivelinkResultSet implements PropertyMapList {
         }
 
         /**
-         * Collect properties from the ExtendedData assoc. These
-         * properties are also assembled, together with the object
-         * name, in an HTML content property.
+         * Collect the contentValue property for the item.
+         * If the item does not (or must not) have content, then no
+         * content property is generated.  If the item's content is
+         * not acceptable according to the TraversalContext, then no
+         * content is generated.  The content property's value is
+         * inserted into the property map, but is also returned.
+         *
+         * @param subType the subtype of the item
+         * @returns contentValue object, null if no content
+         */
+        private Value collectContentValue(int subType)
+            throws RepositoryException {
+
+            // CONTENT
+            if (LOGGER.isLoggable(Level.FINER))
+                LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
+
+            // DataSize is the only non-nullable column from
+            // DVersData that appears in the WebNodes view,
+            // but there are cases (such as categories) where
+            // there are rows in DVersData but FetchVersion
+            // fails. So we're guessing here that if MimeType
+            // is non-null then there should be a blob.
+            ClientValue mimeType = recArray.toValue(row, "MimeType");
+            if (!mimeType.isDefined())
+                return null;
+
+            // Compound Documents do not have content, but may
+            // have a spurious mimetype defined?!
+            if (subType == Client.COMPOUNDDOCUMENTSUBTYPE)
+                return null;
+
+            // XXX: This value might be wrong. There are
+            // data size callbacks which can change this
+            // value. For example, the value returned by
+            // GetObjectInfo may be different than the
+            // value retrieved from the database.
+            int size = recArray.toInteger(row, "DataSize");
+            if (size <= 0)
+                return null;
+                
+            // The TraversalContext Interface provides additional
+            // screening based upon content size and mimetype.
+            if (traversalContext != null) {
+                // Is the content too large?
+                if (((long) size) > traversalContext.maxDocumentSize())
+                    return null;
+                
+                // Is this MimeType supported?
+                String mt = mimeType.toString();
+                if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
+                    return null;
+            }
+
+            // If we pass the gauntlet, create a content stream property
+            // and add it to the property map.
+            InputStream is;
+            is = contentHandler.getInputStream(volumeId, objectId, 0, size);
+            Value contentValue = new InputStreamValue(is);
+            props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
+            return contentValue;
+        }
+        
+         
+        /**
+         * Collect properties from the ExtendedData assoc.
          *
          * @param subType the subtype of the item
          */
@@ -306,9 +348,7 @@ class LivelinkResultSet implements PropertyMapList {
         }
 
         /**
-         * Collects properties in an LLValue. These properties are
-         * also assembled, together with the object name, in an HTML
-         * content property.
+         * Collects properties in an LLValue.
          *
          * @param name the property name
          * @param value the property value

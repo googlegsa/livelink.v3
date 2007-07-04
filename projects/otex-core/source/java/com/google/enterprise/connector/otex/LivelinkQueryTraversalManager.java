@@ -25,6 +25,8 @@ import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
+import com.google.enterprise.connector.spi.TraversalContext;
+import com.google.enterprise.connector.spi.TraversalContextAware;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
@@ -41,7 +43,9 @@ import com.google.enterprise.connector.otex.client.ClientValue;
  * that Sybase, which is supported by Livelink 9.2.0.1 and earlier, is
  * not supported here.
  */
-class LivelinkQueryTraversalManager implements TraversalManager {
+class LivelinkQueryTraversalManager
+    implements TraversalManager, TraversalContextAware {
+
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
@@ -111,6 +115,9 @@ class LivelinkQueryTraversalManager implements TraversalManager {
     /** The database type, either SQL Server or Oracle. */
     /* XXX: We could use the state or strategy pattern if this gets messy. */
     private final boolean isSqlServer;
+
+    /** The TraversalContext from TraversalContextAware Interface */
+    private TraversalContext traversalContext = null;
 
 
     LivelinkQueryTraversalManager(LivelinkConnector connector,
@@ -365,6 +372,10 @@ class LivelinkQueryTraversalManager implements TraversalManager {
         return listNodes(checkpoint);
     }
 
+    /** {@inheritDoc} */
+    public void setTraversalContext(TraversalContext traversalContext) {
+        this.traversalContext = traversalContext;
+    }
 
     /**
      * This method uses <code>LAPI_DOCUMENTS.ListNodes</code>, which
@@ -432,7 +443,7 @@ class LivelinkQueryTraversalManager implements TraversalManager {
                 Integer.toHexString(System.identityHashCode(this)));
         }
         return new LivelinkResultSet(connector, client, contentHandler,
-            recArray, FIELDS);
+            recArray, FIELDS, traversalContext);
     }
 
     /**
@@ -540,4 +551,6 @@ class LivelinkQueryTraversalManager implements TraversalManager {
             }
         }
     }
+
+
 }
