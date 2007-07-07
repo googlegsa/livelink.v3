@@ -140,7 +140,15 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     /**
      * This isn't really a test, just a timing check.
      */
-    public void testPerformance() throws Exception {
+    /*
+     * FIXME: I've added a dummy parameter to prevent this test from
+     * running. When it was written, each Property was produced on
+     * demand, so this code, which only asks for the docid, was fast.
+     * Now all of the properties for each PropertyMap are created, by
+     * the LivelinkResultSetIterator. In particular, this test now
+     * fetches all of the content, which slows it down considerably.
+     */
+    public void testPerformance(int dummy) throws Exception {
         // Traverse the repository for a bunch of ids.
         final int batchHint = 100000;
         TraversalManager tm = session.getTraversalManager();

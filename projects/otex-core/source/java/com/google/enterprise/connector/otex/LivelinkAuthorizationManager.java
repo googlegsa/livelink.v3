@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -57,6 +58,39 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * @param identity the user identity for which to check authorization
      * @throws RepositoryException if an error occurs
      */
+    public List authorizeDocids(List docids, AuthenticationIdentity identity)
+            throws RepositoryException {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("AUTHORIZE DOCIDS: " + identity.getUsername());
+
+        HashSet authorized = new HashSet();
+        addAuthorizedDocids(docids, identity.getUsername(), authorized);
+
+        List authzList = new ArrayList(docids.size());
+        for (Iterator i = docids.iterator(); i.hasNext(); ) {
+            String docid = (String) i.next(); 
+            if (LOGGER.isLoggable(Level.FINEST)) {
+                LOGGER.finest("AUTHORIZED " + docid + ": " +
+                    authorized.contains(docid));
+            }
+            authzList.add(
+                new AuthorizationResponse(authorized.contains(docid), docid));
+        }
+        // TODO: This is a nice idea, but AuthorizationResponse does not
+        // have a toString method that would make this work.
+        // LOGGER.finest(authzList.toString());
+        return authzList;
+    }
+
+
+    /**
+     * Adds authorized documents from the list to the collection.
+     *
+     * @param docids the list of doc IDs
+     * @param username the username for which to check authorization
+     * @param authorized the collection to add authorized doc IDs to
+     * @throws RepositoryException if an error occurs
+     */
     /*
       Using ListNodes to authorize docids in bulk is much faster (up
       to 300 times faster in testing) that authorizing a single docid
@@ -92,16 +126,23 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       requests coming from the ConnectorManager for the Livelink
       server, we could consider synchronizing access to the
       ListNodes call on the class object or something.
-    */
-    public List authorizeDocids(List docids, AuthenticationIdentity identity)
-            throws RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHORIZE DOCIDS: " + identity.getUsername());
 
+      TODO: The implementation of publicContentUser will likely want
+      to pass in a Set for the authorized docids. There are changes
+      afoot to change authorizeDocids so that just a List of the
+      authorized documents can be returned. (This is already true in
+      the Connector Manager r449, perhaps it has always been true.) If
+      instead authorizeDocids is changed to return a Set of authorized
+      docids, then we can just return such a set here, rather than
+      asking callers to pass in an appropriate container. The passed
+      in docids may also change to a Collection or a Set. We are using
+      but not really depending on subList, so that should be OK.
+    */
+    void addAuthorizedDocids(List docids, String username,
+            Collection authorized) throws RepositoryException {
         Client client = clientFactory.createClient();
-        client.ImpersonateUser(identity.getUsername());
+        client.ImpersonateUser(username);
         
-        HashSet authorized = new HashSet(); 
         final int chunkSize = 10000;
         int fromIndex = 0;
         int toIndex = Math.min(chunkSize, docids.size());
@@ -115,21 +156,6 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             fromIndex = toIndex;
             toIndex = Math.min(docids.size(), toIndex + chunkSize); 
         }
-
-        List authzList = new ArrayList(docids.size());
-        for (Iterator i = docids.iterator(); i.hasNext(); ) {
-            String docid = (String) i.next(); 
-            if (LOGGER.isLoggable(Level.FINEST)) {
-                LOGGER.finest("AUTHORIZED " + docid + ": " +
-                    authorized.contains(docid));
-            }
-            authzList.add(
-                new AuthorizationResponse(authorized.contains(docid), docid));
-        }
-        // TODO: This is a nice idea, but AuthorizationResponse does not
-        // have a toString method that would make this work.
-        // LOGGER.finest(authzList.toString());
-        return authzList;
     }
 
 
@@ -145,9 +171,8 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             return null; 
         StringBuffer query = new StringBuffer("DataID in ("); 
         for (Iterator i = docids.iterator(); i.hasNext(); ) 
-            query.append((String) i.next()).append(",");
-        int len = query.length() - 1;
-        query.replace(len, len + 1, ")");
+            query.append((String) i.next()).append(',');
+        query.setCharAt(query.length() - 1, ')');
         return query.toString();
     }
 }
