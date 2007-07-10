@@ -42,7 +42,8 @@ public class MockFileFeedConnection implements FeedConnection {
         printStream = ps;
     }
 
-    public String sendData(InputStream data) throws IOException {
+    public String sendData(String dataSource, String feedType, InputStream data)
+        throws IOException {
 //    String dataStr = StringUtils.streamToString(data);
 //    buf.append(dataStr);
 //    printStream.println(dataStr);

@@ -34,6 +34,7 @@ import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.pusher.Pusher;
+import com.google.enterprise.connector.pusher.PushException;
 import com.google.enterprise.connector.pusher.DocPusher;
 import com.google.enterprise.connector.pusher.GsaFeedConnection;
 
@@ -62,7 +63,7 @@ public class PushOneDocumentTest extends TestCase {
         pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort));
     }
     
-    public void testTraversal() throws RepositoryException {
+    public void testTraversal() throws RepositoryException, PushException {
         int objectId = getId();
 
         // Extract the LastModifiedDate of the DocID from Livelink
@@ -91,7 +92,7 @@ public class PushOneDocumentTest extends TestCase {
     }
 
     private void pushResultSet(PropertyMapList rs)
-        throws RepositoryException {
+        throws RepositoryException, PushException {
 
         Iterator it = rs.iterator();
         PropertyMap map = null;

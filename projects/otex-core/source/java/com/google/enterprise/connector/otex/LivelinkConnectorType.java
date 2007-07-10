@@ -30,7 +30,7 @@ import com.google.enterprise.connector.spi.ConnectorType;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.beans.PropertyAccessException;
-import org.springframework.beans.PropertyAccessExceptionsException;
+import org.springframework.beans.PropertyBatchUpdateException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
@@ -634,9 +634,9 @@ public class LivelinkConnectorType implements ConnectorType {
             LOGGER.log(Level.WARNING, "Failed to create connector", t);
             t = t.getCause();
             while (t != null) {
-                if (t instanceof PropertyAccessExceptionsException) {
+                if (t instanceof PropertyBatchUpdateException) {
                     PropertyAccessException[] pae =
-                        ((PropertyAccessExceptionsException) t).
+                        ((PropertyBatchUpdateException) t).
                         getPropertyAccessExceptions();
                     for (int i = 0; i < pae.length; i++)
                         LOGGER.warning(pae[i].getMessage());
