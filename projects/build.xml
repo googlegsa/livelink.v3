@@ -2,7 +2,7 @@
 <project name="google-enterprise-connector-otex" default="everything" basedir=".">
 
 	<!-- ========================= PROPERTIES ============================= -->
-	<property name="version" value="1.0" />
+    <property file="version.properties"/>
 
 	<!-- Define Directories. -->
 	<property name="otex-core.dir" value="otex-core" />
