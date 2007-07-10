@@ -3,7 +3,7 @@
 <project name="otex-core" default="build" basedir=".">
 
   <!-- ========================= PROPERTIES ============================= -->
-  <property name="version" value="1.0" />
+  <property file="../version.properties"/>
   <property file="${user.home}/google-enterprise-connector-otex.properties"/>
 
   <propertyset id="javatest.properties">
@@ -48,6 +48,7 @@
   </target>
 
   <target name="init">
+    <echo message="version = ${version}     spi version = ${version.spi}"/>
     <mkdir dir="${build}" />
     <mkdir dir="${dist}" />
     <mkdir dir="${classes}" />
@@ -148,11 +149,20 @@
       </filterset>
     </copy>
 
+    <tstamp />
     <jar jarfile="${jarfile}">
       <fileset dir="${classes}"/>
       <fileset dir="${src}" includes="**/*.properties"/>
       <fileset dir="${tests.classes}" includes="**/mock/*" />
       <fileset dir="${build}" includes="config/**"/>
+      <manifest>
+        <attribute name="Implementation-Title" value="Mock Livelink Connector"/>
+        <attribute name="Implementation-Version" value="${version} ${TODAY}"/>
+        <attribute name="Implementation-Vendor" value="Google Inc."/>
+        <attribute name="Specification-Title" value="Connector Manager SPI"/>
+        <attribute name="Specification-Version" value="${version.spi}"/>
+        <attribute name="Specification-Vendor" value="Google Inc."/>
+      </manifest>
     </jar>
   </target>
 
