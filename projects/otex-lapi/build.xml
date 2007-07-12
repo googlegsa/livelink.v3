@@ -30,7 +30,7 @@
             location="${tests.classes}/tests.logging.properties"/>
 
   <property name="jar.dir"  value="${dist}/jar" />
-  <property name="jarfile"  value="${jar.dir}/livelink-connector.jar" />
+  <property name="jarfile"  value="${jar.dir}/connector-otex.jar" />
 
   <property name="core.dir" location="../otex-core"/>
   <property name="core.classes" location="../otex-core/build/classes"/>
