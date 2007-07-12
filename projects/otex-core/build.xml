@@ -48,7 +48,6 @@
   </target>
 
   <target name="init">
-    <echo message="version = ${version}     spi version = ${version.spi}"/>
     <mkdir dir="${build}" />
     <mkdir dir="${dist}" />
     <mkdir dir="${classes}" />

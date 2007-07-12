@@ -29,6 +29,8 @@
 		<property name="useUsernamePasswordWithWebServer"
 			value="${useUsernamePasswordWithWebServer}"/>
 
+        <property name="publicContentUsername" value=""/>
+
 		<property name="useSeparateAuthentication"
 			value="${useSeparateAuthentication}"/>
 		<property name="authenticationServer"

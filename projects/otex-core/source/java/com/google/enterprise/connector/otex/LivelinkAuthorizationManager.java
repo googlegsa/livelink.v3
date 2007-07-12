@@ -60,11 +60,13 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      */
     public List authorizeDocids(List docids, AuthenticationIdentity identity)
             throws RepositoryException {
+        String username = identity.getUsername();
+
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHORIZE DOCIDS: " + identity.getUsername());
+            LOGGER.fine("AUTHORIZE DOCIDS: " + username);
 
         HashSet authorized = new HashSet();
-        addAuthorizedDocids(docids, identity.getUsername(), authorized);
+        addAuthorizedDocids(docids.iterator(), username, authorized);
 
         List authzList = new ArrayList(docids.size());
         for (Iterator i = docids.iterator(); i.hasNext(); ) {
@@ -86,7 +88,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
     /**
      * Adds authorized documents from the list to the collection.
      *
-     * @param docids the list of doc IDs
+     * @param iterator Iterator over the list of doc IDs
      * @param username the username for which to check authorization
      * @param authorized the collection to add authorized doc IDs to
      * @throws RepositoryException if an error occurs
@@ -138,41 +140,39 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       in docids may also change to a Collection or a Set. We are using
       but not really depending on subList, so that should be OK.
     */
-    void addAuthorizedDocids(List docids, String username,
+    public void addAuthorizedDocids(Iterator iterator, String username,
             Collection authorized) throws RepositoryException {
         Client client = clientFactory.createClient();
         client.ImpersonateUser(username);
-        
-        final int chunkSize = 10000;
-        int fromIndex = 0;
-        int toIndex = Math.min(chunkSize, docids.size());
-        while (fromIndex < toIndex && toIndex <= docids.size()) {
-            String query = getDocidQuery(docids.subList(fromIndex, toIndex));
+
+        String query;
+        while ((query = getDocidQuery(iterator)) != null) {
             LOGGER.finest(query);
             ClientValue results = client.ListNodes(query, "WebNodes",
                 new String[] { "DataID", "PermID" });
             for (int i = 0; i < results.size(); i++)
                 authorized.add(results.toString(i, "DataID"));
-            fromIndex = toIndex;
-            toIndex = Math.min(docids.size(), toIndex + chunkSize); 
         }
     }
 
 
     /**
      * Builds a SQL query of the form "DataId in (...)" where the
-     * contents of the list are the provided docids.
+     * contents of the iterator's list are the provided docids.  
+     * At most, 10,000 docids will be added to the query.
      *
      * @param docids the docids to include in the query
      * @return the SQL query string; null if no docids are provided
      */
-    private String getDocidQuery(List docids) {
-        if (docids == null || docids.size() == 0)
+    private String getDocidQuery(Iterator iterator) {
+        if (!iterator.hasNext())
             return null; 
+
         StringBuffer query = new StringBuffer("DataID in ("); 
-        for (Iterator i = docids.iterator(); i.hasNext(); ) 
-            query.append((String) i.next()).append(',');
+        for (int i = 0; i < 10000 && iterator.hasNext(); i++ ) 
+            query.append((String) iterator.next()).append(',');
         query.setCharAt(query.length() - 1, ')');
+
         return query.toString();
     }
 }

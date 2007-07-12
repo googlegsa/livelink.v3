@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -33,6 +34,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TimeZone;
 
+import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.PropertyMap;
 import com.google.enterprise.connector.spi.PropertyMapList;
@@ -43,6 +45,7 @@ import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
@@ -69,6 +72,10 @@ class LivelinkResultSet implements PropertyMapList {
     private static final Value VALUE_FALSE =
         new SimpleValue(ValueType.BOOLEAN, "false");
         
+    /** An immutable true value. */
+    private static final Value VALUE_TRUE =
+        new SimpleValue(ValueType.BOOLEAN, "true");
+        
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
@@ -78,9 +85,10 @@ class LivelinkResultSet implements PropertyMapList {
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
     
-    /** The concrete ClientValue implementation associated with this Client */
+    /** The concrete ClientValue implementation associated with this Client. */
     private final ClientValueFactory valueFactory;
 
+    /** The table of Livelink data, one row per doc, one column per field. */
     private final ClientValue recArray;
 
     /** The recarray fields. */
@@ -89,6 +97,13 @@ class LivelinkResultSet implements PropertyMapList {
     /** The TraversalContext from TraversalContextAware Interface */
     private final TraversalContext traversalContext;
 
+    /** If the traversal client user is the public content user,
+     *  then all documents it sees will be publicly available.
+     */
+    private boolean isPublicContentUser = false;
+
+    /** This subset of documents are authorized as public content. */
+    private HashSet publicContentDocs = null;
 
     LivelinkResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
@@ -101,7 +116,83 @@ class LivelinkResultSet implements PropertyMapList {
         this.recArray = recArray;
         this.fields = fields;
         this.traversalContext = traversalContext;
+
+        // Subset the docIds in the recArray into Public and Private Docs.
+        findPublicContent();
     }
+
+
+    /**
+     * If we have a Public Content User specified, some of the
+     * documents in the repository may be available to the public.
+     * If the current user *is* the public content user, then all
+     * documents in the recArray are by definition available to the
+     * public.  However if the current user is not the public user,
+     * we must subset the documents into those that are public and
+     * those that are not.
+     *
+     * NOTE: This gets access to the AuthorizationManager via the
+     * Connector's ClientFactory.  It should really get it from the
+     * Session, but at this point we don't know what session we
+     * belong to.
+     */
+    private void findPublicContent() throws RepositoryException {
+        String pcuser = connector.getPublicContentUsername();
+        if ((pcuser != null) && (pcuser.length() > 0)) {
+            isPublicContentUser = connector.getUsername().equals(pcuser);
+            if (! isPublicContentUser) {
+                // Get the subset of the DocIds that have public access.
+                ClientFactory clientFactory = connector.getClientFactory();
+                LivelinkAuthorizationManager authz;
+                authz = new LivelinkAuthorizationManager(clientFactory);
+                publicContentDocs = new HashSet();
+                authz.addAuthorizedDocids(new DocIdIterator(), pcuser,
+                                          publicContentDocs);
+
+                // We only care if there actually are public docs in this batch.
+                if (publicContentDocs.isEmpty())
+                    publicContentDocs = null;
+            }
+        }
+    }
+
+
+    /**
+     * This iterates over the DocIDs in the recArray.
+     */
+    private class DocIdIterator implements Iterator {
+        /** The current row of the recarray. */
+        private int row;
+
+        /** The size of the recarray. */
+        private final int size;
+
+        public DocIdIterator() {
+            this.row = 0;
+            this.size = recArray.size();
+        }
+
+        public boolean hasNext() {
+            return (row < size);
+        }
+
+        public Object next() {
+            if (row < size) {
+                try {
+                    return recArray.toString(row++, "DataID");
+                } catch (RepositoryException e) {
+                    LOGGER.warning("LivelinkResultSet.DocIdIterator.next()" +
+                                   "caught exception - " + e.getMessage());
+                }
+            }
+            return null;
+        }
+
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
 
 
     /** {@inheritDoc} */
@@ -208,7 +299,15 @@ class LivelinkResultSet implements PropertyMapList {
         
         /** Collects additional properties derived from the recarray. */
         private void collectDerivedProperties() throws RepositoryException {
-            props.addProperty(SpiConstants.PROPNAME_ISPUBLIC, VALUE_FALSE);
+
+            // Flag the document as publicly accessable (or not).
+            boolean isPublic = (isPublicContentUser) ? true :
+                               ((publicContentDocs == null) ? false :
+                                publicContentDocs.contains(
+                                                  Integer.toString(objectId)));
+
+            props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
+                              ((isPublic)? VALUE_TRUE : VALUE_FALSE));
 
             int subType = recArray.toInteger(row, "SubType");
 

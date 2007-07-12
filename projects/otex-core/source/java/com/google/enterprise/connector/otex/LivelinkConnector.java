@@ -175,6 +175,12 @@ public class LivelinkConnector implements Connector {
      */
     private boolean useSeparateAuthentication;
 
+    /** The Livelink traverser client username. */
+    private String username;
+
+    /** The Livelink Public Content client username. */
+    private String publicContentUsername;
+
     
     /**
      * Constructs a connector instance for a specific Livelink
@@ -248,6 +254,38 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("USERNAME: " + username);
         clientFactory.setUsername(username);
+        this.username = username;
+    }
+
+    /**
+     * Gets the Livelink username.
+     * 
+     * @return the username 
+     */
+    public String getUsername() {
+        return username;
+    }
+
+
+    /**
+     * Sets the Livelink public content username.
+     * 
+     * @param username the username
+     */
+    public void setPublicContentUsername(String username) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("PUBLIC CONTENT USERNAME: " + username);
+        if (username != null && username.length() > 0)
+            this.publicContentUsername = username;
+    }
+
+    /**
+     * Gets the Livelink public content username.
+     * 
+     * @return the username 
+     */
+    public String getPublicContentUsername() {
+        return publicContentUsername;
     }
 
     /**
@@ -887,6 +925,16 @@ public class LivelinkConnector implements Connector {
         return contentHandler;
     }
     
+    /**
+     * Gets the <code>ClientFactory</code> for this Connector.
+     *
+     * @return the <code>ClientFactory</code>
+     */
+    ClientFactory getClientFactory() {
+        return clientFactory;
+    }
+
+
     /** {@inheritDoc} */
     public Session login()
             throws RepositoryLoginException, RepositoryException {
