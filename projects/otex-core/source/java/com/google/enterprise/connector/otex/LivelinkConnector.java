@@ -14,9 +14,12 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.util.Date;
+import java.text.DateFormat;
 import java.text.Format;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -51,7 +54,7 @@ public class LivelinkConnector implements Connector {
 
     /** A value type of list of strings in a configuration map. */
     private static final int LIST_OF_STRINGS = 2;
-       
+
     /**
      * A pattern describing a comma-separated list of unsigned
      * integers, with optional whitespace and brace delimiters. The
@@ -114,7 +117,7 @@ public class LivelinkConnector implements Connector {
         }
     }
 
-    
+
     /**
      * The client factory used to configure and instantiate the
      * client facade.
@@ -151,7 +154,7 @@ public class LivelinkConnector implements Connector {
 
     /** The database server type, either "MSSQL" or "Oracle". */
     private String servtype;
-    
+
     /** The node types that you want to exclude from traversal. */
     private String excludedNodeTypes;
 
@@ -171,9 +174,20 @@ public class LivelinkConnector implements Connector {
     private String contentHandler;
 
     /** The flag indicating that this connector has a separate
-     * set of authentication parameters. 
+     * set of authentication parameters.
      */
     private boolean useSeparateAuthentication;
+
+    /** If set, this property determines the earliest date that
+     * should be searched.
+     */
+    private String startDate = null;
+
+    /** If set, this property will be used as initial checkpoint from
+     * which the traversal will start, corresponding to the given date
+     * with a document ID of zero.
+     */
+    private String startCheckpoint = null;
 
     /** The Livelink traverser client username. */
     private String username;
@@ -181,7 +195,6 @@ public class LivelinkConnector implements Connector {
     /** The Livelink Public Content client username. */
     private String publicContentUsername;
 
-    
     /**
      * Constructs a connector instance for a specific Livelink
      * repository, using the default client factory class.
@@ -212,7 +225,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the host name or IP address of the server.
-     * 
+     *
      * @param server the host name or IP address of the server
      */
     public void setServer(String server) {
@@ -225,7 +238,7 @@ public class LivelinkConnector implements Connector {
      * Sets the Livelink server port. This should be the LAPI
      * port, unless HTTP tunneling is used, in which case it
      * should be the HTTP port.
-     * 
+     *
      * @param port the port number
      */
     public void setPort(int port) {
@@ -236,7 +249,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the database connection to use. This property is optional.
-     * 
+     *
      * @param connection the database name
      */
     public void setConnection(String connection) {
@@ -247,7 +260,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the Livelink username.
-     * 
+     *
      * @param username the username
      */
     public void setUsername(String username) {
@@ -259,8 +272,8 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Gets the Livelink username.
-     * 
-     * @return the username 
+     *
+     * @return the username
      */
     public String getUsername() {
         return username;
@@ -269,7 +282,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the Livelink public content username.
-     * 
+     *
      * @param username the username
      */
     public void setPublicContentUsername(String username) {
@@ -281,8 +294,8 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Gets the Livelink public content username.
-     * 
-     * @return the username 
+     *
+     * @return the username
      */
     public String getPublicContentUsername() {
         return publicContentUsername;
@@ -290,7 +303,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the Livelink password.
-     * 
+     *
      * @param password the password
      */
     public void setPassword(String password) {
@@ -326,6 +339,83 @@ public class LivelinkConnector implements Connector {
 
 
     /**
+     * Sets the startDate property, and, as a side-effect, the
+     * startCheckpoint.
+     *
+     * @param property is the date string from the config file.
+     */
+    public void setStartDate(String property)
+    {
+        // parse out the date using either the default or "short"
+        // date format.  If we can parse it, set the property and
+        // the initial checkpoint.  If the parse fails, log it and
+        // start the the beginning...
+        DateFormat defaultDateFormatter = DateFormat.getDateInstance();
+        DateFormat shortDateFormatter =
+            DateFormat.getDateInstance(DateFormat.SHORT);
+        Date d;
+        try {
+            d = defaultDateFormatter.parse(property);
+        }
+        catch (ParseException e) {
+            d = null;
+        }
+
+        // If the default fails, try the short parser.  It might work.
+        if ( d == null ) {
+            try {
+                d = shortDateFormatter.parse(property);
+            }
+            catch (ParseException e) {
+                d = null;
+            }
+        }
+
+        if (d == null) {        // intentionally or not, it isn't a date..
+            startDate = null;
+            startCheckpoint = null;
+            if ( property.length() == 0 ) { // it's intentional
+                if (LOGGER.isLoggable(Level.CONFIG))
+                    LOGGER.config("STARTDATE: No start date specified.");
+            } else {            // it's an error
+                if (LOGGER.isLoggable(Level.WARNING))
+                    LOGGER.warning(
+                        "STARTDATE: Unable to parse startDate property (\"" +
+                        property + "\").  Starting at beginning.");
+            }
+        } else {
+            startDate = property;
+            startCheckpoint = LivelinkResultSet.makeCheckpoint(d, 0);
+            if (LOGGER.isLoggable(Level.CONFIG))
+                LOGGER.config("STARTDATE: " +
+                    DateFormat.getDateTimeInstance().format(d));
+        }
+    }
+
+
+    /**
+     * returns the startDate property.
+     *
+     * @return the startDate.
+     */
+    public String getStartDate()
+    {
+        return startDate;
+    }
+
+
+    /**
+     * returns the startDate checkpoint.
+     *
+     * @return the checkpoint string
+     */
+    public String getStartCheckpoint()
+    {
+        return startCheckpoint;
+    }
+
+
+    /**
      * Sets the Livelink CGI path to use when tunneling LAPI
      * requests through the Livelink web server. If a proxy
      * server is used, this value must be the complete URL to the
@@ -334,7 +424,7 @@ public class LivelinkConnector implements Connector {
      * being used, only the path needs to be provided (e.g.,
      * /Livelink/livelink).
      *
-     * @param livelinkCgi the path or URL to the Livelink CGI 
+     * @param livelinkCgi the path or URL to the Livelink CGI
      */
     public void setLivelinkCgi(String livelinkCgi) {
         if (LOGGER.isLoggable(Level.CONFIG))
@@ -392,7 +482,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the Livelink domain name. This property is optional.
-     * 
+     *
      * @param domainName the domain name
      */
     public void setDomainName(String domainName) {
@@ -404,7 +494,7 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the base display URL for the search results, e.g.,
      * "http://myhostname/Livelink/livelink.exe".
-     * 
+     *
      * @param displayUrl the display URL prefix
      */
     public void setDisplayUrl(String displayUrl) {
@@ -412,7 +502,7 @@ public class LivelinkConnector implements Connector {
             LOGGER.config("DISPLAY URL: " + displayUrl);
         this.displayUrl = displayUrl;
     }
-    
+
     /**
      * Gets the base display URL for the search results.
      *
@@ -421,7 +511,7 @@ public class LivelinkConnector implements Connector {
     String getDisplayUrl() {
         return displayUrl;
     }
-    
+
     /**
      * Sets the relative display URL for each subtype. The map
      * contains keys that consist of comma-separated subtype integers,
@@ -433,13 +523,13 @@ public class LivelinkConnector implements Connector {
      * <dd> The object ID.
      * <dt> 1
      * <dd> The volume ID.
-     * <dt> 2 
+     * <dt> 2
      * <dd> The subtype.
      * <dt> 3
      * <dd> The display action, which varies by subtype and is
      * configured by {@link #setDisplayActions}.
      * </dl>
-     * 
+     *
      * @param displayPatterns a map from subtypes to relative display
      * URL patterns
      */
@@ -447,7 +537,7 @@ public class LivelinkConnector implements Connector {
         setSubtypeMap("DISPLAY PATTERNS", displayPatterns,
             this.displayPatterns, PATTERN);
     }
-    
+
     /**
      * Sets the display action for each subtype. The map contains
      * keys that consist of comma-separated subtype integers, or the
@@ -529,7 +619,7 @@ public class LivelinkConnector implements Connector {
         }
         return mf;
     }
-    
+
     /**
      * Gets the display URL for the google:displayurl property. This
      * assembles the base display URL and the subtype-specific
@@ -569,7 +659,7 @@ public class LivelinkConnector implements Connector {
      */
     public void setUseUsernamePasswordWithWebServer(boolean useWeb) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("USE USERNAME WITH WEB SERVER: " + 
+            LOGGER.config("USE USERNAME WITH WEB SERVER: " +
                 useWeb);
         }
         clientFactory.setUseUsernamePasswordWithWebServer(useWeb);
@@ -584,7 +674,7 @@ public class LivelinkConnector implements Connector {
      */
     public void setUseSeparateAuthentication(boolean useAuth) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("USE SEPARATE AUTHENTICATION CONFIG: " + 
+            LOGGER.config("USE SEPARATE AUTHENTICATION CONFIG: " +
                 useAuth);
         }
         useSeparateAuthentication = useAuth;
@@ -595,7 +685,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the database server type.
-     * 
+     *
      * @param servtype the database server type, either "MSSQL" or "Oracle";
      *     the empty string is also accepted but is ignored
      */
@@ -615,7 +705,7 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("SERVTYPE: " + this.servtype);
     }
-    
+
     /**
      * Gets the database server type, either "MSSQL" or "Oracle", or
      * <code>null</code> if the database type is not configured.
@@ -628,7 +718,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the node types that you want to exclude from traversal.
-     * 
+     *
      * @param excludedNodeTypes the excluded node types
      */
     public void setExcludedNodeTypes(String excludedNodeTypes) {
@@ -636,7 +726,7 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("EXCLUDED NODE TYPES: " + this.excludedNodeTypes);
     }
-    
+
     /**
      * Gets the node types that you want to exclude from traversal.
      *
@@ -645,10 +735,10 @@ public class LivelinkConnector implements Connector {
     String getExcludedNodeTypes() {
         return excludedNodeTypes;
     }
-    
+
     /**
      * Sets the volume types that you want to exclude from traversal.
-     * 
+     *
      * @param excludedVolumeTypes the excluded volume types
      */
     public void setExcludedVolumeTypes(String excludedVolumeTypes) {
@@ -658,7 +748,7 @@ public class LivelinkConnector implements Connector {
                 this.excludedVolumeTypes);
         }
     }
-    
+
     /**
      * Gets the volume types that you want to exclude from traversal.
      *
@@ -667,10 +757,10 @@ public class LivelinkConnector implements Connector {
     String getExcludedVolumeTypes() {
         return excludedVolumeTypes;
     }
-    
+
     /**
      * Sets the node IDs that you want to exclude from traversal.
-     * 
+     *
      * @param excludedLocationNodes the excluded node IDs
      */
     public void setExcludedLocationNodes(String excludedLocationNodes) {
@@ -679,7 +769,7 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("EXCLUDED NODE IDS: " + this.excludedLocationNodes);
     }
-    
+
     /**
      * Gets the node IDs that you want to exclude from traversal.
      *
@@ -688,10 +778,10 @@ public class LivelinkConnector implements Connector {
     String getExcludedLocationNodes() {
         return excludedLocationNodes;
     }
-    
+
     /**
      * Sets the node IDs that you want to included in the traversal.
-     * 
+     *
      * @param includedLocationNodes the included node IDs
      */
     public void setIncludedLocationNodes(String includedLocationNodes) {
@@ -700,7 +790,7 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("INCLUDED NODE IDS: " + this.includedLocationNodes);
     }
-    
+
     /**
      * Gets the node IDs that you want to include in the traversal.
      *
@@ -709,7 +799,7 @@ public class LivelinkConnector implements Connector {
     String getIncludedLocationNodes() {
         return includedLocationNodes;
     }
-    
+
     /**
      * Sets the fields from ExtendedData to index for each subtype.
      * The map contains keys that consist of comma-separated subtype
@@ -740,25 +830,25 @@ public class LivelinkConnector implements Connector {
      * Gets the fields from ExtendedData to index.
      *
      * @param subType the subtype of the item
-     * @return the map from integer subtypes 
+     * @return the map from integer subtypes
      */
     public String[] getExtendedDataKeys(int subType) {
         return (String[]) extendedDataKeys.get(new Integer(subType));
     }
-    
+
     /**
      * Creates an empty client factory instance for use with
      * authentication configuration parameters. This will use the
      * same implementation class as the default client factory.
      */
     /*
-     * Assumes that there aren't multiple threads configuring a 
-     * single LivelinkConnector instance. 
+     * Assumes that there aren't multiple threads configuring a
+     * single LivelinkConnector instance.
      */
     private void createAuthenticationClientFactory() {
         if (authenticationClientFactory == null) {
             if (LOGGER.isLoggable(Level.CONFIG)) {
-                LOGGER.config("NEW AUTHENTICATION INSTANCE: " + 
+                LOGGER.config("NEW AUTHENTICATION INSTANCE: " +
                     clientFactory.getClass().getName());
             }
             try {
@@ -774,7 +864,7 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the host name or IP address for authentication. See {@link
      * #setServer}.
-     * 
+     *
      * @param server the host name or IP address of the server
      */
     public void setAuthenticationServer(String server) {
@@ -785,8 +875,8 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the port to use. See {@link #setPort}. 
-     * 
+     * Sets the port to use. See {@link #setPort}.
+     *
      * @param port the port number
      */
     public void setAuthenticationPort(int port) {
@@ -798,8 +888,8 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the database connection to use when
-     * authenticating. See {@link #setConnection}. 
-     * 
+     * authenticating. See {@link #setConnection}.
+     *
      * @param connection the database name
      */
     public void setAuthenticationConnection(String connection) {
@@ -810,7 +900,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the HTTPS property. See {@link #setHttps}. 
+     * Sets the HTTPS property. See {@link #setHttps}.
      *
      * @param useHttps true if HTTPS should be used; false otherwise
      */
@@ -822,7 +912,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the EnableNTLM property. See {@link @setEnableNtlm}. 
+     * Sets the EnableNTLM property. See {@link @setEnableNtlm}.
      *
      * @param verifyServer true if the NTLM subsystem should be used
      */
@@ -835,7 +925,7 @@ public class LivelinkConnector implements Connector {
 
     /**
      * Sets the Livelink CGI path for use when tunneling requests
-     * through a web server. See {@link #setLivelinkCgi}. 
+     * through a web server. See {@link #setLivelinkCgi}.
      *
      * @param livelinkCgi the Livelink CGI path or URL
      */
@@ -847,7 +937,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the Verify Server property. See {@link @setVerifyServer}. 
+     * Sets the Verify Server property. See {@link @setVerifyServer}.
      *
      * @param verifyServer true if the server certificate should
      * be verified
@@ -860,7 +950,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the CaRootCerts property. See {@link #setCaRootCerts}. 
+     * Sets the CaRootCerts property. See {@link #setCaRootCerts}.
      *
      * @param caRootCerts a list of certificate authority root certificates
      */
@@ -872,8 +962,8 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the Livelink domain name. See {@link #setDomainName}. 
-     * 
+     * Sets the Livelink domain name. See {@link #setDomainName}.
+     *
      * @param domainName the domain name
      */
     public void setAuthenticationDomainName(String domainName) {
@@ -895,7 +985,7 @@ public class LivelinkConnector implements Connector {
             boolean useWeb) {
         createAuthenticationClientFactory();
         if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("AUTHENTICATION USE USERNAME WITH WEB SERVER: " + 
+            LOGGER.config("AUTHENTICATION USE USERNAME WITH WEB SERVER: " +
                 useWeb);
         }
         authenticationClientFactory.setUseUsernamePasswordWithWebServer(
@@ -914,7 +1004,7 @@ public class LivelinkConnector implements Connector {
             LOGGER.config("CONTENT HANDLER: " + contentHandler);
         this.contentHandler = contentHandler;
     }
-    
+
     /**
      * Gets the <code>ContentHandler</code> implementation class.
      *
@@ -924,7 +1014,7 @@ public class LivelinkConnector implements Connector {
     String getContentHandler() {
         return contentHandler;
     }
-    
+
     /**
      * Gets the <code>ClientFactory</code> for this Connector.
      *
@@ -940,11 +1030,11 @@ public class LivelinkConnector implements Connector {
             throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("LOGIN");
-        
+
         // TODO: move this to a Spring-callable "after all
         // properties have been set" method.
         if (!useSeparateAuthentication)
-            authenticationClientFactory = null; 
+            authenticationClientFactory = null;
 
         // Serveral birds with one stone. Getting the server info
         // verifies connectivity with the server, and we use the
@@ -978,7 +1068,7 @@ public class LivelinkConnector implements Connector {
             throw new RepositoryException(
                 "Livelink 9.0 or later is required.");
         }
-        
+
         // Check for Livelink 9.2 or earlier; omit excluded volumes
         // and locations if needed. XXX: The DTreeAncestors table was
         // introduced in Livelink 9.5. Just bailing like this is weak,
@@ -1014,7 +1104,7 @@ public class LivelinkConnector implements Connector {
             if ("overview".equals(action))
                 displayActions.put(docSubType, "properties");
         }
-        
+
         // Set the character encodings in the client factories if needed.
         if (hasCharacterEncoding) {
             int serverEncoding = serverInfo.toInteger("CharacterEncoding");
@@ -1026,7 +1116,7 @@ public class LivelinkConnector implements Connector {
             }
         }
 
-        return new LivelinkSession(this, clientFactory, 
+        return new LivelinkSession(this, clientFactory,
             authenticationClientFactory);
     }
 }

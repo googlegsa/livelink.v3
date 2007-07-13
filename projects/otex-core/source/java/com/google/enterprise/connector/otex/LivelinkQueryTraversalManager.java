@@ -83,7 +83,7 @@ class LivelinkQueryTraversalManager
 
         list.add(new Field("DataSize"));
         list.add(new Field("PermID"));
-        
+
         FIELDS = (Field[]) list.toArray(new Field[0]);
     }
 
@@ -107,7 +107,7 @@ class LivelinkQueryTraversalManager
 
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
-    
+
     /** The number of results to return in each batch. */
     /* TODO: Configurable default value. */
     private volatile int batchSize = 100;
@@ -134,7 +134,7 @@ class LivelinkQueryTraversalManager
 
     /**
      * Determines whether the database type is SQL Server or Oracle.
-     * 
+     *
      * @return <code>true</code> for SQL Server, or <code>false</code>
      * for Oracle.
      */
@@ -170,8 +170,8 @@ class LivelinkQueryTraversalManager
             return matches;
         }
     }
-    
-       
+
+
     /**
      * Gets the select list for the needed fields.
      *
@@ -197,7 +197,7 @@ class LivelinkQueryTraversalManager
             return buffer.substring(1);
         }
     }
-    
+
 
     /**
      * Gets a SQL conditional expression that excludes nodes that
@@ -221,7 +221,7 @@ class LivelinkQueryTraversalManager
      *
      * The returned expression is simplified in the obvious way when
      * one or more of the configuration parameters is null or empty.
-     * 
+     *
      * @return the SQL conditional expression
      * @throws RepositoryException if an error occurs executing the
      * excluded volume types query
@@ -229,7 +229,7 @@ class LivelinkQueryTraversalManager
     /* This method has package access so that it can be unit tested. */
     String getExcluded() throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
-        
+
         boolean hasNodeTypes;
         String excludedNodeTypes = connector.getExcludedNodeTypes();
         if (excludedNodeTypes != null &&
@@ -252,7 +252,7 @@ class LivelinkQueryTraversalManager
             volumes = (results.size() == 0) ? null : results;
         } else
             volumes = null;
-        
+
         String locations;
         String excludedLocationNodes = connector.getExcludedLocationNodes();
         if (excludedLocationNodes != null &&
@@ -284,13 +284,13 @@ class LivelinkQueryTraversalManager
 
             buffer.append("))");
         }
-        
+
         String excluded = (buffer.length() > 0) ? buffer.toString() : null;
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("EXCLUDED: " + excluded);
         return excluded;
     }
-    
+
 
     /**
      * Gets a new instance of the configured content handler class.
@@ -334,11 +334,14 @@ class LivelinkQueryTraversalManager
 
     /** {@inheritDoc} */
     public PropertyMapList startTraversal() throws RepositoryException {
+        String cp = connector.getStartCheckpoint();
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("START @" +
-                Integer.toHexString(System.identityHashCode(this)));
+                Integer.toHexString(System.identityHashCode(this)) +
+                ((cp==null)?"":"\t(startDate Checkpoint: " + cp + ")"));
         }
-        return listNodes(null);
+        // startCheckpoint will either be an initial checkpoint or null
+        return listNodes(cp);
     }
 
 
@@ -403,7 +406,7 @@ class LivelinkQueryTraversalManager
      * condition is empty for <code>startTraversal</code>, or
      *
      * <pre>
-     *     ModifyDate > <em>X</em> or 
+     *     ModifyDate > <em>X</em> or
      *         (ModifyDate = <em>X</em> and DataID > <em>Y</em>)
      * </pre>
      *
@@ -540,11 +543,11 @@ class LivelinkQueryTraversalManager
             String modifyDate = checkpoint.substring(0, index);
             String dataId = checkpoint.substring(index + 1);
             if (isSqlServer) {
-                return "ModifyDate > '" + modifyDate + 
+                return "ModifyDate > '" + modifyDate +
                     "' or (ModifyDate = '" + modifyDate +
                     "' and DataID > " + dataId + ')';
             } else {
-                return "ModifyDate > TO_DATE('" + modifyDate + 
+                return "ModifyDate > TO_DATE('" + modifyDate +
                     "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('" +
                     modifyDate + "', 'YYYY-MM-DD HH24:MI:SS') and DataID > " +
                     dataId + ')';

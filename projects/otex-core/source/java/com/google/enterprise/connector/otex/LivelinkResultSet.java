@@ -67,15 +67,15 @@ class LivelinkResultSet implements PropertyMapList {
     /** An immutable string value of "text/html". */
     private static final Value VALUE_TEXT_HTML =
         new SimpleValue(ValueType.STRING, "text/html");
-    
+
     /** An immutable false value. */
     private static final Value VALUE_FALSE =
         new SimpleValue(ValueType.BOOLEAN, "false");
-        
+
     /** An immutable true value. */
     private static final Value VALUE_TRUE =
         new SimpleValue(ValueType.BOOLEAN, "true");
-        
+
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
@@ -84,7 +84,7 @@ class LivelinkResultSet implements PropertyMapList {
 
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
-    
+
     /** The concrete ClientValue implementation associated with this Client. */
     private final ClientValueFactory valueFactory;
 
@@ -104,6 +104,21 @@ class LivelinkResultSet implements PropertyMapList {
 
     /** This subset of documents are authorized as public content. */
     private HashSet publicContentDocs = null;
+
+    /**
+     * Generate a checkpoint string from a date and an object Id.
+     *
+     * @param date the date at which to start
+     * @param objectId the object id at which to start
+     * @return the checkpoint string.
+     */
+    public static String makeCheckpoint(Date date, int objectId)
+    {
+        String cp =
+            LivelinkDateFormat.getInstance().toSqlString(date) +
+            ','  + objectId;
+        return cp;
+    }
 
     LivelinkResultSet(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
@@ -199,7 +214,7 @@ class LivelinkResultSet implements PropertyMapList {
     public Iterator iterator() {
         return new LivelinkResultSetIterator();
     }
-    
+
 
     /**
      * Iterates over a <code>PropertyMapList</code>, returning each
@@ -239,9 +254,7 @@ class LivelinkResultSet implements PropertyMapList {
 
                     /* establish the checkpoint string for this row */
                     Date date = recArray.toDate(row, "ModifyDate");
-                    String cp =
-                        LivelinkDateFormat.getInstance().toSqlString(date) +
-                        ','  + objectId;
+                    String cp = makeCheckpoint(date, objectId);
                     props.setCheckpoint(cp);
 
                     /* collect the various properties for this row */
@@ -296,7 +309,7 @@ class LivelinkResultSet implements PropertyMapList {
                 }
             }
         }
-        
+
         /** Collects additional properties derived from the recarray. */
         private void collectDerivedProperties() throws RepositoryException {
 
@@ -324,7 +337,7 @@ class LivelinkResultSet implements PropertyMapList {
                 props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
                     VALUE_TEXT_HTML);
                 props.addProperty(SpiConstants.PROPNAME_CONTENT,
-                    new SimpleValue(ValueType.STRING, 
+                    new SimpleValue(ValueType.STRING,
                         "<title>" + name + "</title>\n"));
             }
 
@@ -371,14 +384,14 @@ class LivelinkResultSet implements PropertyMapList {
             int size = recArray.toInteger(row, "DataSize");
             if (size <= 0)
                 return null;
-                
+
             // The TraversalContext Interface provides additional
             // screening based upon content size and mimetype.
             if (traversalContext != null) {
                 // Is the content too large?
                 if (((long) size) > traversalContext.maxDocumentSize())
                     return null;
-                
+
                 // Is this MimeType supported?
                 String mt = mimeType.toString();
                 if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
@@ -393,7 +406,7 @@ class LivelinkResultSet implements PropertyMapList {
             props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             return contentValue;
         }
-        
+
         /**
          * Collect properties from the ExtendedData assoc.
          *
@@ -429,7 +442,7 @@ class LivelinkResultSet implements PropertyMapList {
                             fields[i].equals("Questions")) {
                         value = value.stringToValue();
                     }
-                    
+
                     collectValueProperties(fields[i], value);
                 }
             }
@@ -448,7 +461,7 @@ class LivelinkResultSet implements PropertyMapList {
                 LOGGER.finest("Type: " + value.type() + "; value: " +
                     value.toString2());
             }
-            
+
             switch (value.type()) {
             case ClientValue.LIST:
                 for (int i = 0; i < value.size(); i++)
@@ -476,7 +489,7 @@ class LivelinkResultSet implements PropertyMapList {
                 break;
             }
         }
-        
+
         /**
          * Gets the category attribute values for the indicated
          * object. Each attribute name is mapped to a linked list of
@@ -498,10 +511,10 @@ class LivelinkResultSet implements PropertyMapList {
             // object to use (the default is the current
             // version).
             ClientValue objIdAssoc = valueFactory.createAssoc();
-            objIdAssoc.add("ID", objectId); 
-        
+            objIdAssoc.add("ID", objectId);
+
             ClientValue categoryIds = client.ListObjectCategoryIDs(objIdAssoc);
-        
+
             // Loop over the categories.
             int numCategories = categoryIds.size();
             for (int i = 0; i < numCategories; i++) {
@@ -512,17 +525,17 @@ class LivelinkResultSet implements PropertyMapList {
                 int categoryType = categoryId.toInteger("Type");
                 if (Client.CATEGORY_TYPE_LIBRARY != categoryType) {
                     LOGGER.finer("Unknown category implementation type " +
-                        categoryType + "; skipping"); 
+                        categoryType + "; skipping");
                     continue;
                 }
-                //System.out.println(categoryId.toString("DisplayName")); 
-            
+                //System.out.println(categoryId.toString("DisplayName"));
+
                 ClientValue categoryVersion;
                 categoryVersion =
                     client.GetObjectAttributesEx(objIdAssoc, categoryId);
                 ClientValue attrNames =
                     client.AttrListNames(categoryVersion, null);
-            
+
                 // Loop over the attributes for this category.
                 int numAttributes = attrNames.size();
                 for (int j = 0; j < numAttributes; j++) {
@@ -553,7 +566,7 @@ class LivelinkResultSet implements PropertyMapList {
             // The "path" indicates the set attribute name to look
             // inside of in other methods like AttrListNames.
             ClientValue attrSetPath = valueFactory.createList();
-            attrSetPath.add(attrName); 
+            attrSetPath.add(attrName);
 
             // Get a list of the names of the attributes in the
             // set. Look up and store the types to avoid repeating
@@ -564,7 +577,7 @@ class LivelinkResultSet implements PropertyMapList {
 
             ClientValue[] attrInfo = new ClientValue[attrSetNames.size()];
             for (int i = 0; i < attrSetNames.size(); i++) {
-                String name = attrSetNames.toString(i); 
+                String name = attrSetNames.toString(i);
                 attrInfo[i] =
                     client.AttrGetInfo(categoryVersion, name, attrSetPath);
             }
@@ -575,10 +588,10 @@ class LivelinkResultSet implements PropertyMapList {
                 client.AttrGetValues(categoryVersion, attrName, null);
 
             // Update the path to hold index of the set instance.
-            attrSetPath.setSize(2); 
+            attrSetPath.setSize(2);
             int numSets = setValues.size();
             for (int i = 0; i < numSets; i++) {
-                attrSetPath.setInteger(1, i); 
+                attrSetPath.setInteger(1, i);
                 // For each instance (row) of the attribute set, loop
                 // over the attribute names.
                 for (int j = 0; j < attrSetNames.size(); j++) {
@@ -591,7 +604,7 @@ class LivelinkResultSet implements PropertyMapList {
                     //System.out.println("      " + attrSetNames.toString(j));
                     getAttributeValue(categoryVersion,
                         attrSetNames.toString(j), type, attrSetPath,
-                        attrInfo[j]); 
+                        attrInfo[j]);
                 }
             }
         }
@@ -600,7 +613,7 @@ class LivelinkResultSet implements PropertyMapList {
          * Gets the values for an attribute.
          *
          * @param categoryVersion the category version in which the
-         * values are stored 
+         * values are stored
          * @param attributeName the name of the attribute whose
          * values are being read
          * @param attributeType the type of the attribute data; may
@@ -615,7 +628,7 @@ class LivelinkResultSet implements PropertyMapList {
                 String attrName, int attrType, ClientValue attrSetPath,
                 ClientValue attrInfo) throws RepositoryException {
             if (Client.ATTR_TYPE_SET == attrType)
-                throw new IllegalArgumentException("attrType = SET"); 
+                throw new IllegalArgumentException("attrType = SET");
 
             // Skip attributes marked as not searchable.
             if (!attrInfo.toBoolean("Search"))
@@ -625,7 +638,7 @@ class LivelinkResultSet implements PropertyMapList {
 
             ClientValue attrValues =
                 client.AttrGetValues(categoryVersion, attrName, attrSetPath);
-        
+
             // Even a simple attribute type can have multiple values
             // (displayed as rows in the Livelink UI).
             int numValues = attrValues.size();
@@ -645,7 +658,7 @@ class LivelinkResultSet implements PropertyMapList {
                 if (Client.ATTR_TYPE_USER == attrType) {
                     int userId = value.toInteger();
                     ClientValue userInfo = client.GetUserOrGroupByID(userId);
-                    props.addProperty(attrName, userInfo.toValue("Name")); 
+                    props.addProperty(attrName, userInfo.toValue("Name"));
                 } else {
                     props.addProperty(attrName, value);
                 }
