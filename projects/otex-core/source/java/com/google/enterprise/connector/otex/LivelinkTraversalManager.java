@@ -43,12 +43,12 @@ import com.google.enterprise.connector.otex.client.ClientValue;
  * that Sybase, which is supported by Livelink 9.2.0.1 and earlier, is
  * not supported here.
  */
-class LivelinkQueryTraversalManager
-    implements TraversalManager, TraversalContextAware {
+class LivelinkTraversalManager
+        implements TraversalManager, TraversalContextAware {
 
     /** The logger for this class. */
     private static final Logger LOGGER =
-        Logger.getLogger(LivelinkQueryTraversalManager.class.getName());
+        Logger.getLogger(LivelinkTraversalManager.class.getName());
 
     /**
      * The primary store for property names that we want to map from
@@ -127,7 +127,7 @@ class LivelinkQueryTraversalManager
     private TraversalContext traversalContext = null;
 
 
-    LivelinkQueryTraversalManager(LivelinkConnector connector,
+    LivelinkTraversalManager(LivelinkConnector connector,
             ClientFactory clientFactory) throws RepositoryException {
         this.connector = connector;
         client = clientFactory.createClient();
@@ -506,8 +506,7 @@ class LivelinkQueryTraversalManager
 
 
     private ClientValue listNodesSqlServer(String checkpoint)
-        throws RepositoryException
-    {
+            throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
         if ( checkpoint == null && included == null && excluded == null)
             buffer.append("1=1");
@@ -626,6 +625,4 @@ class LivelinkQueryTraversalManager
             }
         }
     }
-
-
 }

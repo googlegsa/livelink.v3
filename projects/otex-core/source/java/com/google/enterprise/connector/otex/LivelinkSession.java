@@ -63,10 +63,8 @@ class LivelinkSession implements Session {
      * @return a TraversalManager
      * @throws RepositoryException
      */
-    public TraversalManager getTraversalManager()
-        throws RepositoryException
-    {
-        return new LivelinkQueryTraversalManager(connector, clientFactory);
+    public TraversalManager getTraversalManager() throws RepositoryException {
+        return new LivelinkTraversalManager(connector, clientFactory);
     }
   
     /**
