@@ -129,19 +129,18 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       server, we could consider synchronizing access to the
       ListNodes call on the class object or something.
 
-      TODO: The implementation of publicContentUser will likely want
-      to pass in a Set for the authorized docids. There are changes
-      afoot to change authorizeDocids so that just a List of the
-      authorized documents can be returned. (This is already true in
-      the Connector Manager r449, perhaps it has always been true.) If
-      instead authorizeDocids is changed to return a Set of authorized
-      docids, then we can just return such a set here, rather than
-      asking callers to pass in an appropriate container. The passed
-      in docids may also change to a Collection or a Set. We are using
-      but not really depending on subList, so that should be OK.
+      TODO: There are changes afoot to change authorizeDocids so that
+      just a List of the authorized documents can be returned. (This
+      is already true in the Connector Manager r449, perhaps it has
+      always been true.) If instead authorizeDocids is changed to
+      return a Set of authorized docids, then we can just return such
+      a set here, rather than asking callers to pass in an appropriate
+      container.
     */
     public void addAuthorizedDocids(Iterator iterator, String username,
             Collection authorized) throws RepositoryException {
+        // FIXME: Should we be using ImpersonateUserEx here, which
+        // also takes a domain name?
         Client client = clientFactory.createClient();
         client.ImpersonateUser(username);
 
