@@ -38,9 +38,6 @@ import org.springframework.core.io.Resource;
 /**
  * Supports the configuration properties used by the Livelink Connector.
  */
-/*
- * TODO: Messages in ConfigureResponse. Are they ever used?
- */
 public class LivelinkConnectorType implements ConnectorType {
     /** The logger for this class. */
     private static final Logger LOGGER =
@@ -71,6 +68,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         protected final String name;
+        protected final boolean required;
         protected final String defaultValue;
 
         protected FormProperty(String name) {
@@ -78,7 +76,13 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         protected FormProperty(String name, String defaultValue) {
+            this(name, false, defaultValue);
+        }
+
+        protected FormProperty(String name, boolean required,
+                String defaultValue) {
             this.name = name;
+            this.required = required;
             this.defaultValue = defaultValue;
         }
 
@@ -104,11 +108,18 @@ public class LivelinkConnectorType implements ConnectorType {
             if (FormBuilder.START_TAG.equals(labelPrefix))
                 buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
             buffer.append("<tr valign='top'>\r\n").
-                append("<td style='white-space: nowrap'>").
-                append(labelPrefix);
+                append("<td style='white-space: nowrap'>");
+            if (required)
+                buffer.append("<div style='float: left;'>");
+            buffer.append(labelPrefix);
             appendLabel(buffer, name, label);
-            buffer.append(labelSuffix).
-                append("</td>\r\n").
+            buffer.append(labelSuffix);
+            if (required) {
+                buffer.append("</div><div style='text-align: right; ").
+                    append("color: red; font-weight: bold; ").
+                    append("margin-right: 0.3em;\'>*</div>");
+            }
+            buffer.append("</td>\r\n").
                 append("<td>");
             addFormControl(buffer, value, labels);
             buffer.append("</td>\r\n</tr>\r\n");
@@ -171,16 +182,29 @@ public class LivelinkConnectorType implements ConnectorType {
         private final String type;
 
         TextInputProperty(String name) {
-            this(name, null);
+            this(name, false);
+        }
+
+        TextInputProperty(String name, boolean required) {
+            this(name, required, null);
         }
 
         TextInputProperty(String name, String defaultValue) {
-            this(name, defaultValue, "text");
+            this(name, false, defaultValue);
+        }
+
+        TextInputProperty(String name, boolean required, String defaultValue) {
+            this(name, required, defaultValue, "text");
         }
 
         protected TextInputProperty(String name, String defaultValue,
                 String type) {
-            super(name, defaultValue);
+            this(name, false, defaultValue, type);
+        }
+
+        protected TextInputProperty(String name, boolean required,
+                String defaultValue, String type) {
+            super(name, required, defaultValue);
             this.type = type;
         }
 
@@ -217,7 +241,11 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class PasswordInputProperty extends TextInputProperty {
         PasswordInputProperty(String name) {
-            super(name, null, "password");
+            this(name, false);
+        }
+
+        PasswordInputProperty(String name, boolean required) {
+            super(name, required, null, "password");
         }
     }
 
@@ -377,13 +405,13 @@ public class LivelinkConnectorType implements ConnectorType {
 
         static {
             baseEntries = new ArrayList();
-            baseEntries.add(new TextInputProperty("server"));
-            baseEntries.add(new TextInputProperty("port", "2099"));
+            baseEntries.add(new TextInputProperty("server", true));
+            baseEntries.add(new TextInputProperty("port", true, "2099"));
             baseEntries.add(new TextInputProperty("connection"));
-            baseEntries.add(new TextInputProperty("username"));
-            baseEntries.add(new PasswordInputProperty("password"));
+            baseEntries.add(new TextInputProperty("username", true));
+            baseEntries.add(new PasswordInputProperty("password", true));
             baseEntries.add(new TextInputProperty("domainName"));
-            baseEntries.add(new TextInputProperty("displayUrl"));
+            baseEntries.add(new TextInputProperty("displayUrl", true));
             baseEntries.add(new TextInputProperty("includedLocationNodes"));
 
             // These record the state of the enablers. They are a little
@@ -446,16 +474,14 @@ public class LivelinkConnectorType implements ConnectorType {
                     "false"));
         }
 
-        private final String message;
         private final Map data;
         private final ResourceBundle labels;
 
         FormBuilder(Locale locale) {
-            this(null, Collections.EMPTY_MAP, locale);
+            this(Collections.EMPTY_MAP, locale);
         }
 
-        FormBuilder(String message, Map data, Locale locale) {
-            this.message = message;
+        FormBuilder(Map data, Locale locale) {
             this.data = data;
 
             // get the local-specific labels for the form
@@ -498,12 +524,6 @@ public class LivelinkConnectorType implements ConnectorType {
 
         String getFormSnippet() {
             StringBuffer buffer = new StringBuffer(4096);
-            if (message != null) {
-                buffer.append("<tr valign='top'>\r\n").
-                    append("<td colspan='2' style='color: red'>").
-                    append(message).
-                    append("</td>\r\n</tr>\r\n");
-            }
             addEntries(buffer, baseEntries, false, "", "");
             addEntries(buffer, hiddenEntries, true, null, null);
             addEntry(buffer, tunnelingEnabler, false, START_TAG, END_TAG);
@@ -560,7 +580,7 @@ public class LivelinkConnectorType implements ConnectorType {
             Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("Response data: " + configData);
-        FormBuilder form = new FormBuilder(message, configData, locale);
+        FormBuilder form = new FormBuilder(configData, locale);
         return new ConfigureResponse(message, form.getFormSnippet());
     }
 
@@ -593,8 +613,6 @@ public class LivelinkConnectorType implements ConnectorType {
      *
      * TODO: Add init method and parameter validation to
      * LivelinkConnector.
-     *
-     * TODO: How do we/can we return error messages?
      */
     public ConfigureResponse validateConfig(Map configData, Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
