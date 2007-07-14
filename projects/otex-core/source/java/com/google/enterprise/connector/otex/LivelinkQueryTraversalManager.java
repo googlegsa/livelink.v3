@@ -105,6 +105,13 @@ class LivelinkQueryTraversalManager
      */
     private final String excluded;
 
+    /**
+     * The condition for including content in the traversal.
+     *
+     * @see #getIncluded
+     */
+    private final String included;
+
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
 
@@ -127,6 +134,7 @@ class LivelinkQueryTraversalManager
 
         isSqlServer = isSqlServer();
         selectList = getSelectList();
+        included = getIncluded();
         excluded = getExcluded();
         contentHandler = getContentHandler();
     }
@@ -196,6 +204,44 @@ class LivelinkQueryTraversalManager
             }
             return buffer.substring(1);
         }
+    }
+
+    /**
+     * Gets a SQL conditional expression that excludes any
+     * nodes other than those explicitly given in the list of
+     * included nodes, including descendants of those nodes.
+     *
+     * This returns a SQL expression of the form:
+     * <pre>
+     *     (DataID in (<em>includedLocationNodes</em>) or
+     *      DataID in
+     *         (select DataID from DTreeAncestors where AncestorID in
+     *             <em>includedLocationNodes</em>))
+     * </pre>
+     * if includedLocationNodes is empty, returns null
+     *
+     * @return the SQL conditional expression, or null
+     * @throws RepositoryException if an error occurs getting the
+     *         includedLocationNodes
+     */
+    String getIncluded() throws RepositoryException {
+        StringBuffer buffer = new StringBuffer();
+
+        String includedLocationNodes = connector.getIncludedLocationNodes();
+        if (includedLocationNodes != null &&
+            includedLocationNodes.length() > 0 ) {
+            buffer.append("(DataID in (");
+            buffer.append(includedLocationNodes);
+            buffer.append(") or DataID in (SELECT DataID from ");
+            buffer.append("DTreeAncestors where AncestorID in (");
+            buffer.append(includedLocationNodes);
+            buffer.append(")))");
+        }
+
+        String included = (buffer.length() > 0) ? buffer.toString() : null;
+        if (LOGGER.isLoggable(Level.FINER))
+            LOGGER.finer("INCLUDED: " + included);
+        return included;
     }
 
 
@@ -460,16 +506,32 @@ class LivelinkQueryTraversalManager
 
 
     private ClientValue listNodesSqlServer(String checkpoint)
-            throws RepositoryException {
-        String query;
-        if (checkpoint == null && excluded == null)
-            query = "1=1" + ORDER_BY;
-        else if (checkpoint == null)
-            query = excluded + ORDER_BY;
-        else if (excluded == null)
-            query = getRestriction(checkpoint) + ORDER_BY;
-        else
-            query = excluded + " and " + getRestriction(checkpoint) + ORDER_BY;
+        throws RepositoryException
+    {
+        StringBuffer buffer = new StringBuffer();
+        if ( checkpoint == null && included == null && excluded == null)
+            buffer.append("1=1");
+        else {                  // add conditions
+            boolean needAnd = false;
+            if (included != null) {
+                buffer.append(included);
+                needAnd = true;
+            }
+            if (excluded != null) {
+                if ( needAnd )
+                    buffer.append(" and ");
+                buffer.append(excluded);
+                needAnd = true;
+            }
+            if (checkpoint != null) {
+                if ( needAnd )
+                    buffer.append(" and ");
+                buffer.append(getRestriction(checkpoint));
+            }
+        }
+        buffer.append(ORDER_BY);
+        String query = buffer.toString();
+
         String view = "WebNodes";
         ArrayList selectArrayList = (ArrayList) selectList;
         String[] columns = (String[]) selectArrayList.toArray(
@@ -491,18 +553,28 @@ class LivelinkQueryTraversalManager
         buffer.append("(select ");
         buffer.append(selectList);
         buffer.append(" from WebNodes ");
-        if (checkpoint != null || excluded != null) {
+
+        // add conditions
+        if (checkpoint != null || included != null || excluded != null) {
             buffer.append("where ");
-            if (checkpoint == null) {
+            boolean needAnd = false;
+            if (included != null) {
+                buffer.append(included);
+                needAnd = true;
+            }
+            if (excluded != null) {
+                if ( needAnd )
+                    buffer.append(" and ");
                 buffer.append(excluded);
-            } else if (excluded == null) {
-                buffer.append(getRestriction(checkpoint));
-            } else {
-                buffer.append(excluded);
-                buffer.append(" and ");
+                needAnd = true;
+            }
+            if (checkpoint != null) {
+                if ( needAnd )
+                    buffer.append(" and ");
                 buffer.append(getRestriction(checkpoint));
             }
         }
+
         buffer.append(ORDER_BY);
         buffer.append(')');
         String view = buffer.toString();
