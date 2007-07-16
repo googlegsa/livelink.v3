@@ -495,6 +495,7 @@ class LivelinkTraversalManager
             recArray, FIELDS, traversalContext);
     }
 
+
     /**
      * The sort order of the traversal. We need a complete ordering
      * based on the modification date, in order to get incremental
@@ -505,29 +506,40 @@ class LivelinkTraversalManager
     private static final String ORDER_BY = " order by ModifyDate, DataID";
 
 
+    /**
+     * Generates the portion of the SQL query that's common to both
+     * Oracle and SQLServer.  That is, the
+     * @return a string representing the common portion of the query.
+     */
+    private String getCommonConditions(String checkpoint) {
+        StringBuffer commonConditions = new StringBuffer();
+        boolean needAnd = false;
+        if (included != null) {
+            commonConditions.append(included);
+            needAnd = true;
+        }
+        if (excluded != null) {
+            if ( needAnd )
+                commonConditions.append(" and ");
+            commonConditions.append(excluded);
+            needAnd = true;
+        }
+        if (checkpoint != null) {
+            if ( needAnd )
+                commonConditions.append(" and ");
+            commonConditions.append(getRestriction(checkpoint));
+        }
+        return commonConditions.toString();
+    }
+
+
     private ClientValue listNodesSqlServer(String checkpoint)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
         if ( checkpoint == null && included == null && excluded == null)
             buffer.append("1=1");
-        else {                  // add conditions
-            boolean needAnd = false;
-            if (included != null) {
-                buffer.append(included);
-                needAnd = true;
-            }
-            if (excluded != null) {
-                if ( needAnd )
-                    buffer.append(" and ");
-                buffer.append(excluded);
-                needAnd = true;
-            }
-            if (checkpoint != null) {
-                if ( needAnd )
-                    buffer.append(" and ");
-                buffer.append(getRestriction(checkpoint));
-            }
-        }
+        else // add conditions (included/excluded/checkpoint)
+            buffer.append(getCommonConditions(checkpoint));
         buffer.append(ORDER_BY);
         String query = buffer.toString();
 
@@ -553,25 +565,10 @@ class LivelinkTraversalManager
         buffer.append(selectList);
         buffer.append(" from WebNodes ");
 
-        // add conditions
+        // add conditions, if necessary (included/excluded/checkpoint)
         if (checkpoint != null || included != null || excluded != null) {
             buffer.append("where ");
-            boolean needAnd = false;
-            if (included != null) {
-                buffer.append(included);
-                needAnd = true;
-            }
-            if (excluded != null) {
-                if ( needAnd )
-                    buffer.append(" and ");
-                buffer.append(excluded);
-                needAnd = true;
-            }
-            if (checkpoint != null) {
-                if ( needAnd )
-                    buffer.append(" and ");
-                buffer.append(getRestriction(checkpoint));
-            }
+            buffer.append(getCommonConditions(checkpoint));
         }
 
         buffer.append(ORDER_BY);
