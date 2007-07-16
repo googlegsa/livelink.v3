@@ -510,8 +510,11 @@ class LivelinkTraversalManager
      * Generates the portion of the SQL query that's common to both
      * Oracle and SQLServer.  That is, the
      * @return a string representing the common portion of the query.
+     * @throws RepositoryException
      */
-    private String getCommonConditions(String checkpoint) {
+    private String getCommonConditions(String checkpoint)
+        throws RepositoryException
+    {
         StringBuffer commonConditions = new StringBuffer();
         boolean needAnd = false;
         if (included != null) {
