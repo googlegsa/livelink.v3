@@ -1,0 +1,310 @@
+<html>
+<head>
+<title>Google Enterprise Connector for Open Text Livelink</title></head>
+
+<body>
+<h3>Configuration Parameters in the XML Configuration File</h3>
+<table width="95%"  border="1" cellpadding="5">
+
+  <tr>
+    <th>Name</th>
+    <th>Description</th>
+    <th>Values and Usage</th>
+  </tr>
+
+  <tr><th colspan="3">HTTP Tunneling Parameters</th></tr>
+
+  <tr>
+    <td>caRootCerts</td>
+    <td>The root certificates to use when verifying the Web server's
+    certificate.</td>
+    <td>This parameter is used only if HTTP tunneling is enabled
+    (through the livelinkCgi parameter), and the https and
+    verifyServer parameters are both set to true. The default value is
+    specified through the GSA Admin Console. Additional root
+    certificates can be specified here.</td>
+  </tr>
+
+  <tr><th colspan="3">Separate Authentication Parameters</th></tr>
+
+  <tr>
+    <td>authenticationCaRootCerts</td>
+    <td>The root certificates to use when verifying the Web server's
+    certificate.</td>
+    <td>This parameter is used only if HTTP tunneling is enabled
+    (through the authenticationLivelinkCgi parameter), and the
+    authenticationHttps and authenticationVerifyServer parameters
+    are both set to true. The default value is specified through the
+    GSA Admin Console. Additional root certificates can be specified
+    here.</td>
+  </tr>
+
+  <tr><th colspan="3">Indexing and Searching Parameters</th></tr>
+
+  <tr>
+    <td>servtype</td>
+    <td>The database server type.</td>
+    <td>Valid values begin with "MSSQL" or "Oracle". Sybase is not
+    supported. This value may be copied from the <code>servtype</code>
+    parameter in the
+    <code>[dbconnection:<em>connection_name</em>]</code> section of
+    the opentext.ini file. The default value is determined
+    automatically.</td>
+  </tr>
+
+  <tr>
+    <td>startDate</td>
+    <td>The repository is traversed in modification date order,
+    beginning with the earliest item. When a start date is specified,
+    the indexing begins with items modified on or after the start
+    date. Items with an earlier modification date will not be
+    indexed.</td>
+    <!-- FIXME: This should use ISO 8601 GMT -->
+    <td>A date and time specified in the default formatting style or
+    the short formatting style for the default locale. The default
+    value is empty.</td>
+  </tr>
+
+  <tr>
+    <td>publicContentUsername</td>
+    <td>Indexed items that are accessible by this user are marked
+    as public documents. Public documents do not require
+    authentication or authorization.
+    <p class="note"><b>Note: This parameter bypasses Livelink
+    security.</b> Items that are made public are shown in the search
+    results without authentication or authorization. The content of
+    these items is available through the "Cached" and "Text
+    Version" links. These items are not accessible within Livelink
+    unless you have a Livelink customization that makes this
+    possible.</td>
+    <td>A Livelink username. The default value is empty.</td>
+  </tr>
+
+  <tr>
+    <td>excludedNodeTypes</td>
+    <td>Specifies the node types that you want to exclude from
+    indexing. Excluding a node type means that no items of that type
+    are indexed.</td>
+    <td>A comma-separated list of subtype numbers, optionally enclosed
+    by braces. This value may be copied from the
+    <code>ExcludedNodeTypes</code> parameter in the
+    <code>[LivelinkExtractor]</code> section of the opentext.ini file.
+    The default value is
+    "137,142,143,148,150,154,161,162,201,203,209,210,211".</td>
+  </tr>
+
+  <tr>
+    <td>excludedVolumeTypes</td>
+    <td>Specifies the volume types that you want to exclude from
+    indexing. Excluding a volume type means that no volumes of that
+    type or any of the items that the volumes contain are indexed.</td>
+    <td>A comma-separated list of volume type numbers, optionally
+    enclosed by braces. If this parameter is not specified, no volume
+    types are excluded from indexing. This value may be copied
+    from the <code>ExcludedVolumeTypes</code> parameter in the
+    <code>[LivelinkExtractor]</code> section of the opentext.ini file.
+    The default value is "148,162".</td>
+  </tr>
+
+  <tr>
+    <td>excludedLocationNodes</td>
+    <td>Specifies the IDs of the nodes that you want to exclude from
+    indexing. Excluding a node means that it is not indexed, and
+    if it is a container, none of the items it contains are
+    indexed.</td>
+    <td>A comma-separated list of object IDs, optionally enclosed by
+    braces. The default value is empty.</td>
+  </tr>
+
+  <tr>
+    <td>displayPatterns</td>
+    <td>A map of the relative display URLs used in search results.
+    Each subtype can have a different relative URL. This URL suffix is
+    combined with the value of the displayUrl parameter to form a
+    complete URL for each item in the search results.</td>
+    <td>The map contains keys that consist of comma-separated subtype
+    integers, or the special string "default". These are mapped to a
+    <code>java.text.MessageFormat</code> pattern. There are four
+    parameters that can be used in each pattern, delimited by braces:
+    <dl>
+    <dt> 0
+    <dd> The object ID.
+    <dt> 1
+    <dd> The volume ID.
+    <dt> 2 
+    <dd> The subtype.
+    <dt> 3
+    <dd> The display action, which varies by subtype and is configured
+    by the displayActions parameter.
+    </dl>
+    The default value is a map with one entry mapping "default" to
+    "?func=ll&amp;objAction={0}&amp;objId={3}".</td>
+  </tr>
+
+  <tr>
+    <td>displayActions</td>
+    <td>A map of the display actions used in search results.
+    Each subtype can have a different action.</td>
+    <td>The map contains keys that consist of comma-separated subtype
+    integers, or the special string "default". These are mapped to
+    Livelink action names, such as "browse" or "overview". If the map
+    contains an entry mapping "144" (documents) to "overview", and the
+    Livelink server is version 9.2 SP1 or earlier, the "properties"
+    action is used instead. The default value is a map with one
+    entry mapping "default" to "properties".</td>
+  </tr>
+
+  <tr>
+    <td>contentHandler</td>
+    <td>The name of the <code>ContentHandler</code> implementation
+    class to use when retrieving document content for indexing.</td>
+    <td>There are four <code>ContentHandler</code> implementations:
+    <dl>
+    <dt><code>ByteArrayContentHandler</code>
+    <dd> The fastest implementation, but not a very scalable one
+    because it maintains the entire content in a byte array.
+    <dt><code>FileContentHandler</code>
+    <dd> Stores the content in a temporary file, but performs very
+    badly for files larger than 10 MB.
+    <dt><code>HttpURLContentHandler</code>
+    <dd> Retrieves the content directly from the Livelink server using
+    an <code>HttpURLConnection</code>. Performance is inexplicably
+    disappointing, in line with but consistently 1-1/2 to 3 times slower
+    than the others.
+    <dt><code>PipedContentHandler</code>
+    <dd> Uses a pipe to match the in-memory performance characteristics
+    of the byte array handler without the scalability issues. Combines
+    consistently good performance with small memory consumption.
+    </dl>
+    The default value is
+    "com.google.enterprise.connector.otex.FileContentHandler"</td>
+  </tr>
+
+  <tr>
+    <td>includedExtendedData</td>
+    <td>A map of the ExtendedData attributes that are indexed and used
+    to construct the HTML content. Each subtype can have different
+    attributes indexed.</td>
+    <td>The map contains keys that consist of comma-separated subtype
+    integers. The special string "default" is not supported. These are
+    mapped to a comma-separate list of attribute names, which should
+    appear in the ExtendedData field of the given subtypes. The
+    default value is an empty map.</td>
+  </tr>
+
+  <tr><th colspan="3">Unimplemented Parameters</th></tr>
+
+  <tr>
+    <td>maxItemsPerExtraction</td>
+    <td>The largest batch size that is used. If the batch size hint is
+    larger than this, the maximum size is used instead.
+    <p>This value may be copied from the
+    <code>MaxItemsPerExtraction</code> parameter in the
+    <code>[LivelinkExtractor]</code> section of the opentext.ini
+    file.</td>
+    <td>The value must be between 1 and 100000. The default value is
+    5000.</td>
+  </tr>
+
+  <tr>
+    <td>showHiddenItems</td>
+    <td>Specifies whether hidden items are indexed and searchable.</td>
+    <td>One of the following values:
+    <dl>
+    <dt><code>{}</code> or <code>false</code>
+    <dd>Do not index hidden items.
+    <dt><code>{'ALL'}</code> or <code>true</code>
+    <dd>Index all hidden items.
+    <dt>A comma-separated list of subtype numbers, optionally enclosed
+    by braces
+    <dd>Index hidden items within the container types specified.
+    </dl>
+    <p>This value may be copied from the <code>ShowHiddenItems</code>
+    parameter in the <code>[Atlas]</code> section or in the
+    <code>[Explorer]</code> section of the opentext.ini file. The
+    default value is "{}".</p></td>
+  </tr>
+
+  <tr>
+    <td>includedCategories</td>
+    <td>The IDs of the categories that you want to index. Including a
+    category means that when that category is applied to an item, the
+    attributes are indexed as metadata for that item.</td>
+    <td>A comma-separated list of object IDs for categories, or one of
+    the following special strings:
+    <dl>
+    <dt><code>searchable</code>
+    <dd>All attributes that have the <b>Show in Search</b> parameter
+    enabled, from each of the categories that are applied to the item,
+    are indexed. This value can be combined in the list with
+    category object IDs to include categories with attributes that do
+    not have the <b>Show in Search</b> parameter enabled.</dd>
+    <dt><code>all</code>
+    <dd>All attributes from each of the categories that are applied to
+    the item are indexed.</dd>
+    <dt><code>none</code>
+    <dd>No attributes from any of the categories that are applied to
+    the item are indexed. This value turns off the indexing of
+    categories.</dd>
+    </dl>
+    <p>Specifying an empty string is the same as "all." The default
+    value is "searchable".</p></td>
+  </tr>
+
+  <tr>
+    <td>excludedCategories</td>
+    <td>The IDs of the categories that you do not want to index.
+    Excluding a category means that when that category is applied to
+    an item, the attributes are <em>not</em> indexed as metadata
+    for that item.</td>
+    <td>A comma-separated list of object IDs for categories, or one of
+    the following special strings:
+    <dl>
+    <dt><code>searchable</code>
+    <dd>All attributes that have the <b>Show in Search</b> parameter
+    enabled, from each of the categories that are applied to the item,
+    are excluded. This value can be combined in the list with
+    category object IDs to exclude categories with attributes that do
+    not have the <b>Show in Search</b> parameter enabled.</dd>
+    <dt><code>all</code>
+    <dd>All attributes from each of the categories that are applied to
+    the item are excluded. This value turns off the indexing of
+    categories.</dd>
+    <dt><code>none</code>
+    <dd>No attributes from any of the categories that are applied to
+    the item are excluded. </dd>
+    </dl>
+    <p>Specifying an empty string is the same as "none". The default
+    value is empty.</p></td>
+  </tr>
+
+  <tr>
+    <td>includedObjectInfo</td>
+    <td>The object info attributes that you want to index.</td>
+    <td>A comma-separated list of attribute names. For a list of
+    object info attributes, see "ObjectInfo Attributes" in the
+    <em>Livelink API Developer's Reference Guide</em> from Open Text.
+    The default value is
+    "Comment,CreatedBy,CreatedDate,ID,ModifyDate,Name,SubType,UserID".</td>
+  </tr>
+
+  <tr>
+    <td>includedVersionInfo</td>
+    <td>The version info attributes that you want to index.</td>
+    <td>A comma-separated list of attribute names. For a list of
+    version info attributes, see "VersionInfo Attributes" in the
+    <em>Livelink API Developer's Reference Guide</em> from Open Text.
+    The default value is "MimeType".</td>
+  </tr>
+
+  <tr>
+    <td>includedSystemAttributes</td>
+    <td>The system attributes, or additional node attributes, that you
+    want to index.</td>
+    <td>A comma-separated list of attribute names.
+    The default value is empty.</td>
+  </tr>
+
+</table>
+</body>
+</html>
