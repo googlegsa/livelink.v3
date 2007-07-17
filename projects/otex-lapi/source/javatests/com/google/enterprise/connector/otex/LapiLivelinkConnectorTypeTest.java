@@ -58,4 +58,49 @@ public class LapiLivelinkConnectorTypeTest
         assertBooleanIsTrue(form, "https");
         assertIsHidden(form, "authenticationServer");
     }
+
+    /**
+     * Tests the validateConfig method with HTTP tunneling enabled
+     * and an invalid Livelink CGI parameter.
+     */
+    public void testValidateConfigInvalidLivelinkCgi() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("enableHttpTunneling", "true");
+        props.setProperty("useHttpTunneling", "true");
+        props.setProperty("livelinkCgi", "/frog");
+        props.setProperty("https", "false");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertInvalid(response);
+    }
+
+    /**
+     * Tests the validateConfig method with HTTP tunneling enabled
+     * and HTTPS enabled without the Secure Connect module.
+     */
+    public void testValidateConfigInvalidHttps() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("enableHttpTunneling", "true");
+        props.setProperty("useHttpTunneling", "true");
+        props.setProperty("livelinkCgi", "/frog");
+        props.setProperty("https", "true");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertInvalid(response);
+    }
+
+    /**
+     * Tests the validateConfig method with HTTP tunneling enabled
+     * and HTTPS enabled without the Secure Connect module, but no
+     * Livelink CGI parameter.
+     */
+    public void testValidateConfigIgnoredHttps() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("enableHttpTunneling", "true");
+        props.setProperty("useHttpTunneling", "true");
+        props.setProperty("https", "true");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertValid(response);
+    }
 }

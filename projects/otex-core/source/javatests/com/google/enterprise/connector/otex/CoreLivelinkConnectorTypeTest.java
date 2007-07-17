@@ -327,16 +327,75 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
      * Livelink server.
      */
     public void testValidateConfigValidLivelinkInput() throws Exception {
-        HashMap props = new HashMap(emptyProperties);
-        props.put("server", System.getProperty("connector.server"));
-        props.put("port", System.getProperty("connector.port"));
-        props.put("username", System.getProperty("connector.username"));
-        props.put("password", System.getProperty("connector.password"));
+        Properties props = getValidProperties();
         ConfigureResponse response =
             connectorType.validateConfig(props, defaultLocale);
-        assertNull("Got ConfigureResponse with valid input", response);
+        assertValid(response);
     }
 
+    /**
+     * Tests the validateConfig method with HTTP tunneling disabled
+     * and an invalid Livelink CGI parameter.
+     */
+    public void testValidateConfigIgnoredLivelinkCgi() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("livelinkCgi", "/frog");
+        props.setProperty("https", "false");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertValid(response);
+    }
+
+    /**
+     * Tests the validateConfig method with HTTP tunneling disabled
+     * and HTTP enabled without the Secure Connect module.
+     */
+    public void testValidateConfigIgnoredHttps() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("livelinkCgi", "/frog");
+        props.setProperty("https", "true");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertValid(response);
+    }
+
+    /**
+     * Tests the validateConfig method with HTTP tunneling disabled
+     * and NTLM authentication enabled.
+     */
+    public void testValidateConfigIgnoredEnableNtlm() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("enableNtlm", "true");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertValid(response);
+    }
+
+    /**
+     * Tests the validateConfig method with HTTP tunneling disabled
+     * and sending the credentials to the web server enabled.
+     */
+    public void testValidateConfigIgnoredCredentials() throws Exception {
+        Properties props = getValidProperties();
+        props.setProperty("useUsernamePasswordWithWebServer", "true");
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertValid(response);
+    }
+
+
+    /** Helper method to get valid direct connection properties. */
+    protected Properties getValidProperties() {
+        Properties props = new Properties(emptyProperties);
+        props.setProperty("server", System.getProperty("connector.server"));
+        props.setProperty("port", System.getProperty("connector.port"));
+        props.setProperty("username",
+            System.getProperty("connector.username"));
+        props.setProperty("password",
+            System.getProperty("connector.password"));
+        return props;
+    }
+    
     protected HashMap getForm(ConfigureResponse response) throws Exception {
         String snippet = response.getFormSnippet();
         if (Boolean.getBoolean("printform")) {
@@ -350,6 +409,19 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         return callback.getProperties();
     }
 
+    protected void assertValid(ConfigureResponse response) {
+        if (response != null) {
+            String message = "Got ConfigureResponse with valid input";
+            if (response.getMessage() != null)
+                message += ": " + response.getMessage();
+            fail(message);
+        }
+    }
+    
+    protected void assertInvalid(ConfigureResponse response) {
+        assertNotNull("Got no ConfigureResponse with invalid input", response);
+    }
+    
     protected void assertValue(HashMap form, String name,
             String expectedValue) {
         HashMap element = (HashMap) form.get(name);

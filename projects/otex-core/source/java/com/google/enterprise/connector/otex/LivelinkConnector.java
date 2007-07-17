@@ -132,6 +132,15 @@ public class LivelinkConnector implements Connector {
      */
     private ClientFactory authenticationClientFactory;
 
+    /** Enables or disables HTTP tunneling. */
+    private boolean useHttpTunneling;
+
+    /**
+     * The flag indicating that this connector has a separate set of
+     * authentication parameters.
+     */
+    private boolean useSeparateAuthentication;
+
     /** The base display URL for the search results. */
     private String displayUrl;
 
@@ -173,17 +182,11 @@ public class LivelinkConnector implements Connector {
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler;
 
-    /** The flag indicating that this connector has a separate
-     * set of authentication parameters.
-     */
-    private boolean useSeparateAuthentication;
-
-    /** If set, this property determines the earliest date that
-     * should be searched.
-     */
+    /** The earliest modification date that should be indexed. */
     private String startDate = null;
 
-    /** If set, this property will be used as initial checkpoint from
+    /**
+     * If set, this property will be used as initial checkpoint from
      * which the traversal will start, corresponding to the given date
      * with a document ID of zero.
      */
@@ -279,28 +282,6 @@ public class LivelinkConnector implements Connector {
         return username;
     }
 
-
-    /**
-     * Sets the Livelink public content username.
-     *
-     * @param username the username
-     */
-    public void setPublicContentUsername(String username) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("PUBLIC CONTENT USERNAME: " + username);
-        if (username != null && username.length() > 0)
-            this.publicContentUsername = username;
-    }
-
-    /**
-     * Gets the Livelink public content username.
-     *
-     * @return the username
-     */
-    public String getPublicContentUsername() {
-        return publicContentUsername;
-    }
-
     /**
      * Sets the Livelink password.
      *
@@ -310,6 +291,34 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("PASSWORD: " + password);
         clientFactory.setPassword(password);
+    }
+
+    /**
+     * Sets a flag indicating that HTTP tunneling is enabled.
+     *
+     * @param useHttpTunneling <code>true</code> if HTTP tunneling is enabled
+     */
+    public void setUseHttpTunneling(boolean useHttpTunneling) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("USE HTTP TUNNELING: " + useHttpTunneling);
+        this.useHttpTunneling = useHttpTunneling;
+    }
+
+    /**
+     * Sets the Livelink CGI path to use when tunneling LAPI
+     * requests through the Livelink web server. If a proxy
+     * server is used, this value must be the complete URL to the
+     * Livelink CGI (e.g.,
+     * http://host:port/Livelink/livelink). If no proxy server is
+     * being used, only the path needs to be provided (e.g.,
+     * /Livelink/livelink).
+     *
+     * @param livelinkCgi the path or URL to the Livelink CGI
+     */
+    public void setLivelinkCgi(String livelinkCgi) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("LIVELINK CGI: " + livelinkCgi);
+        clientFactory.setLivelinkCgi(livelinkCgi);
     }
 
     /**
@@ -335,101 +344,6 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("ENABLE NTLM: " + enableNtlm);
         clientFactory.setEnableNtlm(enableNtlm);
-    }
-
-
-    /**
-     * Sets the startDate property, and, as a side-effect, the
-     * startCheckpoint.
-     *
-     * @param property is the date string from the config file.
-     */
-    public void setStartDate(String property)
-    {
-        // parse out the date using either the default or "short"
-        // date format.  If we can parse it, set the property and
-        // the initial checkpoint.  If the parse fails, log it and
-        // start the the beginning...
-        DateFormat defaultDateFormatter = DateFormat.getDateInstance();
-        DateFormat shortDateFormatter =
-            DateFormat.getDateInstance(DateFormat.SHORT);
-        Date d;
-        try {
-            d = defaultDateFormatter.parse(property);
-        }
-        catch (ParseException e) {
-            d = null;
-        }
-
-        // If the default fails, try the short parser.  It might work.
-        if ( d == null ) {
-            try {
-                d = shortDateFormatter.parse(property);
-            }
-            catch (ParseException e) {
-                d = null;
-            }
-        }
-
-        if (d == null) {        // intentionally or not, it isn't a date..
-            startDate = null;
-            startCheckpoint = null;
-            if ( property.length() == 0 ) { // it's intentional
-                if (LOGGER.isLoggable(Level.CONFIG))
-                    LOGGER.config("STARTDATE: No start date specified.");
-            } else {            // it's an error
-                if (LOGGER.isLoggable(Level.WARNING))
-                    LOGGER.warning(
-                        "STARTDATE: Unable to parse startDate property (\"" +
-                        property + "\").  Starting at beginning.");
-            }
-        } else {
-            startDate = property;
-            startCheckpoint = LivelinkResultSet.makeCheckpoint(d, 0);
-            if (LOGGER.isLoggable(Level.CONFIG))
-                LOGGER.config("STARTDATE: " +
-                    DateFormat.getDateTimeInstance().format(d));
-        }
-    }
-
-
-    /**
-     * returns the startDate property.
-     *
-     * @return the startDate.
-     */
-    public String getStartDate()
-    {
-        return startDate;
-    }
-
-
-    /**
-     * returns the startDate checkpoint.
-     *
-     * @return the checkpoint string
-     */
-    public String getStartCheckpoint()
-    {
-        return startCheckpoint;
-    }
-
-
-    /**
-     * Sets the Livelink CGI path to use when tunneling LAPI
-     * requests through the Livelink web server. If a proxy
-     * server is used, this value must be the complete URL to the
-     * Livelink CGI (e.g.,
-     * http://host:port/Livelink/livelink). If no proxy server is
-     * being used, only the path needs to be provided (e.g.,
-     * /Livelink/livelink).
-     *
-     * @param livelinkCgi the path or URL to the Livelink CGI
-     */
-    public void setLivelinkCgi(String livelinkCgi) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("LIVELINK CGI: " + livelinkCgi);
-        clientFactory.setLivelinkCgi(livelinkCgi);
     }
 
     /**
@@ -714,6 +628,98 @@ public class LivelinkConnector implements Connector {
      */
     String getServtype() {
         return servtype;
+    }
+
+    /**
+     * Sets the startDate property, and, as a side-effect, the
+     * startCheckpoint.
+     *
+     * @param property is the date string from the config file.
+     */
+    public void setStartDate(String property) {
+        // parse out the date using either the default or "short"
+        // date format.  If we can parse it, set the property and
+        // the initial checkpoint.  If the parse fails, log it and
+        // start the the beginning...
+        DateFormat defaultDateFormatter = DateFormat.getDateInstance();
+        DateFormat shortDateFormatter =
+            DateFormat.getDateInstance(DateFormat.SHORT);
+        Date d;
+        try {
+            d = defaultDateFormatter.parse(property);
+        }
+        catch (ParseException e) {
+            d = null;
+        }
+
+        // If the default fails, try the short parser.  It might work.
+        if ( d == null ) {
+            try {
+                d = shortDateFormatter.parse(property);
+            }
+            catch (ParseException e) {
+                d = null;
+            }
+        }
+
+        if (d == null) {        // intentionally or not, it isn't a date..
+            startDate = null;
+            startCheckpoint = null;
+            if ( property.length() == 0 ) { // it's intentional
+                if (LOGGER.isLoggable(Level.CONFIG))
+                    LOGGER.config("STARTDATE: No start date specified.");
+            } else {            // it's an error
+                if (LOGGER.isLoggable(Level.WARNING))
+                    LOGGER.warning(
+                        "STARTDATE: Unable to parse startDate property (\"" +
+                        property + "\").  Starting at beginning.");
+            }
+        } else {
+            startDate = property;
+            startCheckpoint = LivelinkResultSet.makeCheckpoint(d, 0);
+            if (LOGGER.isLoggable(Level.CONFIG))
+                LOGGER.config("STARTDATE: " +
+                    DateFormat.getDateTimeInstance().format(d));
+        }
+    }
+
+    /**
+     * Gets the startDate property.
+     *
+     * @return the startDate
+     */
+    public String getStartDate() {
+        return startDate;
+    }
+
+    /**
+     * Gets the startDate checkpoint.
+     *
+     * @return the checkpoint string
+     */
+    public String getStartCheckpoint() {
+        return startCheckpoint;
+    }
+
+    /**
+     * Sets the Livelink public content username.
+     *
+     * @param username the username
+     */
+    public void setPublicContentUsername(String username) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("PUBLIC CONTENT USERNAME: " + username);
+        if (username != null && username.length() > 0)
+            this.publicContentUsername = username;
+    }
+
+    /**
+     * Gets the Livelink public content username.
+     *
+     * @return the username
+     */
+    public String getPublicContentUsername() {
+        return publicContentUsername;
     }
 
     /**
@@ -1031,8 +1037,13 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("LOGIN");
 
-        // TODO: move this to a Spring-callable "after all
+        // TODO: move this code to a Spring-callable "after all
         // properties have been set" method.
+        if (!useHttpTunneling) {
+            LOGGER.finer("DISABLING HTTP TUNNELING");
+            clientFactory.setLivelinkCgi("");
+            clientFactory.setUseUsernamePasswordWithWebServer(false);
+        }
         if (!useSeparateAuthentication)
             authenticationClientFactory = null;
 

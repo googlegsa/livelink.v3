@@ -620,11 +620,18 @@ public class LivelinkConnectorType implements ConnectorType {
             LOGGER.config("validateConfig locale: " + locale);
         }
 
-        // The configData object is actually a Properties
-        // object, but since they don't tell us that
-        // officially, we'll copy the data.
-        Properties p = new Properties();
-        p.putAll(configData);
+        // We want to change the passed in properties, but avoid
+        // changing the configData parameter. If it is a Properties
+        // object, we'll just wrap it to avoid changing the underlying
+        // object. If it's another kind of map, then putAll should
+        // work.
+        Properties p;
+        if (configData instanceof Properties)
+            p = new Properties((Properties) configData);
+        else {
+            p = new Properties();
+            p.putAll(configData);
+        }
 
         // Update the properties to copy the enabler properties to
         // the uses.
@@ -694,12 +701,16 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private boolean changeFormDisplay(Properties p, String useName,
             String enableName) {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("ENABLED: " + p.getProperty(enableName));
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("ENABLED " + enableName + ": " +
+                p.getProperty(enableName));
+        }
         boolean enable = new Boolean(p.getProperty(enableName)).booleanValue();
         boolean use = new Boolean(p.getProperty(useName)).booleanValue();
         if (enable != use) {
             p.setProperty(useName, enable ? "true" : "false");
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine("SETTING " + useName + ": " + enable);
             return true;
         } else
             return false;

@@ -50,11 +50,12 @@ class LivelinkConnectorFactory {
         emptyProperties.put("domainName", ""); 
         emptyProperties.put("displayUrl", ""); 
         emptyProperties.put("includedLocationNodes", ""); 
-        emptyProperties.put("https", "true"); 
+        emptyProperties.put("useHttpTunneling", "false"); 
         emptyProperties.put("livelinkCgi", ""); 
-        emptyProperties.put("enableNtlm", "false"); 
         emptyProperties.put("httpUsername", ""); 
         emptyProperties.put("httpPassword", ""); 
+        emptyProperties.put("enableNtlm", "false"); 
+        emptyProperties.put("https", "true"); 
         emptyProperties.put("verifyServer", "true"); 
         emptyProperties.put("caRootCert", ""); 
         emptyProperties.put("useUsernamePasswordWithWebServer", "false"); 

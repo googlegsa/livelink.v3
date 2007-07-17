@@ -4,7 +4,7 @@
 	<bean id="Livelink_Enterprise_Server"
 		class="com.google.enterprise.connector.otex.LivelinkConnector"
 		dependency-check="simple" singleton="false">
-		<property name="startDate" value=""/>
+
 		<property name="server" value="${server}"/>
 		<property name="port" value="${port}"/>
 		<property name="connection" value="${connection}"/>
@@ -15,6 +15,7 @@
 		<property name="includedLocationNodes"
 			value="${includedLocationNodes}"/>
 
+		<property name="useHttpTunneling" value="${useHttpTunneling}"/>
 		<property name="livelinkCgi" value="${livelinkCgi}"/>
 		<property name="httpUsername" value="${httpUsername}"/>
 		<property name="httpPassword" value="${httpPassword}"/>
@@ -28,8 +29,6 @@
 		</property>
 		<property name="useUsernamePasswordWithWebServer"
 			value="${useUsernamePasswordWithWebServer}"/>
-
-        <property name="publicContentUsername" value=""/>
 
 		<property name="useSeparateAuthentication"
 			value="${useSeparateAuthentication}"/>
@@ -58,6 +57,8 @@
 			value="${authenticationUseUsernamePasswordWithWebServer}"/>
 
 		<property name="servtype" value=""/>
+		<property name="startDate" value=""/>
+		<property name="publicContentUsername" value=""/>
 		<property name="excludedNodeTypes"
 			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
 		<property name="excludedVolumeTypes" value="148,162"/>
