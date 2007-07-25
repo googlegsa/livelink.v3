@@ -104,8 +104,8 @@ public class OneDocumentTest extends TestCase {
                             in.close();
                             if (count == -1)
                                 printableValue = "";
-                            else
-                                printableValue = new String(buffer);
+                            else 
+                                printableValue = new String(buffer, 0, count);
                         } catch (IOException e) {
                             printableValue = e.toString();
                         }
