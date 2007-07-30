@@ -37,6 +37,10 @@ class LivelinkDateFormat {
     private final SimpleDateFormat sql =
         new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
 
+    /** The RFC 822 date format for the SPI */
+    private final SimpleDateFormat rfc822 =
+        new SimpleDateFormat("EEE', 'dd' 'MMM' 'yyyy' 'HH:mm:ss z");
+
     /** The Singleton LivelinkDateFormatter */ 
     private static final LivelinkDateFormat singleton =
         new LivelinkDateFormat();
@@ -44,6 +48,8 @@ class LivelinkDateFormat {
     private LivelinkDateFormat()
     {
         iso8601.setCalendar(gmtCalendar);
+        rfc822.setCalendar(gmtCalendar);
+        rfc822.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
        
     /** Return the singleton instance of the Livelink Date Formatter.
@@ -74,7 +80,7 @@ class LivelinkDateFormat {
      * objects in instance fields to balance object creation, not
      * frequent at just once per result set, and synchronization,
      * which is fast in the absence of contention. It is extremely
-     * unlikely that <code>PropertyMapList</code> instances or their
+     * unlikely that <code>DocumentList</code> instances or their
      * children will be called from multiple threads, but there's no
      * need to cut corners here.
      * 
@@ -102,4 +108,25 @@ class LivelinkDateFormat {
     public synchronized String toSqlString(Date value) {
         return sql.format(value);
     }
+
+
+    /**
+     * Converts a local time date to an RFC 822 format time string.
+     *
+     * @param value a timestamp where local time is database local time
+     * @return an RFC 822 string 
+     * @see #toIso8601String
+     */
+    public synchronized String toRfc822String(Date value) {
+        return rfc822.format(value);
+    }
+
 }
+
+
+
+
+
+
+
+

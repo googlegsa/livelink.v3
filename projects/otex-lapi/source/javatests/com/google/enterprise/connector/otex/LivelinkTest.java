@@ -26,16 +26,19 @@ import java.util.Set;
 
 import junit.framework.TestCase;
 
+import com.google.enterprise.connector.otex.LivelinkDocumentList;
+
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
-import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.PropertyMapList;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spi.ValueType;
+import com.google.enterprise.connector.spiimpl.BinaryValue;
+
 
 public class LivelinkTest extends TestCase {
     private LivelinkConnector conn;
@@ -56,6 +59,7 @@ public class LivelinkTest extends TestCase {
         Session sess = conn.login();
     }
 
+
     public void testTraversal() throws RepositoryException {
         Session sess = conn.login();
 
@@ -63,14 +67,12 @@ public class LivelinkTest extends TestCase {
         mgr.setBatchHint(20);
 
         System.out.println("============ startTraversal ============");
-        PropertyMapList pmList = mgr.startTraversal();
-        PropertyMap lastNode = processResultSet(pmList);
-        while (lastNode != null)
-        {
-            String checkpoint = mgr.checkpoint(lastNode);
+        LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+        Document lastNode;
+        while ((lastNode = processResultSet(docList)) != null) {
+            String checkpoint = docList.checkpoint();
             System.out.println("============ resumeTraversal ============");
-            pmList = mgr.resumeTraversal(checkpoint);
-            lastNode = processResultSet(pmList);
+            docList = (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
         }
     }
 
@@ -81,37 +83,35 @@ public class LivelinkTest extends TestCase {
      * @return the propertyMap for the result, or null if there is none.
      * @throws RepositoryException
      */
-    private static PropertyMap getFirstResult(TraversalManager mgr)
+    private static Document getFirstResult(TraversalManager mgr)
         throws RepositoryException
     {
         mgr.setBatchHint(1);    // we only want the first result...
-        PropertyMapList pmList = mgr.startTraversal();
-        Iterator iter = pmList.iterator();
+        LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+        Iterator iter = docList.iterator();
         if ( !iter.hasNext() )
             return null;
         else
-            return (PropertyMap) iter.next();
+            return (Document) iter.next();
     }
 
 
-    private PropertyMap processResultSet(PropertyMapList pmList)
+    private Document processResultSet(LivelinkDocumentList docList)
             throws RepositoryException {
         // XXX: What's supposed to happen if the result set is empty?
-        PropertyMap map = null;
-        Iterator it = pmList.iterator();
+        Document doc = null;
+        Iterator it = docList.iterator();
         while (it.hasNext()) {
             System.out.println();
-            map = (PropertyMap) it.next();
-            Iterator jt = map.getProperties();
+            doc = (Document) it.next();
+            Iterator jt = doc.getPropertyNames().iterator();
             while (jt.hasNext()) {
-                Property prop = (Property) jt.next();
-                String name = prop.getName();
-                Value value = prop.getValue();
+                String name = (String) jt.next();
+                Value value = doc.findProperty(name).nextValue();
                 String printableValue;
-                ValueType type = value.getType();
-                if (type == ValueType.BINARY) {
+                if (value instanceof BinaryValue) {
                     try {
-                        InputStream in = value.getStream();
+                        InputStream in = ((BinaryValue)value).getInputStream();
                         byte[] buffer = new byte[32];
                         int count = in.read(buffer);
                         in.close();
@@ -123,11 +123,11 @@ public class LivelinkTest extends TestCase {
                         printableValue = e.toString();
                     }
                 } else
-                    printableValue = value.getString();
+                    printableValue = value.toString();
                 System.out.println(name + " = " + printableValue);
             }
         }
-        return map;
+        return doc;
     }
 
     private int rowCount;
@@ -147,19 +147,19 @@ public class LivelinkTest extends TestCase {
         // one will produce one row for each unique timestamp, so a
         // size of 100, or even two, would necessarily include some of
         // those duplicates that were elided.
-        int[] batchHints = { /*1,*/ 100 };
+        int[] batchHints = {  100 };
         int previousRowCount = 0;
         for (int i = 0; i < batchHints.length; i++) {
             long before = System.currentTimeMillis();
             mgr.setBatchHint(batchHints[i]);
 
             rowCount = 0;
-            PropertyMapList pmList = mgr.startTraversal();
-            PropertyMap lastNode = countResultSet(pmList);
+            LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+            Document lastNode = countResultSet(docList);
             while (lastNode != null) {
-                String checkpoint = mgr.checkpoint(lastNode);
-                pmList = mgr.resumeTraversal(checkpoint);
-                lastNode = countResultSet(pmList);
+                String checkpoint = docList.checkpoint();
+                docList = (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
+                lastNode = countResultSet(docList);
             }
             long after = System.currentTimeMillis();
             System.out.println("TIME: " + (after - before));
@@ -192,9 +192,9 @@ public class LivelinkTest extends TestCase {
         // Verify that this date is before our sanctioned startDate
         Session sess = conn.login();
         TraversalManager tm = sess.getTraversalManager();
-        PropertyMap doc = getFirstResult(tm);
+        Document doc = getFirstResult(tm);
         assertNotNull("First doc is null.", doc);
-        String dateStr = doc.getProperty("ModifyDate").getValue().getString();
+        String dateStr = doc.findProperty("ModifyDate").nextValue().toString();
         try {
             Date docDate = iso8601.parse(dateStr);
 
@@ -216,11 +216,11 @@ public class LivelinkTest extends TestCase {
         TraversalManager tmSD = sessSD.getTraversalManager();
 
         // Look for any results that are too old
-        PropertyMapList results = tmSD.startTraversal();
-        PropertyMap lastNode = assertNoResultsOlderThan(results, startDate);
+        LivelinkDocumentList results = (LivelinkDocumentList) tmSD.startTraversal();
+        Document lastNode = assertNoResultsOlderThan(results, startDate);
         while (lastNode != null) {
-            String checkpoint = tmSD.checkpoint(lastNode);
-            results = tmSD.resumeTraversal(checkpoint);
+            String checkpoint = results.checkpoint();
+            results = (LivelinkDocumentList) tmSD.resumeTraversal(checkpoint);
             lastNode = assertNoResultsOlderThan(results, startDate);
         }
     }
@@ -230,15 +230,15 @@ public class LivelinkTest extends TestCase {
      * Process a resultset and check for any results older than the
      * given date.
      */
-    private PropertyMap assertNoResultsOlderThan(PropertyMapList pmList,
+    private Document assertNoResultsOlderThan(LivelinkDocumentList docList,
         Date date) throws RepositoryException {
-        PropertyMap map = null;
-        Iterator it = pmList.iterator();
+        Document doc = null;
+        Iterator it = docList.iterator();
         while (it.hasNext()) {
-            map = (PropertyMap) it.next();
-            String docId = map.getProperty("ID").getValue().getString();
+            doc = (Document) it.next();
+            String docId = doc.findProperty("ID").nextValue().toString();
             String dateStr =
-                map.getProperty("ModifyDate").getValue().getString();
+                doc.findProperty("ModifyDate").nextValue().toString();
 
             // Check that the modify date is new enough
             try {
@@ -246,14 +246,14 @@ public class LivelinkTest extends TestCase {
                 assertFalse("Document is older than " +
                     defaultDateFormat.format(date) +
                     ". (Id="+ docId + "; Name=\"" +
-                    map.getProperty("Name").getValue().getString() +
+                    doc.findProperty("Name").nextValue().toString() +
                     "\"; Mod Date=" + defaultDateFormat.format(docDate) + ")",
                     docDate.before(date));
                 boolean verbose = false;
                 if ( verbose ) {
                     System.out.println("Examining:(Id="+ docId +
                         "; Name=\"" +
-                        map.getProperty("Name").getValue().getString() +
+                        doc.findProperty("Name").nextValue().toString() +
                         "\"; Mod Date=" + defaultDateFormat.format(docDate) +
                         ")");
                 }
@@ -262,19 +262,19 @@ public class LivelinkTest extends TestCase {
                 fail("Unable to parse document modified date: " + dateStr);
             }
         }
-        return map;
+        return doc;
     }
 
 
-    private PropertyMap countResultSet(PropertyMapList pmList)
+    private Document countResultSet(LivelinkDocumentList docList)
             throws RepositoryException {
-        PropertyMap map = null;
-        Iterator it = pmList.iterator();
+        Document doc = null;
+        Iterator it = docList.iterator();
         while (it.hasNext()) {
             rowCount++;
-            map = (PropertyMap) it.next();
+            doc = (Document) it.next();
         }
-        return map;
+        return doc;
     }
 
     public void testDuplicates() throws RepositoryException {
@@ -283,25 +283,25 @@ public class LivelinkTest extends TestCase {
         TraversalManager mgr = sess.getTraversalManager();
 
         HashSet nodes = new HashSet();
-        PropertyMapList pmList = mgr.startTraversal();
-        PropertyMap lastNode = processResultSet(pmList, nodes);
+        LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+        Document lastNode = processResultSet(docList, nodes);
         while (lastNode != null) {
-            String checkpoint = mgr.checkpoint(lastNode);
-            pmList = mgr.resumeTraversal(checkpoint);
-            lastNode = processResultSet(pmList, nodes);
+            String checkpoint = docList.checkpoint();
+            docList = (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
+            lastNode = processResultSet(docList, nodes);
         }
     }
 
-    private PropertyMap processResultSet(PropertyMapList pmList, Set nodes)
+    private Document processResultSet(LivelinkDocumentList docList, Set nodes)
             throws RepositoryException {
-        PropertyMap map = null;
-        Iterator it = pmList.iterator();
+        Document doc = null;
+        Iterator it = docList.iterator();
         while (it.hasNext()) {
-            map = (PropertyMap) it.next();
-            Property prop = map.getProperty(SpiConstants.PROPNAME_DOCID);
-            String value = prop.getValue().getString();
+            doc = (Document) it.next();
+            Property prop = doc.findProperty(SpiConstants.PROPNAME_DOCID);
+            String value = prop.nextValue().toString();
             assertTrue(value, nodes.add(value));
         }
-        return map;
+        return doc;
     }
 }

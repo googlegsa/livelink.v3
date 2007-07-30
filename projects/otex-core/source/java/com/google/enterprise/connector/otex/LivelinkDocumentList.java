@@ -35,15 +35,13 @@ import java.util.Set;
 import java.util.TimeZone;
 
 import com.google.enterprise.connector.spi.AuthorizationManager;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.Property;
-import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.SimpleValue;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -51,30 +49,30 @@ import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
 /**
  * This result set implementation could be trivial, but is not. Since
- * a <code>PropertyMapList</code> in this implementation is a wrapper on a
+ * a <code>DocumentList</code> in this implementation is a wrapper on a
  * recarray, we need the recarray and other things in the
- * <code>PropertyMapList</code>, <code>PropertyMap</code>,
+ * <code>DocumentList</code>, <code>Document</code>,
  * <code>Property</code>, and <code>Value</code> implementations,
  * along with the associated <code>Iterator</code> implementations. So
  * we use inner classes to share the necessary objects from this
  * outermost class.
  */
-class LivelinkResultSet implements PropertyMapList {
+class LivelinkDocumentList implements DocumentList {
     /** The logger for this class. */
     private static final Logger LOGGER =
-        Logger.getLogger(LivelinkResultSet.class.getName());
+        Logger.getLogger(LivelinkDocumentList.class.getName());
 
     /** An immutable string value of "text/html". */
     private static final Value VALUE_TEXT_HTML =
-        new SimpleValue(ValueType.STRING, "text/html");
+        Value.getStringValue("text/html");
 
     /** An immutable false value. */
     private static final Value VALUE_FALSE =
-        new SimpleValue(ValueType.BOOLEAN, "false");
+        Value.getBooleanValue(false);
 
     /** An immutable true value. */
     private static final Value VALUE_TRUE =
-        new SimpleValue(ValueType.BOOLEAN, "true");
+        Value.getBooleanValue(true);
 
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
@@ -105,25 +103,17 @@ class LivelinkResultSet implements PropertyMapList {
     /** This subset of documents are authorized as public content. */
     private HashSet publicContentDocs = null;
 
-    /**
-     * Generate a checkpoint string from a date and an object Id.
-     *
-     * @param date the date at which to start
-     * @param objectId the object id at which to start
-     * @return the checkpoint string.
-     */
-    public static String makeCheckpoint(Date date, int objectId)
-    {
-        String cp =
-            LivelinkDateFormat.getInstance().toSqlString(date) +
-            ','  + objectId;
-        return cp;
-    }
+    /** This is the checkpoint string for the current DocumentList */
+    private String chkpoint;
 
-    LivelinkResultSet(LivelinkConnector connector, Client client,
+    /** This is the DocumentList Iterator */
+    private Iterator docIterator;
+
+    LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
-            Field[] fields, TraversalContext traversalContext)
-            throws RepositoryException {
+            Field[] fields, TraversalContext traversalContext,
+            String checkpoint) throws RepositoryException {
+
         this.connector = connector;
         this.client = client;
         this.valueFactory = client.getClientValueFactory();
@@ -131,9 +121,40 @@ class LivelinkResultSet implements PropertyMapList {
         this.recArray = recArray;
         this.fields = fields;
         this.traversalContext = traversalContext;
+        this.chkpoint = checkpoint;
 
         // Subset the docIds in the recArray into Public and Private Docs.
         findPublicContent();
+
+        // Prime the DocumentList.nextDocument() iterator
+        docIterator = iterator();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public Document nextDocument() throws RepositoryException {
+        return (docIterator.hasNext()) ? (Document) docIterator.next() : null;
+    }
+        
+    /**
+     * {@inheritDoc}
+     */
+    public String checkpoint() throws RepositoryException {
+        return chkpoint;
+    }
+
+    /**
+     * Generate a checkpoint string from a date and an object Id.
+     *
+     * @param date the date at which to start
+     * @param objectId the object id at which to start
+     * @return the checkpoint string.
+     */
+    public void setCheckpoint(Date date, int objectId)
+    {
+        chkpoint = LivelinkDateFormat.getInstance().toSqlString(date) +
+            ',' + objectId;
     }
 
 
@@ -196,7 +217,7 @@ class LivelinkResultSet implements PropertyMapList {
                 try {
                     return recArray.toString(row++, "DataID");
                 } catch (RepositoryException e) {
-                    LOGGER.warning("LivelinkResultSet.DocIdIterator.next()" +
+                    LOGGER.warning("LivelinkDocumentList.DocIdIterator.next()" +
                                    "caught exception - " + e.getMessage());
                 }
             }
@@ -212,15 +233,15 @@ class LivelinkResultSet implements PropertyMapList {
 
     /** {@inheritDoc} */
     public Iterator iterator() {
-        return new LivelinkResultSetIterator();
+        return new LivelinkDocumentListIterator();
     }
 
 
     /**
-     * Iterates over a <code>PropertyMapList</code>, returning each
-     * <code>PropertyMap</code> it contains.
+     * Iterates over a <code>DocumentList</code>, returning each
+     * <code>Document</code> it contains.
      */
-    private class LivelinkResultSetIterator implements Iterator {
+    private class LivelinkDocumentListIterator implements Iterator {
         /** The current row of the recarray. */
         private int row;
 
@@ -233,29 +254,32 @@ class LivelinkResultSet implements PropertyMapList {
         /** The volume ID of the current row. */
         private int volumeId;
 
-        /** The PropertyMap associated with the current row. */
-        private LivelinkPropertyMap props;
+        /** The Document Properties associated with the current row. */
+        private LivelinkDocument props;
 
-        LivelinkResultSetIterator() {
+        LivelinkDocumentListIterator() {
             this.row = 0;
             this.size = recArray.size();
         }
 
         public boolean hasNext() {
-            return row < size;
+            return (row < size);
         }
 
         public Object next() {
             if (row < size) {
+
                 try {
                     objectId = recArray.toInteger(row, "DataID");
                     volumeId = recArray.toInteger(row, "OwnerID");
-                    props = new LivelinkPropertyMap(objectId, fields.length*2);
+                    props = new LivelinkDocument(objectId, fields.length*2);
 
-                    /* establish the checkpoint string for this row */
-                    Date date = recArray.toDate(row, "ModifyDate");
-                    String cp = makeCheckpoint(date, objectId);
-                    props.setCheckpoint(cp);
+                    /* Establish the checkpoint string for this row.
+                     * NOTE: This assumes that there is not more than one active
+                     * iterator on the docList.  In the SPI world that is true.
+                     * however the tests iterate over the docList several times.
+                     */
+                    setCheckpoint(recArray.toDate(row, "ModifyDate"), objectId);
 
                     /* collect the various properties for this row */
                     collectRecArrayProperties();
@@ -274,6 +298,7 @@ class LivelinkResultSet implements PropertyMapList {
         public void remove() {
             throw new UnsupportedOperationException();
         }
+
 
         /** Collects the recarray-based properties. */
         /*
@@ -337,8 +362,7 @@ class LivelinkResultSet implements PropertyMapList {
                 props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
                     VALUE_TEXT_HTML);
                 props.addProperty(SpiConstants.PROPNAME_CONTENT,
-                    new SimpleValue(ValueType.STRING,
-                        "<title>" + name + "</title>\n"));
+                    Value.getStringValue("<title>" + name + "</title>\n"));
             }
 
             // Add the ExtendedData as MetaData properties.
@@ -347,7 +371,7 @@ class LivelinkResultSet implements PropertyMapList {
             // DISPLAYURL
             String url = connector.getDisplayUrl(subType, objectId, volumeId);
             props.addProperty(SpiConstants.PROPNAME_DISPLAYURL,
-                new SimpleValue(ValueType.STRING, url));
+                              Value.getStringValue(url));
         }
 
         /**
@@ -402,7 +426,7 @@ class LivelinkResultSet implements PropertyMapList {
             // and add it to the property map.
             InputStream is =
                 contentHandler.getInputStream(volumeId, objectId, 0, size);
-            Value contentValue = new InputStreamValue(is);
+            Value contentValue = Value.getBinaryValue(is);
             props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
             return contentValue;
         }
@@ -481,7 +505,7 @@ class LivelinkResultSet implements PropertyMapList {
             case ClientValue.DOUBLE:
             case ClientValue.INTEGER:
             case ClientValue.STRING:
-                props.addProperty(name, new LivelinkValue(value));
+                props.addProperty(name, value);
                 break;
 
             default:

@@ -24,15 +24,15 @@ import junit.framework.TestCase;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.Connector;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.Property;
-import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.PropertyMapList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spi.ValueType;
+
 
 /**
  * Tests the LivelinkAuthorizationManager.
@@ -144,7 +144,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      * FIXME: I've added a dummy parameter to prevent this test from
      * running. When it was written, each Property was produced on
      * demand, so this code, which only asks for the docid, was fast.
-     * Now all of the properties for each PropertyMap are created, by
+     * Now all of the properties for each Document are created, by
      * the LivelinkResultSetIterator. In particular, this test now
      * fetches all of the content, which slows it down considerably.
      */
@@ -153,12 +153,12 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         final int batchHint = 100000;
         TraversalManager tm = session.getTraversalManager();
         tm.setBatchHint(batchHint);
-        PropertyMapList pmList = tm.startTraversal();
+        DocumentList docList = tm.startTraversal();
         ArrayList docids = new ArrayList();
-        for (Iterator i = pmList.iterator(); i.hasNext(); ) {
-            Property p = ((PropertyMap) i.next()).getProperty(
-                SpiConstants.PROPNAME_DOCID); 
-            docids.add(p.getValue().getString()); 
+        Document doc;
+        while ((doc = docList.nextDocument()) != null) {
+            Property p = doc.findProperty(SpiConstants.PROPNAME_DOCID);
+            docids.add(p.nextValue().toString());
         }
 
         long start = 0;

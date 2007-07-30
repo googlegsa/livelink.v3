@@ -676,7 +676,8 @@ public class LivelinkConnector implements Connector {
             }
         } else {
             startDate = property;
-            startCheckpoint = LivelinkResultSet.makeCheckpoint(d, 0);
+            startCheckpoint = LivelinkDateFormat.getInstance().toSqlString(d) + ",0";
+
             if (LOGGER.isLoggable(Level.CONFIG))
                 LOGGER.config("STARTDATE: " +
                     DateFormat.getDateTimeInstance().format(d));
@@ -819,13 +820,12 @@ public class LivelinkConnector implements Connector {
      * XXX: If we support pulling metadata from ExtendedData without
      * constructing HTML content, then it might make sense to support
      * the default key here. See the call to
-     * collectExtendedDataProperties in LivelinkPropertyMap.
+     * collectExtendedDataProperties in LivelinkDocument...
      *
      * XXX: Note that the lack of support for "default" is not
      * enforced here, but maybe it should be. If there's a null key in
      * the map, it's just ignored. All lookups are done by subtype.
-     * (For the details, see collectExtendedDataProperties in Livelink
-     * PropertyMap.)
+     * (For details, see collectExtendedDataProperties in LivelinkDocument.)
      */
     public void setIncludedExtendedData(Map extendedDataKeys) {
         setSubtypeMap("EXTENDEDDATA KEYS", extendedDataKeys,

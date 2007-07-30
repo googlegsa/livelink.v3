@@ -14,8 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.spi.ValueType;
-
 /**
  * Describes the properties returned to the caller and the fields in
  * Livelink needed to implement them. A field with no property names
@@ -25,12 +23,6 @@ import com.google.enterprise.connector.spi.ValueType;
 final class Field {
     /** The WebNodes column name. */
     public final String fieldName;
-
-    /**
-     * The expected column type, for error checking. May be
-     * <code>null</code> if there are no property names.
-     */
-    public final ValueType fieldType;
 
     /**
      * The property names to publish the value as. May be an empty
@@ -47,18 +39,17 @@ final class Field {
      * @param fieldName the recarray field name
      */
     public Field(String fieldName) {
-        this(fieldName, null, new String[0]);
+        this(fieldName, new String[0]);
     }
 
     /**
      * Creates a field with one corresponding property name.
      *
      * @param fieldName the recarray field name
-     * @param fieldType the expected field type
      * @param propertyName the output property name
      */
-    public Field(String fieldName, ValueType fieldType, String propertyName) {
-        this(fieldName, fieldType, new String[] { propertyName });
+    public Field(String fieldName, String propertyName) {
+        this(fieldName, new String[] { propertyName });
     }
 
     /**
@@ -66,15 +57,12 @@ final class Field {
      * multiple property names are not ordered in any way.
      *
      * @param fieldName the recarray field name
-     * @param fieldType the expected field type
      * @param propertyName1 one output property name
      * @param propertyName2 another output property name
      */
     /* Close enough to varargs for our purposes. */
-    public Field(String fieldName, ValueType fieldType, String propertyName1,
-            String propertyName2) {
-        this(fieldName, fieldType,
-            new String[] { propertyName1, propertyName2 });
+    public Field(String fieldName, String propertyName1, String propertyName2) {
+        this(fieldName, new String[] { propertyName1, propertyName2 });
     }
 
     /**
@@ -82,17 +70,14 @@ final class Field {
      * multiple property names are not ordered in any way.
      *
      * @param fieldName the recarray field name
-     * @param fieldType the expected field type
      * @param propertyNames the output property names
      */
-    private Field(String fieldName, ValueType fieldType,
-            String[] propertyNames) {
+    private Field(String fieldName, String[] propertyNames) {
         // This is obvious by inspection here, but code elsewhere
         // depends on this.
         assert propertyNames != null : fieldName;
         
         this.fieldName = fieldName;
-        this.fieldType = fieldType;
         this.propertyNames = propertyNames;
 
         // FIXME: Hack based on one user ID field. We need to know

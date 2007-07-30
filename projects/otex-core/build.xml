@@ -39,9 +39,9 @@
   <property name="thirdparty.jar.dir"
             location="${connector-manager-projects.dir}/connector-manager/third-party" />
   <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
-  <property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
+  <property name="spi.jarfile" value="${spi.jar.dir}/connector-spi.jar" />
   <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
-  <property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
+  <property name="tests.jarfile" value="${spi.jar.dir}/connector-tests.jar" />
 
   <!-- =========================== TASKS =============================== -->
   <target name="build" depends="init,compile,compile_tests,jar">
@@ -66,6 +66,7 @@
            target="1.4" source="1.4">
       <classpath>
         <pathelement location="${spi.jarfile}" />
+        <pathelement location="${connector.jarfile}" />
         <fileset dir="${thirdparty.jar.dir}">
           <include name="**/*.jar" />
         </fileset>
@@ -84,7 +85,7 @@
           <include name="**/spring.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${classes}" />
         <pathelement location="${thirdparty.jar.dir}/**/junit.jar" />
@@ -119,7 +120,7 @@
           <include name="**/*.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${tests.classes}" />

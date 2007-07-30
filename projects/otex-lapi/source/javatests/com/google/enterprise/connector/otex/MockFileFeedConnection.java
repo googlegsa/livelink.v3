@@ -62,7 +62,8 @@ public class MockFileFeedConnection implements FeedConnection {
         }
         long after = System.currentTimeMillis();
         System.out.println("Elapsed time = " + (after - before));
-        return "Mock response";
+        //        return "Mock response";
+        return "Success";
     }
 
 }

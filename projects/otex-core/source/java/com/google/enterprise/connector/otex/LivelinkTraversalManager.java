@@ -20,14 +20,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
 
-import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.PropertyMapList;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.TraversalContextAware;
-import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -52,7 +51,7 @@ class LivelinkTraversalManager
 
     /**
      * The primary store for property names that we want to map from
-     * the database to the PropertyMap. This is an array of
+     * the database to the Document. This is an array of
      * <code>Field</code> objects that include the record array field
      * name, the record array field type, and the Google and Livelink
      * property names. If no property names are provided, then the
@@ -66,20 +65,19 @@ class LivelinkTraversalManager
         // ModifyDate, MimeType, Name, SubType, OwnerID, and DataSize.
         ArrayList list = new ArrayList();
 
-        list.add(new Field("DataID", ValueType.LONG, "ID",
-            SpiConstants.PROPNAME_DOCID));
-        list.add(new Field("ModifyDate", ValueType.DATE, "ModifyDate",
-            SpiConstants.PROPNAME_LASTMODIFIED));
-        list.add(new Field("MimeType", ValueType.STRING, "MimeType",
-            SpiConstants.PROPNAME_MIMETYPE));
+        list.add(new Field("DataID", "ID", SpiConstants.PROPNAME_DOCID));
+        list.add(new Field("ModifyDate", "ModifyDate",
+                           SpiConstants.PROPNAME_LASTMODIFIED));
+        list.add(new Field("MimeType", "MimeType",
+                           SpiConstants.PROPNAME_MIMETYPE));
 
-        list.add(new Field("DComment", ValueType.STRING, "Comment"));
-        list.add(new Field("CreateDate", ValueType.DATE, "CreateDate"));
-        list.add(new Field("OwnerName", ValueType.STRING, "CreatedBy"));
-        list.add(new Field("Name", ValueType.STRING, "Name"));
-        list.add(new Field("SubType", ValueType.LONG, "SubType"));
-        list.add(new Field("OwnerID", ValueType.LONG, "VolumeID"));
-        list.add(new Field("UserID", ValueType.STRING, "UserID"));
+        list.add(new Field("DComment", "Comment"));
+        list.add(new Field("CreateDate", "CreateDate"));
+        list.add(new Field("OwnerName", "CreatedBy"));
+        list.add(new Field("Name", "Name"));
+        list.add(new Field("SubType", "SubType"));
+        list.add(new Field("OwnerID", "VolumeID"));
+        list.add(new Field("UserID", "UserID"));
 
         list.add(new Field("DataSize"));
         list.add(new Field("PermID"));
@@ -379,7 +377,7 @@ class LivelinkTraversalManager
 
 
     /** {@inheritDoc} */
-    public PropertyMapList startTraversal() throws RepositoryException {
+    public DocumentList startTraversal() throws RepositoryException {
         String cp = connector.getStartCheckpoint();
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("START @" +
@@ -391,28 +389,8 @@ class LivelinkTraversalManager
     }
 
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation gets a string of the form "yyyy-MM-dd
-     * HH:mm:ss,nnnnnn" where nnnnnn is the object ID of the item
-     * represented by the property map.
-     *
-     * @param pm a property map
-     * @return a checkpoint string for the given property map
-     */
-    public String checkpoint(PropertyMap pm) throws RepositoryException {
-        String s = ((LivelinkPropertyMap) pm).checkpoint();
-        if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("CHECKPOINT: " + s + " @" +
-                Integer.toHexString(System.identityHashCode(this)));
-        }
-        return s;
-    }
-
-
     /** {@inheritDoc} */
-    public PropertyMapList resumeTraversal(String checkpoint)
+    public DocumentList resumeTraversal(String checkpoint)
             throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("RESUME: " + checkpoint + " @" +
@@ -480,7 +458,7 @@ class LivelinkTraversalManager
      * @return a batch of results starting at the checkpoint, if there
      * is one, or the beginning of the traversal order, otherwise
      */
-    private PropertyMapList listNodes(String checkpoint)
+    private DocumentList listNodes(String checkpoint)
             throws RepositoryException {
         ClientValue recArray;
         if (isSqlServer)
@@ -491,8 +469,8 @@ class LivelinkTraversalManager
             LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
                 Integer.toHexString(System.identityHashCode(this)));
         }
-        return new LivelinkResultSet(connector, client, contentHandler,
-            recArray, FIELDS, traversalContext);
+        return new LivelinkDocumentList(connector, client, contentHandler,
+            recArray, FIELDS, traversalContext, checkpoint);
     }
 
 

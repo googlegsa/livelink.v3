@@ -44,9 +44,9 @@
   <property name="thirdparty.jar.dir"
             location="${connector-manager-projects.dir}/connector-manager/third-party" />
   <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
-  <property name="spi.jarfile" value="${spi.jar.dir}/connector_spi.jar" />
+  <property name="spi.jarfile" value="${spi.jar.dir}/connector-spi.jar" />
   <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
-  <property name="tests.jarfile" value="${spi.jar.dir}/connector_tests.jar" />
+  <property name="tests.jarfile" value="${spi.jar.dir}/connector-tests.jar" />
 
   <property name="lapi.jarfile" location="${build.lapi.home}/lib/lapi.jar" />
 
@@ -92,7 +92,7 @@
         </fileset>
         <pathelement location="${core.tests.classes}" />
         <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
       </classpath>
@@ -122,7 +122,7 @@
         <pathelement location="${tests.classes}" />
         <pathelement location="${core.tests.classes}" />
         <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector_tests.jar" />
+        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${lapi.jarfile}" />

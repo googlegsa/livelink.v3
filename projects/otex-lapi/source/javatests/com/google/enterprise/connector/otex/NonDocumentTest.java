@@ -24,14 +24,14 @@ import junit.framework.TestCase;
 
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
-import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.PropertyMapList;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spi.ValueType;
+import com.google.enterprise.connector.spiimpl.BinaryValue;
 
 public class NonDocumentTest extends TestCase {
     private LivelinkConnector conn;
@@ -47,29 +47,26 @@ public class NonDocumentTest extends TestCase {
         mgr.setBatchHint(3000);
 
         String checkpoint = "2007-02-16 14:39:09,31257";
-        PropertyMapList rs = mgr.resumeTraversal(checkpoint);
+        DocumentList rs = mgr.resumeTraversal(checkpoint);
         processResultSet(rs);
     }
 
-    private PropertyMap processResultSet(PropertyMapList rs)
+    private Document processResultSet(DocumentList docList)
             throws RepositoryException {
         // XXX: What's supposed to happen if the result set is empty?
-        PropertyMap map = null;
-        Iterator it = rs.iterator();
-        while (it.hasNext()) {
+        Document doc;
+        while ((doc = docList.nextDocument()) != null) {
             System.out.println();
-            map = (PropertyMap) it.next();
-            Iterator jt = map.getProperties();
+            Iterator jt = doc.getPropertyNames().iterator();
             while (jt.hasNext()) {
-                Property prop = (Property) jt.next();
-                String name = prop.getName();
-                for (Iterator values = prop.getValues(); values.hasNext(); ) {
-                    Value value = (Value) values.next();
+                String name = (String) jt.next();
+                Property prop = doc.findProperty(name);
+                Value value;
+                while ((value = prop.nextValue()) != null) {
                     String printableValue;
-                    ValueType type = value.getType();
-                    if (type == ValueType.BINARY) {
+                    if (value instanceof BinaryValue) {
                         try {
-                            InputStream in = value.getStream();
+                            InputStream in = ((BinaryValue)value).getInputStream();
                             byte[] buffer = new byte[32];
                             int count = in.read(buffer);
                             in.close();
@@ -81,11 +78,11 @@ public class NonDocumentTest extends TestCase {
                             printableValue = e.toString();
                         }
                     } else
-                        printableValue = value.getString();
+                        printableValue = value.toString();
                     System.out.println(name + " = " + printableValue);
                 }
             }
         }
-        return map;
+        return doc;
     }
 }

@@ -86,7 +86,7 @@ class LivelinkSession implements Session {
     /**
      * Gets an AuthorizationManager to implement per-user authorization.
      * 
-     * NOTE: LivelinkResultSet gets access to the AuthorizationManager 
+     * NOTE: LivelinkDocumentList gets access to the AuthorizationManager 
      * via the Connector's ClientFactory.  It should really get it from 
      * the Session, but at that point it doesn't know what session it
      * belongs to.

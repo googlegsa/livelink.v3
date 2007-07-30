@@ -25,14 +25,13 @@ import junit.framework.TestCase;
 
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
-import com.google.enterprise.connector.spi.PropertyMap;
-import com.google.enterprise.connector.spi.PropertyMapList;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spi.ValueType;
 import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.PushException;
 import com.google.enterprise.connector.pusher.DocPusher;
@@ -76,7 +75,7 @@ public class PushOneDocumentTest extends TestCase {
         // Now push that one document
         TraversalManager mgr = sess.getTraversalManager();
         mgr.setBatchHint(1);
-        PropertyMapList rs = mgr.resumeTraversal(checkpoint);
+        DocumentList rs = mgr.resumeTraversal(checkpoint);
         pushResultSet(rs);
     }
 
@@ -91,16 +90,14 @@ public class PushOneDocumentTest extends TestCase {
         }
     }
 
-    private void pushResultSet(PropertyMapList rs)
+    private void pushResultSet(DocumentList docList)
         throws RepositoryException, PushException {
 
-        Iterator it = rs.iterator();
-        PropertyMap map = null;
+        Document doc;
 
-        while (it.hasNext()) {
-            map = (PropertyMap) it.next();
+        while ((doc = docList.nextDocument()) != null) {
             // TODO: make the feed name a property, along with the feed server and port
-            pusher.take(map, "livelink");
+            pusher.take(doc, "livelink");
         }
     }
 }
