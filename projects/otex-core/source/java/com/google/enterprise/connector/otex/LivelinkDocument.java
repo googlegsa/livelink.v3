@@ -235,6 +235,7 @@ class LivelinkDocument implements Document {
         private static Calendar toCalendar(Date date) {
             Calendar c = Calendar.getInstance();
             c.setTime(date);
+            c.clear(Calendar.MILLISECOND);
             return c;
         }
     }
