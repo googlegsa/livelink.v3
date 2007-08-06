@@ -134,6 +134,10 @@ class LivelinkTraversalManager
         selectList = getSelectList();
         included = getIncluded();
         excluded = getExcluded();
+
+        //System.out.println("LivelinkTraversalManager: included = " + included);
+        //System.out.println("LivelinkTraversalManager: excluded = " + excluded);
+
         contentHandler = getContentHandler();
     }
 
@@ -252,8 +256,8 @@ class LivelinkTraversalManager
      *     SubType not in (<em>excludedNodeTypes</em>) and
      *     DataID not in
      *         (select DataID from DTreeAncestors where AncestorID in
-     *             (<em>excludedVolumeNodes</em>,
-     *                 <em>excludedLocationNodes</em>))
+     *             (<em>excludedVolumeNodes</em>) or AncestorID in
+     *                 (<em>excludedLocationNodes</em>))
      * </pre>
      *
      * where <em>excludedVolumeNodes</em> is obtained from
@@ -274,56 +278,38 @@ class LivelinkTraversalManager
     String getExcluded() throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
 
-        boolean hasNodeTypes;
         String excludedNodeTypes = connector.getExcludedNodeTypes();
-        if (excludedNodeTypes != null &&
-                excludedNodeTypes.length() > 0) {
-            hasNodeTypes = true;
+        if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
             buffer.append("SubType not in (");
             buffer.append(excludedNodeTypes);
             buffer.append(')');
-        } else
-            hasNodeTypes = false;
+        }
 
-        ClientValue volumes;
         String excludedVolumeTypes = connector.getExcludedVolumeTypes();
-        if (excludedVolumeTypes != null &&
-                excludedVolumeTypes.length() > 0) {
-            String query = "SubType in (" + excludedVolumeTypes + ")";
-            String view = "DTree";
-            String[] columns = { "DataID", "PermID" };
-            ClientValue results = client.ListNodes(query, view, columns);
-            volumes = (results.size() == 0) ? null : results;
-        } else
-            volumes = null;
+        if (excludedVolumeTypes != null && excludedVolumeTypes.length() == 0)
+            excludedVolumeTypes = null;
 
-        String locations;
-        String excludedLocationNodes = connector.getExcludedLocationNodes();
-        if (excludedLocationNodes != null &&
-                excludedLocationNodes.length() > 0) {
-            locations = excludedLocationNodes;
-        } else
-            locations = null;
+        String excludedLocations = connector.getExcludedLocationNodes();
+        if (excludedLocations != null && excludedLocations.length() == 0)
+            excludedLocations = null;
 
-        if (volumes != null || locations != null) {
-            if (hasNodeTypes)
+        if (excludedVolumeTypes != null || excludedLocations != null) {
+            if (buffer.length() > 0)
                 buffer.append(" and ");
 
             buffer.append("DataID not in (select DataID from ");
             buffer.append("DTreeAncestors where AncestorID in (");
 
-            if (volumes != null) {
-                for (int i = 0; i < volumes.size(); i++) {
-                    if (i > 0)
-                        buffer.append(',');
-                    buffer.append(volumes.toString(i, "DataID"));
-                }
+            if (excludedVolumeTypes != null) {
+                buffer.append("select DataID from DTree where SubType in (");
+                buffer.append(excludedVolumeTypes);
+                buffer.append(')');
             }
 
-            if (locations != null) {
-                if (volumes != null)
-                    buffer.append(',');
-                buffer.append(locations);
+            if (excludedLocations != null) {
+                if (excludedVolumeTypes != null)
+                    buffer.append(") or AncestorID in (");
+                buffer.append(excludedLocations);
             }
 
             buffer.append("))");
@@ -530,6 +516,8 @@ class LivelinkTraversalManager
             new String[selectArrayList.size()]);
         columns[0] = "top " + batchSize + " " + columns[0];
 
+        //System.out.println("LivelinkTraversalManager.listNodesSqlServer  query = '" + query + "'  view = '" + view + "'");
+
         return client.ListNodes(query, view, columns);
     }
 
@@ -558,6 +546,8 @@ class LivelinkTraversalManager
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("ORACLE VIEW: " + view);
         String[] columns = new String[] { "*" };
+
+        //System.out.println("LivelinkTraversalManager.listNodesOracle  query = '" + query + "'  view = '" + view + "'");
 
         return client.ListNodes(query, view, columns);
     }
