@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
@@ -209,43 +210,117 @@ class LivelinkTraversalManager
     }
 
     /**
-     * Gets a SQL conditional expression that excludes any
-     * nodes other than those explicitly given in the list of
-     * included nodes, including descendants of those nodes.
+     * Builds a SQL conditional expression that includes all
+     * the starting nodes and all descendants of the starting
+     * nodes.
      *
-     * This returns a SQL expression of the form:
+     * The  list of Traversal starting locations is derived
+     * either from an explict list of start nodes
+     * (<em>includedLocationNodes</em>) or an implicit
+     * list of all non-excluded Volumes.
+     *
+     * If explicit starting nodes are not provided, then we build a list 
+     * of implicit starting points based upon all available volume roots,
+     * less those that are explicitly excluded (excludedVolumeTypes).
+     *
+     * This will then return a SQL expression of the form:
+     *
      * <pre>
      *     (DataID in (<em>includedLocationNodes</em>) or
      *      DataID in
      *         (select DataID from DTreeAncestors where AncestorID in
      *             <em>includedLocationNodes</em>))
      * </pre>
-     * if includedLocationNodes is empty, returns null
      *
-     * @return the SQL conditional expression, or null
+     * @return the SQL conditional expression
      * @throws RepositoryException if an error occurs getting the
      *         includedLocationNodes
      */
     String getIncluded() throws RepositoryException {
-        StringBuffer buffer = new StringBuffer();
 
-        String includedLocationNodes = connector.getIncludedLocationNodes();
-        if (includedLocationNodes != null &&
-            includedLocationNodes.length() > 0 ) {
-            buffer.append("(DataID in (");
-            buffer.append(includedLocationNodes);
-            buffer.append(") or DataID in (SELECT DataID from ");
-            buffer.append("DTreeAncestors where AncestorID in (");
-            buffer.append(includedLocationNodes);
-            buffer.append(")))");
+        // If we have an explict list of start locations, build a
+        // query that includes only those and their descendants.
+        String startNodes = connector.getIncludedLocationNodes();
+        String ancesterNodes;
+        if (startNodes != null || startNodes.length() > 0) {
+            // Projects, Discussions, Channels, and TaskLists have a rather
+            // strange behaviour.  Their contents have a VolumeID that is the
+            // same as the container's ObjectID, and an AncesterID that is the
+            // negation the container's ObjectID.  To catch that, I am going
+            // to create a superset list that adds the negation of everything
+            // in the specified the specified list.  We believe this is safe,
+            // as negative values of standard containers (folders, compound 
+            // docs, etc) simply should not exist, so we shouldn't get any 
+            // false positives.
+            StringBuffer buffer = new StringBuffer();
+            StringTokenizer tok = new StringTokenizer(startNodes,
+                                                      ":;,. \t\n()[]\"\'");
+            while (tok.hasMoreTokens()) {
+                String objId = tok.nextToken();
+                if (buffer.length() > 0)
+                buffer.append(',');
+                buffer.append(objId);
+                try {
+                    int intId = Integer.parseInt(objId);
+                    buffer.append(',');
+                    buffer.append(-intId);
+                } catch (NumberFormatException e) {}
+            }
+            ancesterNodes = buffer.toString();
+
+        } else {
+        // If we don't have an explicit list of start points, build
+        // an implicit list from the list all volumes, minus those
+        // that are explicitly excluded.
+            startNodes = getStartingVolumes();
+            ancesterNodes = startNodes;
         }
 
-        String included = (buffer.length() > 0) ? buffer.toString() : null;
+        StringBuffer buffer = new StringBuffer();
+        buffer.append("(DataID in (");
+        buffer.append(startNodes);
+        buffer.append(") or DataID in (SELECT DataID from ");
+        buffer.append("DTreeAncestors where AncestorID in (");
+        buffer.append(ancesterNodes);
+        buffer.append(")))");
+        String included = buffer.toString();
+
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("INCLUDED: " + included);
         return included;
     }
 
+    /**
+     * Returns a SQL subquery that should expand to the lists of 
+     * Volumes to traverse.  These are all root-level 
+     * Volumes that are not of an excluded volume type.
+     *
+     * <pre>
+     *          select DataID from DTree where DataID not in
+     *             (select DataID from DTreeAncestors) and not
+     *             (SubType in (<em>excludedVolumeTypes</em>))
+     * </pre>
+     *
+     * @return SQL sub-expression
+     * @throws RepositoryException if an error occurs executing the
+     * excluded volume types query
+     */
+    public String getStartingVolumes() throws RepositoryException {
+        StringBuffer buffer = new StringBuffer();
+        
+        buffer.append("select DataID from DTree where DataID in ");
+        buffer.append("(select DataID from DTreeAncestors ");
+        buffer.append("group by DataID having count(*) = 1)");
+  
+        String excludedVolumes = connector.getExcludedVolumeTypes();
+        if (excludedVolumes != null && excludedVolumes.length() > 0) {
+            buffer.append(" and (SubType not in (");
+            buffer.append(excludedVolumes);
+            buffer.append("))");
+        }
+
+        return buffer.toString();
+    }
 
     /**
      * Gets a SQL conditional expression that excludes nodes that
@@ -256,15 +331,7 @@ class LivelinkTraversalManager
      *     SubType not in (<em>excludedNodeTypes</em>) and
      *     DataID not in
      *         (select DataID from DTreeAncestors where AncestorID in
-     *             (<em>excludedVolumeNodes</em>) or AncestorID in
      *                 (<em>excludedLocationNodes</em>))
-     * </pre>
-     *
-     * where <em>excludedVolumeNodes</em> is obtained from
-     *
-     * <pre>
-     *     select DataID from DTree where SubType in
-     *         (<em>excludedVolumeTypes</em>)
      * </pre>
      *
      * The returned expression is simplified in the obvious way when
@@ -279,39 +346,23 @@ class LivelinkTraversalManager
         StringBuffer buffer = new StringBuffer();
 
         String excludedNodeTypes = connector.getExcludedNodeTypes();
-        if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
+        if (excludedNodeTypes != null &&
+                excludedNodeTypes.length() > 0) {
             buffer.append("SubType not in (");
             buffer.append(excludedNodeTypes);
             buffer.append(')');
         }
 
-        String excludedVolumeTypes = connector.getExcludedVolumeTypes();
-        if (excludedVolumeTypes != null && excludedVolumeTypes.length() == 0)
-            excludedVolumeTypes = null;
+        String excludedLocationNodes = connector.getExcludedLocationNodes();
+        if (excludedLocationNodes != null &&
+                excludedLocationNodes.length() > 0) {
 
-        String excludedLocations = connector.getExcludedLocationNodes();
-        if (excludedLocations != null && excludedLocations.length() == 0)
-            excludedLocations = null;
-
-        if (excludedVolumeTypes != null || excludedLocations != null) {
             if (buffer.length() > 0)
                 buffer.append(" and ");
 
             buffer.append("DataID not in (select DataID from ");
             buffer.append("DTreeAncestors where AncestorID in (");
-
-            if (excludedVolumeTypes != null) {
-                buffer.append("select DataID from DTree where SubType in (");
-                buffer.append(excludedVolumeTypes);
-                buffer.append(')');
-            }
-
-            if (excludedLocations != null) {
-                if (excludedVolumeTypes != null)
-                    buffer.append(") or AncestorID in (");
-                buffer.append(excludedLocations);
-            }
-
+            buffer.append(excludedLocationNodes);
             buffer.append("))");
         }
 

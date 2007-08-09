@@ -80,7 +80,6 @@ public class LivelinkQueryTraverserTest extends TestCase {
         runTestBatches(25);
         runTestBatches(125);
         runTestBatches(625);
-    
     }
 
 

@@ -33,7 +33,7 @@ import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spiimpl.BinaryValue;
 
-public class NonDocumentTest extends TestCase {
+public class StartLocationTest extends TestCase {
     private LivelinkConnector conn;
 
     public void setUp() throws RepositoryException {
@@ -43,13 +43,25 @@ public class NonDocumentTest extends TestCase {
     public void testTraversal() throws RepositoryException {
         Session sess = conn.login();
 
+        conn.setIncludedLocationNodes(getStartNodes());
+
         TraversalManager mgr = sess.getTraversalManager();
         mgr.setBatchHint(3000);
 
-        String checkpoint = "2007-02-16 14:39:09,31257";
-
-        DocumentList rs = mgr.resumeTraversal(checkpoint);
+        DocumentList rs = mgr.startTraversal();
         processResultSet(rs);
+    }
+
+    private String getStartNodes() throws RepositoryException {
+        try {
+            String obj = System.getProperty("test.docids",
+                         System.getProperty("test.docid", "BAD"));
+            return LivelinkConnector.sanitizeListOfIntegers(obj);
+        } catch (Exception e) {
+            throw new RepositoryException("Please specify a list of start " +
+                      "nodes using the test.docids property: " +
+                      "-Dtest.docids=\"12345,12346\"");
+        }
     }
 
     private Document processResultSet(DocumentList docList)

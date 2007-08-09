@@ -133,6 +133,7 @@
       <sysproperty key="java.util.logging.config.file"
                    value="${tests.logging.properties}"/>
       <sysproperty key="test.docid" value="${test.docid}" />
+      <sysproperty key="test.docids" value="${test.docids}" />
       <!-- For initializing the Context for DocPusher.take. -->
       <sysproperty key="connector-manager.dir" 
                    value="${connector-manager.dir}" />
