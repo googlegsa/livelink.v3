@@ -16,6 +16,7 @@ package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.File;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -32,6 +33,7 @@ import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
+import com.google.enterprise.connector.manager.Context;
 import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.PushException;
 import com.google.enterprise.connector.pusher.DocPusher;
@@ -55,11 +57,20 @@ public class PushOneDocumentTest extends TestCase {
     private String feedServer = "gogol.vizdom.com";
     private int feedPort = 19900;
             
-    public void setUp() throws RepositoryException {
+    public void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
         sess = (LivelinkSession) conn.login();
         client = sess.getFactory().createClient(); 
         pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort));
+
+        // Iinitialize the Context for DocPusher.take.
+        // FIXME: This code is duplicated in PushOneDocument.
+        String cmDir = System.getProperty("connector-manager.dir");
+        if (cmDir == null)
+            throw new Exception("Missing connector-manager.dir property.");
+        Context.getInstance().setStandaloneContext(
+            cmDir + File.separator + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
+            cmDir + File.separator + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
     }
     
     public void testTraversal() throws RepositoryException, PushException {

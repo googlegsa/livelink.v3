@@ -16,8 +16,10 @@ package com.google.enterprise.connector.otex;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.File;
 import java.io.PrintStream;
 
+import com.google.enterprise.connector.manager.Context;
 import com.google.enterprise.connector.persist.ConnectorStateStore;
 import com.google.enterprise.connector.persist.MockConnectorStateStore;
 import com.google.enterprise.connector.pusher.Pusher;
@@ -50,8 +52,17 @@ public class LivelinkQueryTraverserTest extends TestCase {
 
     private LivelinkConnector conn;
     
-    public void setUp() throws RepositoryException {
+    public void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
+
+        // Iinitialize the Context for DocPusher.take.
+        // FIXME: This code is duplicated in PushOneDocument.
+        String cmDir = System.getProperty("connector-manager.dir");
+        if (cmDir == null)
+            throw new Exception("Missing connector-manager.dir property.");
+        Context.getInstance().setStandaloneContext(
+            cmDir + File.separator + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
+            cmDir + File.separator + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
     }
 
     /**

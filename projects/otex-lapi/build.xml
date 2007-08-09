@@ -133,6 +133,9 @@
       <sysproperty key="java.util.logging.config.file"
                    value="${tests.logging.properties}"/>
       <sysproperty key="test.docid" value="${test.docid}" />
+      <!-- For initializing the Context for DocPusher.take. -->
+      <sysproperty key="connector-manager.dir" 
+                   value="${connector-manager.dir}" />
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tests.src}">
           <include name="**/${test.suite}Test.java" />
