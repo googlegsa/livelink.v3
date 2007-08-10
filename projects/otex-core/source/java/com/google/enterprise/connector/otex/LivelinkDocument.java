@@ -14,21 +14,14 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import com.google.enterprise.connector.spi.Document;
@@ -88,8 +81,11 @@ class LivelinkDocument implements Document {
         Object values = properties.get(name);
         if (values == null) 
             return null;
-        else
-            return new LivelinkProperty(name, (LinkedList) values);
+        else {
+            if (LOGGER.isLoggable(Level.FINEST))
+                LOGGER.finest("PROPERTY: " + name + " = " + values);
+            return new LivelinkProperty((LinkedList) values);
+        }
     }
 
 
@@ -120,7 +116,7 @@ class LivelinkDocument implements Document {
      * @param value a property value
      */
     public void addProperty(String name, ClientValue value) {
-        addProperty(name, LivelinkValue.getValue(value));
+        addProperty(name, getValue(value));
     }
 
     /**
@@ -135,24 +131,23 @@ class LivelinkDocument implements Document {
      */
     public void addProperty(Field field, ClientValue value) {
         String[] names = field.propertyNames;
-        for (int j = 0; j < names.length; j++) {
-            addProperty(names[j],
-                        LivelinkValue.getValue(value));
-        }
+        for (int j = 0; j < names.length; j++)
+            addProperty(names[j], getValue(value));
     }
 
 
     /**
      * {@inheritDoc}
      */
+    /*
+     * TODO: We could use SimpleProperty instead, except that the lazy
+     * initialization of the iterator there bugs me.
+     */
     private static class LivelinkProperty implements Property {
         private final Iterator iterator;
         
-        LivelinkProperty(String name, LinkedList values) {
+        LivelinkProperty(LinkedList values) {
             this.iterator = values.iterator();
-
-            if (LOGGER.isLoggable(Level.FINEST))
-                LOGGER.finest("PROPERTY: " + name + " = " + values);
         }
 
         /**
@@ -163,50 +158,36 @@ class LivelinkDocument implements Document {
         }
     }
 
-
     /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation provides a Google <code>Value</code> 
-     * interface over atomic <code>ClientValue</code>s.  Complex
-     * <code>ClientValue</code> objects (RecArrays or Lists), must be
-     * decomposed into individual atomic components before wrapping
-     * in a <code>LivelinkValue</code>.
+     * Creates a <code>Value</code> (of the appropriate type) from
+     * a <code>ClientValue</code>. Complex <code>ClientValue</code>
+     * objects (RecArrays or Lists), must be * decomposed into
+     * individual atomic components before calling this method.
+     *
+     * @param clientValue the value to be represented.
      */
-    private static abstract class LivelinkValue extends Value {
-
-        /**
-         * Creates a <code>Value</code> (of the appropriate type) from a 
-         * <code>ClientValue</code>.
-         *
-         * @param clientValue the value to be represented.
-         */
-        public static Value getValue(ClientValue clientValue) {
-
-            try {
-            
-                switch (clientValue.type()) {
-                case ClientValue.BOOLEAN:
-                    return Value.getBooleanValue(clientValue.toBoolean());
-                case ClientValue.DATE:
-                    return new LivelinkDateValue(clientValue.toDate());
-                case ClientValue.DOUBLE: 
-                    return Value.getDoubleValue(clientValue.toDouble());
-                case ClientValue.INTEGER:
-                    return Value.getLongValue(clientValue.toInteger());
-                case ClientValue.STRING:
-                    return Value.getStringValue(clientValue.toString2());
-                default:
-                    throw new AssertionError(
-                                  "The clientValue must have an atomic type.");
-                }
-
-            } catch (RepositoryException e) {
-                LOGGER.warning("LivelinkValue factory caught exception " +
-                               "exctracting value from ClientValue: " +
-                               e.getMessage());
-                return Value.getStringValue(e.getMessage());
+    public Value getValue(ClientValue clientValue) {
+        try {
+            switch (clientValue.type()) {
+            case ClientValue.BOOLEAN:
+                return Value.getBooleanValue(clientValue.toBoolean());
+            case ClientValue.DATE:
+                return new LivelinkDateValue(clientValue.toDate());
+            case ClientValue.DOUBLE: 
+                return Value.getDoubleValue(clientValue.toDouble());
+            case ClientValue.INTEGER:
+                return Value.getLongValue(clientValue.toInteger());
+            case ClientValue.STRING:
+                return Value.getStringValue(clientValue.toString2());
+            default:
+                throw new AssertionError(
+                    "The clientValue must have an atomic type.");
             }
+        } catch (RepositoryException e) {
+            LOGGER.warning("LivelinkValue factory caught exception " +
+                "exctracting value from ClientValue: " +
+                e.getMessage());
+            return Value.getStringValue(e.getMessage());
         }
     }
 

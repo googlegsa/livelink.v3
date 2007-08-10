@@ -1,4 +1,4 @@
-
+// Copyright (C) 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +67,8 @@ public class LivelinkTest extends TestCase {
         mgr.setBatchHint(20);
 
         System.out.println("============ startTraversal ============");
-        LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+        LivelinkDocumentList docList =
+            (LivelinkDocumentList) mgr.startTraversal();
         Document lastNode;
         while ((lastNode = processResultSet(docList)) != null) {
             String checkpoint = docList.checkpoint();
@@ -87,7 +88,8 @@ public class LivelinkTest extends TestCase {
         throws RepositoryException
     {
         mgr.setBatchHint(1);    // we only want the first result...
-        LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+        LivelinkDocumentList docList =
+            (LivelinkDocumentList) mgr.startTraversal();
         Iterator iter = docList.iterator();
         if ( !iter.hasNext() )
             return null;
@@ -147,18 +149,25 @@ public class LivelinkTest extends TestCase {
         // one will produce one row for each unique timestamp, so a
         // size of 100, or even two, would necessarily include some of
         // those duplicates that were elided.
-        int[] batchHints = {  100 };
+        // FIXME: A batch size of 1 was killing one of the Livelink
+        // instances on swift with too many requests. Without it this
+        // test is somewhat pointless, so we should figure out if we
+        // can put in a delay, get a better Livelink instance, get a
+        // better Solaris server, or something.
+        int[] batchHints = { /*1,*/ 100 };
         int previousRowCount = 0;
         for (int i = 0; i < batchHints.length; i++) {
             long before = System.currentTimeMillis();
             mgr.setBatchHint(batchHints[i]);
 
             rowCount = 0;
-            LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+            LivelinkDocumentList docList =
+                (LivelinkDocumentList) mgr.startTraversal();
             Document lastNode = countResultSet(docList);
             while (lastNode != null) {
                 String checkpoint = docList.checkpoint();
-                docList = (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
+                docList =
+                    (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
                 lastNode = countResultSet(docList);
             }
             long after = System.currentTimeMillis();
@@ -216,7 +225,8 @@ public class LivelinkTest extends TestCase {
         TraversalManager tmSD = sessSD.getTraversalManager();
 
         // Look for any results that are too old
-        LivelinkDocumentList results = (LivelinkDocumentList) tmSD.startTraversal();
+        LivelinkDocumentList results =
+            (LivelinkDocumentList) tmSD.startTraversal();
         Document lastNode = assertNoResultsOlderThan(results, startDate);
         while (lastNode != null) {
             String checkpoint = results.checkpoint();
@@ -283,7 +293,8 @@ public class LivelinkTest extends TestCase {
         TraversalManager mgr = sess.getTraversalManager();
 
         HashSet nodes = new HashSet();
-        LivelinkDocumentList docList = (LivelinkDocumentList) mgr.startTraversal();
+        LivelinkDocumentList docList =
+            (LivelinkDocumentList) mgr.startTraversal();
         Document lastNode = processResultSet(docList, nodes);
         while (lastNode != null) {
             String checkpoint = docList.checkpoint();

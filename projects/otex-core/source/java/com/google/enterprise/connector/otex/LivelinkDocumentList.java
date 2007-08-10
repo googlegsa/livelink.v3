@@ -14,25 +14,14 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.TimeZone;
 
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Document;
@@ -47,15 +36,9 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
-/**
- * This result set implementation could be trivial, but is not. Since
- * a <code>DocumentList</code> in this implementation is a wrapper on a
- * recarray, we need the recarray and other things in the
- * <code>DocumentList</code>, <code>Document</code>,
- * <code>Property</code>, and <code>Value</code> implementations,
- * along with the associated <code>Iterator</code> implementations. So
- * we use inner classes to share the necessary objects from this
- * outermost class.
+/*
+ * We use inner classes here to share the recarray and other fields in
+ * <code>LivelinkDocumentList</code> with nested classes.
  */
 class LivelinkDocumentList implements DocumentList {
     /** The logger for this class. */
@@ -67,12 +50,10 @@ class LivelinkDocumentList implements DocumentList {
         Value.getStringValue("text/html");
 
     /** An immutable false value. */
-    private static final Value VALUE_FALSE =
-        Value.getBooleanValue(false);
+    private static final Value VALUE_FALSE = Value.getBooleanValue(false);
 
     /** An immutable true value. */
-    private static final Value VALUE_TRUE =
-        Value.getBooleanValue(true);
+    private static final Value VALUE_TRUE = Value.getBooleanValue(true);
 
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
@@ -141,6 +122,9 @@ class LivelinkDocumentList implements DocumentList {
      * {@inheritDoc}
      */
     public String checkpoint() throws RepositoryException {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("CHECKPOINT: " + chkpoint);
+
         return chkpoint;
     }
 
@@ -151,8 +135,7 @@ class LivelinkDocumentList implements DocumentList {
      * @param objectId the object id at which to start
      * @return the checkpoint string.
      */
-    public void setCheckpoint(Date date, int objectId)
-    {
+    public void setCheckpoint(Date date, int objectId) {
         chkpoint = LivelinkDateFormat.getInstance().toSqlString(date) +
             ',' + objectId;
     }
@@ -167,7 +150,7 @@ class LivelinkDocumentList implements DocumentList {
      * we must subset the documents into those that are public and
      * those that are not.
      *
-     * NOTE: This gets access to the AuthorizationManager via the
+     * XXX: This gets access to the AuthorizationManager via the
      * Connector's ClientFactory.  It should really get it from the
      * Session, but at this point we don't know what session we
      * belong to.
@@ -183,9 +166,10 @@ class LivelinkDocumentList implements DocumentList {
                 authz = new LivelinkAuthorizationManager(clientFactory);
                 publicContentDocs = new HashSet();
                 authz.addAuthorizedDocids(new DocIdIterator(), pcuser,
-                                          publicContentDocs);
+                    publicContentDocs);
 
-                // We only care if there actually are public docs in this batch.
+                // We only care if there actually are public docs in
+                // this batch.
                 if (publicContentDocs.isEmpty())
                     publicContentDocs = null;
             }
@@ -209,7 +193,7 @@ class LivelinkDocumentList implements DocumentList {
         }
 
         public boolean hasNext() {
-            return (row < size);
+            return row < size;
         }
 
         public Object next() {
@@ -217,10 +201,11 @@ class LivelinkDocumentList implements DocumentList {
                 try {
                     return recArray.toString(row++, "DataID");
                 } catch (RepositoryException e) {
-                    LOGGER.warning("LivelinkDocumentList.DocIdIterator.next()" +
-                                   "caught exception - " + e.getMessage());
+                    LOGGER.warning("LivelinkDocumentList.DocIdIterator.next " +
+                        "caught exception - " + e.getMessage());
                 }
             }
+            // FIXME: Is this what we want?
             return null;
         }
 
@@ -240,6 +225,15 @@ class LivelinkDocumentList implements DocumentList {
     /**
      * Iterates over a <code>DocumentList</code>, returning each
      * <code>Document</code> it contains.
+     */
+    /*
+     * TODO: Eliminate this iterator and implement nextDocument
+     * directly using this code. The gap seems to be just that
+     * LivelinkTest assumes that it can iterator over the DocumentList
+     * multiple times, which the new SPI doesn't allow. We could redo
+     * the tests to eliminate that requirement, or add an internal
+     * reset/restart/beforeFirst method to cause nextDocument to start
+     * over again at the beginning.
      */
     private class LivelinkDocumentListIterator implements Iterator {
         /** The current row of the recarray. */
@@ -263,23 +257,24 @@ class LivelinkDocumentList implements DocumentList {
         }
 
         public boolean hasNext() {
-            return (row < size);
+            return row < size;
         }
 
         public Object next() {
             if (row < size) {
-
                 try {
                     objectId = recArray.toInteger(row, "DataID");
                     volumeId = recArray.toInteger(row, "OwnerID");
                     props = new LivelinkDocument(objectId, fields.length*2);
 
                     /* Establish the checkpoint string for this row.
-                     * NOTE: This assumes that there is not more than one active
-                     * iterator on the docList.  In the SPI world that is true.
-                     * however the tests iterate over the docList several times.
+                     * NOTE: This assumes that there is not more than
+                     * one active iterator on the docList. In the SPI
+                     * world that is true. however the tests iterate
+                     * over the docList several times.
                      */
-                    setCheckpoint(recArray.toDate(row, "ModifyDate"), objectId);
+                    setCheckpoint(recArray.toDate(row, "ModifyDate"),
+                        objectId);
 
                     /* collect the various properties for this row */
                     collectRecArrayProperties();
@@ -337,15 +332,12 @@ class LivelinkDocumentList implements DocumentList {
 
         /** Collects additional properties derived from the recarray. */
         private void collectDerivedProperties() throws RepositoryException {
-
-            // Flag the document as publicly accessable (or not).
-            boolean isPublic = (isPublicContentUser) ? true :
-                               ((publicContentDocs == null) ? false :
-                                publicContentDocs.contains(
-                                                  Integer.toString(objectId)));
-
+            // Flag the document as publicly accessible (or not).
+            boolean isPublic = isPublicContentUser || 
+                (publicContentDocs != null &&
+                    publicContentDocs.contains(Integer.toString(objectId)));
             props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
-                              ((isPublic)? VALUE_TRUE : VALUE_FALSE));
+                isPublic ? VALUE_TRUE : VALUE_FALSE);
 
             int subType = recArray.toInteger(row, "SubType");
 
@@ -438,9 +430,6 @@ class LivelinkDocumentList implements DocumentList {
          */
         private void collectExtendedDataProperties(int subType)
                 throws RepositoryException {
-            // TODO: In the most general case, we might want some
-            // entries for the content, other entries just for
-            // metadata, and yet other entries not at all.
             String[] fields = connector.getExtendedDataKeys(subType);
             if (fields == null)
                 return;
