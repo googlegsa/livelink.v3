@@ -29,7 +29,6 @@ import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spiimpl.DateValue;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
@@ -172,7 +171,14 @@ class LivelinkDocument implements Document {
             case ClientValue.BOOLEAN:
                 return Value.getBooleanValue(clientValue.toBoolean());
             case ClientValue.DATE:
-                return new LivelinkDateValue(clientValue.toDate());
+                Calendar c = Calendar.getInstance();
+                c.setTime(clientValue.toDate());
+                // Livelink only stores timestamps to the nearest second, 
+                // but LAPI constructs a Date object that includes milli-
+                // seconds, which are taken from the current time.  So we
+                // need to avoid using the milliseconds in the parameter.
+                c.clear(Calendar.MILLISECOND);
+                return Value.getDateValue(c);
             case ClientValue.DOUBLE: 
                 return Value.getDoubleValue(clientValue.toDouble());
             case ClientValue.INTEGER:
@@ -181,43 +187,13 @@ class LivelinkDocument implements Document {
                 return Value.getStringValue(clientValue.toString2());
             default:
                 throw new AssertionError(
-                    "The clientValue must have an atomic type.");
+                            "The clientValue must have an atomic type.");
             }
         } catch (RepositoryException e) {
             LOGGER.warning("LivelinkValue factory caught exception " +
-                "exctracting value from ClientValue: " +
-                e.getMessage());
+                           "exctracting value from ClientValue: " +
+                           e.getMessage());
             return Value.getStringValue(e.getMessage());
-        }
-    }
-
-
-    /**
-     * We override the DateValue implementation to drop milliseconds
-     * from the output format.  See LivelinkDateFormat.java
-     */
-    private static class LivelinkDateValue extends DateValue {
-        Date date;
-
-        public LivelinkDateValue(Calendar cal) {
-            super(cal);
-            this.date = cal.getTime();
-        }
-
-        public LivelinkDateValue(Date date) {
-            super(LivelinkDateValue.toCalendar(date));
-            this.date = date;
-        }
-
-        public String toIso8601() {
-            return LivelinkDateFormat.getInstance().toIso8601String(date);
-        }
-
-        private static Calendar toCalendar(Date date) {
-            Calendar c = Calendar.getInstance();
-            c.setTime(date);
-            c.clear(Calendar.MILLISECOND);
-            return c;
         }
     }
 }
