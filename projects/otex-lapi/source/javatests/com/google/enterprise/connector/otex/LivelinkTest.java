@@ -45,7 +45,7 @@ public class LivelinkTest extends TestCase {
 
     /** The ISO 8601 date format returned in property values. */
     private final SimpleDateFormat iso8601 =
-        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
     /** A default date formatter for the current locale. */
     private final DateFormat defaultDateFormat =
@@ -77,7 +77,7 @@ public class LivelinkTest extends TestCase {
         }
     }
 
-
+    
     /**
      * Return the first result from traversal.
      * @param TraversalManager the traversal manager to query
@@ -154,7 +154,7 @@ public class LivelinkTest extends TestCase {
         // test is somewhat pointless, so we should figure out if we
         // can put in a delay, get a better Livelink instance, get a
         // better Solaris server, or something.
-        int[] batchHints = { /*1,*/ 100 };
+        int[] batchHints = { 100 };
         int previousRowCount = 0;
         for (int i = 0; i < batchHints.length; i++) {
             long before = System.currentTimeMillis();
