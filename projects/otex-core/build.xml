@@ -81,13 +81,13 @@
            target="1.4" source="1.4">
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/junit.jar" />
           <include name="**/spring.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector-tests.jar" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${classes}" />
-        <pathelement location="${thirdparty.jar.dir}/**/junit.jar" />
       </classpath>
     </javac>
     <copy todir="${tests.classes}"
@@ -123,7 +123,6 @@
         <pathelement location="${jarfile}" />
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${tests.classes}" />
-        <pathelement location="${thirdparty.jar.dir}/**/junit.jar" />
       </classpath>
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />

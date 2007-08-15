@@ -64,13 +64,14 @@ public class PushOneDocumentTest extends TestCase {
         pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort));
 
         // Iinitialize the Context for DocPusher.take.
-        // FIXME: This code is duplicated in PushOneDocument.
+        // FIXME: This code is duplicated in LivelinkQueryTraverserTest..
         String cmDir = System.getProperty("connector-manager.dir");
         if (cmDir == null)
             throw new Exception("Missing connector-manager.dir property.");
+        String dir = "file:" + cmDir + File.separator;
         Context.getInstance().setStandaloneContext(
-            cmDir + File.separator + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
-            cmDir + File.separator + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
+            dir + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
+            dir + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
     }
     
     public void testTraversal() throws RepositoryException, PushException {

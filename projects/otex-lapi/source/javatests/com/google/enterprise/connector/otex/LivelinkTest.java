@@ -153,8 +153,10 @@ public class LivelinkTest extends TestCase {
         // instances on swift with too many requests. Without it this
         // test is somewhat pointless, so we should figure out if we
         // can put in a delay, get a better Livelink instance, get a
-        // better Solaris server, or something.
-        int[] batchHints = { 100 };
+        // better Solaris server, or something. I'm leaving the "1"
+        // in place commented out, using // for convenience.
+        int[] batchHints = { // 1,
+            100 };
         int previousRowCount = 0;
         for (int i = 0; i < batchHints.length; i++) {
             long before = System.currentTimeMillis();

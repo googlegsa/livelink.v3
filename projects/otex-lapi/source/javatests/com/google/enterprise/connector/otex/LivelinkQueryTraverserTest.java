@@ -60,9 +60,10 @@ public class LivelinkQueryTraverserTest extends TestCase {
         String cmDir = System.getProperty("connector-manager.dir");
         if (cmDir == null)
             throw new Exception("Missing connector-manager.dir property.");
+        String dir = "file:" + cmDir + File.separator;
         Context.getInstance().setStandaloneContext(
-            cmDir + File.separator + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
-            cmDir + File.separator + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
+            dir + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
+            dir + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
     }
 
     /**
