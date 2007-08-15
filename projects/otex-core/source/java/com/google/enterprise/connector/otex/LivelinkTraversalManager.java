@@ -242,7 +242,7 @@ class LivelinkTraversalManager
         // query that includes only those and their descendants.
         String startNodes = connector.getIncludedLocationNodes();
         String ancesterNodes;
-        if (startNodes != null || startNodes.length() > 0) {
+        if (startNodes != null && startNodes.length() > 0) {
             // Projects, Discussions, Channels, and TaskLists have a rather
             // strange behaviour.  Their contents have a VolumeID that is the
             // same as the container's ObjectID, and an AncesterID that is the
@@ -258,7 +258,7 @@ class LivelinkTraversalManager
             while (tok.hasMoreTokens()) {
                 String objId = tok.nextToken();
                 if (buffer.length() > 0)
-                buffer.append(',');
+                    buffer.append(',');
                 buffer.append(objId);
                 try {
                     int intId = Integer.parseInt(objId);
