@@ -57,8 +57,11 @@ class LivelinkTraversalManager
      * name, the record array field type, and the Google and Livelink
      * property names. If no property names are provided, then the
      * field will not be returned in the property map.
+     *
+     * Given package access so that LivelinkConnector.setIncludedObjectInfo()
+     * my filter out duplicates.
      */
-    private static final Field[] FIELDS;
+    protected static final Field[] FIELDS;
 
     static {
         // ListNodes requires the DataID and PermID columns to be

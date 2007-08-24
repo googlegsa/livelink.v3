@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Date;
 import java.text.DateFormat;
 import java.text.Format;
@@ -178,6 +180,12 @@ public class LivelinkConnector implements Connector {
 
     /** The map from subtypes to ExtendedData assoc keys. */
     private Map extendedDataKeys = new HashMap();
+
+    /** The list of ObjectInfo assoc keys. */
+    private String[] objectInfoKeys = null;
+
+    /** The list of VersionInfo assoc keys. */
+    private String[] versionInfoKeys = null;
 
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler;
@@ -839,8 +847,94 @@ public class LivelinkConnector implements Connector {
      * @return the map from integer subtypes
      */
     public String[] getExtendedDataKeys(int subType) {
+        if (extendedDataKeys == null)
+            return null;
         return (String[]) extendedDataKeys.get(new Integer(subType));
     }
+
+
+    /**
+     * Sets the fields from ObjectInfo to index.
+     *
+     * @param objectInfoKeys a comma-separated list of attributes
+     * in the ObjectInfo assoc to include in the index.
+     */
+    public void setIncludedObjectInfo(String objectInfoKeys) {
+        if (LOGGER.isLoggable(Level.CONFIG)) 
+            LOGGER.config("Included ObjectInfo Fields: " + objectInfoKeys);
+
+        if (objectInfoKeys != null) {
+            String sanikeys = sanitizeListOfStrings(objectInfoKeys);
+            if ((sanikeys != null) && (sanikeys.length() > 0)) {
+
+                ArrayList keys = new ArrayList(Arrays.asList((Object[]) sanikeys.split(",")));
+                Field[] fields = LivelinkTraversalManager.FIELDS;
+
+                for (int i = 0; i < keys.size(); i++) {
+                    String key = (String) keys.get(i);
+                    
+                    // If the client asks to index all ExtendedData, then don't
+                    // bother with the selective ExendedData by subtype map.
+                    if ("ExtendedData".equalsIgnoreCase(key)) {
+                        extendedDataKeys = null;
+                        continue;
+                    }
+
+                    // Many ObjectInfo fields are already indexed by default.
+                    // Filter out any duplicates specified here.
+                    for (int j = 0; j < fields.length; j++) {
+                        if ((fields[j].propertyNames.length > 0) &&
+                            (fields[j].propertyNames[0].equalsIgnoreCase(key))) {
+                            keys.remove(i);
+                            i--; 	// ArrayList.remove shuffles everything down.
+                            break;
+                        }
+                    }
+                }
+
+                // Remember anything left after pruning duplicates.
+                if (!keys.isEmpty()) 
+                    this.objectInfoKeys = (String[]) keys.toArray(new String[keys.size()]);
+            }
+        }
+    }
+
+    /**
+     * Gets the fields from ObjectInfo to index.
+     *
+     * @return the array of ObjectInfo assoc attribute keys to index.
+     */
+    public String[] getObjectInfoKeys() {
+        return this.objectInfoKeys;
+    }
+
+
+    /**
+     * Sets the fields from VersionInfo to index.
+     *
+     * @param versionInfoKeys a comma-separated list of attributes
+     * in the VersionInfo assoc to include in the index.
+     */
+    public void setIncludedVersionInfo(String versionInfoKeys) {
+        if (LOGGER.isLoggable(Level.CONFIG)) 
+            LOGGER.config("Included VersionInfo Fields: " + versionInfoKeys);
+
+        if (versionInfoKeys != null) {
+            String keys = sanitizeListOfStrings(versionInfoKeys);
+            if ((keys != null) && (keys.length() > 0))
+                this.versionInfoKeys = keys.split(",");
+        }
+    }
+
+    /**
+     * Gets the fields from VersionInfo to index.
+     *
+     * @return the array of VersionInfo assoc attribute keys to index.
+     */
+    public String[] getVersionInfoKeys() {
+        return this.versionInfoKeys;
+    }
+
 
     /**
      * Creates an empty client factory instance for use with

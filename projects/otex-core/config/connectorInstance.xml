@@ -74,6 +74,9 @@
 				<entry key="218" value="Instruction,Questions" />
 			</map>
 		</property>
+        <property name="includedObjectInfo" value="" />
+        <property name="includedVersionInfo" value="" />
+
 		<property name="displayPatterns">
 			<map>
 				<entry key="141" value="?func=llworkspace" />

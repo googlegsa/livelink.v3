@@ -237,7 +237,7 @@ public interface Client
     /**
      * Wraps the <code>LAPI_DOCUMENTS.FetchVersion</code> method.
      * All of the arguments of that method are exposed here.
-     *
+     * 
      * @param volumeId the volume ID of the object to fetch
      * @param objectId the object ID of the object to fetch
      * @param versionNumber the version number to fetch
@@ -246,6 +246,18 @@ public interface Client
      */
     void FetchVersion(int volumeId, int objectId, int versionNumber,
         OutputStream out) throws RepositoryException;
+
+    /**
+     * Wraps the <code>LAPI_DOCUMENTS.getVersionInfo</code> method.
+     * 
+     * @param volumeId the volume ID of the object
+     * @param objectId the object ID of the object
+     * @param versionNumber the version number to get info on
+     * @returns a ClientValue Assoc object containing the VersionInfo
+     * @throws RepositoryException if an error occurs
+     */
+    ClientValue GetVersionInfo(int volumeId, int objectId, int versionNumber)
+        throws RepositoryException;
 
     /**
      * Wraps the <code>LLSession.ImpersonateUser</code>

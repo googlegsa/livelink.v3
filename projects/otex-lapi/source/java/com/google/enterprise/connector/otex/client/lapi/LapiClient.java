@@ -324,6 +324,21 @@ final class LapiClient implements Client {
         }
     }
 
+    /** {@inheritDoc} */
+    public synchronized ClientValue GetVersionInfo(int volumeId, int objectId,
+            int versionNumber) throws RepositoryException {
+        LLValue versionInfo = new LLValue();
+        try {
+            if (documents.GetVersionInfo(volumeId, objectId, versionNumber,
+                                         versionInfo) != 0) {
+                throw new LapiException(session, LOGGER);
+            }
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+        return new LapiClientValue(versionInfo);
+    }
+
     /**
      * {@inheritDoc}
      */

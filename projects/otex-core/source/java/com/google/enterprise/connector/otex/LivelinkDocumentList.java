@@ -248,6 +248,9 @@ class LivelinkDocumentList implements DocumentList {
         /** The volume ID of the current row. */
         private int volumeId;
 
+        /** The ObjectInfo of the current row, [fetch delayed until needed] */
+        private ClientValue objectInfo;
+
         /** The Document Properties associated with the current row. */
         private LivelinkDocument props;
 
@@ -265,6 +268,7 @@ class LivelinkDocumentList implements DocumentList {
                 try {
                     objectId = recArray.toInteger(row, "DataID");
                     volumeId = recArray.toInteger(row, "OwnerID");
+                    objectInfo = null;
                     props = new LivelinkDocument(objectId, fields.length*2);
 
                     /* Establish the checkpoint string for this row.
@@ -278,8 +282,10 @@ class LivelinkDocumentList implements DocumentList {
 
                     /* collect the various properties for this row */
                     collectRecArrayProperties();
-                    collectDerivedProperties();
+                    collectObjectInfoProperties();
+                    collectVersionProperties();
                     collectCategoryAttributes();
+                    collectDerivedProperties();
 
                     row++;
                     return props;
@@ -333,7 +339,7 @@ class LivelinkDocumentList implements DocumentList {
         /** Collects additional properties derived from the recarray. */
         private void collectDerivedProperties() throws RepositoryException {
             // Flag the document as publicly accessible (or not).
-            boolean isPublic = isPublicContentUser || 
+            boolean isPublic = isPublicContentUser ||
                 (publicContentDocs != null &&
                     publicContentDocs.contains(Integer.toString(objectId)));
             props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
@@ -434,10 +440,8 @@ class LivelinkDocumentList implements DocumentList {
             if (fields == null)
                 return;
 
-            // TODO: When we implement configurable metadata, we
-            // may need to call GetObjectInfo elsewhere, so we
-            // should only do that once, and only if needed.
-            ClientValue objectInfo = client.GetObjectInfo(volumeId, objectId);
+            if (objectInfo == null)
+                objectInfo = client.GetObjectInfo(volumeId, objectId);
             ClientValue extendedData = objectInfo.toValue("ExtendedData");
             if (extendedData == null || !extendedData.hasValue())
                 return;
@@ -460,6 +464,72 @@ class LivelinkDocumentList implements DocumentList {
                 }
             }
         }
+
+
+        /**
+         * Collects ObjectInfo properties.
+         */
+        private void collectObjectInfoProperties() throws RepositoryException {
+            // First check for a request for ObjectInfo data.
+            // By default, no ObjectInfo fields are specified.
+            String[] fields = connector.getObjectInfoKeys();
+            if (fields == null)
+                return;
+
+            if (objectInfo == null)
+                objectInfo = client.GetObjectInfo(volumeId, objectId);
+            if (objectInfo == null || !objectInfo.hasValue())
+                return;
+                    
+            // Extract the objectInfo items of interest and add them to the
+            // property map.  We know there are no compound objectInfo fields.
+            for (int i = 0; i < fields.length; i++) {
+                ClientValue value = objectInfo.toValue(fields[i]);
+                if (value != null && value.hasValue()) {
+                    // ExtendedData is the only non-atomic type, so explode it.
+                    // If the client specified it, slurp all the ExtendedData.
+                    // If the client wished to be more selective, they should
+                    // have added specific ExtendedData fields to the map.
+                    if ("ExtendedData".equalsIgnoreCase(fields[i]))
+                        collectValueProperties(fields[i], value);                        
+                    else 
+                        props.addProperty(fields[i], value);
+                }
+            }
+        }
+
+
+        /**
+         * Collects version properties.  We only support the "Current" version.
+         */
+        private void collectVersionProperties() throws RepositoryException {
+            // First check for a request for version info data.
+            // By default, no versionInfo fields are specified.
+            String[] fields = connector.getVersionInfoKeys();
+            if (fields == null)
+                return;
+
+            // Make sure this item has versions. See the MimeType, Version and
+            // DataSize comments in collectContentProperty().  If DataSize is
+            // not defined, then the item has no versions.
+            ClientValue dataSize = recArray.toValue(row, "DataSize");
+            if (!dataSize.isDefined())
+                return;
+
+            ClientValue versionInfo;
+            versionInfo = client.GetVersionInfo(volumeId, objectId, 0);
+            if (versionInfo == null || !versionInfo.hasValue())
+                return;
+                    
+            // Extract the versionInfo items of interest and add them to the
+            // property map.  We know there are no compound versionInfo fields.
+            for (int i = 0; i < fields.length; i++) {
+                ClientValue value = versionInfo.toValue(fields[i]);
+                if (value != null && value.hasValue()) 
+                    props.addProperty(fields[i], value);
+            }
+        }
+            
 
         /**
          * Collects properties in an LLValue.
