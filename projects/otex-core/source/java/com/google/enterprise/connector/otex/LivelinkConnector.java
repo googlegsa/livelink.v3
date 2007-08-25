@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
@@ -205,6 +206,9 @@ public class LivelinkConnector implements Connector {
 
     /** The Livelink Public Content client username. */
     private String publicContentUsername;
+
+    /** The authentication manager to use. */
+    private AuthenticationManager authenticationManager;
 
     /**
      * Constructs a connector instance for a specific Livelink
@@ -1116,6 +1120,16 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
+     * Sets the AuthenticationManager implementation to use.
+     *
+     * @param authenticationManager an authentication manager
+     */
+    public void setAuthenticationManager(
+            AuthenticationManager authenticationManager) {
+        this.authenticationManager = authenticationManager;
+    }
+
+    /**
      * Gets the <code>ClientFactory</code> for this Connector.
      *
      * @return the <code>ClientFactory</code>
@@ -1124,15 +1138,27 @@ public class LivelinkConnector implements Connector {
         return clientFactory;
     }
 
+    /**
+     * Gets the <code>ClientFactory</code> for this Connector to
+     * use with authentication.
+     *
+     * @return the <code>ClientFactory</code>
+     */
+    ClientFactory getAuthenticationClientFactory() {
+        if (authenticationClientFactory != null)
+            return authenticationClientFactory;
+        return clientFactory;
+    }
 
-    /** {@inheritDoc} */
-    public Session login()
-            throws RepositoryLoginException, RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("LOGIN");
-
-        // TODO: move this code to a Spring-callable "after all
-        // properties have been set" method.
+    /**
+     * Finishes initializing the connector after all properties
+     * have been set.
+     */
+    /* This is essentially a Spring init-method. There's currently
+     * no reason to expose it, and avoiding changes in the XML
+     * configuration file is good. 
+     */
+    private void init() {
         if (!useHttpTunneling) {
             LOGGER.finer("DISABLING HTTP TUNNELING");
             clientFactory.setLivelinkCgi("");
@@ -1141,7 +1167,28 @@ public class LivelinkConnector implements Connector {
         if (!useSeparateAuthentication)
             authenticationClientFactory = null;
 
-        // Serveral birds with one stone. Getting the server info
+        // I was unable to get Spring to complain when I left out
+        // the property, so I'm checking here too. 
+        if (authenticationManager == null) {
+            throw new IllegalArgumentException(
+                "No authentication manager configured");
+        }
+
+        // Must be the last thing in this method so that the
+        // connector is fully configured when used here.
+        if (authenticationManager instanceof ConnectorAware)
+            ((ConnectorAware) authenticationManager).setConnector(this); 
+    }
+
+    /** {@inheritDoc} */
+    public Session login()
+            throws RepositoryLoginException, RepositoryException {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("LOGIN");
+
+        init(); 
+
+        // Several birds with one stone. Getting the server info
         // verifies connectivity with the server, and we use the
         // results to set the character encoding for future clients
         // and confirm the availability of the overview action.
@@ -1221,7 +1268,7 @@ public class LivelinkConnector implements Connector {
             }
         }
 
-        return new LivelinkSession(this, clientFactory,
-            authenticationClientFactory);
+        return new LivelinkSession(this, clientFactory, 
+            authenticationManager);
     }
 }

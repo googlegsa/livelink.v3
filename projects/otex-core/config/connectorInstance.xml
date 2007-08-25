@@ -99,9 +99,13 @@
 				<entry key="default" value="properties" />
 			</map>
 		</property>
-
 		<property name="contentHandler"
 			value="com.google.enterprise.connector.otex.FileContentHandler"/>
+                <property name="authenticationManager" ref="authenticationManager"/>
 		@constructor-arg@
 	</bean>
+
+        <bean id="authenticationManager"
+                class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
+                singleton="false"/>
 </beans>

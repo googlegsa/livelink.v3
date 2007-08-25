@@ -186,6 +186,14 @@ final class MockClient implements Client {
         }
     }
 
+    /** {@inheritDoc} */
+    public ClientValue GetVersionInfo(int volumeId, int objectId, int versionNumber)
+            throws RepositoryException {
+        LOGGER.fine("Entering MockClient.GetVersionInfo");
+        return null; // FIXME; stub implementation to get it to compile
+    }
+
+
     /**
      * {@inheritDoc}
      * <p>

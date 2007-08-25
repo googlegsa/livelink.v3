@@ -37,24 +37,23 @@ class LivelinkSession implements Session {
     /** The client factory for traversal and authorization clients. */
     private final ClientFactory clientFactory;
 
-    /** The authentication factory for authentication clients; may be null. */ 
-    private final ClientFactory authenticationClientFactory;
+    /** The list of authentication managers. */
+    private final AuthenticationManager authenticationManager;
 
     /**
      *
      * @param connector a connector instance
      * @param clientFactory a client factory
-     * @param authenticationClientFactory a client factory
-     * configured for use in authentication
+     * @param authenticationManager the configured AuthenticationManager
      * @throws RepositoryException not thrown
      */
     public LivelinkSession(LivelinkConnector connector,
             ClientFactory clientFactory, 
-            ClientFactory authenticationClientFactory)
+            AuthenticationManager authenticationManager)
             throws RepositoryException {
         this.connector = connector;
         this.clientFactory = clientFactory;
-        this.authenticationClientFactory = authenticationClientFactory;
+        this.authenticationManager = authenticationManager;
     }
 
     /**
@@ -76,11 +75,7 @@ class LivelinkSession implements Session {
     public AuthenticationManager getAuthenticationManager() {
         // XXX: Should we ever return null, indicating that
         // authentication is handled by the GSA?
-        if (authenticationClientFactory != null) {
-            return new LivelinkAuthenticationManager(
-                authenticationClientFactory);
-        }
-        return new LivelinkAuthenticationManager(clientFactory); 
+        return authenticationManager;
     }
 
     /**

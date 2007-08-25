@@ -21,6 +21,7 @@ import java.util.logging.LogRecord;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
+import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.otex.client.Client;
@@ -30,22 +31,33 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 /**
  * Implements an AuthenticationManager for the Livelink connector.
  */
-class LivelinkAuthenticationManager implements AuthenticationManager {
+class LivelinkAuthenticationManager 
+        implements AuthenticationManager, ConnectorAware  {
 
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkAuthenticationManager.class.getName());
 
     /** Client factory for obtaining client instances. */
-    private final ClientFactory clientFactory;
+    private ClientFactory clientFactory;
 
 
     /**
-     * Constructor - caches client factory.
+     * Default constructor for bean instantiation.
      */
-    LivelinkAuthenticationManager(ClientFactory clientFactory) {
+    LivelinkAuthenticationManager() {
         super();
-        this.clientFactory = clientFactory;
+    }
+
+    /**
+     * Provides the current connector instance to this
+     * authentication manager for configuration purposes.
+     *
+     * @param connector the current LivelinkConnector
+     */
+    public void setConnector(Connector connector) {
+        this.clientFactory = 
+            ((LivelinkConnector) connector).getAuthenticationClientFactory(); 
     }
 
 
@@ -64,6 +76,14 @@ class LivelinkAuthenticationManager implements AuthenticationManager {
             throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
+
+        // FIXME: different message text? or assume this can't
+        // happen because we control it in LivelinkConnector?
+        if (clientFactory == null) {
+            LOGGER.severe("Misconfigured connector; unable to authenticate");
+            throw new RepositoryException("Missing Livelink client factory"); 
+        }
+            
         try {
             // XXX: Pass the identity to the ClientFactory?
             Client client = clientFactory.createClient(
