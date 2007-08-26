@@ -636,14 +636,14 @@ class LivelinkTraversalManager
             String modifyDate = checkpoint.substring(0, index);
             String dataId = checkpoint.substring(index + 1);
             if (isSqlServer) {
-                return "ModifyDate > '" + modifyDate +
+                return "(ModifyDate > '" + modifyDate +
                     "' or (ModifyDate = '" + modifyDate +
-                    "' and DataID > " + dataId + ')';
+                    "' and DataID > " + dataId + "))";
             } else {
-                return "ModifyDate > TO_DATE('" + modifyDate +
+                return "(ModifyDate > TO_DATE('" + modifyDate +
                     "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('" +
                     modifyDate + "', 'YYYY-MM-DD HH24:MI:SS') and DataID > " +
-                    dataId + ')';
+                    dataId + "))";
             }
         }
     }

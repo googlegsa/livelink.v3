@@ -158,7 +158,8 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
     /**
      * Builds a SQL query of the form "DataId in (...)" where the
      * contents of the iterator's list are the provided docids.  
-     * At most, 10,000 docids will be added to the query.
+     * At most, 1,000 docids will be added to the query due to SQL
+     * syntax limits in Oracle.
      *
      * @param docids the docids to include in the query
      * @return the SQL query string; null if no docids are provided
@@ -168,7 +169,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             return null; 
 
         StringBuffer query = new StringBuffer("DataID in ("); 
-        for (int i = 0; i < 10000 && iterator.hasNext(); i++ ) 
+        for (int i = 0; i < 1000 && iterator.hasNext(); i++ ) 
             query.append((String) iterator.next()).append(',');
         query.setCharAt(query.length() - 1, ')');
 
