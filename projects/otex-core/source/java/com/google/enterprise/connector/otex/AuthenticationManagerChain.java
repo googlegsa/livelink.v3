@@ -52,7 +52,7 @@ class AuthenticationManagerChain implements AuthenticationManager,
      * @param authenticationManagers the list of authentication
      * managers; may not be null or empty
      */
-    void setAuthenticationManagers(List authenticationManagers) {
+    public void setAuthenticationManagers(List authenticationManagers) {
         if (authenticationManagers == null || 
                 authenticationManagers.size() == 0) {
             throw new IllegalArgumentException(); 
