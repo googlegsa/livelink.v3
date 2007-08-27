@@ -3,7 +3,7 @@
 <beans>
 	<bean id="Livelink_Enterprise_Server"
 		class="com.google.enterprise.connector.otex.LivelinkConnector"
-		dependency-check="simple" singleton="false">
+		dependency-check="all" singleton="false">
 
 		<property name="server" value="${server}"/>
 		<property name="port" value="${port}"/>
@@ -74,8 +74,8 @@
 				<entry key="218" value="Instruction,Questions" />
 			</map>
 		</property>
-        <property name="includedObjectInfo" value="" />
-        <property name="includedVersionInfo" value="" />
+		<property name="includedObjectInfo" value="" />
+		<property name="includedVersionInfo" value="" />
 
 		<property name="displayPatterns">
 			<map>
@@ -101,11 +101,11 @@
 		</property>
 		<property name="contentHandler"
 			value="com.google.enterprise.connector.otex.FileContentHandler"/>
-                <property name="authenticationManager" ref="authenticationManager"/>
+		<property name="authenticationManager" ref="authenticationManager"/>
 		@constructor-arg@
 	</bean>
 
-        <bean id="authenticationManager"
-                class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
-                singleton="false"/>
+	<bean id="authenticationManager"
+		class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
+		singleton="false"/>
 </beans>

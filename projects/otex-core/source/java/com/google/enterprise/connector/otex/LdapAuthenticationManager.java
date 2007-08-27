@@ -153,7 +153,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
         catch (NamingException e)
         {
             LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.getMessage()); 
+                identity.getUsername() + "; " + e.toString()); 
             return new AuthenticationResponse(false, null);
         }
     }

@@ -584,10 +584,8 @@ public class LivelinkConnector implements Connector {
      * used for HTTP authentication
      */
     public void setUseUsernamePasswordWithWebServer(boolean useWeb) {
-        if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("USE USERNAME WITH WEB SERVER: " +
-                useWeb);
-        }
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("USE USERNAME WITH WEB SERVER: " + useWeb);
         clientFactory.setUseUsernamePasswordWithWebServer(useWeb);
     }
 
@@ -599,10 +597,8 @@ public class LivelinkConnector implements Connector {
      * parameters will be provided
      */
     public void setUseSeparateAuthentication(boolean useAuth) {
-        if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("USE SEPARATE AUTHENTICATION CONFIG: " +
-                useAuth);
-        }
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("USE SEPARATE AUTHENTICATION CONFIG: " + useAuth);
         useSeparateAuthentication = useAuth;
     }
 
@@ -678,8 +674,8 @@ public class LivelinkConnector implements Connector {
             startDate = null;
             startCheckpoint = null;
             if ( property.length() == 0 ) { // it's intentional
-                if (LOGGER.isLoggable(Level.CONFIG))
-                    LOGGER.config("STARTDATE: No start date specified.");
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.fine("STARTDATE: No start date specified.");
             } else {            // it's an error
                 if (LOGGER.isLoggable(Level.WARNING))
                     LOGGER.warning(
@@ -688,11 +684,13 @@ public class LivelinkConnector implements Connector {
             }
         } else {
             startDate = property;
-            startCheckpoint = LivelinkDateFormat.getInstance().toSqlString(d) + ",0";
+            startCheckpoint = 
+		LivelinkDateFormat.getInstance().toSqlString(d) + ",0";
 
-            if (LOGGER.isLoggable(Level.CONFIG))
+            if (LOGGER.isLoggable(Level.CONFIG)) {
                 LOGGER.config("STARTDATE: " +
                     DateFormat.getDateTimeInstance().format(d));
+	    }
         }
     }
 
@@ -865,7 +863,7 @@ public class LivelinkConnector implements Connector {
      */
     public void setIncludedObjectInfo(String objectInfoKeys) {
         if (LOGGER.isLoggable(Level.CONFIG)) 
-            LOGGER.config("Included ObjectInfo Fields: " + objectInfoKeys);
+            LOGGER.config("INCLUDED OBJECTINFO: " + objectInfoKeys);
 
         if (objectInfoKeys != null) {
             String sanikeys = sanitizeListOfStrings(objectInfoKeys);
@@ -921,7 +919,7 @@ public class LivelinkConnector implements Connector {
      */
     public void setIncludedVersionInfo(String versionInfoKeys) {
         if (LOGGER.isLoggable(Level.CONFIG)) 
-            LOGGER.config("Included VersionInfo Fields: " + versionInfoKeys);
+            LOGGER.config("INCLUDED VERSIONINFO: " + versionInfoKeys);
 
         if (versionInfoKeys != null) {
             String keys = sanitizeListOfStrings(versionInfoKeys);
@@ -1126,6 +1124,8 @@ public class LivelinkConnector implements Connector {
      */
     public void setAuthenticationManager(
             AuthenticationManager authenticationManager) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("AUTHENTICATION MANAGER: " + authenticationManager);
         this.authenticationManager = authenticationManager;
     }
 
@@ -1166,13 +1166,6 @@ public class LivelinkConnector implements Connector {
         }
         if (!useSeparateAuthentication)
             authenticationClientFactory = null;
-
-        // I was unable to get Spring to complain when I left out
-        // the property, so I'm checking here too. 
-        if (authenticationManager == null) {
-            throw new IllegalArgumentException(
-                "No authentication manager configured");
-        }
 
         // Must be the last thing in this method so that the
         // connector is fully configured when used here.
@@ -1268,7 +1261,6 @@ public class LivelinkConnector implements Connector {
             }
         }
 
-        return new LivelinkSession(this, clientFactory, 
-            authenticationManager);
+        return new LivelinkSession(this, clientFactory, authenticationManager);
     }
 }
