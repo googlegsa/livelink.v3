@@ -30,8 +30,6 @@ final class Field {
      */
     public final String[] propertyNames;
 
-    /** Indicates whether this is this the UserID field. */
-    public final boolean isUserId;
 
     /**
      * Creates a field with no corresponding property names.
@@ -79,12 +77,5 @@ final class Field {
         
         this.fieldName = fieldName;
         this.propertyNames = propertyNames;
-
-        // FIXME: Hack based on one user ID field. We need to know
-        // which possible fields are user IDs when we support
-        // configurable ObjectInfo and VersionInfo attributes. What
-        // about system attributes? (Category attributes are already
-        // handled.)
-        isUserId = fieldName.equals("UserID");
     }
 }

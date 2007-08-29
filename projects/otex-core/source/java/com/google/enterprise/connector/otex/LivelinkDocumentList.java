@@ -314,23 +314,11 @@ class LivelinkDocumentList implements DocumentList {
                     ClientValue value =
                         recArray.toValue(row, fields[i].fieldName);
                     if (value.isDefined()) {
-                        // FIXME: This is a hack. See Field for how
-                        // this is set. When more user IDs might be
-                        // returned, we need to fix this.
-                        if (fields[i].isUserId) {
-                            ClientValue userInfo =
-                                client.GetUserOrGroupByID(value.toInteger());
-                            ClientValue userName = userInfo.toValue("Name");
-                            if (userName.isDefined())
-                                props.addProperty(fields[i], userName);
-                            else if (LOGGER.isLoggable(Level.WARNING)) {
-                                LOGGER.warning(
-                                    "No username found for user ID " +
-                                    value.toInteger());
-                            }
-                        } else
+                        if (isUserIdOrGroupId(fields[i].fieldName))
+                            // FIXME: hack knows that UserID has 1 propertyName
+                            addUserByName(fields[i].propertyNames[0], value);
+                        else
                             props.addProperty(fields[i], value);
-
                     }
                 }
             }
@@ -492,6 +480,8 @@ class LivelinkDocumentList implements DocumentList {
                     // have added specific ExtendedData fields to the map.
                     if ("ExtendedData".equalsIgnoreCase(fields[i]))
                         collectValueProperties(fields[i], value);                        
+                    else if (isUserIdOrGroupId(fields[i]))
+                        addUserByName(fields[i], value);
                     else 
                         props.addProperty(fields[i], value);
                 }
@@ -525,8 +515,12 @@ class LivelinkDocumentList implements DocumentList {
             // property map.  We know there are no compound versionInfo fields.
             for (int i = 0; i < fields.length; i++) {
                 ClientValue value = versionInfo.toValue(fields[i]);
-                if (value != null && value.hasValue()) 
-                    props.addProperty(fields[i], value);
+                if (value != null && value.hasValue()) {
+                    if (isUserIdOrGroupId(fields[i]))
+                        addUserByName(fields[i], value);
+                    else
+                        props.addProperty(fields[i], value);
+                }
             }
         }
             
@@ -747,5 +741,55 @@ class LivelinkDocumentList implements DocumentList {
                 }
             }
         }
+
+        /**
+         * Add a UserID or GroupID property value as the name of the user or
+         * group, rather than the integral ID.
+         *
+         * @param propertyName	the property key to use when adding the value
+         * to the map.
+         * @param idValue ClientValue containing  the UserID or GroupID to
+         * resolve to a name.
+         */
+        private void addUserByName(String propertyName, ClientValue idValue)
+            throws RepositoryException {
+            
+            // If the UserID or GroupID is 0, then ignore it.
+            // For reason why, see ObjectInfo Reserved and ReservedBy fields.
+            int id = idValue.toInteger();
+            if (id == 0)
+                return;
+            
+            ClientValue userInfo = client.GetUserOrGroupByID(id);
+            ClientValue userName = userInfo.toValue("Name");
+
+            if (userName.isDefined())
+                props.addProperty(propertyName, userName);
+            else if (LOGGER.isLoggable(Level.WARNING)) 
+                LOGGER.warning("No user or group name found for ID " + id);
+        }
+
+
+        /**
+         * Determine whether this field contains a UserID or GroupID value.
+         *
+         * @param fieldName the name of the field in the ObjectInfo or
+         * VersionInfo assoc.
+         * @returns true if the field contains a UserID or a GroupID value.
+         */
+        private boolean isUserIdOrGroupId(String fieldName) {
+            for (int i = 0; i < userFieldNames.length; i++)
+                if (userFieldNames[i].equalsIgnoreCase(fieldName))
+                    return true;
+
+            return false;
+        }
+
     }
+
+    /** ObjectInfo and VersionInfo assoc fields that hold UserId or GroupId. */
+    static final String[] userFieldNames = {
+        "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
+        "LockedBy", "Owner" };
+
 }
