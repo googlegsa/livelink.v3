@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -90,6 +91,9 @@ class LivelinkDocumentList implements DocumentList {
     /** This is the DocumentList Iterator */
     private Iterator docIterator;
 
+    /** This is a small cache of UserID and GroupID name resolutions. */
+    private HashMap userNameCache;
+
     LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, TraversalContext traversalContext,
@@ -103,6 +107,7 @@ class LivelinkDocumentList implements DocumentList {
         this.fields = fields;
         this.traversalContext = traversalContext;
         this.chkpoint = checkpoint;
+        this.userNameCache = new HashMap(200);
 
         // Subset the docIds in the recArray into Public and Private Docs.
         findPublicContent();
@@ -760,13 +765,29 @@ class LivelinkDocumentList implements DocumentList {
             if (id == 0)
                 return;
             
-            ClientValue userInfo = client.GetUserOrGroupByID(id);
-            ClientValue userName = userInfo.toValue("Name");
+            // Check the userName cache (if we recently looked up this user).
+            ClientValue userName = (ClientValue) userNameCache.get(new Integer(id));
+            if (userName == null) {
+                // User is not in the cache, get the name from the server.
+                ClientValue userInfo = client.GetUserOrGroupByID(id);
+                userName = userInfo.toValue("Name");
+                if (!userName.isDefined()) {
+                    if (LOGGER.isLoggable(Level.WARNING)) 
+                        LOGGER.warning("No user or group name found for ID " + id);
+                    return;
+                }
+                
+                // If the cache was full, flush it.  Not sophisicated MRU, but
+                // good enough for our needs.
+                if (userNameCache.size() > 100)
+                    userNameCache.clear();
 
-            if (userName.isDefined())
-                props.addProperty(propertyName, userName);
-            else if (LOGGER.isLoggable(Level.WARNING)) 
-                LOGGER.warning("No user or group name found for ID " + id);
+                // Cache this userId to userName mapping for later reference.
+                userNameCache.put(new Integer(id), userName);
+            }
+
+            // Finally, add the userName property to the map.
+            props.addProperty(propertyName, userName);
         }
 
 
