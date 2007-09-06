@@ -48,6 +48,9 @@ public interface Client
     /** Poll object. */
     int POLLSUBTYPE = 218;
     
+    /** ObjectInfo.Catalog.DISPLAYTYPE_HIDDEN */
+    int DISPLAYTYPE_HIDDEN = 2;
+       
     /** No character encoding. */
     int CHARACTER_ENCODING_NONE = 0;
 

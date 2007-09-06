@@ -24,6 +24,7 @@ import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
@@ -42,6 +43,7 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 public class LivelinkConnector implements Connector {
+
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnector.class.getName());
@@ -188,6 +190,15 @@ public class LivelinkConnector implements Connector {
     /** The list of VersionInfo assoc keys. */
     private String[] versionInfoKeys = null;
 
+    /** The set of Categories to include. */
+    private HashSet includedCategoryIds = null;
+
+    /** The set of Categories to exclude. */
+    private HashSet excludedCategoryIds = null;
+
+    /** The set of Subtypes for which we index hidden items. */
+    private HashSet hiddenItemsSubtypes = null;
+
     /** The <code>ContentHandler</code> implementation class. */
     private String contentHandler;
 
@@ -290,7 +301,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the username
      */
-    public String getUsername() {
+    String getUsername() {
         return username;
     }
 
@@ -699,7 +710,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the startDate
      */
-    public String getStartDate() {
+    String getStartDate() {
         return startDate;
     }
 
@@ -708,7 +719,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the checkpoint string
      */
-    public String getStartCheckpoint() {
+    String getStartCheckpoint() {
         return startCheckpoint;
     }
 
@@ -729,7 +740,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the username
      */
-    public String getPublicContentUsername() {
+    String getPublicContentUsername() {
         return publicContentUsername;
     }
 
@@ -848,7 +859,7 @@ public class LivelinkConnector implements Connector {
      * @param subType the subtype of the item
      * @return the map from integer subtypes
      */
-    public String[] getExtendedDataKeys(int subType) {
+    String[] getExtendedDataKeys(int subType) {
         if (extendedDataKeys == null)
             return null;
         return (String[]) extendedDataKeys.get(new Integer(subType));
@@ -933,8 +944,125 @@ public class LivelinkConnector implements Connector {
      *
      * @return the array of VersionInfo assoc attribute keys to index.
      */
-    public String[] getVersionInfoKeys() {
+    String[] getVersionInfoKeys() {
         return this.versionInfoKeys;
+    }
+
+
+    /**
+     * Sets the Categories to include.  The value is either a comma-separated
+     * list of Category ObjectIDs, or the special keywords: "all", "none",
+     * "searchable".  Default is "all,searchable".
+     *
+     * @param categories a list of Category IDs or one of the special keywords.
+     */
+    public void setIncludedCategories(String categories) {
+        this.includedCategoryIds = parseCategories(categories, "all,searchable");
+    }
+
+    /**
+     * Returns the set of the Categories to include.
+     *
+     * @return HashSet of parsed Category IDs and String special keywords.
+     */
+    HashSet getIncludedCategories() {
+        return this.includedCategoryIds;
+    }
+
+
+    /**
+     * Sets the Categories to exclude.  The value is either a comma-separated
+     * list of Category ObjectIDs, or the special keywords: "all", "none",
+     * "searchable".  Default is "none".
+     *
+     * @param categories a list of Category IDs or one of the special keywords.
+     */
+    public void setExcludedCategories(String categories) {
+        this.excludedCategoryIds = parseCategories(categories, "none");
+    }
+
+    /**
+     * Returns the set of the Categories to exclude.
+     *
+     * @return HashSet of parsed Category IDs and String special keywords.
+     */
+    HashSet getExcludedCategories() {
+        return this.excludedCategoryIds;
+    }
+
+
+    /**
+     * Parse the list of Category ObjectIDs or special keyword.  Build up a
+     * HashSet to quickly look up the items.
+     *
+     * @param categories a list of Category IDs or one of the special keywords.
+     * @return HashSet of parsed Integers or String keywords.
+     */
+    private HashSet parseCategories(String categories, String defaultStr) {
+        String s = sanitizeListOfStrings(categories);
+        if ((s == null) || (s.length() == 0))
+            s = defaultStr;
+
+        String ids[] = s.split(",");
+        HashSet set = new HashSet(ids.length);
+        for (int i = 0; i < ids.length; i++) {
+            try {
+                // If it is an integer, it represents a Category ID
+                set.add(Integer.valueOf(ids[i]));
+            } catch (NumberFormatException e) {
+                // Otherwise, it should be one of the special keywords.
+                set.add(ids[i].toLowerCase());
+            }
+        }
+        return set;
+    }
+
+
+    /**
+     * Set the rules for handling the ObjectInfo.Catalog.DISPLAYTYPE_HIDDEN
+     * attribute for an object.  Specifies whether hidden items are indexed
+     * and searchable.  The supplied value is a list of subtypes for which
+     * to index hidden items, or the special keywords "true", "false", "all",
+     * or "'ALL'",  optionally in braces {}.  The obtuse syntax matches that
+     * used in the opentext.ini file.
+     *
+     * @param hidden comma-separated list of subtypes or special keywords.
+     */
+    public void setShowHiddenItems(String hidden) {
+
+        hiddenItemsSubtypes = new HashSet();
+        String s = sanitizeListOfStrings(hidden);
+
+        // An empty set here indicates that no hidden content should be indexed.
+        if ((s == null) || (s.length() == 0) || "false".equalsIgnoreCase(s)) 
+            return;
+
+        String ids[] = s.split(",");
+        for (int i = 0; i < ids.length; i++) {
+            try {
+                // If it is an integer, it represents a Subtype.
+                hiddenItemsSubtypes.add(Integer.valueOf(ids[i]));
+            } catch (NumberFormatException e) {
+                // Otherwise, it should be one of the special keywords.
+                String word = ids[i].toLowerCase();
+                // "All" in the set means all hidden content will get indexed.
+                if ("true".equals(word) || "all".equals(word) || "'all'".equals(word))
+                    hiddenItemsSubtypes.add("all");
+                else
+                    hiddenItemsSubtypes.add(word);
+            }
+        }
+    }
+
+    /**
+     * Return the set of subtypes for which we show hidden items.
+     * If the Set is null, then show all hidden items, avoiding an
+     * expensive check before processing each document.
+     *
+     * @return Set of subtypes for which we show hidden items.
+     */
+    HashSet getShowHiddenItems() {
+        return hiddenItemsSubtypes;
     }
 
 

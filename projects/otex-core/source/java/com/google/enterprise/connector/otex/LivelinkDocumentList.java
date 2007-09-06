@@ -192,6 +192,7 @@ class LivelinkDocumentList implements DocumentList {
         /** The size of the recarray. */
         private final int size;
 
+
         public DocIdIterator() {
             this.row = 0;
             this.size = recArray.size();
@@ -253,15 +254,67 @@ class LivelinkDocumentList implements DocumentList {
         /** The volume ID of the current row. */
         private int volumeId;
 
+        /** The object Subtype. */
+        private int subType;
+
         /** The ObjectInfo of the current row, [fetch delayed until needed] */
         private ClientValue objectInfo;
 
         /** The Document Properties associated with the current row. */
         private LivelinkDocument props;
 
+        /** The set of categories to include. */
+        private HashSet includedCategories;
+        
+        /** The set of categories to exclude. */
+        private HashSet excludedCategories;
+
+        /** Whether to even bother with Category attributes? */
+        boolean doCategories; 
+
+        /** Index only category attributes that are marked searchable? */
+        boolean includeSearchable;
+
+        /** The set of Subtypes for which we will index hidden items. */
+        HashSet hiddenItemsSubtypes;
+
+
         LivelinkDocumentListIterator() {
             this.row = 0;
             this.size = recArray.size();
+
+            // Fetch the set of categories to include.  
+            this.includedCategories = connector.getIncludedCategories();
+
+            // Should we index any Category attributes at all?
+            this.doCategories = !(includedCategories.contains("none"));
+            
+            // Should we only include "searchable" attributes? (Otherwise
+            // include all attributes).
+            this.includeSearchable = includedCategories.contains("searchable");
+
+            // If we index all Categories, don't bother searching the set, 
+            // as it will only slow us down.
+            if (includedCategories.contains("all"))
+                includedCategories = null;
+
+            // Fetch the set of categories to exclude. 
+            this.excludedCategories = connector.getExcludedCategories();
+            // FIXME:  What if included and excluded contradict each other?
+            if (excludedCategories.contains("all"))
+                this.doCategories = false;
+
+            // If we exclude no Categories, don't bother searching the set, 
+            // as it will only slow us down.
+            if (excludedCategories.contains("none"))
+                excludedCategories = null;
+
+            // Fetch the Set of Subtypes for which we will index hidden items.
+            hiddenItemsSubtypes = connector.getShowHiddenItems();
+
+            // If we will index all hidden items, we can just skip all the checks.
+            if (hiddenItemsSubtypes.contains("all"))
+                hiddenItemsSubtypes = null;
         }
 
         public boolean hasNext() {
@@ -273,7 +326,18 @@ class LivelinkDocumentList implements DocumentList {
                 try {
                     objectId = recArray.toInteger(row, "DataID");
                     volumeId = recArray.toInteger(row, "OwnerID");
+                    subType  = recArray.toInteger(row, "Subtype");
                     objectInfo = null;
+
+                    // If we are skipping some hidden items, and this is one
+                    // of those items, then ... well, skip it.
+                    // FIXME: This could throw a NoSuchElementException, even
+                    // if the caller got a positive response to hasNext().
+                    if (skipHiddenItem()) {
+                        row++;
+                        return next();
+                    }
+
                     props = new LivelinkDocument(objectId, fields.length*2);
 
                     /* Establish the checkpoint string for this row.
@@ -303,6 +367,27 @@ class LivelinkDocumentList implements DocumentList {
 
         public void remove() {
             throw new UnsupportedOperationException();
+        }
+
+
+        /**
+         * If we as skipping some (or all) hidden items, and this item
+         * qualifies as one to skip, return <code>true</code>, otherwise 
+         * return <code>false</code>.
+         */
+        private boolean skipHiddenItem() throws RepositoryException {
+
+            if ((hiddenItemsSubtypes == null) ||
+                hiddenItemsSubtypes.contains(new Integer(subType))) {
+                return false;
+            }
+
+            // OK. A hidden item of this Subtype should not be indexed.
+            // Check for the hidden display type flag in the ObjectInfo.
+            if (objectInfo == null)
+                objectInfo = client.GetObjectInfo(volumeId, objectId);
+
+            return (objectInfo.toInteger("Catalog") == Client.DISPLAYTYPE_HIDDEN);
         }
 
 
@@ -338,10 +423,8 @@ class LivelinkDocumentList implements DocumentList {
             props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
                 isPublic ? VALUE_TRUE : VALUE_FALSE);
 
-            int subType = recArray.toInteger(row, "SubType");
-
             // Fetch the content.  Returns null if no content.
-            Value contentValue = collectContentProperty(subType);
+            Value contentValue = collectContentProperty();
 
             // FIXME: Until the GSA pays attention to the Name property...
             // The default name of a document for the GSA is the quite
@@ -357,7 +440,7 @@ class LivelinkDocumentList implements DocumentList {
             }
 
             // Add the ExtendedData as MetaData properties.
-            collectExtendedDataProperties(subType);
+            collectExtendedDataProperties();
 
             // DISPLAYURL
             String url = connector.getDisplayUrl(subType, objectId, volumeId);
@@ -373,10 +456,9 @@ class LivelinkDocumentList implements DocumentList {
          * content is generated.  The content property's value is
          * inserted into the property map, but is also returned.
          *
-         * @param subType the subtype of the item
          * @returns content Value object, null if no content
          */
-        private Value collectContentProperty(int subType)
+        private Value collectContentProperty()
                 throws RepositoryException {
             if (LOGGER.isLoggable(Level.FINER))
                 LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
@@ -424,11 +506,10 @@ class LivelinkDocumentList implements DocumentList {
 
         /**
          * Collect properties from the ExtendedData assoc.
-         *
-         * @param subType the subtype of the item
          */
-        private void collectExtendedDataProperties(int subType)
+        private void collectExtendedDataProperties()
                 throws RepositoryException {
+
             String[] fields = connector.getExtendedDataKeys(subType);
             if (fields == null)
                 return;
@@ -584,6 +665,10 @@ class LivelinkDocumentList implements DocumentList {
          * @throws RepositoryException if an error occurs
          */
         private void collectCategoryAttributes() throws RepositoryException {
+
+            if (doCategories == false)
+                return;
+            
             // List the categories. LAPI requires us to use this
             // Assoc containing the id instead of just passing in
             // the id. The Assoc may have two other values, Type,
@@ -601,6 +686,16 @@ class LivelinkDocumentList implements DocumentList {
             int numCategories = categoryIds.size();
             for (int i = 0; i < numCategories; i++) {
                 ClientValue categoryId = categoryIds.toValue(i);
+
+                // If this Category is not in the included list, or it is
+                // explicitly mentioned in the excluded list, then skip it.
+                Integer id = new Integer(categoryId.toInteger("ID"));
+                if (((includedCategories != null) &&
+                     !includedCategories.contains(id)) ||
+                    ((excludedCategories != null) &&
+                     excludedCategories.contains(id)))
+                    continue;
+
                 // Make sure we know what type of categoryId
                 // object we have. There are also Workflow
                 // category attributes which can't be read here.
@@ -709,11 +804,12 @@ class LivelinkDocumentList implements DocumentList {
         private void getAttributeValue(ClientValue categoryVersion,
                 String attrName, int attrType, ClientValue attrSetPath,
                 ClientValue attrInfo) throws RepositoryException {
+
             if (Client.ATTR_TYPE_SET == attrType)
                 throw new IllegalArgumentException("attrType = SET");
 
-            // Skip attributes marked as not searchable.
-            if (!attrInfo.toBoolean("Search"))
+            // Maybe skip those attributes not marked as searchable.
+            if ((includeSearchable) && !attrInfo.toBoolean("Search"))
                 return;
 
             //System.out.println("getAttributeValue: attrName = " + attrName);

@@ -230,15 +230,13 @@
     <td>The IDs of the categories that you want to index. Including a
     category means that when that category is applied to an item, the
     attributes are indexed as metadata for that item.</td>
-    <td>A comma-separated list of object IDs for categories, or one of
+    <td>A comma-separated list of object IDs for categories, and/or one of
     the following special strings:
     <dl>
     <dt><code>searchable</code>
-    <dd>All attributes that have the <b>Show in Search</b> parameter
+    <dd>Only attributes that have the <b>Show in Search</b> parameter
     enabled, from each of the categories that are applied to the item,
-    are indexed. This value can be combined in the list with
-    category object IDs to include categories with attributes that do
-    not have the <b>Show in Search</b> parameter enabled.</dd>
+    are indexed.  Otherwise, all attributes of the Categories are indexed.</dd>
     <dt><code>all</code>
     <dd>All attributes from each of the categories that are applied to
     the item are indexed.</dd>
@@ -248,7 +246,7 @@
     categories.</dd>
     </dl>
     <p>Specifying an empty string is the same as "all." The default
-    value is "searchable".</p></td>
+    value is "all,searchable".</p></td>
   </tr>
 
   <tr>
@@ -260,12 +258,6 @@
     <td>A comma-separated list of object IDs for categories, or one of
     the following special strings:
     <dl>
-    <dt><code>searchable</code>
-    <dd>All attributes that have the <b>Show in Search</b> parameter
-    enabled, from each of the categories that are applied to the item,
-    are excluded. This value can be combined in the list with
-    category object IDs to exclude categories with attributes that do
-    not have the <b>Show in Search</b> parameter enabled.</dd>
     <dt><code>all</code>
     <dd>All attributes from each of the categories that are applied to
     the item are excluded. This value turns off the indexing of

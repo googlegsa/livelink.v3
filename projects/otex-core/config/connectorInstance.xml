@@ -59,6 +59,7 @@
 		<property name="servtype" value=""/>
 		<property name="startDate" value=""/>
 		<property name="publicContentUsername" value=""/>
+
 		<property name="excludedNodeTypes"
 			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
 		<property name="excludedVolumeTypes" value="148,162"/>
@@ -76,6 +77,9 @@
 		</property>
 		<property name="includedObjectInfo" value="" />
 		<property name="includedVersionInfo" value="" />
+        <property name="includedCategories" value="all,searchable" />
+        <property name="excludedCategories" value="" />
+        <property name="showHiddenItems" value="all" />
 
 		<property name="displayPatterns">
 			<map>
