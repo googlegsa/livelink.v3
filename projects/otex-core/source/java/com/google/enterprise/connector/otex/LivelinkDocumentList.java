@@ -443,7 +443,11 @@ class LivelinkDocumentList implements DocumentList {
             collectExtendedDataProperties();
 
             // DISPLAYURL
-            String url = connector.getDisplayUrl(subType, objectId, volumeId);
+            String displayUrl = isPublic ? 
+                connector.getPublicContentDisplayUrl() :
+                connector.getDisplayUrl(); 
+            String url = connector.getDisplayUrl(displayUrl, 
+                subType, objectId, volumeId);
             props.addProperty(SpiConstants.PROPNAME_DISPLAYURL,
                               Value.getStringValue(url));
         }

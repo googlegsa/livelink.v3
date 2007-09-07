@@ -59,6 +59,7 @@
 		<property name="servtype" value=""/>
 		<property name="startDate" value=""/>
 		<property name="publicContentUsername" value=""/>
+		<property name="publicContentDisplayUrl" value=""/>
 
 		<property name="excludedNodeTypes"
 			value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>

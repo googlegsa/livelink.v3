@@ -218,6 +218,9 @@ public class LivelinkConnector implements Connector {
     /** The Livelink Public Content client username. */
     private String publicContentUsername;
 
+    /** The Livelink Public Content client display URL. */
+    private String publicContentDisplayUrl;
+
     /** The authentication manager to use. */
     private AuthenticationManager authenticationManager;
 
@@ -563,11 +566,12 @@ public class LivelinkConnector implements Connector {
      * relative display URL pattern, which may use the
      * subtype-specific display action.
      *
+     * @param url the display URL to use; caller may choose default or public
      * @param subType the subtype, used to select a pattern and an action
      * @param volumeId the volume ID of the object
      * @param objectId the object ID of the object
      */
-    String getDisplayUrl(int subType, int objectId, int volumeId) {
+    String getDisplayUrl(String url, int subType, int objectId, int volumeId) {
         Integer subTypeInteger = new Integer(subType);
         MessageFormat mf = (MessageFormat) displayPatterns.get(subTypeInteger);
         if (mf == null)
@@ -577,7 +581,7 @@ public class LivelinkConnector implements Connector {
             action = displayActions.get(null);
 
         StringBuffer buffer = new StringBuffer();
-        buffer.append(displayUrl);
+        buffer.append(url);
         Object[] args = { new Integer(objectId), new Integer(volumeId),
             subTypeInteger, action };
         synchronized (displayPatterns) {
@@ -742,6 +746,27 @@ public class LivelinkConnector implements Connector {
      */
     String getPublicContentUsername() {
         return publicContentUsername;
+    }
+
+    /**
+     * Sets the Livelink public content display URL.
+     *
+     * @param username the URL
+     */
+    public void setPublicContentDisplayUrl(String url) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("PUBLIC CONTENT DISPLAY URL: " + url);
+        if (url != null && url.length() > 0)
+            this.publicContentDisplayUrl = url;
+    }
+
+    /**
+     * Gets the Livelink public content display URL.
+     *
+     * @return the URL
+     */
+    String getPublicContentDisplayUrl() {
+        return publicContentDisplayUrl;
     }
 
     /**
@@ -1294,7 +1319,11 @@ public class LivelinkConnector implements Connector {
         }
         if (!useSeparateAuthentication)
             authenticationClientFactory = null;
-
+       if (publicContentDisplayUrl == null || 
+                publicContentDisplayUrl.length() == 0) {
+            publicContentDisplayUrl = displayUrl;
+        }
+        
         // Must be the last thing in this method so that the
         // connector is fully configured when used here.
         if (authenticationManager instanceof ConnectorAware)
