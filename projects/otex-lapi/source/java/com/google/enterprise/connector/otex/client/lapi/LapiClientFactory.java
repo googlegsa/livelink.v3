@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
+import java.io.File;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -104,18 +105,44 @@ public final class LapiClientFactory implements ClientFactory {
     }
 
     /** {@inheritDoc} */
-    /* TODO: Can we use the LLSession.GetCARootCerts method to
-     * allow the admin to specify a directory of certificate
-     * files? It might need to be a URL to a location from which
-     * we can read the certificates, write them to a file, then
-     * read them, since the admin may not have generic filesystem
+    /* TODO: For the beta release, with the connector managers
+     * running outside the GSA, support the use of directories as
+     * entries in the caRootCerts property. In the future, it
+     * might need to be a URL to a location from which we can
+     * read the certificates, write them to a file, then read
+     * them, since the admin may not have generic filesystem
      * access to the GSA if the connectors are running there.
      */
     public void setCaRootCerts(java.util.List value) {
         LLValue list = new LLValue().setList(); 
         for (int i = 0; i < value.size(); i++) {
-            LLValue cert = new LLValue().setString((String) value.get(i));
-            list.add(cert); 
+            String certEntry = (String) value.get(i); 
+            // If the config form property is empty, and a
+            // directory is provided in connectorInstance.xml
+            // (making the list non-empty), skip the empty
+            // string. I don't think it's possible to get a null
+            // value in the list, but it won't hurt to check.
+            if (certEntry == null || certEntry.length() == 0)
+                continue;
+            File certDir = new File(certEntry);
+            if (certDir.exists() && certDir.isDirectory()) {
+                if (LOGGER.isLoggable(Level.CONFIG)) {
+                    LOGGER.config("Reading certificates from " +
+                        certDir.getAbsolutePath());
+                }
+                LLValue rootCACertsList = new LLValue();
+                LLSession.GetCARootCerts(certDir.getAbsolutePath(),
+                    rootCACertsList); 
+                int size = rootCACertsList.size();
+                if (LOGGER.isLoggable(Level.CONFIG)) 
+                    LOGGER.config("Found " + size + " certificates"); 
+                for (int j = 0; j < size; j++) 
+                    list.add(rootCACertsList.toValue(j)); 
+            }
+            else {
+                LLValue cert = new LLValue().setString(certEntry); 
+                list.add(cert);
+            }
         }
         setConfig("CARootCerts", list);
     }
