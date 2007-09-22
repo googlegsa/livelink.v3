@@ -21,6 +21,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.logging.Logger;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Properties;
 import java.util.ResourceBundle;
@@ -29,6 +30,7 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
 import javax.swing.text.MutableAttributeSet;
 import com.google.enterprise.connector.spi.ConfigureResponse;
+import junit.framework.Test;
 import junit.framework.TestCase;
 
 /**
@@ -36,6 +38,32 @@ import junit.framework.TestCase;
  */
 public class LapiLivelinkConnectorTypeTest
         extends CoreLivelinkConnectorTypeTest {
+
+    public void testUrlValidation() throws Exception {
+        Map props = getValidProperties();
+        props.put("displayUrl", System.getProperty("validateurl.goodUrl")); 
+        ConfigureResponse response =
+            connectorType.validateConfig(props, defaultLocale);
+        assertNull("Valid URL failed", response); 
+
+        for (int i = 0; i < 5; i++) {
+            String url = System.getProperty("validateurl.badUrl." + i);
+            if (url == null)
+                break;
+            props.put("displayUrl", url); 
+            response = connectorType.validateConfig(props, defaultLocale);
+            assertNotNull("Invalid URL succeeded:" + url, response); 
+            HashMap form = getForm(response); 
+            assertIsNotHidden(form, "ignoreDisplayUrlErrors"); 
+            assertValue(form, "ignoreDisplayUrlErrors", "false");
+        }
+
+        props.put("displayUrl", System.getProperty("validateurl.badUrl.0"));
+        props.put("ignoreDisplayUrlErrors", "true");
+        response = connectorType.validateConfig(props, defaultLocale);
+        assertNull("Didn't ignore errors", response); 
+    }
+
     /**
      * Tests the validateConfig method with input which doesn't map to
      * a valid Livelink server. Overrides the same method from

@@ -113,6 +113,7 @@
     </copy>
     <replace file="${tests.logging.properties}" 
              token="\" value="\\" />
+    <delete file="${logging.file}"/>
     <junit>
       <assertions><enable/></assertions>
       <classpath>

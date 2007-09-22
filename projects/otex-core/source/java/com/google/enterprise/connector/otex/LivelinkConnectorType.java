@@ -14,16 +14,31 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.HttpURLConnection; 
+import java.net.MalformedURLException; 
+import java.net.URL; 
+import java.net.URLConnection; 
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorType;
@@ -42,6 +57,27 @@ public class LivelinkConnectorType implements ConnectorType {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnectorType.class.getName());
+    
+    /** An all-trusting TrustManager for SSL URL validation. */
+    private static final TrustManager[] trustAllCerts = 
+        new TrustManager[] {
+            new X509TrustManager() {
+                public X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
+                public void checkServerTrusted(
+                    X509Certificate[] certs, String authType)
+                    throws CertificateException {
+                    return;
+                }
+                public void checkClientTrusted(
+                    X509Certificate[] certs, 
+                    String authType) 
+                    throws CertificateException {
+                    return;
+                }
+            }
+        };
 
     /**
      * Holds information (name, label, default value) about a
@@ -352,6 +388,45 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /**
+     * Encapsulates form display properties.
+     */
+    private static class FormContext {
+        private HashMap hiddenProperties; 
+
+        FormContext(Map configData) {
+            hiddenProperties = new HashMap(); 
+            
+            String ignoreDisplayUrlErrors = 
+                (String) configData.get("ignoreDisplayUrlErrors");
+            if (ignoreDisplayUrlErrors == null)
+                ignoreDisplayUrlErrors = "false"; 
+            Boolean ignore = Boolean.valueOf(ignoreDisplayUrlErrors);
+            hiddenProperties.put("ignoreDisplayUrlErrors", 
+                ignore.equals(Boolean.TRUE) ? Boolean.FALSE : Boolean.TRUE); 
+        }
+
+        void setHidden(String propertyName, boolean hide) {
+            hiddenProperties.put(propertyName, 
+                hide ? Boolean.TRUE : Boolean.FALSE);
+        }
+
+        boolean isHidden(String propertyName) {
+            Boolean b = (Boolean) hiddenProperties.get(propertyName);
+            if (b == null) return false;
+            return b.booleanValue();
+        }
+
+        void setHideIgnoreDisplayUrlErrors(boolean hide) {
+            setHidden("ignoreDisplayUrlErrors", hide); 
+        }
+
+        boolean getHideIgnoreDisplayUrlErrors() {
+            return isHidden("ignoreDisplayUrlErrors"); 
+        }
+    }
+
+
+    /**
      * The Livelink Connector configuration form builder.
      */
     private static class FormBuilder {
@@ -412,6 +487,8 @@ public class LivelinkConnectorType implements ConnectorType {
             baseEntries.add(new PasswordInputProperty("password", true));
             baseEntries.add(new TextInputProperty("domainName"));
             baseEntries.add(new TextInputProperty("displayUrl", true));
+            baseEntries.add(
+                new BooleanSelectProperty("ignoreDisplayUrlErrors", "false")); 
             baseEntries.add(new TextInputProperty("includedLocationNodes"));
 
             // These record the state of the enablers. They are a little
@@ -476,14 +553,17 @@ public class LivelinkConnectorType implements ConnectorType {
 
         private final Map data;
         private final ResourceBundle labels;
+        private FormContext formContext;
 
         FormBuilder(Locale locale) {
-            this(Collections.EMPTY_MAP, locale);
+            this(Collections.EMPTY_MAP, locale, 
+                new FormContext(Collections.EMPTY_MAP));
         }
 
-        FormBuilder(Map data, Locale locale) {
+        FormBuilder(Map data, Locale locale, FormContext formContext) {
             this.data = data;
-
+            this.formContext = formContext;
+            
             // get the local-specific labels for the form
             ResourceBundle bundle;
             try {
@@ -502,7 +582,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         private void addEntries(StringBuffer buffer, ArrayList entries,
-                boolean hide, String labelPrefix, String labelSuffix) {
+            boolean hide, String labelPrefix, String labelSuffix) {
             for (Iterator i = entries.iterator(); i.hasNext(); ) {
                 FormProperty prop = (FormProperty) i.next();
                 addEntry(buffer, prop, hide, labelPrefix, labelSuffix);
@@ -510,9 +590,11 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         private void addEntry(StringBuffer buffer, FormProperty prop,
-                boolean hide, String labelPrefix, String labelSuffix) {
+            boolean hide, String labelPrefix, String labelSuffix) {
             if (hide)
                 prop = new HiddenInputProperty(prop);
+            if (formContext.isHidden(prop.name))
+                prop = new HiddenInputProperty(prop);                
             prop.addToBuffer(buffer, labelPrefix, labelSuffix,
                 getProperty(prop.name), labels);
         }
@@ -536,6 +618,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
     }
 
+
     /**
      * No-args constructor for bean instantiation.
      */
@@ -557,12 +640,13 @@ public class LivelinkConnectorType implements ConnectorType {
      * {@inheritDoc}
      */
     public ConfigureResponse getPopulatedConfigForm(Map configData,
-            Locale locale) {
+        Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("getPopulatedConfigForm data: " + configData);
             LOGGER.config("getPopulatedConfigForm locale: " + locale);
         }
-        return getResponse(null, configData, locale);
+        return getResponse(null, configData, locale, 
+            new FormContext(configData));
     }
 
     /**
@@ -577,10 +661,11 @@ public class LivelinkConnectorType implements ConnectorType {
      * messages
      */
     private ConfigureResponse getResponse(String message, Map configData,
-            Locale locale) {
+        Locale locale, FormContext formContext) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("Response data: " + configData);
-        FormBuilder form = new FormBuilder(configData, locale);
+
+        FormBuilder form = new FormBuilder(configData, locale, formContext);
         return new ConfigureResponse(message, form.getFormSnippet());
     }
 
@@ -619,6 +704,8 @@ public class LivelinkConnectorType implements ConnectorType {
             LOGGER.config("validateConfig data: " + configData);
             LOGGER.config("validateConfig locale: " + locale);
         }
+
+        FormContext formContext = new FormContext(configData); 
 
         // We want to change the passed in properties, but avoid
         // changing the configData parameter. If it is a Properties
@@ -669,19 +756,41 @@ public class LivelinkConnectorType implements ConnectorType {
                     LOGGER.warning(t.toString());
                 t = t.getCause();
             }
-            return getResponse("Failed to instantiate connector", p, locale);
+            return getResponse("Failed to instantiate connector", p, locale,
+                formContext);
         }
+
+        boolean ignoreDisplayUrlErrors = Boolean.valueOf(
+            p.getProperty("ignoreDisplayUrlErrors", "false")).booleanValue();
+        if (!ignoreDisplayUrlErrors) {
+            try {
+                LOGGER.log(Level.FINER, 
+                    "Validating display URL " + p.getProperty("displayUrl")); 
+                validateUrl(p.getProperty("displayUrl")); 
+            } catch (UrlConfigurationException e) {
+                LOGGER.log(Level.WARNING, "Error in configuration", e);
+                formContext.setHideIgnoreDisplayUrlErrors(false);
+                return getResponse("Error in configuration: " + e.getMessage(),
+                    p, locale, formContext);
+            } 
+        }
+
+        // TODO: validate publicContentDisplayUrl. Since this is
+        // only set in a custom XML file, we have to wait until
+        // the ConnectorManager starts doing the instantiation
+        // and uses the custom file so we can query the connector
+        // for the property value.
 
         try {
             conn.login();
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in configuration", t);
             return getResponse("Error in configuration: " + t.getMessage(),
-                p, locale);
+                p, locale, formContext);
         }
 
         if (changeHttp || changeAuth)
-            return getResponse(null, p, locale);
+            return getResponse(null, p, locale, formContext);
         else
             return null;
     }
@@ -700,7 +809,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * changed
      */
     private boolean changeFormDisplay(Properties p, String useName,
-            String enableName) {
+        String enableName) {
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("ENABLED " + enableName + ": " +
                 p.getProperty(enableName));
@@ -714,5 +823,144 @@ public class LivelinkConnectorType implements ConnectorType {
             return true;
         } else
             return false;
+    }
+
+    /**
+     * Attempts to validate a URL. In this case, we're mostly
+     * trying to catch typos, so "valid" means
+     *
+     * <ol>
+     * <li>The URL syntax is valid.
+     * <li>A connection can be made and the content read.
+     * <li>If the URL uses HTTP or HTTPS, the response code was not 404.
+     * </ol>
+     *
+     * When testing an HTTPS URL, we override server certificate
+     * validation to skip trying to verify the server's
+     * certificate. In this case, all we care about is that the
+     * configured URL can be reached; it's up to the connector
+     * administrator to enter the right URL.
+     *
+     * @param urlString the URL to test
+     */
+    /* Java 1.4 doesn't support setting a timeout on the
+     * URLConnection. Java 1.5 does support timeouts, so we're
+     * using reflection to set timeouts if available. Another
+     * possibility would be to use Jakarta Commons HttpClient
+     *
+     * The read and connect timeouts are set to one minute. This
+     * isn't currently configurable, but if it fails the
+     * connector admin can set the flag to ignore validation
+     * errors and avoid the timeout problem.
+     *
+     * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4912484
+     * The above Sun bug report documents that openConnection
+     * doesn't try to connect. 
+     */
+    private void validateUrl(String urlString)
+            throws UrlConfigurationException {
+        if (urlString == null || urlString.trim().length() == 0)
+            return;
+
+        try {
+            URL url = new URL(urlString);
+            URLConnection conn = url.openConnection(); 
+
+            // If we're using Java 1.5 or later, URLConnection
+            // has timeout methods.
+            try {
+                final Integer[] connectTimeoutArg = new Integer[] {
+                    new Integer(60) }; 
+                final Integer[] readTimeoutArg = new Integer[] {
+                    new Integer(60 * 1000) }; 
+                Class c = conn.getClass(); 
+                Method setConnectTimeout = c.getMethod("setConnectTimeout",
+                    new Class[] { int.class });
+                setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg); 
+                Method setReadTimeout = c.getMethod("setReadTimeout",
+                    new Class[] { int.class });
+                setReadTimeout.invoke(conn, readTimeoutArg); 
+            } catch (NoSuchMethodException m) {
+                LOGGER.log(Level.FINEST, "No timeout methods");
+                // Ignore; we're probably on Java 1.4.
+            } catch (Throwable t) {
+                LOGGER.log(Level.WARNING, "Error setting connection timeout",
+                    t);
+            }
+
+            if (conn instanceof HttpsURLConnection)
+                setTrustingTrustManager((HttpsURLConnection) conn); 
+            try {
+                conn.getContent(); // Read and discard response content.
+            } catch (Throwable t) {
+                LOGGER.log(Level.FINEST, "Failed to read content", t); 
+            }
+            if (conn instanceof HttpURLConnection) {
+                int responseCode = ((HttpURLConnection) conn).
+                    getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_NOT_FOUND)
+                    throw new Exception("Not Found: " + urlString);
+                ((HttpURLConnection) conn).disconnect();
+            }
+        } catch (UrlConfigurationException u) {
+            throw u;
+        } catch (Throwable t) {
+            LOGGER.log(Level.WARNING, "Error in Livelink URL validation", t);
+            String text = getExceptionMessages(urlString, t); 
+            throw new UrlConfigurationException(text);
+        }
+    }
+
+    /**
+     * Replaces the default TrustManager for this connection with
+     * one which trusts all certificates.
+     *
+     * @param conn the current connection
+     * @throws Exception if an error occurs setting the properties
+     */
+    private void setTrustingTrustManager(HttpsURLConnection conn)
+            throws Exception {
+        SSLContext sc = SSLContext.getInstance("SSL");
+        LOGGER.log(Level.FINEST, "SSLContext: " + sc);         
+        sc.init(null, trustAllCerts, null);
+        SSLSocketFactory factory = sc.getSocketFactory(); 
+        LOGGER.log(Level.FINEST, "SSLSocketFactory: " + factory); 
+        conn.setSSLSocketFactory(factory);
+        LOGGER.log(Level.FINEST, "Using socket factory: " +
+            conn.getSSLSocketFactory()); 
+    }
+
+    /**
+     * Returns the exception's message, or the exception class
+     * name if no message is present.
+     *
+     * @param t the exception
+     * @return a message
+     */
+    private String getExceptionMessage(Throwable t) {
+        String message = t.getMessage();
+        if (message != null)
+            return message;
+        return t.getClass().getName(); 
+    }
+
+    /**
+     * Returns a message containing the description text, the
+     * message from the given exception, and any chained
+     * exception messages.
+     *
+     * @param description the description text
+     * @param t the exception
+     * @return a message
+     */
+    private String getExceptionMessages(String description, Throwable t) {
+        StringBuffer buffer = new StringBuffer();
+        if (description != null)
+            buffer.append(description).append(" ");
+        buffer.append(getExceptionMessage(t)).append(" "); 
+        Throwable next = t;
+        while ((next = next.getCause()) != null) 
+            buffer.append(getExceptionMessage(next));
+        return buffer.toString(); 
     }
 }
