@@ -41,6 +41,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import com.google.enterprise.connector.spi.ConfigureResponse;
+import com.google.enterprise.connector.spi.ConnectorFactory;
 import com.google.enterprise.connector.spi.ConnectorType;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
@@ -699,7 +700,9 @@ public class LivelinkConnectorType implements ConnectorType {
      * TODO: Add init method and parameter validation to
      * LivelinkConnector.
      */
-    public ConfigureResponse validateConfig(Map configData, Locale locale) {
+    public ConfigureResponse validateConfig(Map configData, Locale locale,
+                                            ConnectorFactory connectorFactory)
+    {
         if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("validateConfig data: " + configData);
             LOGGER.config("validateConfig locale: " + locale);

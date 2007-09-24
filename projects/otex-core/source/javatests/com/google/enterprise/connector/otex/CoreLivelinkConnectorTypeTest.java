@@ -297,7 +297,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
      */
     public void testValidateConfigBadInput() throws Exception {
         ConfigureResponse response =
-            connectorType.validateConfig(emptyProperties, defaultLocale);
+            connectorType.validateConfig(emptyProperties, defaultLocale, null);
         assertNotNull("Missing ConfigureResponse", response);
         HashMap form = getForm(response);
         assertValue(form, "server", "");
@@ -318,7 +318,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.put("username", "me");
         props.put("password", "pw");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertNull("Missing ConfigureResponse", response);
     }
 
@@ -329,7 +329,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     public void testValidateConfigValidLivelinkInput() throws Exception {
         Properties props = getValidProperties();
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
 
@@ -342,7 +342,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "false");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
 
@@ -355,7 +355,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
 
@@ -367,7 +367,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         Properties props = getValidProperties();
         props.setProperty("enableNtlm", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
 
@@ -379,7 +379,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         Properties props = getValidProperties();
         props.setProperty("useUsernamePasswordWithWebServer", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
 

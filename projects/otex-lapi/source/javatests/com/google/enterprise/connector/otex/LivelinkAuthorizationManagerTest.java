@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -73,7 +74,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      * @param docids a list of document IDs
      * @param username the username to authorize
      */
-    private List authorizeDocids(List docids, final String username)
+    private Collection authorizeDocids(List docids, final String username)
             throws RepositoryException {
         AuthenticationIdentity identity = new AuthenticationIdentity() {
                 public String getUsername() { return username; }
@@ -89,14 +90,18 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      */
     public void testAuthorizeDocids() throws RepositoryException {
         ArrayList data = new ArrayList();
-        // Manually-created test docs
-        data.add(new IdAuth("553119", false)); // not ok for llglobal
-        data.add(new IdAuth("555100", true)); // ok
+        // Manually-created test docs (LL 95 on swift)
+        data.add(new IdAuth("34314", false)); // not ok for llglobal - Rant.rtf in Admin Workspace
+        data.add(new IdAuth("30792", true)); // ok 
+        data.add(new IdAuth("33040", true)); // ok Public Content ACL
+        data.add(new IdAuth("33135", true)); // ok Public Content Default Group
+        data.add(new IdAuth("33029", true)); // ok Public Access Document
+
 
         ArrayList docids = new ArrayList();
         for (int i = 0; i < data.size(); i++)
             docids.add(((IdAuth) data.get(i)).id);
-        List authzList; 
+        Collection authzList; 
         authzList = authorizeDocids(docids, "llglobal");
         mCheckForUser("llglobal", data, authzList); 
 
@@ -113,26 +118,42 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     /**
      * Checks the expected results against the actual results.
+     * SPI v1.0.1 change for authorizeDocids returns a collection
+     * of only those docs that are authorized, so I modified the
+     * test slightly.  "Expected" really becomes a baseline that
+     * allows us to check that no authorized docs are missing from
+     * the list and no unauthorized docs make it into the list.
      *
      * @param usernamme the current user whose permissions are being checked
-     * @param expected the expected results; a list of AuthIds
+     * @param baseline the expected results; a list of AuthIds
      * @param actual the results returned from authorizeDocids
      * @throws RepositoryException if an error occurs
      */
-    private void mCheckForUser(String username, List expected,
-            List actual) throws RepositoryException {
-        int i = 0;
-        for (Iterator a = actual.iterator(); a.hasNext(); i++) {
-            AuthorizationResponse authz = (AuthorizationResponse) a.next();
-            String docid = authz.getDocid(); 
-            boolean auth = authz.isValid(); 
-            String expectedDocid = ((IdAuth) expected.get(i)).id;
-            boolean expectedAuth = ((IdAuth) expected.get(i)).auth;
+    private void mCheckForUser(String username, Collection baseline,
+            Collection actual) throws RepositoryException {
+        for (Iterator i = baseline.iterator(); i.hasNext(); ) {
+            IdAuth authz = (IdAuth) i.next();
+            String docid = authz.id;
 
-            //System.out.println(docid + " " + auth + " ( " + expectedAuth +
-            //    " )"); 
-            assertEquals(username, expectedDocid, docid); 
-            assertEquals(username, expectedAuth, auth); 
+            AuthorizationResponse found = null;
+            for (Iterator j = actual.iterator(); j.hasNext(); ) {
+                AuthorizationResponse a = (AuthorizationResponse) j.next();
+                if (docid.equals(a.getDocid())) {
+                    assertNull("DocId " + docid + " appears in the " +
+                               "authorized list more than once.", found);
+                    found = a;
+                }
+            }
+            
+            if (authz.auth) {
+                assertNotNull("DocId " + docid + " should have passed " +
+                              "authorization for user " + username +
+                              ", but apparently did not.", found);
+            } else {
+                assertNull("DocId " + docid + " should not have passed " +
+                           "authorization for user " + username +
+                           ", but apparently did.", found);
+            }
         }
     }
 

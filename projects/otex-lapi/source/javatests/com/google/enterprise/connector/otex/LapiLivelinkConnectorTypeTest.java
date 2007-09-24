@@ -43,7 +43,7 @@ public class LapiLivelinkConnectorTypeTest
         Map props = getValidProperties();
         props.put("displayUrl", System.getProperty("validateurl.goodUrl")); 
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertNull("Valid URL failed", response); 
 
         for (int i = 0; i < 5; i++) {
@@ -51,7 +51,7 @@ public class LapiLivelinkConnectorTypeTest
             if (url == null)
                 break;
             props.put("displayUrl", url); 
-            response = connectorType.validateConfig(props, defaultLocale);
+            response = connectorType.validateConfig(props, defaultLocale, null);
             assertNotNull("Invalid URL succeeded:" + url, response); 
             HashMap form = getForm(response); 
             assertIsNotHidden(form, "ignoreDisplayUrlErrors"); 
@@ -60,7 +60,7 @@ public class LapiLivelinkConnectorTypeTest
 
         props.put("displayUrl", System.getProperty("validateurl.badUrl.0"));
         props.put("ignoreDisplayUrlErrors", "true");
-        response = connectorType.validateConfig(props, defaultLocale);
+        response = connectorType.validateConfig(props, defaultLocale, null);
         assertNull("Didn't ignore errors", response); 
     }
 
@@ -76,7 +76,7 @@ public class LapiLivelinkConnectorTypeTest
         props.put("username", "me");
         props.put("password", "pw");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertNotNull("Missing ConfigureResponse", response);
         HashMap form = getForm(response);
         assertValue(form, "server", "myhost");
@@ -98,7 +98,7 @@ public class LapiLivelinkConnectorTypeTest
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "false");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertInvalid(response);
     }
 
@@ -113,7 +113,7 @@ public class LapiLivelinkConnectorTypeTest
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertInvalid(response);
     }
 
@@ -128,7 +128,7 @@ public class LapiLivelinkConnectorTypeTest
         props.setProperty("useHttpTunneling", "true");
         props.setProperty("https", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale);
+            connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
 }
