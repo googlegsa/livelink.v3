@@ -747,7 +747,7 @@ public class LivelinkConnectorType implements ConnectorType {
             ClassLoader loader = thisClass.getClassLoader();
             String jarPath = thisClass.getName().replace('.', '/') +
                 ".class";
-            URL bootstrapJarUrl = loader.getSystemResource(jarPath);
+            URL bootstrapJarUrl = loader.getResource(jarPath);
             // We're always in a jar file.
             JarURLConnection connection =
                 (JarURLConnection) bootstrapJarUrl.openConnection();
