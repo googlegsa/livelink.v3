@@ -122,6 +122,13 @@ public class LivelinkConnector implements Connector {
         }
     }
 
+    /**
+     * Simple wrapper for a validate method.
+     */
+    private static class PropertyValidator {
+        void validate() throws IllegalArgumentException {
+        }
+    }
 
     /**
      * The client factory used to configure and instantiate the
@@ -224,6 +231,9 @@ public class LivelinkConnector implements Connector {
     /** The authentication manager to use. */
     private AuthenticationManager authenticationManager;
 
+    /** A list of PropertyValidator instances. */
+    private List propertyValidators = new ArrayList(); 
+
     /**
      * Constructs a connector instance for a specific Livelink
      * repository, using the default client factory class.
@@ -270,10 +280,14 @@ public class LivelinkConnector implements Connector {
      *
      * @param port the port number
      */
-    public void setPort(int port) {
+    public void setPort(final String port) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("PORT: " + port);
-        clientFactory.setPort(port);
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    clientFactory.setPort(Integer.parseInt(port));
+                }
+        }); 
     }
 
     /**
@@ -470,12 +484,16 @@ public class LivelinkConnector implements Connector {
      * configured by {@link #setDisplayActions}.
      * </dl>
      *
-     * @param displayPatterns a map from subtypes to relative display
+     * @param displayPatternsParam a map from subtypes to relative display
      * URL patterns
      */
-    public void setDisplayPatterns(Map displayPatterns) {
-        setSubtypeMap("DISPLAY PATTERNS", displayPatterns,
-            this.displayPatterns, PATTERN);
+    public void setDisplayPatterns(final Map displayPatternsParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    setSubtypeMap("DISPLAY PATTERNS", displayPatternsParam,
+                        displayPatterns, PATTERN);
+                }
+            });
     }
 
     /**
@@ -484,11 +502,15 @@ public class LivelinkConnector implements Connector {
      * special string "default". These are mapped to Livelink action
      * names, such as "browse" or "overview".
      *
-     * @param displayActions a map from subtypes to Livelink actions
+     * @param displayActionsParam a map from subtypes to Livelink actions
      */
-    public void setDisplayActions(Map displayActions) {
-        setSubtypeMap("DISPLAY ACTIONS", displayActions,
-            this.displayActions, STRING);
+    public void setDisplayActions(final Map displayActionsParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    setSubtypeMap("DISPLAY ACTIONS", displayActionsParam,
+                        displayActions, STRING);
+                }
+            });
     }
 
     /**
@@ -623,24 +645,29 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the database server type.
      *
-     * @param servtype the database server type, either "MSSQL" or "Oracle";
-     *     the empty string is also accepted but is ignored
+     * @param servtypeParam the database server type, either
+     * "MSSQL" or "Oracle"; the empty string is also accepted but
+     * is ignored
      */
     /*
      * There are strings like "MSSQL70" and "ORACLE80" in the Livelink
      * source, so we'll let those work if someone copies them verbatim
      * from their opentext.ini file.
      */
-    public void setServtype(String servtype) {
-        if (servtype == null || servtype.length() == 0)
+    public void setServtype(final String servtypeParam) {
+        if (servtypeParam == null || servtypeParam.length() == 0)
             return;
-        if (!servtype.regionMatches(true, 0, "MSSQL", 0, 5) &&
-                !servtype.regionMatches(true, 0, "Oracle", 0, 6)) {
-            throw new IllegalArgumentException(servtype);
-        }
-        this.servtype = servtype;
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("SERVTYPE: " + this.servtype);
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    if (!servtypeParam.regionMatches(true, 0, "MSSQL", 0, 5) &&
+                        !servtypeParam.regionMatches(true, 0, "Oracle", 0, 6)) {
+                        throw new IllegalArgumentException(servtypeParam);
+                    }
+                    servtype = servtypeParam;
+                    if (LOGGER.isLoggable(Level.CONFIG))
+                        LOGGER.config("SERVTYPE: " + servtype);
+                }
+            }); 
     }
 
     /**
@@ -659,7 +686,15 @@ public class LivelinkConnector implements Connector {
      *
      * @param property is the date string from the config file.
      */
-    public void setStartDate(String property) {
+    public void setStartDate(final String property) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    validateStartDate(property);
+                }
+            }); 
+    }
+
+    private void validateStartDate(final String property) {
         // parse out the date using either the default or "short"
         // date format.  If we can parse it, set the property and
         // the initial checkpoint.  If the parse fails, log it and
@@ -773,12 +808,19 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the node types that you want to exclude from traversal.
      *
-     * @param excludedNodeTypes the excluded node types
+     * @param excludedNodeTypesParam the excluded node types
      */
-    public void setExcludedNodeTypes(String excludedNodeTypes) {
-        this.excludedNodeTypes = sanitizeListOfIntegers(excludedNodeTypes);
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("EXCLUDED NODE TYPES: " + this.excludedNodeTypes);
+    public void setExcludedNodeTypes(final String excludedNodeTypesParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    excludedNodeTypes = 
+                        sanitizeListOfIntegers(excludedNodeTypesParam);
+                    if (LOGGER.isLoggable(Level.CONFIG)) {
+                        LOGGER.config("EXCLUDED NODE TYPES: " + 
+                            excludedNodeTypes);
+                    }
+                }
+            }); 
     }
 
     /**
@@ -793,14 +835,19 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the volume types that you want to exclude from traversal.
      *
-     * @param excludedVolumeTypes the excluded volume types
+     * @param excludedVolumeTypesParam the excluded volume types
      */
-    public void setExcludedVolumeTypes(String excludedVolumeTypes) {
-        this.excludedVolumeTypes = sanitizeListOfIntegers(excludedVolumeTypes);
-        if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("EXCLUDED VOLUME TYPES: " +
-                this.excludedVolumeTypes);
-        }
+    public void setExcludedVolumeTypes(final String excludedVolumeTypesParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    excludedVolumeTypes = 
+                        sanitizeListOfIntegers(excludedVolumeTypesParam);
+                    if (LOGGER.isLoggable(Level.CONFIG)) {
+                        LOGGER.config("EXCLUDED VOLUME TYPES: " +
+                            excludedVolumeTypes);
+                    }
+                }
+            }); 
     }
 
     /**
@@ -815,13 +862,19 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the node IDs that you want to exclude from traversal.
      *
-     * @param excludedLocationNodes the excluded node IDs
+     * @param excludedLocationNodesParam the excluded node IDs
      */
-    public void setExcludedLocationNodes(String excludedLocationNodes) {
-        this.excludedLocationNodes =
-            sanitizeListOfIntegers(excludedLocationNodes);
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("EXCLUDED NODE IDS: " + this.excludedLocationNodes);
+    public void setExcludedLocationNodes(final String
+            excludedLocationNodesParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    excludedLocationNodes =
+                        sanitizeListOfIntegers(excludedLocationNodesParam);
+                    if (LOGGER.isLoggable(Level.CONFIG))
+                        LOGGER.config("EXCLUDED NODE IDS: " + 
+                            excludedLocationNodes);
+                }
+            }); 
     }
 
     /**
@@ -836,13 +889,20 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the node IDs that you want to included in the traversal.
      *
-     * @param includedLocationNodes the included node IDs
+     * @param includedLocationNodesParam the included node IDs
      */
-    public void setIncludedLocationNodes(String includedLocationNodes) {
-        this.includedLocationNodes =
-            sanitizeListOfIntegers(includedLocationNodes);
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("INCLUDED NODE IDS: " + this.includedLocationNodes);
+    public void setIncludedLocationNodes(
+            final String includedLocationNodesParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    includedLocationNodes =
+                        sanitizeListOfIntegers(includedLocationNodesParam);
+                    if (LOGGER.isLoggable(Level.CONFIG)) {
+                        LOGGER.config("INCLUDED NODE IDS: " + 
+                            includedLocationNodes);
+                    }
+                }
+            });
     }
 
     /**
@@ -850,6 +910,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the included node IDs
      */
+    /* Only valid after init(). */
     String getIncludedLocationNodes() {
         return includedLocationNodes;
     }
@@ -861,7 +922,8 @@ public class LivelinkConnector implements Connector {
      * values are comma-separated lists of attribute names in the
      * ExtendedData assoc for that subtype.
      *
-     * @param displayActions a map from subtypes to ExtendedData assoc keys
+     * @param extendedDataKeysParam a map from subtypes to
+     * ExtendedData assoc keys
      */
     /*
      * XXX: If we support pulling metadata from ExtendedData without
@@ -874,9 +936,13 @@ public class LivelinkConnector implements Connector {
      * the map, it's just ignored. All lookups are done by subtype.
      * (For details, see collectExtendedDataProperties in LivelinkDocument.)
      */
-    public void setIncludedExtendedData(Map extendedDataKeys) {
-        setSubtypeMap("EXTENDEDDATA KEYS", extendedDataKeys,
-            this.extendedDataKeys, LIST_OF_STRINGS);
+    public void setIncludedExtendedData(final Map extendedDataKeysParam) {
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    setSubtypeMap("EXTENDEDDATA KEYS", extendedDataKeysParam,
+                        extendedDataKeys, LIST_OF_STRINGS);
+                }
+            });
     }
 
     /**
@@ -895,48 +961,70 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the fields from ObjectInfo to index.
      *
-     * @param objectInfoKeys a comma-separated list of attributes
+     * @param objectInfoKeysParam a comma-separated list of attributes
      * in the ObjectInfo assoc to include in the index.
      */
-    public void setIncludedObjectInfo(String objectInfoKeys) {
+    public void setIncludedObjectInfo(final String objectInfoKeysParam) {
         if (LOGGER.isLoggable(Level.CONFIG)) 
-            LOGGER.config("INCLUDED OBJECTINFO: " + objectInfoKeys);
+            LOGGER.config("INCLUDED OBJECTINFO: " + objectInfoKeysParam);
 
-        if (objectInfoKeys != null) {
-            String sanikeys = sanitizeListOfStrings(objectInfoKeys);
-            if ((sanikeys != null) && (sanikeys.length() > 0)) {
+        if (objectInfoKeysParam != null) {
+            propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    validateIncludedObjectInfo(objectInfoKeysParam); 
+                }
+            }); 
+        }
+    }
 
-                ArrayList keys = new ArrayList(Arrays.asList((Object[]) sanikeys.split(",")));
-                Field[] fields = LivelinkTraversalManager.FIELDS;
+    private void validateIncludedObjectInfo(final String objectInfoKeysParam) {
 
-                for (int i = 0; i < keys.size(); i++) {
-                    String key = (String) keys.get(i);
-                    
-                    // If the client asks to index all ExtendedData, then don't
-                    // bother with the selective ExendedData by subtype map.
-                    if ("ExtendedData".equalsIgnoreCase(key)) {
-                        extendedDataKeys = null;
-                        continue;
-                    }
-
-                    // Many ObjectInfo fields are already indexed by default.
-                    // Filter out any duplicates specified here.
-                    for (int j = 0; j < fields.length; j++) {
-                        if ((fields[j].propertyNames.length > 0) &&
-                            (fields[j].propertyNames[0].equalsIgnoreCase(key))) {
-                            keys.remove(i);
-                            i--; 	// ArrayList.remove shuffles everything down.
-                            break;
-                        }
-                    }
+        String sanikeys = sanitizeListOfStrings(
+            objectInfoKeysParam);
+        if ((sanikeys != null) && (sanikeys.length() > 0)) {
+            ArrayList keys = new ArrayList(
+                Arrays.asList((Object[]) sanikeys.split(",")));
+            Field[] fields = LivelinkTraversalManager.FIELDS;
+                        
+            for (int i = 0; i < keys.size(); i++) {
+                String key = (String) keys.get(i);
+                            
+                // If the client asks to index all
+                // ExtendedData, then don't bother
+                // with the selective ExendedData by
+                // subtype map.
+                // TODO: unless we can guarantee the order in
+                // which the properties are set,
+                // extendedDataKeys may not have been
+                // initialized yet, so it might overwrite the
+                // null value set here.
+                if ("ExtendedData".equalsIgnoreCase(key)) {
+                    extendedDataKeys = null;
+                    continue;
                 }
 
-                // Remember anything left after pruning duplicates.
-                if (!keys.isEmpty()) 
-                    this.objectInfoKeys = (String[]) keys.toArray(new String[keys.size()]);
+                // Many ObjectInfo fields are already
+                // indexed by default.  Filter out
+                // any duplicates specified here.
+                for (int j = 0; j < fields.length; j++) {
+                    if ((fields[j].propertyNames.length > 0) &&
+                        (fields[j].propertyNames[0].equalsIgnoreCase(key))) {
+                        keys.remove(i);
+                        i--; 	// ArrayList.remove shuffles everything down.
+                        break;
+                    }
+                }
+            }
+                        
+            // Remember anything left after pruning duplicates.
+            if (!keys.isEmpty()) {
+                objectInfoKeys = (String[]) keys.
+                    toArray(new String[keys.size()]);
             }
         }
     }
+
+
 
     /**
      * Gets the fields from ObjectInfo to index.
@@ -951,18 +1039,21 @@ public class LivelinkConnector implements Connector {
     /**
      * Sets the fields from VersionInfo to index.
      *
-     * @param versionInfoKeys a comma-separated list of attributes
+     * @param versionInfoKeysParam a comma-separated list of attributes
      * in the VersionInfo assoc to include in the index.
      */
-    public void setIncludedVersionInfo(String versionInfoKeys) {
+    public void setIncludedVersionInfo(final String versionInfoKeysParam) {
         if (LOGGER.isLoggable(Level.CONFIG)) 
-            LOGGER.config("INCLUDED VERSIONINFO: " + versionInfoKeys);
-
-        if (versionInfoKeys != null) {
-            String keys = sanitizeListOfStrings(versionInfoKeys);
-            if ((keys != null) && (keys.length() > 0))
-                this.versionInfoKeys = keys.split(",");
-        }
+            LOGGER.config("INCLUDED VERSIONINFO: " + versionInfoKeysParam);
+        propertyValidators.add(new PropertyValidator() {
+            void validate() {
+                if (versionInfoKeysParam != null) {
+                    String keys = sanitizeListOfStrings(versionInfoKeysParam);
+                    if ((keys != null) && (keys.length() > 0))
+                        versionInfoKeys = keys.split(",");
+                }
+            }
+            }); 
     }
 
     /**
@@ -982,8 +1073,13 @@ public class LivelinkConnector implements Connector {
      *
      * @param categories a list of Category IDs or one of the special keywords.
      */
-    public void setIncludedCategories(String categories) {
-        this.includedCategoryIds = parseCategories(categories, "all,searchable");
+    public void setIncludedCategories(final String categories) {
+        propertyValidators.add(new PropertyValidator() {
+            void validate() {
+                includedCategoryIds = parseCategories(categories,
+                    "all,searchable");
+            }
+        });
     }
 
     /**
@@ -1003,8 +1099,12 @@ public class LivelinkConnector implements Connector {
      *
      * @param categories a list of Category IDs or one of the special keywords.
      */
-    public void setExcludedCategories(String categories) {
-        this.excludedCategoryIds = parseCategories(categories, "none");
+    public void setExcludedCategories(final String categories) {
+        propertyValidators.add(new PropertyValidator() {
+            void validate() {
+                excludedCategoryIds = parseCategories(categories, "none");
+            }
+        });
     }
 
     /**
@@ -1054,30 +1154,39 @@ public class LivelinkConnector implements Connector {
      *
      * @param hidden comma-separated list of subtypes or special keywords.
      */
-    public void setShowHiddenItems(String hidden) {
+    public void setShowHiddenItems(final String hidden) {
 
-        hiddenItemsSubtypes = new HashSet();
-        String s = sanitizeListOfStrings(hidden);
-
-        // An empty set here indicates that no hidden content should be indexed.
-        if ((s == null) || (s.length() == 0) || "false".equalsIgnoreCase(s)) 
-            return;
-
-        String ids[] = s.split(",");
-        for (int i = 0; i < ids.length; i++) {
-            try {
-                // If it is an integer, it represents a Subtype.
-                hiddenItemsSubtypes.add(Integer.valueOf(ids[i]));
-            } catch (NumberFormatException e) {
-                // Otherwise, it should be one of the special keywords.
-                String word = ids[i].toLowerCase();
-                // "All" in the set means all hidden content will get indexed.
-                if ("true".equals(word) || "all".equals(word) || "'all'".equals(word))
-                    hiddenItemsSubtypes.add("all");
-                else
-                    hiddenItemsSubtypes.add(word);
+        propertyValidators.add(new PropertyValidator() {
+            void validate() {
+                hiddenItemsSubtypes = new HashSet();
+                String s = sanitizeListOfStrings(hidden);
+                
+                // An empty set here indicates that no hidden
+                // content should be indexed.
+                if ((s == null) || (s.length() == 0) ||
+                        "false".equalsIgnoreCase(s)) {
+                    return;
+                }
+                String ids[] = s.split(",");
+                for (int i = 0; i < ids.length; i++) {
+                    try {
+                        // If it is an integer, it represents a Subtype.
+                        hiddenItemsSubtypes.add(Integer.valueOf(ids[i]));
+                    } catch (NumberFormatException e) {
+                        // Otherwise, it should be one of the special keywords.
+                        String word = ids[i].toLowerCase();
+                        // "All" in the set means all hidden
+                        // content will get indexed.
+                        if ("true".equals(word) || "all".equals(word) || 
+                                "'all'".equals(word)) {
+                            hiddenItemsSubtypes.add("all");
+                        }
+                        else
+                            hiddenItemsSubtypes.add(word);
+                    }
+                }
             }
-        }
+        }); 
     }
 
     /**
@@ -1135,11 +1244,15 @@ public class LivelinkConnector implements Connector {
      *
      * @param port the port number
      */
-    public void setAuthenticationPort(int port) {
+    public void setAuthenticationPort(final String port) {
         createAuthenticationClientFactory();
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("AUTHENTICATION PORT: " + port);
-        authenticationClientFactory.setPort(port);
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    authenticationClientFactory.setPort(Integer.parseInt(port));
+                }
+        }); 
     }
 
     /**
@@ -1313,6 +1426,11 @@ public class LivelinkConnector implements Connector {
      * configuration file is good. 
      */
     private void init() {
+
+        for (int i = 0; i < propertyValidators.size(); i++) {
+            ((PropertyValidator) propertyValidators.get(i)).validate(); 
+        }
+
         if (!useHttpTunneling) {
             LOGGER.finer("DISABLING HTTP TUNNELING");
             clientFactory.setLivelinkCgi("");

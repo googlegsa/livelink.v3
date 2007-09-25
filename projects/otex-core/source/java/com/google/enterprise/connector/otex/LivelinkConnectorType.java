@@ -20,6 +20,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException; 
 import java.net.URL; 
 import java.net.URLConnection; 
+import java.net.JarURLConnection; 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ import org.springframework.beans.PropertyAccessException;
 import org.springframework.beans.PropertyBatchUpdateException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 
 
 /**
@@ -736,8 +738,28 @@ public class LivelinkConnectorType implements ConnectorType {
             // TODO: be able to locate connectorInstance.xml
             // elsewhere outside the jar file to support
             // hand-edits.
-            Resource res =
-                new ClassPathResource("config/connectorInstance.xml");
+
+            // From our class, traipse through the class loader,
+            // the URL to this class file, the URL to the jar
+            // file containing this class, and make our way to
+            // the config file located in that jar file.
+            Class thisClass = LivelinkConnectorType.class;
+            ClassLoader loader = thisClass.getClassLoader();
+            String jarPath = thisClass.getName().replace('.', '/') +
+                ".class";
+            URL bootstrapJarUrl = loader.getSystemResource(jarPath);
+            // We're always in a jar file.
+            JarURLConnection connection =
+                (JarURLConnection) bootstrapJarUrl.openConnection();
+            URL jarFileUrl = connection.getJarFileURL();
+            String configFilePath = jarFileUrl.toString() + 
+                "!/config/connectorInstance.xml"; 
+            // I don't know for sure that getJarFileURL always
+            // returns "file" rather than "jar".
+            if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
+                configFilePath = "jar:" + configFilePath;
+            URL resource = new URL(configFilePath); 
+            Resource res = new UrlResource(resource);
             XmlBeanFactory factory = new XmlBeanFactory(res);
             PropertyPlaceholderConfigurer cfg =
                 new PropertyPlaceholderConfigurer();
