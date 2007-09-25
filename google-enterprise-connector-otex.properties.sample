@@ -22,10 +22,18 @@ build.connector.otex.home = ${user.home}/gsa/google-enterprise-connector-otex
 ##
 # Test Framework Properties
 
-javatest.connector.hostname = swift
-javatest.connector.port = 2950
+#javatest.connector.hostname = swift
+#javatest.connector.port = 2950
+#javatest.connector.username = Admin
+#javatest.connector.password = livelink
+#javatest.connector.displayUrl = http://swift:9510/Livelink95/livelink
+#javatest.connector.servtype = Oracle
+
+javatest.connector.hostname = voltaire32
+javatest.connector.port = 2959
 javatest.connector.username = Admin
 javatest.connector.password = livelink
-javatest.connector.displayUrl = http://swift:9510/Livelink95/livelink
-javatest.connector.servtype = Oracle
+javatest.connector.displayUrl = http://voltaire32:81/Livelink95sp1/livelink.exe
+javatest.connector.servtype = MSSQL
+
 

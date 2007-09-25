@@ -1,0 +1,33 @@
+Welcome to the Google Enterprise Connector for Open Text Livelink!
+
+The Google Enterprise connector framework enables Google search
+appliances to search and serve documents stored in non-Web
+repositories, such as enterprise content management systems.  
+An enterprise content management (ECM) system provides a central
+repository for large numbers of documents.
+
+This Open Text Livelink Connector provides access to documents 
+and document meta-data stored in the Livelink ECM developed by 
+the Open Text Corporation.  
+
+The Open Text Livelink Connector communicates with the Livelink 
+Server using the Java language Livelink Application Programming 
+Interface (LAPI).  To properly build this connector you will 
+need access to certain components of the Open Text Livelink SDK,
+specifically lapi.jar.  The Livelink SDK is a commercial product
+offered by the Open Text Corporation and is not included in this
+distribution.
+
+
+Documentation Links
+
+    * Developer Introduction to the Google Enterprise Connector Framework
+      http://code.google.com/apis/searchappliance/documentation/46/connector_dev/connector-framework.html
+
+    * Google Enterprise Connector for Open Text Livelink
+      http://code.google.com/p/google-enterprise-connector-otex/documentation/
+
+    * Open Text Livelink SDK and LAPI
+      Livelink SDK and Livelink API information is available on
+      the Open Text corporate web site: http://www.opentext.com
+      [Registration required to view most relevant content.]
