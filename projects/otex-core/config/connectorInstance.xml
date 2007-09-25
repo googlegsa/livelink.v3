@@ -1,20 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
-    <bean id="propertyPlaceholderConfigurer"
-          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
-
-          <!-- Future versions of the connector might add new config fields to the Admin UI.
-               In order that existing connectorInstance.properties files don't break,
-               we must add default placeholder property values for the new forms.
-          -->
-         <property name="properties">
-           <props>
-             <prop key="newProperty">defaultValue</prop>
-           </props>
-         </property>
-    </bean>
-
 	<bean id="Livelink_Enterprise_Server"
 		class="com.google.enterprise.connector.otex.LivelinkConnector"
 		dependency-check="all" singleton="false">
