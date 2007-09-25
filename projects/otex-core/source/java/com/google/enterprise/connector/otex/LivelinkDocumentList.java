@@ -86,7 +86,7 @@ class LivelinkDocumentList implements DocumentList {
     private HashSet publicContentDocs = null;
 
     /** This is the checkpoint string for the current DocumentList */
-    private String chkpoint;
+    private String checkpoint;
 
     /** This is the DocumentList Iterator */
     private Iterator docIterator;
@@ -106,7 +106,7 @@ class LivelinkDocumentList implements DocumentList {
         this.recArray = recArray;
         this.fields = fields;
         this.traversalContext = traversalContext;
-        this.chkpoint = checkpoint;
+        this.checkpoint = checkpoint;
         this.userNameCache = new HashMap(200);
 
         // Subset the docIds in the recArray into Public and Private Docs.
@@ -128,21 +128,21 @@ class LivelinkDocumentList implements DocumentList {
      */
     public String checkpoint() throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("CHECKPOINT: " + chkpoint);
+            LOGGER.fine("CHECKPOINT: " + checkpoint);
 
-        return chkpoint;
+        return checkpoint;
     }
 
     /**
      * Generate a checkpoint string from a date and an object Id.
      *
-     * @param date the date at which to start
+     * @param modifyDate the date at which to start
      * @param objectId the object id at which to start
      * @return the checkpoint string.
      */
-    public void setCheckpoint(Date date, int objectId) {
-        chkpoint = LivelinkDateFormat.getInstance().toSqlString(date) +
-            ',' + objectId;
+    public void setCheckpoint(Date modifyDate, int objectId) {
+        checkpoint =
+            LivelinkTraversalManager.getCheckpoint(modifyDate, objectId);
     }
 
 

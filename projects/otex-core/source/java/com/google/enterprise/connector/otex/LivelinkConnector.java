@@ -664,6 +664,8 @@ public class LivelinkConnector implements Connector {
         // date format.  If we can parse it, set the property and
         // the initial checkpoint.  If the parse fails, log it and
         // start the the beginning...
+        // FIXME: This should support the ISO 8601 format, and I don't
+        // think that it does.
         DateFormat defaultDateFormatter = DateFormat.getDateInstance();
         DateFormat shortDateFormatter =
             DateFormat.getDateInstance(DateFormat.SHORT);
@@ -676,7 +678,7 @@ public class LivelinkConnector implements Connector {
         }
 
         // If the default fails, try the short parser.  It might work.
-        if ( d == null ) {
+        if (d == null) {
             try {
                 d = shortDateFormatter.parse(property);
             }
@@ -699,8 +701,7 @@ public class LivelinkConnector implements Connector {
             }
         } else {
             startDate = property;
-            startCheckpoint = 
-		LivelinkDateFormat.getInstance().toSqlString(d) + ",0";
+            startCheckpoint = LivelinkTraversalManager.getCheckpoint(d, 0);
 
             if (LOGGER.isLoggable(Level.CONFIG)) {
                 LOGGER.config("STARTDATE: " +

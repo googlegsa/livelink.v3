@@ -33,10 +33,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes1: included = " + included);
-        //System.out.println("testExcludedNodes1: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertEquals(excluded, "SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)");
@@ -51,10 +49,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes2: included = " + included);
-        //System.out.println("testExcludedNodes2: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertNull(excluded, excluded);
     }    
@@ -68,10 +64,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes3: included = " + included);
-        //System.out.println("testExcludedNodes3: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertNull(excluded, excluded);
     }    
@@ -86,10 +80,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes4: included = " + included);
-        //System.out.println("testExcludedNodes4: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertEquals((Object) "SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)", excluded);
@@ -104,13 +96,12 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes5: included = " + included);
-        //System.out.println("testExcludedNodes5: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertNull(excluded);
-        assertTrue(included, included.indexOf("SubType not in (148,162)") != -1);
+        assertTrue(included,
+            included.indexOf("SubType not in (148,162)") != -1);
         assertTrue(included, included.indexOf("DTreeAncestors") != -1);
     }    
 
@@ -123,17 +114,17 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
+        String excluded = lqtm.getExcluded(null);
 
         assertEquals((Object) "DataID not in (select DataID from " + 
-            "DTreeAncestors where AncestorID in (13832))", excluded);
+            "DTreeAncestors where null and AncestorID in (13832))", excluded);
 
         conn.setExcludedVolumeTypes("2001,4104");
         conn.setExcludedLocationNodes("13832");
 
         sess = conn.login();
         lqtm = (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded2 = lqtm.getExcluded();
+        String excluded2 = lqtm.getExcluded(null);
 
         assertEquals((Object) excluded, excluded2);
     }    
@@ -148,15 +139,13 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes7: included = " + included);
-        //System.out.println("testExcludedNodes7: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertEquals(excluded, "SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)");
-
-        assertTrue(included, included.indexOf("SubType not in (148,162)") != -1);
+        assertTrue(included,
+            included.indexOf("SubType not in (148,162)") != -1);
         assertTrue(included, included.indexOf("DTreeAncestors") != -1);
     }    
 
@@ -169,14 +158,13 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes8: included = " + included);
-        //System.out.println("testExcludedNodes8: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertEquals(excluded, "DataID not in (select DataID from " +
-                     "DTreeAncestors where AncestorID in (13832))");
-        assertTrue(included, included.indexOf("SubType not in (148,162)") != -1);
+            "DTreeAncestors where null and AncestorID in (13832))");
+        assertTrue(included,
+            included.indexOf("SubType not in (148,162)") != -1);
         assertTrue(included, included.indexOf("DTreeAncestors") != -1);
     }    
 
@@ -190,15 +178,13 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes8: included = " + included);
-        //System.out.println("testExcludedNodes8: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertEquals((Object) "SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
             "DataID not in (select DataID from " + 
-            "DTreeAncestors where AncestorID in (13832))", excluded);
+            "DTreeAncestors where null and AncestorID in (13832))", excluded);
     }    
 
 
@@ -211,17 +197,35 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded();
-        String included = lqtm.getIncluded();
-        //System.out.println("testExcludedNodes10: included = " + included);
-        //System.out.println("testExcludedNodes10: excluded = " + excluded);
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
 
         assertEquals((Object) "SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
             "DataID not in (select DataID from " + 
-            "DTreeAncestors where AncestorID in (13832))", excluded);
+            "DTreeAncestors where null and AncestorID in (13832))", excluded);
 
-        assertTrue(included, included.indexOf("SubType not in (148,162)") != -1);
+        assertTrue(included,
+            included.indexOf("SubType not in (148,162)") != -1);
         assertTrue(included, included.indexOf("DTreeAncestors") != -1);
-    }    
+    }
+
+
+    public void testExcludedNodes11() throws RepositoryException {
+        conn.setExcludedVolumeTypes("");
+        conn.setExcludedNodeTypes("");
+        conn.setExcludedLocationNodes("");
+        conn.setIncludedLocationNodes("2000");
+
+        Session sess = conn.login();
+        LivelinkTraversalManager lqtm =
+            (LivelinkTraversalManager) sess.getTraversalManager();
+        String excluded = lqtm.getExcluded(null);
+        String included = lqtm.getIncluded(null);
+
+        assertNull(excluded, excluded);
+        assertEquals("(DataID in (2000) or DataID in (select DataID from " +
+            "DTreeAncestors where null and AncestorID in (2000,-2000)))",
+            included);
+    }
 }

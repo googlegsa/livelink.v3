@@ -64,9 +64,14 @@ public class StartLocationTest extends TestCase {
         }
     }
 
-    private Document processResultSet(DocumentList docList)
+    private void processResultSet(DocumentList docList)
             throws RepositoryException {
         // XXX: What's supposed to happen if the result set is empty?
+        if (docList == null) {
+            System.out.println("No results.");
+            return;
+        }
+
         Document doc;
         while ((doc = docList.nextDocument()) != null) {
             System.out.println();
@@ -79,7 +84,8 @@ public class StartLocationTest extends TestCase {
                     String printableValue;
                     if (value instanceof BinaryValue) {
                         try {
-                            InputStream in = ((BinaryValue)value).getInputStream();
+                            InputStream in =
+                                ((BinaryValue) value).getInputStream();
                             byte[] buffer = new byte[32];
                             int count = in.read(buffer);
                             in.close();
@@ -96,6 +102,5 @@ public class StartLocationTest extends TestCase {
                 }
             }
         }
-        return doc;
     }
 }

@@ -41,7 +41,7 @@ import com.google.enterprise.connector.pusher.GsaFeedConnection;
 
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
-import com.google.enterprise.connector.otex.LivelinkDateFormat;
+import com.google.enterprise.connector.otex.LivelinkTraversalManager;
 
 /**
  * Pushes a single document (DocID) to the GSA
@@ -81,8 +81,8 @@ public class PushOneDocumentTest extends TestCase {
         // to construct a checkpoint
         ClientValue docInfo = client.GetObjectInfo(0, objectId);
         Date modDate = docInfo.toDate("ModifyDate");
-        String checkpoint = LivelinkDateFormat.getInstance().toSqlString(modDate) +
-            ','  + (objectId-1);
+        String checkpoint =
+            LivelinkTraversalManager.getCheckpoint(modDate, objectId - 1);
 
         // Now push that one document
         TraversalManager mgr = sess.getTraversalManager();

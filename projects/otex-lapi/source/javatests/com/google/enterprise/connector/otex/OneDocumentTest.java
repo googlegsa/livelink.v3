@@ -36,7 +36,7 @@ import com.google.enterprise.connector.spiimpl.BinaryValue;
 
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
-import com.google.enterprise.connector.otex.LivelinkDateFormat;
+import com.google.enterprise.connector.otex.LivelinkTraversalManager;
 
 /**
  * Pushes a single document (DocID) to the GSA
@@ -59,8 +59,8 @@ public class OneDocumentTest extends TestCase {
         // to construct a checkpoint
         ClientValue docInfo = client.GetObjectInfo(0, objectId);
         Date modDate = docInfo.toDate("ModifyDate");
-        String checkpoint = LivelinkDateFormat.getInstance().toSqlString(modDate) +
-            ','  + (objectId-1);
+        String checkpoint =
+            LivelinkTraversalManager.getCheckpoint(modDate, objectId - 1);
 
         // Now push that one document
         TraversalManager mgr = sess.getTraversalManager();
@@ -80,9 +80,14 @@ public class OneDocumentTest extends TestCase {
         }
     }
 
-    private Document processResultSet(DocumentList docList)
+    private void processResultSet(DocumentList docList)
             throws RepositoryException {
         // XXX: What's supposed to happen if the result set is empty?
+        if (docList == null) {
+            System.out.println("No results.");
+            return;
+        }
+        
         Document doc;
         while ((doc = docList.nextDocument()) != null) {
             System.out.println();
@@ -95,7 +100,8 @@ public class OneDocumentTest extends TestCase {
                     String printableValue;
                     if (value instanceof BinaryValue) {
                         try {
-                            InputStream in = ((BinaryValue)value).getInputStream();
+                            InputStream in =
+                                ((BinaryValue) value).getInputStream();
                             byte[] buffer = new byte[32000];
                             int count = in.read(buffer);
                             in.close();
@@ -112,6 +118,5 @@ public class OneDocumentTest extends TestCase {
                 }
             }
         }
-        return doc;
     }
 }

@@ -16,6 +16,7 @@ package com.google.enterprise.connector.otex;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
@@ -89,36 +90,33 @@ class LivelinkTraversalManager
         FIELDS = (Field[]) list.toArray(new Field[0]);
     }
 
+    /**
+     * Constructs a checkpoint string from the given date and object ID.
+     *
+     * @param modifyDate the date for the checkpoint
+     * @param objectId the object ID for the checkpoint
+     * @return a checkpoint string of the form "yyyy-mm-dd hh:mm:ss,n",
+     *     where n is the object ID
+     */
+    static String getCheckpoint(Date modifyDate, int objectId) {
+        return LivelinkDateFormat.getInstance().toSqlString(modifyDate) +
+            ',' + objectId;
+    }
 
+    
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
     /** The client provides access to the server. */
     private final Client client;
 
-    private final Object selectList;
-
-    /**
-     * The condition for excluding content from the traversal. This
-     * condition is configured in the same way as the
-     * LivelinkExtractor configuration in opentext.ini.
-     *
-     * @see #getExcluded
-     */
-    private final String excluded;
-
-    /**
-     * The condition for including content in the traversal.
-     *
-     * @see #getIncluded
-     */
-    private final String included;
+    /** The columns needed in the database query. */
+    private final String[] selectList;
 
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
 
     /** The number of results to return in each batch. */
-    /* TODO: Configurable default value. */
     private volatile int batchSize = 100;
 
     /** The database type, either SQL Server or Oracle. */
@@ -136,12 +134,6 @@ class LivelinkTraversalManager
 
         isSqlServer = isSqlServer();
         selectList = getSelectList();
-        included = getIncluded();
-        excluded = getExcluded();
-
-        //System.out.println("LivelinkTraversalManager: included = " + included);
-        //System.out.println("LivelinkTraversalManager: excluded = " + excluded);
-
         contentHandler = getContentHandler();
     }
 
@@ -189,27 +181,15 @@ class LivelinkTraversalManager
     /**
      * Gets the select list for the needed fields.
      *
-     * @return an <code>ArrayList</code> for SQL Server, or a string
-     * for Oracle.
+     * @return a string array of column names
      */
-    private Object getSelectList() {
-        if (isSqlServer) {
-            ArrayList temp = new ArrayList(FIELDS.length);
-            for (int i = 0; i < FIELDS.length; i++) {
-                if (FIELDS[i].fieldName != null)
-                    temp.add(FIELDS[i].fieldName);
-            }
-            return temp;
-        } else {
-            StringBuffer buffer = new StringBuffer();
-            for (int i = 0; i < FIELDS.length; i++) {
-                if (FIELDS[i].fieldName != null) {
-                    buffer.append(',');
-                    buffer.append(FIELDS[i].fieldName);
-                }
-            }
-            return buffer.substring(1);
+    private String[] getSelectList() {
+        ArrayList temp = new ArrayList(FIELDS.length);
+        for (int i = 0; i < FIELDS.length; i++) {
+            if (FIELDS[i].fieldName != null)
+                temp.add(FIELDS[i].fieldName);
         }
+        return (String[]) temp.toArray(new String[temp.size()]);
     }
 
     /**
@@ -217,7 +197,7 @@ class LivelinkTraversalManager
      * the starting nodes and all descendants of the starting
      * nodes.
      *
-     * The  list of Traversal starting locations is derived
+     * The list of traversal starting locations is derived
      * either from an explict list of start nodes
      * (<em>includedLocationNodes</em>) or an implicit
      * list of all non-excluded Volumes.
@@ -226,7 +206,7 @@ class LivelinkTraversalManager
      * of implicit starting points based upon all available volume roots,
      * less those that are explicitly excluded (excludedVolumeTypes).
      *
-     * This will then return a SQL expression of the form:
+     * This will then return a SQL expression of the general form:
      *
      * <pre>
      *     (DataID in (<em>includedLocationNodes</em>) or
@@ -234,12 +214,10 @@ class LivelinkTraversalManager
      *         (select DataID from DTreeAncestors where AncestorID in
      *             <em>includedLocationNodes</em>))
      * </pre>
-     *
+     * 
      * @return the SQL conditional expression
-     * @throws RepositoryException if an error occurs getting the
-     *         includedLocationNodes
      */
-    String getIncluded() throws RepositoryException {
+    String getIncluded(String candidatesPredicate) {
 
         // If we have an explict list of start locations, build a
         // query that includes only those and their descendants.
@@ -256,8 +234,8 @@ class LivelinkTraversalManager
             // docs, etc) simply should not exist, so we shouldn't get any 
             // false positives.
             StringBuffer buffer = new StringBuffer();
-            StringTokenizer tok = new StringTokenizer(startNodes,
-                                                      ":;,. \t\n()[]\"\'");
+            StringTokenizer tok =
+                new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
             while (tok.hasMoreTokens()) {
                 String objId = tok.nextToken();
                 if (buffer.length() > 0)
@@ -273,17 +251,19 @@ class LivelinkTraversalManager
 
         } else {
         // If we don't have an explicit list of start points, build
-        // an implicit list from the list all volumes, minus those
+        // an implicit list from the list of all volumes, minus those
         // that are explicitly excluded.
-            startNodes = getStartingVolumes();
+            startNodes = getStartingVolumes(candidatesPredicate);
             ancesterNodes = startNodes;
         }
 
         StringBuffer buffer = new StringBuffer();
         buffer.append("(DataID in (");
         buffer.append(startNodes);
-        buffer.append(") or DataID in (SELECT DataID from ");
-        buffer.append("DTreeAncestors where AncestorID in (");
+        buffer.append(") or DataID in (select DataID from ");
+        buffer.append("DTreeAncestors where ");
+        buffer.append(candidatesPredicate);
+        buffer.append(" and AncestorID in (");
         buffer.append(ancesterNodes);
         buffer.append(")))");
         String included = buffer.toString();
@@ -295,25 +275,29 @@ class LivelinkTraversalManager
 
     /**
      * Returns a SQL subquery that should expand to the lists of 
-     * Volumes to traverse.  These are all root-level 
-     * Volumes that are not of an excluded volume type.
+     * volumes to traverse.  These are all root-level 
+     * volumes that are not of an excluded volume type. The basic form
+     * of the subquery is
      *
      * <pre>
-     *          select DataID from DTree where DataID not in
-     *             (select DataID from DTreeAncestors) and not
-     *             (SubType in (<em>excludedVolumeTypes</em>))
+     *          select DataID from DTree where DataID in
+     *             (select AncestorID from DTreeAncestors
+     *              group by DataID having count(*) = 1) and not
+     *             SubType in (<em>excludedVolumeTypes</em>)
      * </pre>
      *
      * @return SQL sub-expression
-     * @throws RepositoryException if an error occurs executing the
-     * excluded volume types query
      */
-    public String getStartingVolumes() throws RepositoryException {
+    public String getStartingVolumes(String candidatesPredicate) {
         StringBuffer buffer = new StringBuffer();
-        
+
         buffer.append("select DataID from DTree where DataID in ");
-        buffer.append("(select DataID from DTreeAncestors ");
-        buffer.append("group by DataID having count(*) = 1)");
+        buffer.append("(select DataID from DTreeAncestors where ");
+        buffer.append(candidatesPredicate);
+        buffer.append(
+                "or DataID in (select AncestorID from DTreeAncestors where ");
+        buffer.append(candidatesPredicate);
+        buffer.append(") group by DataID having count(*) = 1)");
   
         String excludedVolumes = connector.getExcludedVolumeTypes();
         if (excludedVolumes != null && excludedVolumes.length() > 0) {
@@ -341,11 +325,9 @@ class LivelinkTraversalManager
      * one or more of the configuration parameters is null or empty.
      *
      * @return the SQL conditional expression
-     * @throws RepositoryException if an error occurs executing the
-     * excluded volume types query
      */
     /* This method has package access so that it can be unit tested. */
-    String getExcluded() throws RepositoryException {
+    String getExcluded(String candidatesPredicate)  {
         StringBuffer buffer = new StringBuffer();
 
         String excludedNodeTypes = connector.getExcludedNodeTypes();
@@ -359,12 +341,13 @@ class LivelinkTraversalManager
         String excludedLocationNodes = connector.getExcludedLocationNodes();
         if (excludedLocationNodes != null &&
                 excludedLocationNodes.length() > 0) {
-
             if (buffer.length() > 0)
                 buffer.append(" and ");
 
             buffer.append("DataID not in (select DataID from ");
-            buffer.append("DTreeAncestors where AncestorID in (");
+            buffer.append("DTreeAncestors where ");
+            buffer.append(candidatesPredicate);
+            buffer.append(" and AncestorID in (");
             buffer.append(excludedLocationNodes);
             buffer.append("))");
         }
@@ -399,7 +382,7 @@ class LivelinkTraversalManager
 
     /**
      * Sets the batch size. This implementation limits the actual
-     * batch size to 100,000.
+     * batch size to 1000, due to SQL syntax limits in Oracle.
      *
      * @param hint the new batch size
      * @throws IllegalArgumentException if the hint is less than zero
@@ -409,8 +392,8 @@ class LivelinkTraversalManager
             throw new IllegalArgumentException();
         else if (hint == 0)
             batchSize = 100; // We could ignore it, but we reset the default.
-        else if (hint > 100000) // TODO: Configurable limit.
-            batchSize = 100000;
+        else if (hint > 1000)
+            batchSize = 1000;
         else
             batchSize = hint;
     }
@@ -418,14 +401,13 @@ class LivelinkTraversalManager
 
     /** {@inheritDoc} */
     public DocumentList startTraversal() throws RepositoryException {
-        String cp = connector.getStartCheckpoint();
-        if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("START @" +
-                Integer.toHexString(System.identityHashCode(this)) +
-                ((cp==null)?"":"\t(startDate Checkpoint: " + cp + ")"));
-        }
         // startCheckpoint will either be an initial checkpoint or null
-        return listNodes(cp);
+        String checkpoint = connector.getStartCheckpoint();
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("START" +
+                (checkpoint == null ? "" : ": " + checkpoint));
+        }
+        return listNodes(checkpoint);
     }
 
 
@@ -433,8 +415,7 @@ class LivelinkTraversalManager
     public DocumentList resumeTraversal(String checkpoint)
             throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("RESUME: " + checkpoint + " @" +
-                Integer.toHexString(System.identityHashCode(this)));
+            LOGGER.fine("RESUME: " + checkpoint);
         }
         return listNodes(checkpoint);
     }
@@ -460,8 +441,11 @@ class LivelinkTraversalManager
      * We want to execute queries of the following form
      *
      * <pre>
-     *     SELECT <em>columns</em> FROM WebNodes WHERE
-     *     <em>after_last_checkpoint</em> ORDER BY ModifyDate, DataID
+     *     SELECT <em>columns</em>
+     *     FROM WebNodes 
+     *     WHERE <em>after_last_checkpoint</em>
+     *         AND <em>included_minus_excluded</em>
+     *     ORDER BY ModifyDate, DataID
      * </pre>
      *
      * and only read the first <code>batchSize</code> rows. The ORDER
@@ -476,12 +460,18 @@ class LivelinkTraversalManager
      *
      * for <code>resumeTraversal</code> where <em>X</em> is the
      * ModifyDate of the checkpoint and <em>Y</em> is the DataID of
-     * the checkpoint.
+     * the checkpoint. The <em>included_minus_excluded</em> condition
+     * accounts for the configured included and excluded volume types,
+     * subtypes, and nodes.
      *
      * <p>
      * The details are little messy because there is not a single
      * syntax supported by both Oracle and SQL Server for limiting the
-     * number of rows returned. For Oracle, we use ROWNUM, and for SQL
+     * number of rows returned, the included and excluded logic is
+     * complicated, and the obvious queries perform badly, especially
+     * on Oracle.
+     * 
+     * For Oracle, we use ROWNUM, and for SQL
      * Server, we use TOP, which requires SQL Server 7.0. The
      * <code>ROW_NUMBER()</code> function is supported by Oracle and
      * also by SQL Server 2005, but that's too limiting, and it's
@@ -493,6 +483,17 @@ class LivelinkTraversalManager
      * subquery is needed to do the ordering before the limit is
      * applied.
      *
+     * To address the performance issues, the query is broken into two
+     * pieces. The first applies the row limits and
+     * <em>after_last_checkpoint</em> condition to arrive at a list of
+     * candidates. The second applies the inclusions and exclusions,
+     * using the candidates to avoid subqueries that select a large
+     * number of rows.
+     * 
+     * If the first query returns no candidates, there is nothing to
+     * return. If the second query returns no results, we need to try
+     * again with the next batch of candidates.
+     *
      * @param checkpoint a checkpoint string, or <code>null</code> if
      * a new traversal should be started
      * @return a batch of results starting at the checkpoint, if there
@@ -500,17 +501,45 @@ class LivelinkTraversalManager
      */
     private DocumentList listNodes(String checkpoint)
             throws RepositoryException {
-        ClientValue recArray;
-        if (isSqlServer)
-            recArray = listNodesSqlServer(checkpoint);
-        else
-            recArray = listNodesOracle(checkpoint);
-        if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("RESULTSET: " + recArray.size() + " rows. @" +
-                Integer.toHexString(System.identityHashCode(this)));
-        }
-        return new LivelinkDocumentList(connector, client, contentHandler,
-            recArray, FIELDS, traversalContext, checkpoint);
+	while (true) {
+            ClientValue candidates;
+            if (isSqlServer)
+                candidates = getCandidatesSqlServer(checkpoint);
+            else
+                candidates = getCandidatesOracle(checkpoint);
+            if (candidates.size() == 0) {
+                LOGGER.fine("RESULTSET: no rows.");
+                return null;
+            }
+
+            StringBuffer buffer = new StringBuffer();
+            buffer.append("DataID in (");
+            for (int i = 0; i < candidates.size(); i++) {
+                buffer.append(candidates.toInteger(i, "DataID"));
+                buffer.append(',');
+            }
+            buffer.setCharAt(buffer.length() - 1, ')');
+            String candidatesPredicate = buffer.toString();
+
+            ClientValue results = getResults(candidatesPredicate);
+            if (results.size() == 0) {
+                // Reset the checkpoint here to match the last
+                // candidate, so that we will get the next batch of
+                // candidates the next time through the loop.
+                int row = candidates.size() - 1; // last row
+                checkpoint = getCheckpoint(
+                    candidates.toDate(row, "ModifyDate"),
+                    candidates.toInteger(row, "DataID"));
+                if (LOGGER.isLoggable(Level.FINER))
+                    LOGGER.finer("SKIPPING PAST " + checkpoint);
+            } else {
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.fine("RESULTSET: " + results.size() + " rows.");
+                return new LivelinkDocumentList(connector, client,
+                    contentHandler, results, FIELDS, traversalContext,
+                    checkpoint);
+            }
+	}
     }
 
 
@@ -525,83 +554,82 @@ class LivelinkTraversalManager
 
 
     /**
-     * Generates the portion of the SQL query that's common to both
-     * Oracle and SQLServer.  That is, the
-     * @return a string representing the common portion of the query.
+     * Filters the candidates down and returns the main recarray needed
+     * for the DocumentList.
+     * 
+     * @return the main query results
      * @throws RepositoryException
      */
-    private String getCommonConditions(String checkpoint)
+    private ClientValue getResults(String candidatesPredicate)
         throws RepositoryException
     {
-        StringBuffer commonConditions = new StringBuffer();
-        boolean needAnd = false;
+        String included = getIncluded(candidatesPredicate);
+        String excluded = getExcluded(candidatesPredicate);
+        StringBuffer buffer = new StringBuffer();
+        buffer.append(candidatesPredicate);
         if (included != null) {
-            commonConditions.append(included);
-            needAnd = true;
+            buffer.append(" and ");
+            buffer.append(included);
         }
         if (excluded != null) {
-            if ( needAnd )
-                commonConditions.append(" and ");
-            commonConditions.append(excluded);
-            needAnd = true;
+            buffer.append(" and ");
+            buffer.append(excluded);
         }
-        if (checkpoint != null) {
-            if ( needAnd )
-                commonConditions.append(" and ");
-            commonConditions.append(getRestriction(checkpoint));
-        }
-        return commonConditions.toString();
+        buffer.append(ORDER_BY);
+
+        String query = buffer.toString();
+        String view = "WebNodes";
+        String[] columns = selectList;
+        if (LOGGER.isLoggable(Level.FINEST))
+            LOGGER.finest("RESULTS QUERY: " + query);
+
+        return client.ListNodes(query, view, columns);
     }
 
 
-    private ClientValue listNodesSqlServer(String checkpoint)
+    private ClientValue getCandidatesSqlServer(String checkpoint)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
-        if ( checkpoint == null && included == null && excluded == null)
+        if (checkpoint == null)
             buffer.append("1=1");
-        else // add conditions (included/excluded/checkpoint)
-            buffer.append(getCommonConditions(checkpoint));
+        else 
+            buffer.append(getRestriction(checkpoint));
         buffer.append(ORDER_BY);
+
         String query = buffer.toString();
-
-        String view = "WebNodes";
-        ArrayList selectArrayList = (ArrayList) selectList;
-        String[] columns = (String[]) selectArrayList.toArray(
-            new String[selectArrayList.size()]);
-        columns[0] = "top " + batchSize + " " + columns[0];
-
-        //System.out.println("LivelinkTraversalManager.listNodesSqlServer  query = '" + query + "'  view = '" + view + "'");
+        String view = "DTree";
+        String[] columns = {
+            "top " + batchSize +  " ModifyDate", "DataID", "PermID" };
+        if (LOGGER.isLoggable(Level.FINEST))
+            LOGGER.finest("CANDIDATES QUERY: " + query);
 
         return client.ListNodes(query, view, columns);
     }
 
 
     /*
-     * XXX: We could use FIRST_ROWS(<batchSize>), but I don't know how
-     * important that is on this query.
+     * We could use FIRST_ROWS(<batchSize>), but that doesn't help
+     * when there is a sort on the query. Simple tests show that it
+     * would allow us to eliminate the outer query with ROWNUM and get
+     * equal performance, except that it doesn't limit the number of
+     * rows, and LAPI materializes the entire result set.
      */
-    private ClientValue listNodesOracle(String checkpoint)
+    private ClientValue getCandidatesOracle(String checkpoint)
             throws RepositoryException {
-        String query = "rownum <= " + batchSize;
         StringBuffer buffer = new StringBuffer();
-        buffer.append("(select ");
-        buffer.append(selectList);
-        buffer.append(" from WebNodes ");
-
-        // add conditions, if necessary (included/excluded/checkpoint)
-        if (checkpoint != null || included != null || excluded != null) {
-            buffer.append("where ");
-            buffer.append(getCommonConditions(checkpoint));
+        buffer.append("(select ModifyDate, DataID, PermID from DTree");
+        if (checkpoint != null) {
+            buffer.append(" where ");
+            buffer.append(getRestriction(checkpoint));
         }
-
         buffer.append(ORDER_BY);
         buffer.append(')');
-        String view = buffer.toString();
-        if (LOGGER.isLoggable(Level.FINEST))
-            LOGGER.finest("ORACLE VIEW: " + view);
-        String[] columns = new String[] { "*" };
 
-        //System.out.println("LivelinkTraversalManager.listNodesOracle  query = '" + query + "'  view = '" + view + "'");
+        String query = "rownum <= " + batchSize;
+        String view = buffer.toString();
+        String[] columns = new String[] { "*" };
+        if (LOGGER.isLoggable(Level.FINEST))
+            LOGGER.finest("CANDIDATES VIEW: " + view);
 
         return client.ListNodes(query, view, columns);
     }

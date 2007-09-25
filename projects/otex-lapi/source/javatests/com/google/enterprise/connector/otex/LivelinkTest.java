@@ -101,6 +101,9 @@ public class LivelinkTest extends TestCase {
     private Document processResultSet(LivelinkDocumentList docList)
             throws RepositoryException {
         // XXX: What's supposed to happen if the result set is empty?
+        if (docList == null)
+            return null;
+        
         Document doc = null;
         Iterator it = docList.iterator();
         while (it.hasNext()) {
@@ -113,7 +116,7 @@ public class LivelinkTest extends TestCase {
                 String printableValue;
                 if (value instanceof BinaryValue) {
                     try {
-                        InputStream in = ((BinaryValue)value).getInputStream();
+                        InputStream in = ((BinaryValue) value).getInputStream();
                         byte[] buffer = new byte[32];
                         int count = in.read(buffer);
                         in.close();
