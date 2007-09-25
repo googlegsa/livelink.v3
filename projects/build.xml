@@ -16,7 +16,16 @@
 		<ant dir="${otex-lapi.dir}" target="clean" />
 	</target>
 
-	<target name="otex-core">
+    <target name="prebuild">
+      <exec executable="svnversion" spawn="false"
+            failifexecutionfails="false"
+            dir="${basedir}"
+            outputproperty="svnversion">
+        <arg line="."/>
+      </exec>
+    </target>
+
+	<target name="otex-core" depends="prebuild">
 		<ant dir="${otex-core.dir}" />
 	</target>
 
@@ -24,7 +33,7 @@
 		<ant dir="${otex-lapi.dir}" />
 	</target>
 
-	<target name="build-all" depends="otex-core,otex-lapi"/>
+	<target name="build-all" depends="prebuild,otex-core,otex-lapi"/>
 
 	<target name="make-install-dir">
 		<mkdir dir="${install.dir}" />
@@ -45,7 +54,7 @@
 	</target>
 
 	<target name="install-all" 
-		depends="install-otex-core,install-otex-lapi"/>
+		depends="prebuild,install-otex-core,install-otex-lapi"/>
 
 	<target name="everything" depends="clean-all,build-all,install-all"/>
 

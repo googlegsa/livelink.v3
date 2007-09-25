@@ -162,12 +162,16 @@
       <fileset dir="${classes}"/>
       <fileset dir="${build}" includes="config/**"/>
       <manifest>
-        <attribute name="Implementation-Title" value="Open Text Livelink Connector"/>
-        <attribute name="Implementation-Version" value="${version} ${TODAY}"/>
+        <attribute name="Implementation-Title"
+                   value="Google Enterprise Connector - Open Text Livelink" />
+        <attribute name="Implementation-Version"
+                   value="${version} (build ${svnversion}  ${TODAY})"/>
         <attribute name="Implementation-Vendor" value="Google Inc."/>
         <attribute name="Specification-Title" value="Connector Manager SPI"/>
         <attribute name="Specification-Version" value="${version.spi}"/>
         <attribute name="Specification-Vendor" value="Google Inc."/>
+        <attribute name="Main-Class"
+                   value="com.google.enterprise.connector.otex.LivelinkShowManifest" />
       </manifest>
     </jar>
   </target>
