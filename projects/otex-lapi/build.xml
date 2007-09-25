@@ -162,8 +162,17 @@
       <fileset dir="${classes}"/>
       <fileset dir="${build}" includes="config/**"/>
       <manifest>
+        <!-- Manifest files are limited to 72 byte line lengths, but our
+             "official" Title exceeds that by 2 bytes.  The ant Manifest
+             generator then graciously chops "nk" off the end, wrapping it
+             to the next line.  Embedding a newline in the string doesn't
+             fix it, since ant doesn't consider newlines special in its
+             line-break calculation, and the result ends up spread across
+             3 lines.  So, I pad with spaces.  This forces the line wrap to
+             occur inter-word, and also left aligns the two-line Title.
+        -->
         <attribute name="Implementation-Title"
-                   value="Google Enterprise Connector - Open Text Livelink" />
+                   value="Google Enterprise Connector for                                      Open Text Livelink" />
         <attribute name="Implementation-Version"
                    value="${version} (build ${svnversion}  ${TODAY})"/>
         <attribute name="Implementation-Vendor" value="Google Inc."/>
@@ -171,7 +180,7 @@
         <attribute name="Specification-Version" value="${version.spi}"/>
         <attribute name="Specification-Vendor" value="Google Inc."/>
         <attribute name="Main-Class"
-                   value="com.google.enterprise.connector.otex.LivelinkShowManifest" />
+                   value="com.google.enterprise.connector.otex.LivelinkMain" />
       </manifest>
     </jar>
   </target>
