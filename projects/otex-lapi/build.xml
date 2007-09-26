@@ -29,6 +29,10 @@
   <property name="tests.logging.properties" 
             location="${tests.classes}/tests.logging.properties"/>
 
+  <property name="tools.src" value="source/javatools" />
+  <property name="tools.build" value="build/tools" />
+  <property name="tools.classes" value="${tools.build}/classes" />
+
   <property name="jar.dir"  value="${dist}/jar" />
   <property name="jarfile"  value="${jar.dir}/connector-otex.jar" />
 
@@ -51,7 +55,7 @@
   <property name="lapi.jarfile" location="${build.lapi.home}/lib/lapi.jar" />
 
   <!-- =========================== TASKS =============================== -->
-  <target name="build" depends="init,compile,compile_tests,jar">
+  <target name="build" depends="init,compile,compile_tests,compile_tools,jar">
   </target>
 
   <target name="init">
@@ -62,6 +66,8 @@
     <mkdir dir="${tests.build}" />
     <mkdir dir="${tests.classes}" />
     <mkdir dir="${tests.todir}" />
+    <mkdir dir="${tools.build}" />
+    <mkdir dir="${tools.classes}" />
     <mkdir dir="${jar.dir}" />
   </target>
 
@@ -79,6 +85,31 @@
     </javac>
   </target>
 
+  <path id="base_tests_path">
+        <pathelement location="${core.tests.classes}" />
+        <pathelement location="${spi.jar.dir}/connector.jar" />
+        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
+        <pathelement location="${jarfile}" />
+        <pathelement location="${spi.jarfile}" />
+  </path>
+
+  <path id="compile_tests_path">
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/spring.jar" />
+          <include name="**/junit.jar" />
+        </fileset>
+        <path refid="base_tests_path" />
+  </path>
+
+  <path id="run_tests_path">
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/*.jar" />
+        </fileset>
+        <pathelement location="${tests.classes}" />
+        <path refid="base_tests_path" />
+        <pathelement location="${lapi.jarfile}" />
+  </path>
+
   <target name="compile_tests" depends="init,jar">
     <!-- compile java source files for tests -->
     <javac srcdir="${tests.src}" destdir="${tests.classes}" 
@@ -86,15 +117,7 @@
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="1.4" source="1.4">
       <classpath>
-        <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/spring.jar" />
-          <include name="**/junit.jar" />
-        </fileset>
-        <pathelement location="${core.tests.classes}" />
-        <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
-        <pathelement location="${jarfile}" />
-        <pathelement location="${spi.jarfile}" />
+      	<path refid="compile_tests_path" />
       </classpath>
     </javac>
   </target>
@@ -117,16 +140,44 @@
     <junit>
       <assertions><enable/></assertions>
       <classpath>
-        <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/*.jar" />
+        <path refid="run_tests_path" />
+      </classpath>
+      <formatter type="brief" usefile="no"/>
+      <formatter type="plain" />
+      <syspropertyset refid="javatest.properties"/>
+      <sysproperty key="java.util.logging.config.file"
+                   value="${tests.logging.properties}"/>
+      <!-- For initializing the Context for DocPusher.take. -->
+      <sysproperty key="connector-manager.dir" 
+                   value="${connector-manager.dir}" />
+      <batchtest fork="yes" todir="${tests.todir}">
+        <fileset dir="${tests.src}">
+          <include name="**/${test.suite}Test.java" />
         </fileset>
-        <pathelement location="${tests.classes}" />
-        <pathelement location="${core.tests.classes}" />
-        <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
-        <pathelement location="${jarfile}" />
-        <pathelement location="${spi.jarfile}" />
-        <pathelement location="${lapi.jarfile}" />
+      </batchtest>
+    </junit>
+  </target>
+
+  <!-- tools are tests that cannot run automatically (require input) -->
+  <target name="compile_tools" depends="init,jar,compile_tests">
+    <!-- compile java source files for tools -->
+    <javac srcdir="${tools.src}" destdir="${tools.classes}" 
+           debug="${COMPILE_DEBUG_FLAG}" 
+           debuglevel="${COMPILE_DEBUG_LEVEL}"
+           target="1.4" source="1.4">
+      <classpath>
+      	<path refid="compile_tests_path" />
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="run_tools" depends="compile_tools,jar">
+    <property name="test.suite" value="*"/>
+    <junit>
+      <assertions><enable/></assertions>
+      <classpath>
+        <pathelement location="${tools.classes}" />
+        <path refid="run_tests_path" />
       </classpath>
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
@@ -139,12 +190,13 @@
       <sysproperty key="connector-manager.dir" 
                    value="${connector-manager.dir}" />
       <batchtest fork="yes" todir="${tests.todir}">
-        <fileset dir="${tests.src}">
+        <fileset dir="${tools.src}">
           <include name="**/${test.suite}Test.java" />
         </fileset>
       </batchtest>
     </junit>
   </target>
+
 
   <target name="jar" description="livelink-connector" depends="compile">
     <copy todir="${config.build}">
