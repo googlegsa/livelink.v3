@@ -1412,7 +1412,7 @@ public class LivelinkConnector implements Connector {
      * @return the <code>ClientFactory</code>
      */
     ClientFactory getAuthenticationClientFactory() {
-        if (authenticationClientFactory != null)
+        if (useSeparateAuthentication && authenticationClientFactory != null)
             return authenticationClientFactory;
         return clientFactory;
     }
@@ -1436,8 +1436,6 @@ public class LivelinkConnector implements Connector {
             clientFactory.setLivelinkCgi("");
             clientFactory.setUseUsernamePasswordWithWebServer(false);
         }
-        if (!useSeparateAuthentication)
-            authenticationClientFactory = null;
        if (publicContentDisplayUrl == null || 
                 publicContentDisplayUrl.length() == 0) {
             publicContentDisplayUrl = displayUrl;
