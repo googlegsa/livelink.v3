@@ -14,8 +14,11 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.text.MessageFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 
@@ -25,6 +28,12 @@ import com.google.enterprise.connector.spi.RepositoryException;
  */
 public class LivelinkException extends RepositoryException
 {
+    /** A message key for the connector resource bundle. */
+    private String key;
+
+    /** Parameters for the message, if needed. */
+    private Object[] params;
+    
     /**
      * Constructs an instance that wraps another exception.
      * 
@@ -36,7 +45,22 @@ public class LivelinkException extends RepositoryException
         logMessage(logger);
     }
 
-    
+    /**
+     * Constructs an instance that wraps another exception.
+     * 
+     * @param e a Livelink-specific runtime exception
+     * @param logger a logger instance to log the exception against
+     * @param key a resource bundle key
+     * @param params message parameters; may be null
+     */
+    public LivelinkException(Exception e, Logger logger, String key, 
+            Object[] params) {
+        super(e);
+        logMessage(logger);
+        this.key = key;
+        this.params = params;
+    }
+
     /**
      * Constructs an instance with the given message
      * 
@@ -48,6 +72,44 @@ public class LivelinkException extends RepositoryException
         logMessage(logger);
     }
 
+    /**
+     * Constructs an instance with the given message
+     * 
+     * @param message an error message
+     * @param logger a logger instance to log the exception against
+     * @param key a resource bundle key
+     * @param params message parameters; may be null
+     */
+    public LivelinkException(String message, Logger logger, String key, 
+            Object[] params) {
+        super(message);
+        logMessage(logger);
+        this.key = key;
+        this.params = params;
+    }
+
+    /**
+     * Uses the provided ResourceBundle to look up this
+     * exception's key and return the bundle's message. If the
+     * bundle or key are null or the key is missing from the
+     * bundle, the result of calling getLocalizedMessage() is
+     * returned.
+     *
+     * @param bundle a ResourceBundle
+     */
+    public String getLocalizedMessage(ResourceBundle bundle) {
+        if (bundle == null || key == null)
+            return super.getLocalizedMessage();
+        try {
+            if (params == null)
+                return bundle.getString(key); 
+            return MessageFormat.format(bundle.getString(key), params);
+        } catch (MissingResourceException e) {
+            return super.getLocalizedMessage();
+        } catch (IllegalArgumentException e) {
+            return super.getLocalizedMessage();
+        }
+    }
 
     /**
      * Logs the exception.

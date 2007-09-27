@@ -1484,8 +1484,9 @@ public class LivelinkConnector implements Connector {
 
         // The connector requires Livelink 9.0 or later.
         if (majorVersion < 9) {
-            throw new RepositoryException(
-                "Livelink 9.0 or later is required.");
+            throw new LivelinkException(
+                "Livelink 9.0 or later is required.", LOGGER, 
+                "unsupportedVersion", new String[] { "9.0" });
         }
 
         // Check for Livelink 9.2 or earlier; omit excluded volumes

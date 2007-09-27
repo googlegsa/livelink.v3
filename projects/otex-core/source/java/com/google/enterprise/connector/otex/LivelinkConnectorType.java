@@ -23,6 +23,7 @@ import java.net.URLConnection;
 import java.net.JarURLConnection; 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -558,26 +559,16 @@ public class LivelinkConnectorType implements ConnectorType {
         private final ResourceBundle labels;
         private FormContext formContext;
 
-        FormBuilder(Locale locale) {
-            this(Collections.EMPTY_MAP, locale, 
+        FormBuilder(ResourceBundle labels) {
+            this(labels, Collections.EMPTY_MAP, 
                 new FormContext(Collections.EMPTY_MAP));
         }
 
-        FormBuilder(Map data, Locale locale, FormContext formContext) {
+        FormBuilder(ResourceBundle labels, Map data,
+                FormContext formContext) {
+            this.labels = labels;
             this.data = data;
             this.formContext = formContext;
-            
-            // get the local-specific labels for the form
-            ResourceBundle bundle;
-            try {
-                bundle = ResourceBundle.getBundle(
-                    LivelinkConnectorType.class.getName(), locale);
-            } catch (MissingResourceException e) {
-                LivelinkConnectorType.LOGGER.log(Level.SEVERE,
-                    e.getMessage(), e);
-                bundle = null;
-            }
-            labels = bundle;
         }
 
         private String getProperty(String name) {
@@ -621,7 +612,6 @@ public class LivelinkConnectorType implements ConnectorType {
         }
     }
 
-
     /**
      * No-args constructor for bean instantiation.
      */
@@ -630,26 +620,64 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /**
+     * Localizes the resource bundle name.
+     *
+     * @param locale the locale to look up
+     * @return the ResourceBundle
+     * @throws MissingResourceException if the bundle can't be found
+     */
+    private ResourceBundle getResources(Locale locale)
+            throws MissingResourceException {
+        return ResourceBundle.getBundle(
+            "config.OtexConnectorResources", locale);
+    }
+
+    /**
+     * Returns a form snippet containing the given string as an error message.
+     *
+     * @param error the error message to include
+     * @return a ConfigureResponse consisting of a form snippet
+     * with just an error message
+     */
+    private ConfigureResponse getErrorResponse(String error) {
+        StringBuffer buffer = new StringBuffer(
+            "<tr><td colspan=\"2\"><font color=\"red\">");
+        buffer.append(error); // FIXME: HTML escaping?
+        buffer.append("</font></td></tr>");
+        return new ConfigureResponse(null, buffer.toString()); 
+    }
+
+    /**
      * {@inheritDoc}
      */
     public ConfigureResponse getConfigForm(Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("getConfigForm locale: " + locale);
-        return new ConfigureResponse(null,
-            new FormBuilder(locale).getFormSnippet());
+        try {
+            return new ConfigureResponse(null,
+                new FormBuilder(getResources(locale)).getFormSnippet());
+        } catch (Throwable t) {
+            LOGGER.log(Level.SEVERE, "Failed to create config form", t);
+            return getErrorResponse(getExceptionMessages(null, t)); 
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     public ConfigureResponse getPopulatedConfigForm(Map configData,
-        Locale locale) {
+            Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("getPopulatedConfigForm data: " + configData);
             LOGGER.config("getPopulatedConfigForm locale: " + locale);
         }
-        return getResponse(null, configData, locale, 
-            new FormContext(configData));
+        try {
+            return getResponse(null, getResources(locale), configData, 
+                new FormContext(configData));
+        } catch (Throwable t) {
+            LOGGER.log(Level.SEVERE, "Failed to create config form", t);
+            return getErrorResponse(getExceptionMessages(null, t)); 
+        }
     }
 
     /**
@@ -659,16 +687,14 @@ public class LivelinkConnectorType implements ConnectorType {
      * @param message A message to be included to the user along with the form
      * @param configData A map of name, value pairs (String, String)
      * of configuration data
-     * @param locale A <code>java.util.Locale</code> which the
-     * implementation may use to produce appropriate descriptions and
-     * messages
+     * @param formContext A context which may be configured by
+     * the caller to affect the form generation
      */
-    private ConfigureResponse getResponse(String message, Map configData,
-        Locale locale, FormContext formContext) {
+    private ConfigureResponse getResponse(String message, 
+            ResourceBundle bundle, Map configData, FormContext formContext) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("Response data: " + configData);
-
-        FormBuilder form = new FormBuilder(configData, locale, formContext);
+        FormBuilder form = new FormBuilder(bundle, configData, formContext);
         return new ConfigureResponse(message, form.getFormSnippet());
     }
 
@@ -703,121 +729,136 @@ public class LivelinkConnectorType implements ConnectorType {
      * LivelinkConnector.
      */
     public ConfigureResponse validateConfig(Map configData, Locale locale,
-                                            ConnectorFactory connectorFactory)
+        ConnectorFactory connectorFactory)
     {
         if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("validateConfig data: " + configData);
             LOGGER.config("validateConfig locale: " + locale);
         }
 
-        FormContext formContext = new FormContext(configData); 
-
-        // We want to change the passed in properties, but avoid
-        // changing the configData parameter. If it is a Properties
-        // object, we'll just wrap it to avoid changing the underlying
-        // object. If it's another kind of map, then putAll should
-        // work.
-        Properties p;
-        if (configData instanceof Properties)
-            p = new Properties((Properties) configData);
-        else {
-            p = new Properties();
-            p.putAll(configData);
-        }
-
-        // Update the properties to copy the enabler properties to
-        // the uses.
-        boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
-            "enableHttpTunneling");
-        boolean changeAuth = changeFormDisplay(p,
-            "useSeparateAuthentication", "enableSeparateAuthentication");
-
-        // Instantiate a LivelinkConnector to check connectivity.
-        LivelinkConnector conn = null;
         try {
-            // TODO: be able to locate connectorInstance.xml
-            // elsewhere outside the jar file to support
-            // hand-edits.
+            ResourceBundle bundle = getResources(locale); 
+            FormContext formContext = new FormContext(configData); 
 
-            // From our class, traipse through the class loader,
-            // the URL to this class file, the URL to the jar
-            // file containing this class, and make our way to
-            // the config file located in that jar file.
-            Class thisClass = LivelinkConnectorType.class;
-            ClassLoader loader = thisClass.getClassLoader();
-            String jarPath = thisClass.getName().replace('.', '/') +
-                ".class";
-            URL bootstrapJarUrl = loader.getResource(jarPath);
-            // We're always in a jar file.
-            JarURLConnection connection =
-                (JarURLConnection) bootstrapJarUrl.openConnection();
-            URL jarFileUrl = connection.getJarFileURL();
-            String configFilePath = jarFileUrl.toString() + 
-                "!/config/connectorInstance.xml"; 
-            // I don't know for sure that getJarFileURL always
-            // returns "file" rather than "jar".
-            if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
-                configFilePath = "jar:" + configFilePath;
-            URL resource = new URL(configFilePath); 
-            Resource res = new UrlResource(resource);
-            XmlBeanFactory factory = new XmlBeanFactory(res);
-            PropertyPlaceholderConfigurer cfg =
-                new PropertyPlaceholderConfigurer();
-            cfg.setProperties(p);
-            cfg.postProcessBeanFactory(factory);
-            conn = (LivelinkConnector)
-                factory.getBean("Livelink_Enterprise_Server");
-        } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Failed to create connector", t);
-            t = t.getCause();
-            while (t != null) {
-                if (t instanceof PropertyBatchUpdateException) {
-                    PropertyAccessException[] pae =
-                        ((PropertyBatchUpdateException) t).
-                        getPropertyAccessExceptions();
-                    for (int i = 0; i < pae.length; i++)
-                        LOGGER.warning(pae[i].getMessage());
-                } else
-                    LOGGER.warning(t.toString());
-                t = t.getCause();
+            // We want to change the passed in properties, but avoid
+            // changing the configData parameter. If it is a Properties
+            // object, we'll just wrap it to avoid changing the underlying
+            // object. If it's another kind of map, then putAll should
+            // work.
+            Properties p;
+            if (configData instanceof Properties)
+                p = new Properties((Properties) configData);
+            else {
+                p = new Properties();
+                p.putAll(configData);
             }
-            return getResponse("Failed to instantiate connector", p, locale,
-                formContext);
-        }
 
-        boolean ignoreDisplayUrlErrors = Boolean.valueOf(
-            p.getProperty("ignoreDisplayUrlErrors", "false")).booleanValue();
-        if (!ignoreDisplayUrlErrors) {
+            // Update the properties to copy the enabler properties to
+            // the uses.
+            boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
+                "enableHttpTunneling");
+            boolean changeAuth = changeFormDisplay(p,
+                "useSeparateAuthentication", "enableSeparateAuthentication");
+
+            // Instantiate a LivelinkConnector to check connectivity.
+            LivelinkConnector conn = null;
             try {
-                LOGGER.log(Level.FINER, 
-                    "Validating display URL " + p.getProperty("displayUrl")); 
-                validateUrl(p.getProperty("displayUrl")); 
-            } catch (UrlConfigurationException e) {
-                LOGGER.log(Level.WARNING, "Error in configuration", e);
-                formContext.setHideIgnoreDisplayUrlErrors(false);
-                return getResponse("Error in configuration: " + e.getMessage(),
-                    p, locale, formContext);
-            } 
-        }
+                // TODO: be able to locate connectorInstance.xml
+                // elsewhere outside the jar file to support
+                // hand-edits.
 
-        // TODO: validate publicContentDisplayUrl. Since this is
-        // only set in a custom XML file, we have to wait until
-        // the ConnectorManager starts doing the instantiation
-        // and uses the custom file so we can query the connector
-        // for the property value.
+                // From our class, traipse through the class loader,
+                // the URL to this class file, the URL to the jar
+                // file containing this class, and make our way to
+                // the config file located in that jar file.
+                Class thisClass = LivelinkConnectorType.class;
+                ClassLoader loader = thisClass.getClassLoader();
+                String jarPath = thisClass.getName().replace('.', '/') +
+                    ".class";
+                URL bootstrapJarUrl = loader.getResource(jarPath);
+                // We're always in a jar file.
+                JarURLConnection connection =
+                    (JarURLConnection) bootstrapJarUrl.openConnection();
+                URL jarFileUrl = connection.getJarFileURL();
+                String configFilePath = jarFileUrl.toString() + 
+                    "!/config/connectorInstance.xml"; 
+                // I don't know for sure that getJarFileURL always
+                // returns "file" rather than "jar".
+                if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
+                    configFilePath = "jar:" + configFilePath;
+                URL resource = new URL(configFilePath); 
+                Resource res = new UrlResource(resource);
+                XmlBeanFactory factory = new XmlBeanFactory(res);
+                PropertyPlaceholderConfigurer cfg =
+                    new PropertyPlaceholderConfigurer();
+                cfg.setProperties(p);
+                cfg.postProcessBeanFactory(factory);
+                conn = (LivelinkConnector)
+                    factory.getBean("Livelink_Enterprise_Server");
+            } catch (Throwable t) {
+                LOGGER.log(Level.WARNING, "Failed to create connector", t);
+                t = t.getCause();
+                while (t != null) {
+                    if (t instanceof PropertyBatchUpdateException) {
+                        PropertyAccessException[] pae =
+                            ((PropertyBatchUpdateException) t).
+                            getPropertyAccessExceptions();
+                        for (int i = 0; i < pae.length; i++)
+                            LOGGER.warning(pae[i].getMessage());
+                    } else
+                        LOGGER.warning(t.toString());
+                    t = t.getCause();
+                }
+                return getResponse(failedInstantiation(bundle), bundle, p, 
+                    formContext);
+            }
 
-        try {
-            conn.login();
+            boolean ignoreDisplayUrlErrors = Boolean.valueOf(
+                p.getProperty("ignoreDisplayUrlErrors", "false")).
+                booleanValue();
+            if (!ignoreDisplayUrlErrors) {
+                try {
+                    LOGGER.log(Level.FINER, "Validating display URL " + 
+                        p.getProperty("displayUrl")); 
+                    validateUrl(p.getProperty("displayUrl"), bundle); 
+                } catch (UrlConfigurationException e) {
+                    LOGGER.log(Level.WARNING, "Error in configuration", e);
+                    formContext.setHideIgnoreDisplayUrlErrors(false);
+                    return getResponse(
+                        errorInConfiguration(bundle, e.getLocalizedMessage()),
+                        bundle, p, formContext);
+                } 
+            }
+
+            // TODO: validate publicContentDisplayUrl. Since this is
+            // only set in a custom XML file, we have to wait until
+            // the ConnectorManager starts doing the instantiation
+            // and uses the custom file so we can query the connector
+            // for the property value.
+
+            try {
+                conn.login();
+            } catch (LivelinkException e) {
+                // XXX: Should this be an errorInConfiguration error?
+                return getResponse(e.getLocalizedMessage(bundle), bundle,
+                    p, formContext); 
+            } catch (Throwable t) {
+                LOGGER.log(Level.WARNING, "Error in configuration", t);
+                return getResponse(
+                    errorInConfiguration(bundle, t.getLocalizedMessage()),
+                    bundle, p, formContext);
+            }
+
+            if (changeHttp || changeAuth)
+                return getResponse(null, bundle, p, formContext);
+            else
+                return null;
+
         } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Error in configuration", t);
-            return getResponse("Error in configuration: " + t.getMessage(),
-                p, locale, formContext);
+            // One last catch to be sure we return a message. 
+            LOGGER.log(Level.SEVERE, "Failed to create config form", t);
+            return getErrorResponse(getExceptionMessages(null, t)); 
         }
-
-        if (changeHttp || changeAuth)
-            return getResponse(null, p, locale, formContext);
-        else
-            return null;
     }
 
     /**
@@ -851,6 +892,48 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /**
+     * Formats and returns an errorInConfiguration message from
+     * the given bundle.
+     *
+     * @param bundle the resource bundle
+     * @param message the error message
+     * @return the formatted error message
+     * @throws MissingResourceException if the message isn't found
+     */
+    private String errorInConfiguration(ResourceBundle bundle, 
+            String message) {
+        return MessageFormat.format(bundle.getString("errorInConfiguration"),
+            new Object[] { message }); 
+    }
+
+    /**
+     * Formats and returns a failedInstatiation message from
+     * the given bundle.
+     *
+     * @param bundle the resource bundle
+     * @param message the error message
+     * @return the formatted error message
+     * @throws MissingResourceException if the message isn't found
+     */
+    private String failedInstantiation(ResourceBundle bundle) {
+        return bundle.getString("failedInstantiation"); 
+    }
+
+    /**
+     * Formats and returns a httpNotFound message from the given
+     * bundle.
+     *
+     * @param bundle the resource bundle
+     * @param urlString the missing URL
+     * @return the formatted error message
+     * @throws MissingResourceException if the message isn't found
+     */
+    private String httpNotFound(ResourceBundle bundle, String urlString) {
+        return MessageFormat.format(bundle.getString("httpNotFound"),
+            new Object[] { urlString }); 
+    }
+
+    /**
      * Attempts to validate a URL. In this case, we're mostly
      * trying to catch typos, so "valid" means
      *
@@ -871,7 +954,7 @@ public class LivelinkConnectorType implements ConnectorType {
     /* Java 1.4 doesn't support setting a timeout on the
      * URLConnection. Java 1.5 does support timeouts, so we're
      * using reflection to set timeouts if available. Another
-     * possibility would be to use Jakarta Commons HttpClient
+     * possibility would be to use Jakarta Commons HttpClient.
      *
      * The read and connect timeouts are set to one minute. This
      * isn't currently configurable, but if it fails the
@@ -882,7 +965,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * The above Sun bug report documents that openConnection
      * doesn't try to connect. 
      */
-    private void validateUrl(String urlString)
+    private void validateUrl(String urlString, ResourceBundle bundle)
             throws UrlConfigurationException {
         if (urlString == null || urlString.trim().length() == 0)
             return;
@@ -923,8 +1006,10 @@ public class LivelinkConnectorType implements ConnectorType {
             if (conn instanceof HttpURLConnection) {
                 int responseCode = ((HttpURLConnection) conn).
                     getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_NOT_FOUND)
-                    throw new Exception("Not Found: " + urlString);
+                if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                    throw new UrlConfigurationException(
+                        httpNotFound(bundle, urlString));
+                }
                 ((HttpURLConnection) conn).disconnect();
             }
         } catch (UrlConfigurationException u) {
@@ -963,7 +1048,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * @return a message
      */
     private String getExceptionMessage(Throwable t) {
-        String message = t.getMessage();
+        String message = t.getLocalizedMessage();
         if (message != null)
             return message;
         return t.getClass().getName(); 

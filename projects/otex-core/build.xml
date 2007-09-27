@@ -93,7 +93,7 @@
     <copy todir="${tests.classes}"
           overwrite="yes">
       <fileset dir="${tests.src}">
-          <include name="**/LivelinkConnectorType_test.properties" />
+          <include name="**/OtexConnectorResources_test.properties" />
       </fileset>
     </copy>
   </target>
