@@ -2,7 +2,7 @@
 <project name="google-enterprise-connector-otex" default="everything" basedir=".">
 
 	<!-- ========================= PROPERTIES ============================= -->
-    <property file="version.properties"/>
+	<property file="version.properties"/>
 
 	<!-- Define Directories. -->
 	<property name="otex-core.dir" value="otex-core" />
@@ -16,14 +16,14 @@
 		<ant dir="${otex-lapi.dir}" target="clean" />
 	</target>
 
-    <target name="prebuild">
-      <exec executable="svnversion" spawn="false"
-            failifexecutionfails="false"
-            dir="${basedir}"
-            outputproperty="svnversion">
-        <arg line="."/>
-      </exec>
-    </target>
+	<target name="prebuild">
+		<exec executable="svnversion" spawn="false"
+			failifexecutionfails="false"
+			dir="${basedir}"
+			outputproperty="svnversion">
+			<arg line="."/>
+		</exec>
+	</target>
 
 	<target name="otex-core" depends="prebuild">
 		<ant dir="${otex-core.dir}" />
@@ -54,7 +54,22 @@
 	</target>
 
 	<target name="install-all" 
-		depends="prebuild,install-otex-core,install-otex-lapi"/>
+		depends="prebuild,install-otex-core,install-otex-lapi">
+		<property name="archive" value="connector-otex-${version}_en" />
+		<zip destfile="${install.dir}/${archive}.zip">
+			<zipfileset dir="${install.dir}/otex-lapi/jar" 
+				prefix="${archive}" />
+			<zipfileset file="../README" prefix="${archive}" />
+			<zipfileset file="../RELEASE_NOTES" 
+				prefix="${archive}" />
+			<zipfileset file="../COPYING" 
+				prefix="${archive}/License" />
+		</zip>
+		<tar destfile="${install.dir}/${archive}.tar.gz" 
+			compression="gzip">
+			<zipfileset src="${install.dir}/${archive}.zip"/>
+                </tar>
+	</target>
 
 	<target name="everything" depends="clean-all,build-all,install-all"/>
 
