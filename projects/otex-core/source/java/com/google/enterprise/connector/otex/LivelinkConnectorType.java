@@ -516,8 +516,6 @@ public class LivelinkConnectorType implements ConnectorType {
             tunnelingEntries.add(new TextInputProperty("livelinkCgi"));
             tunnelingEntries.add(new TextInputProperty("httpUsername"));
             tunnelingEntries.add(new PasswordInputProperty("httpPassword"));
-            tunnelingEntries.add(
-                new BooleanSelectProperty("enableNtlm", "true"));
             tunnelingEntries.add(new BooleanSelectProperty("https", "true"));
             tunnelingEntries.add(
                 new BooleanSelectProperty("verifyServer", "true" ));
@@ -540,8 +538,6 @@ public class LivelinkConnectorType implements ConnectorType {
                 new TextInputProperty("authenticationDomainName"));
             authenticationEntries.add(
                 new TextInputProperty("authenticationLivelinkCgi"));
-            authenticationEntries.add(
-                new BooleanSelectProperty("authenticationEnableNtlm", "true"));
             authenticationEntries.add(
                 new BooleanSelectProperty("authenticationHttps", "true"));
             authenticationEntries.add(
@@ -842,6 +838,11 @@ public class LivelinkConnectorType implements ConnectorType {
                 // XXX: Should this be an errorInConfiguration error?
                 return getResponse(e.getLocalizedMessage(bundle), bundle,
                     p, formContext); 
+            } catch (ConfigurationException c) {
+                LOGGER.log(Level.WARNING, "Error in configuration", c);
+                return getResponse(
+                    errorInConfiguration(bundle, c.getLocalizedMessage(bundle)),
+                    bundle, p, formContext); 
             } catch (Throwable t) {
                 LOGGER.log(Level.WARNING, "Error in configuration", t);
                 return getResponse(

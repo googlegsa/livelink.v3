@@ -19,7 +19,7 @@
 		<property name="livelinkCgi" value="${livelinkCgi}"/>
 		<property name="httpUsername" value="${httpUsername}"/>
 		<property name="httpPassword" value="${httpPassword}"/>
-		<property name="enableNtlm" value="${enableNtlm}"/>
+		<property name="enableNtlm" value="false"/>
 		<property name="https" value="${https}"/>
 		<property name="verifyServer" value="${verifyServer}"/>
 		<property name="caRootCerts">
@@ -43,7 +43,7 @@
 		<property name="authenticationLivelinkCgi"
 			value="${authenticationLivelinkCgi}"/>
 		<property name="authenticationEnableNtlm"
-			value="${authenticationEnableNtlm}"/>
+			value="false"/>
 		<property name="authenticationHttps"
 			value="${authenticationHttps}"/>
 		<property name="authenticationVerifyServer"

@@ -222,6 +222,15 @@ public class LivelinkConnector implements Connector {
     /** The Livelink traverser client username. */
     private String username;
 
+    /** The enableNtlm flag. */
+    private boolean enableNtlm;
+
+    /** The httpUsername. */
+    private String httpUsername;
+
+    /** The httpPassword. */
+    private String httpPassword;    
+
     /** The Livelink Public Content client username. */
     private String publicContentUsername;
 
@@ -267,10 +276,20 @@ public class LivelinkConnector implements Connector {
      *
      * @param server the host name or IP address of the server
      */
-    public void setServer(String server) {
+    public void setServer(final String server) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("SERVER: " + server);
         clientFactory.setServer(server);
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    if (server == null || server.trim().length() == 0) {
+                        throw new ConfigurationException(
+                            "A host name or IP address is required.", 
+                            "missingHost", null);
+                    }
+                }
+        }); 
+
     }
 
     /**
@@ -380,10 +399,27 @@ public class LivelinkConnector implements Connector {
      *
      * @param enableNtlm true if the NTLM subsystem should be used
      */
-    public void setEnableNtlm(boolean enableNtlm) {
+    public void setEnableNtlm(final boolean enableNtlm) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("ENABLE NTLM: " + enableNtlm);
         clientFactory.setEnableNtlm(enableNtlm);
+        this.enableNtlm = enableNtlm;
+        propertyValidators.add(new PropertyValidator() {
+                void validate() {
+                    if (!useHttpTunneling)
+                        return;
+                    if (enableNtlm &&
+                            ((httpUsername == null || 
+                                httpUsername.trim().length() == 0) ||
+                            (httpPassword == null || 
+                                httpPassword.trim().length() == 0))) {
+                        throw new ConfigurationException(
+                            "An HTTP username and HTTP password are required " +
+                            "when NTLM authentication is enabled.",
+                            "missingNtlmCredentials", null); 
+                    }
+                }
+            }); 
     }
 
     /**
@@ -396,6 +432,7 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("HTTP USERNAME: " + httpUsername);
         clientFactory.setHttpUsername(httpUsername);
+        this.httpUsername = httpUsername;
     }
 
     /**
@@ -408,6 +445,7 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("HTTP PASSWORD: " + httpPassword);
         clientFactory.setHttpPassword(httpPassword);
+        this.httpPassword = httpPassword;
     }
 
     /**
