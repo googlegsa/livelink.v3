@@ -1520,13 +1520,14 @@ public class LivelinkConnector implements Connector {
             minorVersion = 5;
         }
 
-        // The connector requires Livelink 9.0 or later.
-        if (majorVersion < 9) {
+        // [task 4046] The connector requires Livelink 9.5 or later.
+        if ((majorVersion < 9) || (majorVersion == 9 && minorVersion < 5)) {
             throw new LivelinkException(
-                "Livelink 9.0 or later is required.", LOGGER, 
-                "unsupportedVersion", new String[] { "9.0" });
+                "Livelink 9.5 or later is required.", LOGGER, 
+                "unsupportedVersion", new String[] { "9.5" });
         }
 
+        /* [task 4046] Limiting support to 9.5 or greater.
         // Check for Livelink 9.2 or earlier; omit excluded volumes
         // and locations if needed. XXX: The DTreeAncestors table was
         // introduced in Livelink 9.5. Just bailing like this is weak,
@@ -1544,6 +1545,7 @@ public class LivelinkConnector implements Connector {
             // Livelink 9.2 does not return the CharacterEncoding field.
             hasCharacterEncoding = false;
         } else
+        */
             hasCharacterEncoding = true;
 
         // Check for Livelink 9.5 or earlier; change overview action
