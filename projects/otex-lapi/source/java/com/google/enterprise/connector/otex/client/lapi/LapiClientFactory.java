@@ -279,17 +279,18 @@ public final class LapiClientFactory implements ClientFactory {
                 LLNameEnumeration names = currentConfig.enumerateNames(); 
                 while (names.hasMoreElements()) {
                     String name = names.nextElement().toString(); 
-                    configString.append(name).append("=").
-                        append(currentConfig.toString(name)).
-                        append("; "); 
+                    configString.append(name).append("=");
+                    if (name.endsWith("assword"))
+                        configString.append("[...]");
+                    else
+                        configString.append(currentConfig.toString(name));
+                    configString.append("; ");
                 }
                 configString.append("}"); 
             }
             LOGGER.finer("server=" + server + "; port=" + port +
                 "; connection=" + connection + "; username=" +
-                currentUsername + "; password=[" +
-                (currentPassword == null ? 0 : currentPassword.length()) +
-                "]; useUsernameForWebServer: " + 
+                currentUsername + "; password=[...]; useUsernameForWebServer: " + 
                 useUsernamePasswordWithWebServer + "; " + configString);
         }
     }

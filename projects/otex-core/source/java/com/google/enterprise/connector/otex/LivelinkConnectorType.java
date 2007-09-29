@@ -26,6 +26,7 @@ import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
@@ -664,7 +665,8 @@ public class LivelinkConnectorType implements ConnectorType {
     public ConfigureResponse getPopulatedConfigForm(Map configData,
             Locale locale) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("getPopulatedConfigForm data: " + configData);
+            LOGGER.config("getPopulatedConfigForm data: " +
+                getMaskedMap(configData));
             LOGGER.config("getPopulatedConfigForm locale: " + locale);
         }
         try {
@@ -689,7 +691,7 @@ public class LivelinkConnectorType implements ConnectorType {
     private ConfigureResponse getResponse(String message, 
             ResourceBundle bundle, Map configData, FormContext formContext) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("Response data: " + configData);
+            LOGGER.config("Response data: " + getMaskedMap(configData));
         FormBuilder form = new FormBuilder(bundle, configData, formContext);
         return new ConfigureResponse(message, form.getFormSnippet());
     }
@@ -725,10 +727,9 @@ public class LivelinkConnectorType implements ConnectorType {
      * LivelinkConnector.
      */
     public ConfigureResponse validateConfig(Map configData, Locale locale,
-        ConnectorFactory connectorFactory)
-    {
+            ConnectorFactory connectorFactory) {
         if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("validateConfig data: " + configData);
+            LOGGER.config("validateConfig data: " + getMaskedMap(configData));
             LOGGER.config("validateConfig locale: " + locale);
         }
 
@@ -737,17 +738,8 @@ public class LivelinkConnectorType implements ConnectorType {
             FormContext formContext = new FormContext(configData); 
 
             // We want to change the passed in properties, but avoid
-            // changing the configData parameter. If it is a Properties
-            // object, we'll just wrap it to avoid changing the underlying
-            // object. If it's another kind of map, then putAll should
-            // work.
-            Properties p;
-            if (configData instanceof Properties)
-                p = new Properties((Properties) configData);
-            else {
-                p = new Properties();
-                p.putAll(configData);
-            }
+            // changing the configData parameter. 
+            Properties p = copyProperties(configData);
 
             // Update the properties to copy the enabler properties to
             // the uses.
@@ -862,6 +854,52 @@ public class LivelinkConnectorType implements ConnectorType {
         }
     }
 
+    /**
+     * Copies the given map into a new <code>Properties</code>
+     * instance. Works with parameters that are any kind of <code>Map</code>,
+     * including <code>Properties</code> instances.
+     *
+     * @param original a property map
+     * @return a copy of the map as a <code>Properties</code> instance
+     */
+    private Properties copyProperties(Map original) {
+        // If it is a Properties object, we'll just wrap it to avoid
+        // changing the underlying object. If it's another kind of
+        // map, then putAll should work.
+        Properties copy;
+        if (original instanceof Properties)
+            copy = new Properties((Properties) original);
+        else {
+            copy = new Properties();
+            copy.putAll(original);
+        }
+        return copy;
+    }
+
+    /**
+     * Gets a copy of the map with password property values masked.
+     *
+     * @param original a property map
+     * @return a copy of the map with password property values
+     * replaced by the string "[...]"
+     */
+    private Map getMaskedMap(Map original) {
+        // The map may be a Properties instance, so we need to iterate
+        // over the property names in that case. We will copy the map
+        // to a Properties instance to handle that.
+        Properties p = copyProperties(original);
+        HashMap copy = new HashMap();
+        Enumeration it = p.propertyNames();
+        while (it.hasMoreElements()) {
+            String key = (String) it.nextElement();
+            if (key.endsWith("assword"))
+                copy.put(key, "[...]");
+            else
+                copy.put(key, p.getProperty(key));
+        }
+        return copy;
+    }
+    
     /**
      * Checks whether a property for showing and hiding other
      * parameters on the form has changed. If it has changed, the

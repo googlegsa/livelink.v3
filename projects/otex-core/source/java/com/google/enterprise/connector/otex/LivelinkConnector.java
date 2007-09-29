@@ -348,7 +348,7 @@ public class LivelinkConnector implements Connector {
      */
     public void setPassword(String password) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("PASSWORD: " + password);
+            LOGGER.config("PASSWORD: [...]");
         clientFactory.setPassword(password);
     }
 
@@ -443,7 +443,7 @@ public class LivelinkConnector implements Connector {
      */
     public void setHttpPassword(String httpPassword) {
         if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("HTTP PASSWORD: " + httpPassword);
+            LOGGER.config("HTTP PASSWORD: [...]");
         clientFactory.setHttpPassword(httpPassword);
         this.httpPassword = httpPassword;
     }
