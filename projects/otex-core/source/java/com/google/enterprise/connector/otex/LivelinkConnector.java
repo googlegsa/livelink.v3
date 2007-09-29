@@ -22,6 +22,7 @@ import java.text.Format;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -733,54 +734,37 @@ public class LivelinkConnector implements Connector {
     }
 
     private void validateStartDate(final String property) {
-        // parse out the date using either the default or "short"
-        // date format.  If we can parse it, set the property and
-        // the initial checkpoint.  If the parse fails, log it and
-        // start the the beginning...
-        // FIXME: This should support the ISO 8601 format, and I don't
-        // think that it does.
-        DateFormat defaultDateFormatter = DateFormat.getDateInstance();
-        DateFormat shortDateFormatter =
-            DateFormat.getDateInstance(DateFormat.SHORT);
-        Date d;
+        // If we've validated already, don't do it again.
+        if (startDate != null && startCheckpoint != null)
+            return;
+        if (property.trim().length() == 0) {
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine("STARTDATE: No start date specified.");
+            return;
+        }
+        Date parsedDate = null; 
         try {
-            d = defaultDateFormatter.parse(property);
-        }
-        catch (ParseException e) {
-            d = null;
-        }
-
-        // If the default fails, try the short parser.  It might work.
-        if (d == null) {
+            SimpleDateFormat dateTime = 
+                new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss"); 
+            parsedDate = dateTime.parse(property);
+        } catch (ParseException p1) {
             try {
-                d = shortDateFormatter.parse(property);
-            }
-            catch (ParseException e) {
-                d = null;
-            }
-        }
-
-        if (d == null) {        // intentionally or not, it isn't a date..
-            startDate = null;
-            startCheckpoint = null;
-            if ( property.length() == 0 ) { // it's intentional
-                if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.fine("STARTDATE: No start date specified.");
-            } else {            // it's an error
-                if (LOGGER.isLoggable(Level.WARNING))
+                SimpleDateFormat date = new SimpleDateFormat("yyyy-MM-dd"); 
+                parsedDate = date.parse(property);
+            } catch (ParseException p2) {
+                if (LOGGER.isLoggable(Level.WARNING)) {
                     LOGGER.warning(
                         "STARTDATE: Unable to parse startDate property (\"" +
                         property + "\").  Starting at beginning.");
+                }
+                return;
             }
-        } else {
-            startDate = property;
-            startCheckpoint = LivelinkTraversalManager.getCheckpoint(d, 0);
-
-            if (LOGGER.isLoggable(Level.CONFIG)) {
-                LOGGER.config("STARTDATE: " +
-                    DateFormat.getDateTimeInstance().format(d));
-	    }
         }
+        startDate = property;
+        startCheckpoint = LivelinkTraversalManager.getCheckpoint(
+            parsedDate, 0);
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("STARTDATE: " + property); 
     }
 
     /**

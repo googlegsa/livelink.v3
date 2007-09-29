@@ -96,4 +96,61 @@ public class LivelinkConnectorTest extends TestCase {
             }
         }
     }
+
+    private LivelinkConnector connector;
+    
+    protected void setUp() {
+        connector = new LivelinkConnector(
+            "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
+        connector.setServer(System.getProperty("connector.server"));
+        connector.setPort(System.getProperty("connector.port"));
+        connector.setUsername(System.getProperty("connector.username"));
+        connector.setPassword(System.getProperty("connector.password"));
+    }
+
+    public void testStartDate1() throws Exception {
+        connector.setStartDate("2007-09-27 01:12:13");
+        connector.login();
+        assertEquals("2007-09-27 01:12:13", connector.getStartDate()); 
+    }
+
+    public void testStartDate2() throws Exception {
+        connector.setStartDate("2007-09-27");
+        connector.login();
+        assertEquals("2007-09-27", connector.getStartDate()); 
+    }
+
+    public void testStartDate3() throws Exception {
+        connector.setStartDate("");
+        connector.login();
+        assertEquals(null, connector.getStartDate()); 
+    }
+
+    public void testStartDate4() throws Exception {
+        connector.setStartDate("   ");
+        connector.login();
+        assertEquals(null, connector.getStartDate()); 
+    }
+
+    public void testStartDate5() throws Exception {
+        connector.setStartDate("Sep 27, 2007");
+        connector.login();
+        assertEquals(null, connector.getStartDate()); 
+    }
+
+    public void testStartDate6() throws Exception {
+        connector.setStartDate("2007-09-27 01:12:13");
+        connector.login();
+        assertEquals("2007-09-27 01:12:13", connector.getStartDate()); 
+        connector.login();
+        assertEquals("2007-09-27 01:12:13", connector.getStartDate()); 
+    }
+
+    public void testStartDate7() throws Exception {
+        connector.setStartDate("Sep 27, 2007");
+        connector.login();
+        assertEquals(null, connector.getStartDate()); 
+        connector.login();
+        assertEquals(null, connector.getStartDate()); 
+    }
 }
