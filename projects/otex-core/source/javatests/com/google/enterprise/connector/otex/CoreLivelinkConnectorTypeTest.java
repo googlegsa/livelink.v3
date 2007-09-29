@@ -210,9 +210,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     public void testGetConfigForm() throws Exception {
         HashMap form = getForm(connectorType.getConfigForm(defaultLocale));
         assertNotNull("Missing server element", form.get("server"));
-        assertBooleanIsTrue(form, "https");
-        assertBooleanIsTrue(form, "enableNtlm");
-        assertBooleanIsTrue(form, "verifyServer");
+        assertBooleanIsFalse(form, "https");
+        assertBooleanIsFalse(form, "verifyServer");
         assertBooleanIsFalse(form, "useUsernamePasswordWithWebServer");
         assertBooleanIsFalse(form, "useSeparateAuthentication");
         assertIsHidden(form, "authenticationServer");
@@ -302,7 +301,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         HashMap form = getForm(response);
         assertValue(form, "server", "");
         assertIsHidden(form, "authenticationServer");
-        assertBooleanIsTrue(form, "https");
+        assertBooleanIsFalse(form, "https");
     }
 
     /**
@@ -359,10 +358,14 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         assertValid(response);
     }
 
-    /**
+    /*
      * Tests the validateConfig method with HTTP tunneling disabled
      * and NTLM authentication enabled.
+     *
+     * The enableNtlm property has been removed from the form. It
+     * must be set by editing the xml file.
      */
+    /*
     public void testValidateConfigIgnoredEnableNtlm() throws Exception {
         Properties props = getValidProperties();
         props.setProperty("enableNtlm", "true");
@@ -370,6 +373,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
             connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
+    */
 
     /**
      * Tests the validateConfig method with HTTP tunneling disabled

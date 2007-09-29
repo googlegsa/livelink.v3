@@ -516,9 +516,9 @@ public class LivelinkConnectorType implements ConnectorType {
             tunnelingEntries.add(new TextInputProperty("livelinkCgi"));
             tunnelingEntries.add(new TextInputProperty("httpUsername"));
             tunnelingEntries.add(new PasswordInputProperty("httpPassword"));
-            tunnelingEntries.add(new BooleanSelectProperty("https", "true"));
+            tunnelingEntries.add(new BooleanSelectProperty("https", "false"));
             tunnelingEntries.add(
-                new BooleanSelectProperty("verifyServer", "true" ));
+                new BooleanSelectProperty("verifyServer", "false" ));
             tunnelingEntries.add(new TextareaProperty("caRootCert"));
             tunnelingEntries.add(
                 new BooleanSelectProperty("useUsernamePasswordWithWebServer",
@@ -531,7 +531,7 @@ public class LivelinkConnectorType implements ConnectorType {
             authenticationEntries.add(
                 new TextInputProperty("authenticationServer"));
             authenticationEntries.add(
-                new TextInputProperty("authenticationPort", "443"));
+                new TextInputProperty("authenticationPort", "80"));
             authenticationEntries.add(
                 new TextInputProperty("authenticationConnection"));
             authenticationEntries.add(
@@ -539,10 +539,10 @@ public class LivelinkConnectorType implements ConnectorType {
             authenticationEntries.add(
                 new TextInputProperty("authenticationLivelinkCgi"));
             authenticationEntries.add(
-                new BooleanSelectProperty("authenticationHttps", "true"));
+                new BooleanSelectProperty("authenticationHttps", "false"));
             authenticationEntries.add(
                 new BooleanSelectProperty("authenticationVerifyServer",
-                    "true"));
+                    "false"));
             authenticationEntries.add(
                 new TextareaProperty("authenticationCaRootCert"));
             authenticationEntries.add(
