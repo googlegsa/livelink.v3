@@ -17,13 +17,11 @@ package com.google.enterprise.connector.otex;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Date;
-import java.text.DateFormat;
 import java.text.Format;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1443,12 +1441,14 @@ public class LivelinkConnector implements Connector {
      * Finishes initializing the connector after all properties
      * have been set.
      */
-    /* This is essentially a Spring init-method. There's currently
-     * no reason to expose it, and avoiding changes in the XML
-     * configuration file is good. 
+    /*
+     * This is essentially a Spring init-method. There's currently
+     * no reason to expose it. For the 1.0.2 release of the
+     * Connector Manager, this method needs to not be a Spring
+     * init-method, because that leads to Spring instantiation
+     * failures that are not properly handled.
      */
     private void init() {
-
         for (int i = 0; i < propertyValidators.size(); i++) {
             ((PropertyValidator) propertyValidators.get(i)).validate(); 
         }
@@ -1458,7 +1458,7 @@ public class LivelinkConnector implements Connector {
             clientFactory.setLivelinkCgi("");
             clientFactory.setUseUsernamePasswordWithWebServer(false);
         }
-       if (publicContentDisplayUrl == null || 
+        if (publicContentDisplayUrl == null || 
                 publicContentDisplayUrl.length() == 0) {
             publicContentDisplayUrl = displayUrl;
         }

@@ -14,10 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection; 
-import java.net.MalformedURLException; 
 import java.net.URL; 
 import java.net.URLConnection; 
 import java.net.JarURLConnection; 
@@ -38,7 +36,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -50,8 +47,6 @@ import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.beans.PropertyAccessException;
 import org.springframework.beans.PropertyBatchUpdateException;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 
 
@@ -489,7 +484,7 @@ public class LivelinkConnectorType implements ConnectorType {
             baseEntries.add(new TextInputProperty("port", true, "2099"));
             baseEntries.add(new TextInputProperty("connection"));
             baseEntries.add(new TextInputProperty("username", true));
-            baseEntries.add(new PasswordInputProperty("password", true));
+            baseEntries.add(new PasswordInputProperty("Password", true));
             baseEntries.add(new TextInputProperty("domainName"));
             baseEntries.add(new TextInputProperty("displayUrl", true));
             baseEntries.add(
@@ -775,7 +770,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
                     configFilePath = "jar:" + configFilePath;
                 URL resource = new URL(configFilePath); 
-                Resource res = new UrlResource(resource);
+                UrlResource res = new UrlResource(resource);
                 XmlBeanFactory factory = new XmlBeanFactory(res);
                 PropertyPlaceholderConfigurer cfg =
                     new PropertyPlaceholderConfigurer();

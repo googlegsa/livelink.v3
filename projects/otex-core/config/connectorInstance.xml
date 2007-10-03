@@ -9,7 +9,7 @@
                 <property name="port" value="${port}"/>
                 <property name="connection" value="${connection}"/>
                 <property name="username" value="${username}"/>
-                <property name="password" value="${password}"/>
+                <property name="password" value="${Password}"/>
                 <property name="domainName" value="${domainName}"/>
                 <property name="displayUrl" value="${displayUrl}"/>
                 <property name="includedLocationNodes"
