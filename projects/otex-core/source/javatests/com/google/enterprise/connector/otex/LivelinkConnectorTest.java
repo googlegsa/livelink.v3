@@ -14,9 +14,25 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.util.Map;
+
+import com.google.enterprise.connector.otex.ConfigurationException;
+import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
+import com.google.enterprise.connector.spi.RepositoryException;
 import junit.framework.TestCase;
 
 public class LivelinkConnectorTest extends TestCase {
+    private LivelinkConnector connector;
+    
+    protected void setUp() {
+        connector = new LivelinkConnector(
+            "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
+        connector.setServer(System.getProperty("connector.server"));
+        connector.setPort(System.getProperty("connector.port"));
+        connector.setUsername(System.getProperty("connector.username"));
+        connector.setPassword(System.getProperty("connector.password"));
+    }
+
     public void testSanitizingListsOfIntegers() {
         String[] values = { 
             "",		"",
@@ -97,17 +113,6 @@ public class LivelinkConnectorTest extends TestCase {
         }
     }
 
-    private LivelinkConnector connector;
-    
-    protected void setUp() {
-        connector = new LivelinkConnector(
-            "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
-        connector.setServer(System.getProperty("connector.server"));
-        connector.setPort(System.getProperty("connector.port"));
-        connector.setUsername(System.getProperty("connector.username"));
-        connector.setPassword(System.getProperty("connector.password"));
-    }
-
     public void testStartDate1() throws Exception {
         connector.setStartDate("2007-09-27 01:12:13");
         connector.login();
@@ -152,5 +157,50 @@ public class LivelinkConnectorTest extends TestCase {
         assertEquals(null, connector.getStartDate()); 
         connector.login();
         assertEquals(null, connector.getStartDate()); 
+    }
+
+    /**
+     * A simple test that verifies that at least one of the connecion
+     * properties is being correctly assigned in the client factory.
+     */
+    public void testServer() throws RepositoryException {
+        connector.login();
+        Map values = MockClientFactory.getInstance().getValues();
+        assertTrue(values.toString(), values.containsKey("setServer"));
+        assertEquals(values.get("setServer"),
+            System.getProperty("connector.server"));
+    }
+
+    /**
+     * Tests enableNtlm, which requires httpUsername and httpPassword.
+     */
+    public void testEnableNtlmGood() throws RepositoryException {
+        connector.setUseHttpTunneling(true);
+        connector.setEnableNtlm(true);
+        connector.setHttpUsername("username");
+        connector.setHttpPassword("password");
+        connector.login();
+    }
+
+    /**
+     * Tests enableNtlm, which requires httpUsername and httpPassword.
+     */
+    public void testEnableNtlmBad() throws RepositoryException {
+        connector.setUseHttpTunneling(true);
+        connector.setEnableNtlm(true);
+        try {
+            connector.login();
+            fail("Exception an exception");
+        } catch (ConfigurationException e) {
+        }
+    }
+
+    /**
+     * Tests enableNtlm, which requires httpUsername and httpPassword.
+     */
+    public void testEnableNtlmIgnored() throws RepositoryException {
+        connector.setUseHttpTunneling(false);
+        connector.setEnableNtlm(true);
+        connector.login();
     }
 }
