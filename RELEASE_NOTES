@@ -1,15 +1,32 @@
 
-Google Enterprise Connector for Open Text Livelink 1.0.0
-			    Release Notes
+       Google Enterprise Connector for Open Text Livelink
+                         Release Notes
 
 
-See on-line documentation for latest information:
+This document contains the release notes for Google Enterprise Connector
+for Open Text Livelink ECM.  The following sections describe the release
+in detail and provide information that supplements the main documentation.
+See the Issues Tab on the Code Web Site for the current list of known issues
+and workarounds.
 
-  * http://code.google.com/p/google-enterprise-connector-otex/
+Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
-KNOWN ISSUES IN THIS RELEASE:
-=============================
+Release 1.0.0, Oct 03, 2007
+===========================
 
-  * http://code.google.com/p/google-enterprise-connector-otex/issues/list
+Introduction
+------------
+This is the first full release of this product. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+[none]
+
+Version Compatibility
+---------------------
+This product requires Google Enterprise Connector Manager version 1.0.2.
+This product is designed to function with Open Text Livelink versions
+9.5SP1, 9.6, and 9.7.
 
