@@ -760,11 +760,24 @@ public class LivelinkConnectorType implements ConnectorType {
 
             // Update the properties to copy the enabler properties to
             // the uses.
-            boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
+            Boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
                 "enableHttpTunneling");
-            boolean changeAuth = changeFormDisplay(p,
+            Boolean changeAuth = changeFormDisplay(p,
                 "useSeparateAuthentication", "enableSeparateAuthentication");
 
+            // Skip validation if one of the groups has been enabled.
+            // The configuration is probably incomplete in this case,
+            // and at least one more call to validateConfig will be
+            // made, so we will eventually validate any of the other
+            // changes that have been made this time.
+            if (changeHttp == Boolean.TRUE || changeAuth == Boolean.TRUE) {
+                if (LOGGER.isLoggable(Level.FINEST)) {
+                    LOGGER.finest("SKIPPING VALIDATION: changeHttp = " +
+                        changeHttp + "; changeAuth = " + changeAuth);
+                }
+                return getResponse(null, bundle, p, formContext);
+            }
+            
             // Instantiate a LivelinkConnector to check connectivity.
             LivelinkConnector conn = null;
             try {
@@ -866,11 +879,10 @@ public class LivelinkConnectorType implements ConnectorType {
                     bundle, p, formContext);
             }
 
-            if (changeHttp || changeAuth)
+            if (changeHttp != null || changeAuth != null)
                 return getResponse(null, bundle, p, formContext);
             else
                 return null;
-
         } catch (Throwable t) {
             // One last catch to be sure we return a message. 
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
@@ -933,11 +945,11 @@ public class LivelinkConnectorType implements ConnectorType {
      * @param p the form properties
      * @param useName the name of the current state property
      * @param enableName the name of the requested state property
-     * @return <code>true</code> if the requested state has changed
-     * from the current state, or <code>false</code> if it has not
-     * changed
+     * @return <code>Boolean.TRUE</code> if the property should be enabled,
+     * <code>Boolean.FALSE</code> if the property should be disabled, or
+     * <code>null</code> if it has not changed
      */
-    private boolean changeFormDisplay(Properties p, String useName,
+    private Boolean changeFormDisplay(Properties p, String useName,
         String enableName) {
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("ENABLED " + enableName + ": " +
@@ -949,9 +961,9 @@ public class LivelinkConnectorType implements ConnectorType {
             p.setProperty(useName, enable ? "true" : "false");
             if (LOGGER.isLoggable(Level.FINE))
                 LOGGER.fine("SETTING " + useName + ": " + enable);
-            return true;
+            return enable ? Boolean.TRUE : Boolean.FALSE;
         } else
-            return false;
+            return null;
     }
 
     /**
