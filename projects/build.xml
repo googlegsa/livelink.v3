@@ -6,8 +6,11 @@
 
 	<!-- Define Directories. -->
 	<property name="otex-core.dir" value="otex-core" />
-	<property name="otex-lapi.dir" value="otex-lapi" />
 	<property name="install.dir" value="install" />
+	<property name="otex-lapi.dir" value="otex-lapi" />
+	<property name="downloads.dir" value="downloads" />
+    <property name="build.dir" value="build" />
+	<property name="trunk.dir" value=".." />
 
 	<!-- =========================== TASKS =============================== -->
 
@@ -23,6 +26,7 @@
 			outputproperty="svnversion">
 			<arg line="."/>
 		</exec>
+		<mkdir dir="${build.dir}" />
 	</target>
 
 	<target name="otex-core" depends="prebuild">
@@ -53,24 +57,92 @@
 		</copy>
 	</target>
 
-	<target name="install-all" 
+	<target name="install-all" depends="bin-archive">
+      <copy todir="${install.dir}" >
+        <fileset dir="${build.dir}">
+          <include name="${bin.archive}.zip"/>
+          <include name="${bin.archive}.tar.gz"/>
+        </fileset>
+      </copy>
+    </target>
+
+	<target name="bin-archive" 
 		depends="prebuild,install-otex-core,install-otex-lapi">
-		<property name="archive" value="connector-otex-${version}_en" />
-		<zip destfile="${install.dir}/${archive}.zip">
+		<property name="bin.archive" value="connector-otex-${version}_en" />
+		<zip destfile="${build.dir}/${bin.archive}.zip">
 			<zipfileset dir="${install.dir}/otex-lapi/jar" 
-				prefix="${archive}" />
-			<zipfileset file="../README" prefix="${archive}" />
+				prefix="${bin.archive}" />
+			<zipfileset file="../README" prefix="${bin.archive}" />
 			<zipfileset file="../RELEASE_NOTES" 
-				prefix="${archive}" />
+				prefix="${bin.archive}" />
 			<zipfileset file="../COPYING" 
-				prefix="${archive}/License" />
+				prefix="${bin.archive}/License" />
 		</zip>
-		<tar destfile="${install.dir}/${archive}.tar.gz" 
+		<tar destfile="${build.dir}/${bin.archive}.tar.gz" 
 			compression="gzip">
-			<zipfileset src="${install.dir}/${archive}.zip"/>
-                </tar>
+			<zipfileset src="${build.dir}/${bin.archive}.zip"/>
+        </tar>
 	</target>
 
-	<target name="everything" depends="clean-all,build-all,install-all"/>
+	<target name="src-archive" depends="prebuild">
+		<property name="src.archive" value="connector-otex-${version}-src" />
+
+        <!-- Use 'svn export' to create a clean version of the source tree
+             in the build dir.  You can adjust the behaviour of this by setting
+             some properties when invoking ant:
+             
+             svn.export.revision - the revision of the tree to pull from svn.
+             svn.export.source - the source of the tree, either a svn repository
+                                 URL, or a pathname of a working directory tree.
+
+             Note: you cannot specify both svn.export.revision and point
+             svn.export.source at a local working tree.
+        -->
+        <condition property="svn.export.revision.arg"
+                   value="-r ${svn.export.revision}" 
+                   else="" >
+          <isset property="svn.export.revision"/>
+        </condition>
+        <property name="svn.export.source"
+                  value="http://google-enterprise-connector-otex.googlecode.com/svn/trunk" />
+        <property name="svn.export.dir" value="${build.dir}/${src.archive}" />
+
+        <delete dir="${svn.export.dir}" quiet="true" /> 
+        <exec executable="svn">
+          <arg line="export ${svn.export.revision.arg} ${svn.export.source} ${svn.export.dir}" />
+        </exec>
+          
+        <!-- Create .zip and .tar.gz archives of the exported source tree. -->
+		<zip destfile="${build.dir}/${src.archive}.zip">
+          <zipfileset dir="${svn.export.dir}" prefix="${src.archive}" />
+		</zip>
+		<tar destfile="${build.dir}/${src.archive}.tar.gz"
+             longfile="gnu" compression="gzip">
+          <zipfileset src="${build.dir}/${src.archive}.zip"/>
+        </tar>
+        <delete dir="${svn.export.dir}" quiet="true" />
+	</target>
+
+	<target name="make-downloads-dir">
+		<mkdir dir="${downloads.dir}" />
+	</target>
+
+	<target name="downloads-all"
+            depends="bin-archive,src-archive,make-downloads-dir">
+		<copy todir="${downloads.dir}" preservelastmodified="true">
+          <fileset dir="${build.dir}">
+            <include name="${src.archive}.zip"/>
+            <include name="${src.archive}.tar.gz"/>
+            <include name="${bin.archive}.zip"/>
+            <include name="${bin.archive}.tar.gz"/>
+          </fileset>
+        </copy>
+		<checksum file="${downloads.dir}/${src.archive}.zip"/>
+		<checksum file="${downloads.dir}/${src.archive}.tar.gz"/>
+		<checksum file="${downloads.dir}/${bin.archive}.zip"/>
+		<checksum file="${downloads.dir}/${bin.archive}.tar.gz"/>
+    </target>
+
+	<target name="everything" depends="clean-all,build-all,install-all,downloads-all"/>
 
 </project>
