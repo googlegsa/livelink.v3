@@ -44,7 +44,6 @@ class LivelinkConnectorFactory {
     static {
         emptyProperties.put("server", ""); 
         emptyProperties.put("port", ""); 
-        emptyProperties.put("connection", ""); 
         emptyProperties.put("username", ""); 
         emptyProperties.put("Password", ""); 
         emptyProperties.put("domainName", ""); 
@@ -52,23 +51,14 @@ class LivelinkConnectorFactory {
         emptyProperties.put("includedLocationNodes", ""); 
         emptyProperties.put("useHttpTunneling", "false"); 
         emptyProperties.put("livelinkCgi", ""); 
-        emptyProperties.put("httpUsername", ""); 
-        emptyProperties.put("httpPassword", ""); 
-        emptyProperties.put("enableNtlm", "false"); 
-        emptyProperties.put("https", "true"); 
-        emptyProperties.put("verifyServer", "true"); 
-        emptyProperties.put("caRootCert", ""); 
+        emptyProperties.put("https", "false"); 
         emptyProperties.put("useUsernamePasswordWithWebServer", "false"); 
         emptyProperties.put("useSeparateAuthentication", "false"); 
         emptyProperties.put("authenticationServer", ""); 
         emptyProperties.put("authenticationPort", "0"); 
-        emptyProperties.put("authenticationConnection", ""); 
         emptyProperties.put("authenticationDomainName", ""); 
-        emptyProperties.put("authenticationHttps", "true"); 
+        emptyProperties.put("authenticationHttps", "false"); 
         emptyProperties.put("authenticationLivelinkCgi", ""); 
-        emptyProperties.put("authenticationEnableNtlm", "false"); 
-        emptyProperties.put("authenticationVerifyServer", "true"); 
-        emptyProperties.put("authenticationCaRootCert", ""); 
         emptyProperties.put("authenticationUseUsernamePasswordWithWebServer", 
             "false"); 
     }
@@ -99,7 +89,7 @@ class LivelinkConnectorFactory {
         // If there is no connector configured by this name, bail early.
         if (!prefixFound) {
             throw new RepositoryException("No javatest." + prefix +
-                                "* properties specified for connector.");
+                "* properties specified for connector.");
         }
 
         Resource res = new ClassPathResource("config/connectorInstance.xml");

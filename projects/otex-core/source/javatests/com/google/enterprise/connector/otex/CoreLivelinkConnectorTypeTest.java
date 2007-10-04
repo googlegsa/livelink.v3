@@ -211,7 +211,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         HashMap form = getForm(connectorType.getConfigForm(defaultLocale));
         assertNotNull("Missing server element", form.get("server"));
         assertBooleanIsFalse(form, "https");
-        assertBooleanIsFalse(form, "verifyServer");
         assertBooleanIsFalse(form, "useUsernamePasswordWithWebServer");
         assertBooleanIsFalse(form, "useSeparateAuthentication");
         assertIsHidden(form, "authenticationServer");

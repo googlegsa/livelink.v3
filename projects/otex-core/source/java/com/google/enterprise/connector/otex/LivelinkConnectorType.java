@@ -210,6 +210,37 @@ public class LivelinkConnectorType implements ConnectorType {
         }
     }
 
+    /** A form label with no associated form control. */
+    private static class LabelProperty extends FormProperty {
+        LabelProperty(String name) {
+            super(name);
+        }
+
+        /** Writes a table row with a two-column label and no form control. */
+        public void addToBuffer(StringBuffer buffer, String labelPrefix,
+                String labelSuffix, String value, ResourceBundle labels) {
+            String label = getLabel(name, labels);
+
+            // TODO: Handle duplication between this and
+            // FormProperty.addToBuffer.
+            // XXX: Should we just assume that we know that
+            // labelPrefix = START_TAG and labelSuffix = END_TAG here?
+            if (FormBuilder.START_TAG.equals(labelPrefix))
+                buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
+            buffer.append("<tr valign='top'>\r\n").
+                append("<td style='white-space: nowrap' colspan='2'>");
+            buffer.append(labelPrefix);
+            appendLabel(buffer, name, label);
+            buffer.append(labelSuffix);
+            buffer.append("</td>\r\n</tr>\r\n");
+        }
+
+        /* This is never called, but it is abstract in our superclass. */
+        protected void addFormControl(StringBuffer buffer, String value,
+            ResourceBundle labels) {
+        }
+    }
+    
     /**
      * Holder for a property which should be rendered as a text
      * input element.
@@ -433,6 +464,15 @@ public class LivelinkConnectorType implements ConnectorType {
         /** Configuration properties which are always displayed. */
         private static final ArrayList baseEntries;
 
+        /** Label for the Livelink System Administrator properties. */
+        private static final FormProperty adminLabel;
+        
+        /**
+         * Configuration properties for the Livelink System
+         * Administrator, which are always displayed.
+         */
+        private static final ArrayList adminEntries;
+
         /** Configuration properties which are never displayed. */
         private static final ArrayList hiddenEntries;
 
@@ -458,39 +498,31 @@ public class LivelinkConnectorType implements ConnectorType {
          */
         private static final ArrayList authenticationEntries;
 
-        /**
-         * Start tag wrapper for the nested HTTP tunneling and separate
-         * authentication enabler labels.
-         */
+        /** Start tag wrapper for the group labels. */
         /* Public because FormProperty needs it to detect the group headers. */
         public static final String START_TAG = "<b>";
 
-        /**
-         * End tag wrapper for the nested HTTP tunneling and separate
-         * authentication enabler labels.
-         */
+        /** End tag wrapper for the group labels. */
         private static final String END_TAG = "</b>";
 
-        /**
-         * Form indentation for the nested HTTP tunneling and separate
-         * authentication property labels.
-         */
-        private static final String INDENTATION =
-            "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+        /** Form indentation for the groups. */
+        private static final String INDENTATION = "";
 
         static {
             baseEntries = new ArrayList();
             baseEntries.add(new TextInputProperty("server", true));
             baseEntries.add(new TextInputProperty("port", true, "2099"));
-            baseEntries.add(new TextInputProperty("connection"));
-            baseEntries.add(new TextInputProperty("username", true));
-            baseEntries.add(new PasswordInputProperty("Password", true));
-            baseEntries.add(new TextInputProperty("domainName"));
             baseEntries.add(new TextInputProperty("displayUrl", true));
             baseEntries.add(
                 new BooleanSelectProperty("ignoreDisplayUrlErrors", "false")); 
             baseEntries.add(new TextInputProperty("includedLocationNodes"));
 
+            adminLabel = new LabelProperty("livelinkAdmin");
+            adminEntries = new ArrayList();
+            adminEntries.add(new TextInputProperty("username", true));
+            adminEntries.add(new PasswordInputProperty("Password", true));
+            adminEntries.add(new TextInputProperty("domainName"));
+            
             // These record the state of the enablers. They are a little
             // different from each other, because the useHttpTunneling
             // property is only used by LivelinkConnectorType and its
@@ -509,13 +541,8 @@ public class LivelinkConnectorType implements ConnectorType {
             tunnelingEnabler =
                 new BooleanSelectProperty("enableHttpTunneling", "false");
             tunnelingEntries = new ArrayList();
-            tunnelingEntries.add(new TextInputProperty("livelinkCgi"));
-            tunnelingEntries.add(new TextInputProperty("httpUsername"));
-            tunnelingEntries.add(new PasswordInputProperty("httpPassword"));
+            tunnelingEntries.add(new TextInputProperty("livelinkCgi", true));
             tunnelingEntries.add(new BooleanSelectProperty("https", "false"));
-            tunnelingEntries.add(
-                new BooleanSelectProperty("verifyServer", "false" ));
-            tunnelingEntries.add(new TextareaProperty("caRootCert"));
             tunnelingEntries.add(
                 new BooleanSelectProperty("useUsernamePasswordWithWebServer",
                     "false"));
@@ -525,22 +552,15 @@ public class LivelinkConnectorType implements ConnectorType {
                     "false");
             authenticationEntries = new ArrayList();
             authenticationEntries.add(
-                new TextInputProperty("authenticationServer"));
+                new TextInputProperty("authenticationServer", true));
             authenticationEntries.add(
-                new TextInputProperty("authenticationPort", "80"));
+                new TextInputProperty("authenticationPort", true, "80"));
             authenticationEntries.add(
-                new TextInputProperty("authenticationConnection"));
-            authenticationEntries.add(
-                new TextInputProperty("authenticationDomainName"));
-            authenticationEntries.add(
-                new TextInputProperty("authenticationLivelinkCgi"));
+                new TextInputProperty("authenticationLivelinkCgi", true));
             authenticationEntries.add(
                 new BooleanSelectProperty("authenticationHttps", "false"));
             authenticationEntries.add(
-                new BooleanSelectProperty("authenticationVerifyServer",
-                    "false"));
-            authenticationEntries.add(
-                new TextareaProperty("authenticationCaRootCert"));
+                new TextInputProperty("authenticationDomainName"));
             authenticationEntries.add(
                 new BooleanSelectProperty(
                     "authenticationUseUsernamePasswordWithWebServer",
@@ -593,6 +613,8 @@ public class LivelinkConnectorType implements ConnectorType {
         String getFormSnippet() {
             StringBuffer buffer = new StringBuffer(4096);
             addEntries(buffer, baseEntries, false, "", "");
+            addEntry(buffer, adminLabel, false, START_TAG, END_TAG);
+            addEntries(buffer, adminEntries, false, INDENTATION, "");
             addEntries(buffer, hiddenEntries, true, null, null);
             addEntry(buffer, tunnelingEnabler, false, START_TAG, END_TAG);
             addEntries(buffer, tunnelingEntries, hide("useHttpTunneling"),
@@ -774,6 +796,13 @@ public class LivelinkConnectorType implements ConnectorType {
                 XmlBeanFactory factory = new XmlBeanFactory(res);
                 PropertyPlaceholderConfigurer cfg =
                     new PropertyPlaceholderConfigurer();
+                // XXX: Using setProperties only works because we
+                // don't have a PropertyPlaceholderConfigurer bean
+                // with default property values. If we did, this call
+                // would overwrite the defaults, and we would need to
+                // use setLocation here, or if we could get the
+                // default property values out of the bean, we could
+                // use setPropertiesArray.
                 cfg.setProperties(p);
                 cfg.postProcessBeanFactory(factory);
                 conn = (LivelinkConnector)

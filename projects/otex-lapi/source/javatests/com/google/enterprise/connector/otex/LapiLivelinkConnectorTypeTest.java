@@ -83,7 +83,7 @@ public class LapiLivelinkConnectorTypeTest
         assertValue(form, "port", "123");
         assertValue(form, "username", "me");
         assertValue(form, "Password", "pw");
-        assertBooleanIsTrue(form, "https");
+        assertBooleanIsFalse(form, "https");
         assertIsHidden(form, "authenticationServer");
     }
 
