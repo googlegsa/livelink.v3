@@ -74,7 +74,7 @@ public class LapiLivelinkConnectorTypeTest
         props.put("server", "myhost");
         props.put("port", "123");
         props.put("username", "me");
-        props.put("password", "pw");
+        props.put("Password", "pw");
         ConfigureResponse response =
             connectorType.validateConfig(props, defaultLocale, null);
         assertNotNull("Missing ConfigureResponse", response);
@@ -82,7 +82,7 @@ public class LapiLivelinkConnectorTypeTest
         assertValue(form, "server", "myhost");
         assertValue(form, "port", "123");
         assertValue(form, "username", "me");
-        assertValue(form, "password", "pw");
+        assertValue(form, "Password", "pw");
         assertBooleanIsTrue(form, "https");
         assertIsHidden(form, "authenticationServer");
     }

@@ -46,7 +46,7 @@ class LivelinkConnectorFactory {
         emptyProperties.put("port", ""); 
         emptyProperties.put("connection", ""); 
         emptyProperties.put("username", ""); 
-        emptyProperties.put("password", ""); 
+        emptyProperties.put("Password", ""); 
         emptyProperties.put("domainName", ""); 
         emptyProperties.put("displayUrl", ""); 
         emptyProperties.put("includedLocationNodes", ""); 

@@ -395,8 +395,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.setProperty("port", System.getProperty("connector.port"));
         props.setProperty("username",
             System.getProperty("connector.username"));
-        props.setProperty("password",
-            System.getProperty("connector.password"));
+        props.setProperty("Password",
+            System.getProperty("connector.Password"));
         return props;
     }
     
