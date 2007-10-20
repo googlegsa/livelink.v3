@@ -168,7 +168,8 @@ class LivelinkDocumentList implements DocumentList {
                 // Get the subset of the DocIds that have public access.
                 ClientFactory clientFactory = connector.getClientFactory();
                 LivelinkAuthorizationManager authz;
-                authz = new LivelinkAuthorizationManager(clientFactory);
+                authz = new LivelinkAuthorizationManager(connector,
+                                                         clientFactory);
                 publicContentDocs = new HashSet();
                 authz.addAuthorizedDocids(new DocIdIterator(), pcuser,
                     publicContentDocs);

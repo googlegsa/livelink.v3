@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.lang.StringBuffer;
 
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
@@ -38,16 +39,29 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkAuthorizationManager.class.getName());
 
+    /** The connector contains configuration information. */
+    private final LivelinkConnector connector;
+
     /** Client factory for obtaining client instances. */
     private final ClientFactory clientFactory;
 
+    /** Do we exclude Deleted Documents from search results? */
+    private boolean purgeDeletedDocs = false;
+
 
     /**
-     * Constructor - caches client factory.
+     * Constructor - caches client factory, connector, and
+     * looks to see if deleted documents are to be excluded
+     * from search results.
      */
-    LivelinkAuthorizationManager(ClientFactory clientFactory) {
+    LivelinkAuthorizationManager(LivelinkConnector connector,
+                                 ClientFactory clientFactory)
+        throws RepositoryException
+    {
         super();
         this.clientFactory = clientFactory;
+        this.connector = connector;
+        this.purgeDeletedDocs = excludeDeletedDocuments();
     }
 
 
@@ -78,6 +92,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         }
     }
 
+
     /**
      * Returns authorization information for a list of docids.
      *
@@ -85,8 +100,10 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * @param identity the user identity for which to check authorization
      * @throws RepositoryException if an error occurs
      */
-    public Collection authorizeDocids(Collection docids, AuthenticationIdentity identity)
-            throws RepositoryException {
+    public Collection authorizeDocids(Collection docids,
+                                      AuthenticationIdentity identity)
+            throws RepositoryException
+    {
         String username = identity.getUsername();
 
         if (LOGGER.isLoggable(Level.FINE))
@@ -99,8 +116,13 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         if (LOGGER.isLoggable(Level.FINEST)) {
             for (Iterator i = docids.iterator(); i.hasNext(); ) {
                 String docid = (String) i.next(); 
-                LOGGER.finest("AUTHORIZED " + docid + ": " +
-                    authorized.contains(docid));
+                AuthorizationResponse ar;
+                ar = new AuthorizationResponse(true, (String) docid);
+                // Hack: the Collection either contains docids or
+                // AuthorizationResponse objects.
+                boolean ok = (authorized.contains(docid) ||
+                              authorized.contains(ar));
+                LOGGER.finest("AUTHORIZED " + docid + ": " + ok);
             }
         }
 
@@ -176,6 +198,10 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * At most, 1,000 docids will be added to the query due to SQL
      * syntax limits in Oracle.
      *
+     * If we are excluding Deleted Documents from the result set,
+     * add a subquery to eliminate those docids with the that are
+     * in the DeletedDocuments table.
+     *
      * @param docids the docids to include in the query
      * @return the SQL query string; null if no docids are provided
      */
@@ -188,6 +214,59 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             query.append((String) iterator.next()).append(',');
         query.setCharAt(query.length() - 1, ')');
 
+        if (purgeDeletedDocs) {
+            String docids = query.substring(query.indexOf("("));
+            query.append(" and DataID not in (select NodeID from");
+            query.append(" DeletedDocs where NodeID in ");
+            query.append(docids);
+            query.append(')');
+        }
+
         return query.toString();
+    }
+
+
+    /**
+     * Returns a boolean representing whether the Undelete Workspace
+     * is excluded from indexing.  If deleted documents are excluded
+     * from indexing, then we should also remove documents from
+     * search results that were deleted after they were indexed.
+     *
+     * The connector can be configured to exclude Undelete Workspace
+     * either by specifying the Deleted Document Volumes SubType (402)
+     * in the excludedVolumeTypes, or by specifying the NodeID of 
+     * the Undelete Workspace in the excludedLocationNodes.
+     *
+     * @return true if the Undelete Workspace is excluded from indexing,
+     * false otherwise.
+     */
+    private boolean excludeDeletedDocuments() throws RepositoryException {
+        // First look for Deleted Documents Volume subtype 402 specified
+        // in the excludeVolumeTypes.
+        String exclVolTypes = connector.getExcludedVolumeTypes();
+        if ((exclVolTypes != null) && (exclVolTypes.length() > 0)) {
+            String[] subtypes = exclVolTypes.split(",");
+            for (int i = 0; i < subtypes.length; i++) {
+                if ("402".equals(subtypes[i]))
+                    return true;
+            }
+        }
+
+        // If volume subtype 402 was not excluded, then look for
+        // explicitly excluded Undelete Workspace nodes in
+        // excludedLocationNodes.
+        String exclNodes = connector.getExcludedLocationNodes();
+        if ((exclNodes != null) && (exclNodes.length() > 0)) {
+            String query = "SubType = 402 and DataID in (" + exclNodes + ")";
+            LOGGER.finest(query);                                                  
+            Client client = clientFactory.createClient();
+            StringBuffer buf = new StringBuffer();
+            ClientValue results = client.ListNodes(query, "DTree",
+                                         new String[] { "DataID", "PermId" });
+            if (results.size() > 0) 
+                return true;
+        }
+
+        return false;
     }
 }

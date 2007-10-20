@@ -89,8 +89,10 @@ class LivelinkSession implements Session {
      * @return an AuthorizationManager
      * @throws RepositoryException
      */
-    public AuthorizationManager getAuthorizationManager() {
-        return new LivelinkAuthorizationManager(clientFactory);
+    public AuthorizationManager getAuthorizationManager()
+        throws RepositoryException
+    {
+        return new LivelinkAuthorizationManager(connector, clientFactory);
     }
 
     /**
