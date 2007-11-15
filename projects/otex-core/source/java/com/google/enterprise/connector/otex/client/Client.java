@@ -272,4 +272,18 @@ public interface Client
      * @throws RepositoryException if an error occurs
      */
     void ImpersonateUser(String username) throws RepositoryException;
+
+
+    /**
+     * Wraps the (undocumented) <code>LLSession.ImpersonateUserEx</code>
+     * method. The initial session must have been created with a
+     * user who has Livelink system administration privileges in
+     * order for impersonation to work.
+     *
+     * @param username the username
+     * @param domain the domainname (may be null or empty)
+     * @throws RepositoryException if an error occurs
+     */
+    void ImpersonateUserEx(String username, String domain)
+        throws RepositoryException;
 }

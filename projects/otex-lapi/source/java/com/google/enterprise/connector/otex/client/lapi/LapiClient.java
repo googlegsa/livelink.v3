@@ -349,6 +349,17 @@ final class LapiClient implements Client {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public synchronized void ImpersonateUserEx(String username, String domain) {
+        if ((domain == null) || (domain.length() == 0))
+            session.ImpersonateUser(username);
+        else
+            session.ImpersonateUserEx(username, domain);
+    }
+
+
+    /**
      * Gets the category attribute values for the indicated
      * object. Each attribute name is mapped to a linked list of
      * values for each occurrence of that attribute. Attributes

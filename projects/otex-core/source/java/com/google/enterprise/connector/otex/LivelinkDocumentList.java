@@ -163,7 +163,10 @@ class LivelinkDocumentList implements DocumentList {
     private void findPublicContent() throws RepositoryException {
         String pcuser = connector.getPublicContentUsername();
         if ((pcuser != null) && (pcuser.length() > 0)) {
-            isPublicContentUser = connector.getUsername().equals(pcuser);
+            String user = connector.getTraversalUsername();
+            if ((user == null) || (user.length() == 0))
+                user = connector.getUsername();
+            isPublicContentUser = pcuser.equals(user);
             if (! isPublicContentUser) {
                 // Get the subset of the DocIds that have public access.
                 ClientFactory clientFactory = connector.getClientFactory();

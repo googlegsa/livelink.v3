@@ -114,6 +114,8 @@
                         value="${authenticationHttps}"/>
                 <property name="authenticationUseUsernamePasswordWithWebServer"
                         value="${authenticationUseUsernamePasswordWithWebServer}"/>
+                <property name="traversalUsername"
+                          value="${traversalUsername}"/>
                 @constructor-arg@
         </bean>
 </beans>

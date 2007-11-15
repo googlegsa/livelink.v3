@@ -175,11 +175,10 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       ListNodes call on the class object or something.
     */
     public void addAuthorizedDocids(Iterator iterator, String username,
-            Collection authorized) throws RepositoryException {
-        // FIXME: Should we be using ImpersonateUserEx here, which
-        // also takes a domain name?
+            Collection authorized) throws RepositoryException
+    {
         Client client = clientFactory.createClient();
-        client.ImpersonateUser(username);
+        client.ImpersonateUserEx(username, connector.getDomainName());
 
         String query;
         while ((query = getDocidQuery(iterator)) != null) {

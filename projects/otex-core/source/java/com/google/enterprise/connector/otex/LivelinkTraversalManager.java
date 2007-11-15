@@ -135,6 +135,18 @@ class LivelinkTraversalManager
         isSqlServer = isSqlServer();
         selectList = getSelectList();
         contentHandler = getContentHandler();
+
+        /**
+         * If there is a separately specified traversal user (different
+         * than our current user), then impersonate that traversal user
+         * when building the list of documents to index.
+         */
+        String traversalUsername = connector.getTraversalUsername();
+        if ((traversalUsername != null) &&
+            (! traversalUsername.equals(connector.getUsername()))) {
+                client.ImpersonateUserEx(traversalUsername,
+                                         connector.getDomainName());
+        }
     }
 
 
@@ -500,8 +512,9 @@ class LivelinkTraversalManager
      * is one, or the beginning of the traversal order, otherwise
      */
     private DocumentList listNodes(String checkpoint)
-            throws RepositoryException {
-	while (true) {
+        throws RepositoryException
+    {
+        while (true) {
             ClientValue candidates;
             if (isSqlServer)
                 candidates = getCandidatesSqlServer(checkpoint);
@@ -539,7 +552,7 @@ class LivelinkTraversalManager
                     contentHandler, results, FIELDS, traversalContext,
                     checkpoint);
             }
-	}
+        }
     }
 
 
