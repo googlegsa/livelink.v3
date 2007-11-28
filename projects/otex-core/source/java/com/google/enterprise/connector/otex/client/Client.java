@@ -126,11 +126,34 @@ public interface Client
         throws RepositoryException;
 
     /**
+     * Wraps the <code>LAPI_DOCUMENTS.ListNodes</code> method.
+     * Not all of the arguments of that method are exposed here.
+     * <p>
+     * The LAPI <code>ListNodes</code> implementation requires the
+     * DataID and PermID columns to be included in the selected
+     * columns.
+     * <p>
+     * This wrapper on <code>ListNodes</code> does not throw a
+     * <code>RepositoryExeception</code> on SQL query failure.  
+     * Rather it returns a <code>null</code> value instead.
+     * [It may still throw a RepositoryException if a LAPI
+     * Runtime error occurs.]
+     *
+     * @param query a SQL condition, used in the WHERE clause
+     * @param view a SQL table expression, used in the FROM clause
+     * @param columns a SQL select list, used in the SELECT clause
+     * @throws RepositoryException if an error occurs
+     */
+    ClientValue ListNodesNoThrow(String query, String view, String[] columns)
+        throws RepositoryException;
+
+    /**
      * Wraps the <code>LAPI_DOCUMENTS.GetObjectInfo</code> method.
      * All of the arguments of that method are exposed here.
      * 
      * @param volumeId the volume ID of the object
      * @param objectId the object ID of the object
+     * @throws RepositoryException if an error occurs
      */
     ClientValue GetObjectInfo(int volumeId, int objectId)
         throws RepositoryException;

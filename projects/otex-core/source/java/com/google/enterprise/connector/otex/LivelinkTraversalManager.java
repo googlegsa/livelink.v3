@@ -166,13 +166,10 @@ class LivelinkTraversalManager
             ClientValue results = client.ListNodes(query, "KDual", columns);
 
             // Then check an Oracle-specific query.
-            boolean isOracle;
-            try {
-                results = client.ListNodes(query, "dual", columns);
-                isOracle = true;
-            } catch (RepositoryException e) {
-                isOracle = false;
-            }
+            // We use ListNodesNoThrow() to avoid logging our expected error.
+            results = client.ListNodesNoThrow(query, "dual", columns);
+            boolean isOracle = (results != null);
+
             if (LOGGER.isLoggable(Level.CONFIG)) {
                 LOGGER.config("AUTO DETECT SERVTYPE: " +
                     (isOracle ? "Oracle" : "MSSQL"));

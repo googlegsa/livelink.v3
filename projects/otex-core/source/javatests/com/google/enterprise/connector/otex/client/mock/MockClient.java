@@ -102,6 +102,17 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
+     * Version of ListNodes() that does not throw exceptions.
+     * Since the MockClient version of ListNodes already doesn't
+     * throw exceptions, this doesn't do anything other than that.
+     */
+    public ClientValue ListNodesNoThrow(String query, String view, String[] columns) {
+        return ListNodes(query, view, columns);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
      * This implementation returns an empty assoc.
      */
     public ClientValue GetObjectInfo(int volumeId, int objectId) {
