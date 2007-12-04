@@ -655,6 +655,10 @@ public class LivelinkConnector implements Connector {
         if (action == null)
             action = displayActions.get(null);
 
+        // TODO: supply the download filename as an additional
+        // parameter, for doc.Fetch URLs. This should match the
+        // Livelink value as closely as is reasonable, although simply
+        // using the version file name is a possibility.
         StringBuffer buffer = new StringBuffer();
         buffer.append(url);
         Object[] args = { new Integer(objectId), new Integer(volumeId),
