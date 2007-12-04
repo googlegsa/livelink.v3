@@ -848,17 +848,22 @@ public class LivelinkConnectorType implements ConnectorType {
                 if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
                     configFilePath = "jar:" + configFilePath;
                 URL resource = new URL(configFilePath); 
+
+                // XXX: We aren't using EncryptedPropertyPlaceholderConfigurer
+                // here, so we are depending on the default values coming
+                // from getPopulatedConfigForm. So those have to match the
+                // values in the EncryptedPropertyPlaceholderConfigurer
+                // bean in connectorInstance.xml. Using setProperties only
+                // works because we aren't using the
+                // PropertyPlaceholderConfigurer bean with its default
+                // property values. If we were, this call would overwrite
+                // the defaults, and we would need to use setLocation here,
+                // or if we could get the default property values out of
+                // the bean, we could use setPropertiesArray.
                 UrlResource res = new UrlResource(resource);
                 XmlBeanFactory factory = new XmlBeanFactory(res);
                 PropertyPlaceholderConfigurer cfg =
                     new PropertyPlaceholderConfigurer();
-                // XXX: Using setProperties only works because we
-                // don't have a PropertyPlaceholderConfigurer bean
-                // with default property values. If we did, this call
-                // would overwrite the defaults, and we would need to
-                // use setLocation here, or if we could get the
-                // default property values out of the bean, we could
-                // use setPropertiesArray.
                 cfg.setProperties(p);
                 cfg.postProcessBeanFactory(factory);
                 conn = (LivelinkConnector)

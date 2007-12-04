@@ -91,8 +91,6 @@
                 <property name="password" value="${Password}"/>
                 <property name="domainName" value="${domainName}"/>
                 <property name="displayUrl" value="${displayUrl}"/>
-                <property name="includedLocationNodes"
-                        value="${includedLocationNodes}"/>
 
                 <property name="useHttpTunneling" value="${useHttpTunneling}"/>
                 <property name="livelinkCgi" value="${livelinkCgi}"/>
@@ -114,8 +112,20 @@
                         value="${authenticationHttps}"/>
                 <property name="authenticationUseUsernamePasswordWithWebServer"
                         value="${authenticationUseUsernamePasswordWithWebServer}"/>
+
                 <property name="traversalUsername"
-                          value="${traversalUsername}"/>
+                        value="${traversalUsername}"/>
+                <property name="includedLocationNodes"
+                        value="${includedLocationNodes}"/>
                 @constructor-arg@
+        </bean>
+
+        <bean id="propertyPlaceholderConfigurer" 
+                class="com.google.enterprise.connector.instantiator.EncryptedPropertyPlaceholderConfigurer"> 
+                <property name="properties"> 
+                        <props> 
+                                <prop key="traversalUsername"></prop> 
+                        </props> 
+                </property> 
         </bean>
 </beans>
