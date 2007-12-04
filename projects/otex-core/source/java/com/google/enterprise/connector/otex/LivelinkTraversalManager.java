@@ -412,8 +412,8 @@ class LivelinkTraversalManager
     public DocumentList startTraversal() throws RepositoryException {
         // startCheckpoint will either be an initial checkpoint or null
         String checkpoint = connector.getStartCheckpoint();
-        if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("START" +
+        if (LOGGER.isLoggable(Level.INFO)) {
+            LOGGER.info("START" +
                 (checkpoint == null ? "" : ": " + checkpoint));
         }
         return listNodes(checkpoint);
@@ -509,8 +509,7 @@ class LivelinkTraversalManager
      * is one, or the beginning of the traversal order, otherwise
      */
     private DocumentList listNodes(String checkpoint)
-        throws RepositoryException
-    {
+            throws RepositoryException {
         while (true) {
             ClientValue candidates;
             if (isSqlServer)
@@ -571,8 +570,7 @@ class LivelinkTraversalManager
      * @throws RepositoryException
      */
     private ClientValue getResults(String candidatesPredicate)
-        throws RepositoryException
-    {
+            throws RepositoryException {
         String included = getIncluded(candidatesPredicate);
         String excluded = getExcluded(candidatesPredicate);
         StringBuffer buffer = new StringBuffer();
