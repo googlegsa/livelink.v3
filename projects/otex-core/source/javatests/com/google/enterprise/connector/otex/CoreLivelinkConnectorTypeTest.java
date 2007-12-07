@@ -14,7 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
-
+import java.io.InputStream;
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -247,6 +248,43 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
             defaultLabel + ")", testLabel.equals(defaultLabel));
         // and that the server label is what it should be
         assertEquals("Did not find expected label.", testLabel, "Test:Host");
+    }
+
+
+    /**
+     * Tests that untranslated labels use the English labels as the default.
+     */
+    public void testGetConfigFormUntranslated() throws Exception {
+        HashMap form = getForm(connectorType.getConfigForm(defaultLocale));
+        Locale locale = new Locale("test");
+        HashMap testForm = getForm(connectorType.getConfigForm(locale));
+
+        // We'll look at the traversalUsername input, which doesn't
+        // appear in the test resource bundle.
+        HashMap element = (HashMap) form.get("traversalUsername");
+        assertNotNull("Missing server element (" + defaultLocale + ")",
+            element);
+        String defaultLabel = element.get("label").toString();
+        assertNotNull("Missing server element label (" + defaultLocale + ")",
+            defaultLabel);
+
+        element = (HashMap) testForm.get("traversalUsername");
+        assertNotNull("Missing server element (" + locale + ")",  element);
+        String testLabel = element.get("label").toString();
+        assertNotNull("Missing server element label (" + locale + ")",
+            testLabel);
+
+        // make sure they're the same
+        assertEquals(defaultLabel, testLabel);
+
+        // Now grab the test resource bundle and make sure the key is missing.
+        InputStream in = ClassLoader.getSystemResourceAsStream(
+            "config/OtexConnectorResources_test.properties");
+        assertNotNull(in);
+        Properties testProperties = new Properties();
+        testProperties.load(in);
+        assertFalse(testProperties.containsKey("traversalUsername"));
+        assertNull(testProperties.getProperty("traversalUsername"));
     }
 
 
