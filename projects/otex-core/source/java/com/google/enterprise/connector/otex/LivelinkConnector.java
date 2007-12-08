@@ -175,6 +175,12 @@ public class LivelinkConnector implements Connector {
     /** The database server type, either "MSSQL" or "Oracle". */
     private String servtype;
 
+    /** The Traversal username.  */
+    private String traversalUsername;
+
+    /** The domain used to impersonate users. */
+    private String domainName;
+    
     /** The node types that you want to exclude from traversal. */
     private String excludedNodeTypes;
 
@@ -479,7 +485,17 @@ public class LivelinkConnector implements Connector {
     public void setDomainName(String domainName) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("DOMAIN NAME: " + domainName);
+        this.domainName = domainName;
         clientFactory.setDomainName(domainName);
+    }
+
+    /**
+     * Gets the Livelink domain name. This property is optional.
+     *
+     * @return the domain name
+     */
+    public String getDomainName() {
+        return domainName;
     }
 
     /**
@@ -639,6 +655,10 @@ public class LivelinkConnector implements Connector {
         if (action == null)
             action = displayActions.get(null);
 
+        // TODO: supply the download filename as an additional
+        // parameter, for doc.Fetch URLs. This should match the
+        // Livelink value as closely as is reasonable, although simply
+        // using the version file name is a possibility.
         StringBuffer buffer = new StringBuffer();
         buffer.append(url);
         Object[] args = { new Integer(objectId), new Integer(volumeId),
@@ -824,6 +844,31 @@ public class LivelinkConnector implements Connector {
     String getPublicContentDisplayUrl() {
         return publicContentDisplayUrl;
     }
+
+
+    /**
+     * Sets the Travsersal username.  This user must have sufficient
+     * rights to access the content you wish indexed.  Optional.
+     * If not specified, the administrative user is used.
+     *
+     * @param username the traversal username
+     */
+    public void setTraversalUsername(String username) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("TRAVERSAL USERNAME: " + username);
+        if (username != null && username.length() > 0)
+            this.traversalUsername = username;
+    }
+
+    /**
+     * Gets the traversal username.
+     *
+     * @return the username of the indexing traversal user.
+     */
+    String getTraversalUsername() {
+        return traversalUsername;
+    }
+
 
     /**
      * Sets the node types that you want to exclude from traversal.

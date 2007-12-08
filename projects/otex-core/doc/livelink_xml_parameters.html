@@ -3,7 +3,7 @@
 <title>Google Enterprise Connector for Open Text Livelink</title></head>
 
 <body>
-<h3>Configuration Parameters in the XML Configuration File</h3>
+<h3>Configuration Properties in the XML Configuration File</h3>
 <table width="95%"  border="1" cellpadding="5">
 
   <tr>
@@ -12,26 +12,51 @@
     <th>Values and Usage</th>
   </tr>
 
-  <tr><th colspan="3">HTTP Tunneling Parameters</th></tr>
+  <tr><th colspan="3">Connection Properties</th></tr>
 
   <tr>
-    <td>caRootCerts</td>
-    <td>The root certificates to use when verifying the Web server's
-    certificate.</td>
-    <td>This parameter is used only if HTTP tunneling is enabled
-    (through the livelinkCgi parameter), and the https and
-    verifyServer parameters are both set to true. The default value is
-    specified through the GSA Admin Console. Additional root
-    certificates can be specified here. Each value in the list
-    may be either a Base64 encoded x.509 format
-    certificate or a path to a directory on the
-    Connector Manager host which contains one or more files
-    containing such certificates.</td>
+    <td>connection</td>
+    <td>The database connection to use.
+      <p><em>Livelink API:</em> <code>connection</code> parameter.</p></td>
+    <td>The name of a valid database connection. The default value is
+      the default database connection, as specified in the opentext.ini
+      file.</td>
+  </tr>
+
+  <tr>
+    <td><em>server, port, displayUrl</em></td>
+    <td><em>Placeholders for the properties file.</em></td>
+    <td><em>Specified on the connector configuration form.</em></td>
+  </tr>
+
+  <tr><th colspan="3">Livelink System Administrator Properties</th></tr>
+
+  <tr>
+    <td><em>username, password, domainName</em></td>
+    <td><em>Placeholders for the properties file.</em></td>
+    <td><em>Specified on the connector configuration form.</em></td>
+  </tr>
+
+  <tr><th colspan="3">HTTP Tunneling Properties</th></tr>
+
+  <tr>
+    <td>httpUsername</td>
+    <td>The Web server user name.
+      <p><em>Livelink API:</em> <code>HTTPUserName</code> attribute in <code>config</code> parameter.</p></td>
+    <td>The default value is empty.</td>
+  </tr>
+
+  <tr>
+    <td>httpPassword</td>
+    <td>The Web server password.
+      <p><em>Livelink API:</em> <code>HTTPPassword</code> attribute in <code>config</code> parameter.</p></td>
+    <td>The default value is empty.</td>
   </tr>
 
   <tr>
     <td>enableNtlm</td>
-    <td>Whether or not to use NTLM authentication.</td>
+    <td>Whether or not to use NTLM authentication.
+      <p><em>Livelink API:</em> <code>EnableNTLM</code> attribute in <code>config</code> parameter.</p></td>
     <td>The default value is false. See "Session Creation Input
         Parameters" in the <em>Livelink API
         Developer's Reference Guide</em> for more information on
@@ -39,27 +64,49 @@
     </td>
   </tr>
 
-  <tr><th colspan="3">Separate Authentication Parameters</th></tr>
+  <tr>
+    <td>verifyServer</td>
+    <td>Specifies whether to verify the Web server's certificate when
+      the Use HTTPS property is set to true.
+      <p><em>Livelink API:</em> <code>VerifyServer</code> attribute in <code>config</code> parameter.</p></td>
+    <td>The default value is true.</td>
+  </tr>
 
   <tr>
-    <td>authenticationCaRootCerts</td>
+    <td>caRootCerts</td>
     <td>The root certificates to use when verifying the Web server's
-    certificate.</td>
-    <td>This parameter is used only if HTTP tunneling is enabled
-    (through the authenticationLivelinkCgi parameter), and the
-    authenticationHttps and authenticationVerifyServer parameters
-    are both set to true. The default value is specified through the
-    GSA Admin Console. Additional root certificates can be specified
-    here. Each value in the list
-    may be either a Base64 encoded x.509 format
-    certificate or a path to a directory on the
-    Connector Manager host which contains one or more files
-    containing such certificates.</td>
+    certificate.
+      <p><em>Livelink API:</em> <code>CARootCerts</code> attribute in <code>config</code> parameter.</p></td>
+    <td>This property is used only if HTTP tunneling is enabled
+    (through the livelinkCgi property), and the https and
+    verifyServer properties are both set to true. Each value in the
+    list may be either a Base64 encoded x.509 format certificate or a
+    path to a directory on the Connector Manager host which contains
+    one or more files containing such certificates. The default value
+    is an empty list.</td>
+  </tr>
+
+  <tr>
+    <td><em>livelinkCgi, https, useUsernamePasswordWithWebServer</em></td>
+    <td><em>Placeholders for the properties file.</em></td>
+    <td><em>Specified on the connector configuration form.</em></td>
+  </tr>
+
+  <tr><th colspan="3">Separate Authentication Properties</th></tr>
+
+  <tr>
+    <td>authenticationConnection</td>
+    <td>The database connection to use.
+      <p><em>Livelink API:</em> <code>connection</code> parameter.</p></td>
+    <td>The name of a valid database connection. The default value is
+      the default database connection, as specified in the opentext.ini
+      file.</td>
   </tr>
 
   <tr>
     <td>authenticationEnableNtlm</td>
-    <td>Whether or not to use NTLM authentication.</td>
+    <td>Whether or not to use NTLM authentication.
+      <p><em>Livelink API:</em> <code>EnableNTLM</code> attribute in <code>config</code> parameter.</p></td>
     <td>The default value is false. See "Session Creation Input
         Parameters" in the <em>Livelink API
         Developer's Reference Guide</em> for more information on
@@ -68,53 +115,34 @@
   </tr>
 
   <tr>
-    <td>authenticationManager</td>
-    <td>The name of the <code>AuthenticationManager</code> class
-        to use when authenticating before providing access to content.</td>
-    <td>Possible values are
-        <dl>
-          <dt><code>com.google.enterprise.connector.otex.LivelinkAuthenticationManager</code>
-          <dd>This implementation authenticates by using the
-              provided credentials to log in to Livelink.
-          <dt><code>com.google.enterprise.connector.otex.NoOpAuthenticationManager</code>
-          <dd>This implementation authenticates all users. An
-              optional "sharedPassword" property may be
-              configured containing a password which must be
-              present in the credentials.
-          <dt><code>com.google.enterprise.connector.otex.LdapAuthenticationManager</code>
-          <dd>This implementation uses the provided credentials
-              to authenticate against an LDAP server. Two
-              properties are required:
-              <dl>
-                <dt><code>providerUrl</code>
-                <dd>The LDAP or LDAPS URL for the directory server.
-                <dt><code>securityPrincipalPattern</code>
-                <dd>The DN to use for authentication. A single
-                    <code>java.text.MessageFormat</code>
-                    parameter should be supplied;
-                    the provided username will be substituted
-                    there. For example:
-                    <pre>uid={0},ou=people,dc=example,dc=com</pre>
-              </dl>
-        </dl>
-        <p>The default value is
-        "com.google.enterprise.connector.otex.LivelinkAuthenticationManager". </p>
-    </td>
+    <td>authenticationVerifyServer</td>
+    <td>Specifies whether to verify the Web server's certificate when
+      the authenticationHttps property is set to true.
+      <p><em>Livelink API:</em> <code>VerifyServer</code> attribute in <code>config</code> parameter.</p></td>
+    <td>The default value is true.</td>
   </tr>
-
-        
-  <tr><th colspan="3">Indexing and Searching Parameters</th></tr>
 
   <tr>
-    <td>servtype</td>
-    <td>The database server type.</td>
-    <td>Valid values begin with "MSSQL" or "Oracle". Sybase is not
-    supported. This value may be copied from the <code>servtype</code>
-    parameter in the
-    <code>[dbconnection:<em>connection_name</em>]</code> section of
-    the opentext.ini file. The default value is determined
-    automatically.</td>
+    <td>authenticationCaRootCerts</td>
+    <td>The root certificates to use when verifying the Web server's
+    certificate.
+      <p><em>Livelink API:</em> <code>CARootCerts</code> attribute in <code>config</code> parameter.</p></td>
+    <td>This property is used only if HTTP tunneling is enabled
+    (through the authenticationLivelinkCgi property), and the
+    authenticationHttps and authenticationVerifyServer properties are
+    both set to true. Each value in the list may be either a Base64
+    encoded x.509 format certificate or a path to a directory on the
+    Connector Manager host which contains one or more files containing
+    such certificates. The default value is an empty list.</td>
   </tr>
+        
+  <tr>
+    <td><em>authenticationServer, authenticationPort, authenticationHttps, authenticationLivelinkCgi, authenticationDomainName, authenticationUseUsernamePasswordWithWebServer</em></td>
+    <td><em>Placeholders for the properties file.</em></td>
+    <td><em>Specified on the connector configuration form.</em></td>
+  </tr>
+
+  <tr><th colspan="3">Indexing Properties</th></tr>
 
   <tr>
     <td>startDate</td>
@@ -128,8 +156,8 @@
        format "YYYY-mm-dd hh:mm:ss" or as date values using the
        format "YYYY-mm-dd". For example, valid startDate values
        are "2007-01-01 01:30:00" or "2007-01-01".</p>
-    <p>If a value is entered but cannot be parsed, all items
-    will be indexed.</p>
+    <p>If the value is empty or cannot be parsed, all items will be
+    indexed. The default value is empty.</p>
     </td>
   </tr>
 
@@ -138,7 +166,7 @@
     <td>Indexed items that are accessible by this user are marked
     as public documents. Public documents do not require
     authentication or authorization.
-    <p class="note"><b>Note: This parameter bypasses Livelink
+    <p class="note"><b>Note: This property bypasses Livelink
     security.</b> Items that are made public are shown in the search
     results without authentication or authorization. The content of
     these items is available through the "Cached" and "Text
@@ -174,7 +202,7 @@
     indexing. Excluding a volume type means that no volumes of that
     type or any of the items that the volumes contain are indexed.</td>
     <td>A comma-separated list of volume type numbers, optionally
-    enclosed by braces. If this parameter is not specified, no volume
+    enclosed by braces. If this property is not specified, no volume
     types are excluded from indexing. This value may be copied
     from the <code>ExcludedVolumeTypes</code> parameter in the
     <code>[LivelinkExtractor]</code> section of the opentext.ini file.
@@ -189,103 +217,6 @@
     indexed.</td>
     <td>A comma-separated list of object IDs, optionally enclosed by
     braces. The default value is empty.</td>
-  </tr>
-
-  <tr>
-    <td>displayPatterns</td>
-    <td>A map of the relative display URLs used in search results.
-    Each subtype can have a different relative URL. This URL suffix is
-    combined with the value of the displayUrl parameter to form a
-    complete URL for each item in the search results.</td>
-    <td>The map contains keys that consist of comma-separated subtype
-    integers, or the special string "default". These are mapped to a
-    <code>java.text.MessageFormat</code> pattern. There are four
-    parameters that can be used in each pattern, delimited by braces:
-    <dl>
-    <dt> 0
-    <dd> The object ID.
-    <dt> 1
-    <dd> The volume ID.
-    <dt> 2 
-    <dd> The subtype.
-    <dt> 3
-    <dd> The display action, which varies by subtype and is configured
-    by the displayActions parameter.
-    </dl>
-    The default value is a map with the following entries:
-    <dl>
-      <dt>141
-      <dd>?func=llworkspace
-      <dt>142 
-      <dd>?func=ll&amp;objtype=142&amp;objAction=browse    
-      <dt>default
-      <dd>?func=ll&amp;objId={0}&amp;objAction={3}
-    </dl>
-    </td>
-  </tr>
-
-  <tr>
-    <td>displayActions</td>
-    <td>A map of the display actions used in search results.
-    Each subtype can have a different action.</td>
-    <td>The map contains keys that consist of comma-separated subtype
-    integers, or the special string "default". These are mapped to
-    Livelink action names, such as "browse" or "overview". If the map
-    contains an entry mapping "144" (documents) to "overview", and the
-    Livelink server is version 9.2 SP1 or earlier, the "properties"
-    action is used instead. The default value is a map with the
-    following entries:
-    <dl>
-      <dt>0,202,136
-      <dd>browse
-      <dt>130,134,215
-      <dd>view
-      <dt>144
-      <dd>overview
-      <dt>204
-      <dd>BrowseTaskList
-      <dt>206
-      <dd>BrowseTask
-      <dt>207
-      <dd>ViewChannel
-      <dt>208
-      <dd>ViewNews
-      <dt>218
-      <dd>OpenPoll
-      <dt>default
-      <dd>properties
-    </dl>
-
-    </td>
-  </tr>
-
-  <tr>
-    <td>contentHandler</td>
-    <td>The name of the <code>ContentHandler</code> implementation
-    class to use when retrieving document content for indexing.</td>
-    <td>There are four <code>ContentHandler</code> implementations:
-    <dl>
-    <dt><code>ByteArrayContentHandler</code>
-    <dd> The fastest implementation, but not a very scalable one
-    because it maintains the entire content in a byte array.
-    <dt><code>FileContentHandler</code>
-    <dd> Stores the content in a temporary file, but performs very
-    badly for files larger than 10 MB.
-    <dt><code>HttpURLContentHandler</code>
-    <dd> Retrieves the content directly from the Livelink server using
-    an <code>HttpURLConnection</code>. Performance is inexplicably
-    disappointing, in line with but consistently 1-1/2 to 3 times slower
-    than the others.
-    <dt><code>PipedContentHandler</code>
-    <dd> Uses a pipe to match the in-memory performance characteristics
-    of the byte array handler without the scalability issues. Combines
-    consistently good performance with small memory
-        consumption. However, this implementation has a potential
-        thread deadlock problem seen in development (though not
-        in production).
-    </dl>
-    The default value is
-    "com.google.enterprise.connector.otex.FileContentHandler"</td>
   </tr>
 
   <tr>
@@ -314,22 +245,22 @@
   </tr>
 
   <tr>
-    <td>showHiddenItems</td>
-    <td>Specifies whether hidden items are indexed and searchable.</td>
-    <td>One of the following values:
-    <dl>
-    <dt><code>{}</code> or <code>false</code>
-    <dd>Do not index hidden items.
-    <dt><code>{'ALL'}</code> or <code>true</code>
-    <dd>Index all hidden items.
-    <dt>A comma-separated list of subtype numbers, optionally enclosed
-    by braces
-    <dd>Index hidden items within the container types specified.
-    </dl>
-    <p>This value may be copied from the <code>ShowHiddenItems</code>
-    parameter in the <code>[Atlas]</code> section or in the
-    <code>[Explorer]</code> section of the opentext.ini file. The
-    default value is "{}".</p></td>
+    <td>includedObjectInfo</td>
+    <td>The object info attributes that you want to index.</td>
+    <td>A comma-separated list of attribute names. For a list of
+    object info attributes, see "ObjectInfo Attributes" in the
+    <em>Livelink API Developer's Reference Guide</em> from Open Text.
+    The default value is empty.
+    </td>
+  </tr>
+
+  <tr>
+    <td>includedVersionInfo</td>
+    <td>The version info attributes that you want to index.</td>
+    <td>A comma-separated list of attribute names. For a list of
+    version info attributes, see "VersionInfo Attributes" in the
+    <em>Livelink API Developer's Reference Guide</em> from Open Text.
+    The default value is empty.</td>
   </tr>
 
   <tr>
@@ -378,46 +309,181 @@
   </tr>
 
   <tr>
-    <td>includedObjectInfo</td>
-    <td>The object info attributes that you want to index.</td>
-    <td>A comma-separated list of attribute names. For a list of
-    object info attributes, see "ObjectInfo Attributes" in the
-    <em>Livelink API Developer's Reference Guide</em> from Open Text.
-    The default value is empty.
+    <td>showHiddenItems</td>
+    <td>Specifies whether hidden items are indexed and searchable.</td>
+    <td>One of the following values:
+    <dl>
+    <dt><code>{}</code> or <code>false</code>
+    <dd>Do not index hidden items.
+    <dt><code>{'ALL'}</code> or <code>true</code>
+    <dd>Index all hidden items.
+    <dt>A comma-separated list of subtype numbers, optionally enclosed
+    by braces
+    <dd>Index hidden items within the container types specified.
+    </dl>
+    <p>This value may be copied from the <code>ShowHiddenItems</code>
+    parameter in the <code>[Atlas]</code> section or in the
+    <code>[Explorer]</code> section of the opentext.ini file. The
+    default value is "{}".</p></td>
+  </tr>
+
+  <tr>
+    <td>displayPatterns</td>
+    <td>A map of the relative display URLs used in search results.
+    Each subtype can have a different relative URL. This URL suffix is
+    combined with the value of the displayUrl property to form a
+    complete URL for each item in the search results.</td>
+    <td>The map contains keys that consist of comma-separated subtype
+    integers, or the special string "default". These are mapped to a
+    <code>java.text.MessageFormat</code> pattern. There are four
+    parameters that can be used in each pattern, delimited by braces:
+    <dl>
+    <dt> 0
+    <dd> The object ID.
+    <dt> 1
+    <dd> The volume ID.
+    <dt> 2 
+    <dd> The subtype.
+    <dt> 3
+    <dd> The display action, which varies by subtype and is configured
+    by the displayActions property.
+    </dl>
+    The default value is a map with the following entries:
+    <dl>
+      <dt>141
+      <dd>?func=llworkspace
+      <dt>142 
+      <dd>?func=ll&amp;objtype=142&amp;objAction=browse    
+      <dt>default
+      <dd>?func=ll&amp;objId={0}&amp;objAction={3}
+    </dl>
+    <p>To fetch documents directly from the search results, instead of
+    linking to the Overview or Properties page, add the following
+    entry to the map:</p>
+    <dl>
+      <dt>144
+      <dd>/{0}/{0}?func=doc.Fetch&amp;nodeid={0}&viewType=1
+    </dl>
     </td>
   </tr>
 
   <tr>
-    <td>includedVersionInfo</td>
-    <td>The version info attributes that you want to index.</td>
-    <td>A comma-separated list of attribute names. For a list of
-    version info attributes, see "VersionInfo Attributes" in the
-    <em>Livelink API Developer's Reference Guide</em> from Open Text.
-    The default value is empty.</td>
+    <td>displayActions</td>
+    <td>A map of the display actions used in search results.
+    Each subtype can have a different action.</td>
+    <td>The map contains keys that consist of comma-separated subtype
+    integers, or the special string "default". These are mapped to
+    Livelink action names, such as "browse" or "overview". If the map
+    contains an entry mapping "144" (documents) to "overview", and the
+    Livelink server is version 9.2 SP1 or earlier, the "properties"
+    action is used instead. The default value is a map with the
+    following entries:
+    <dl>
+      <dt>0,202,136
+      <dd>browse
+      <dt>130,134,215
+      <dd>view
+      <dt>144
+      <dd>overview
+      <dt>204
+      <dd>BrowseTaskList
+      <dt>206
+      <dd>BrowseTask
+      <dt>207
+      <dd>ViewChannel
+      <dt>208
+      <dd>ViewNews
+      <dt>218
+      <dd>OpenPoll
+      <dt>default
+      <dd>properties
+    </dl>
+
+    </td>
   </tr>
 
+  <tr>
+    <td><em>includedLocationNodes</em></td>
+    <td><em>Placeholder for the properties file.</em></td>
+    <td><em>Specified on the connector configuration form.</em></td>
+  </tr>
 
-
-  <tr><th colspan="3">Unimplemented Parameters</th></tr>
+  <tr><th colspan="3">Other Properties</th></tr>
 
   <tr>
-    <td>maxItemsPerExtraction</td>
-    <td>The largest batch size that is used. If the batch size hint is
-    larger than this, the maximum size is used instead.
-    <p>This value may be copied from the
-    <code>MaxItemsPerExtraction</code> parameter in the
-    <code>[LivelinkExtractor]</code> section of the opentext.ini
-    file.</td>
-    <td>The value must be between 1 and 100000. The default value is
-    5000.</td>
+    <td>authenticationManager</td>
+    <td>The name of the <code>AuthenticationManager</code> class
+        to use when authenticating before providing access to content.</td>
+    <td>Possible values are
+        <dl>
+          <dt><code>com.google.enterprise.connector.otex.LivelinkAuthenticationManager</code>
+          <dd>This implementation authenticates by using the
+              provided credentials to log in to Livelink.
+          <dt><code>com.google.enterprise.connector.otex.NoOpAuthenticationManager</code>
+          <dd><b>Note: This value bypasses Livelink security.</b> 
+              This implementation authenticates all users. An
+              optional "sharedPassword" property may be
+              configured containing a password which must be
+              present in the credentials.
+          <dt><code>com.google.enterprise.connector.otex.LdapAuthenticationManager</code>
+          <dd>This implementation uses the provided credentials
+              to authenticate against an LDAP server. Two
+              properties are required:
+              <dl>
+                <dt><code>providerUrl</code>
+                <dd>The LDAP or LDAPS URL for the directory server.
+                <dt><code>securityPrincipalPattern</code>
+                <dd>The DN to use for authentication. A single
+                    <code>java.text.MessageFormat</code>
+                    parameter should be supplied;
+                    the provided username will be substituted
+                    there. For example:
+                    <pre>uid={0},ou=people,dc=example,dc=com</pre>
+              </dl>
+        </dl>
+        <p>The default value is
+        "com.google.enterprise.connector.otex.LivelinkAuthenticationManager". </p>
+    </td>
   </tr>
 
   <tr>
-    <td>includedSystemAttributes</td>
-    <td>The system attributes, or additional node attributes, that you
-    want to index.</td>
-    <td>A comma-separated list of attribute names.
-    The default value is empty.</td>
+    <td>contentHandler</td>
+    <td>The name of the <code>ContentHandler</code> implementation
+    class to use when retrieving document content for indexing.</td>
+    <td>There are four <code>ContentHandler</code> implementations:
+    <dl>
+    <dt><code>ByteArrayContentHandler</code>
+    <dd> The fastest implementation, but not a very scalable one
+    because it maintains the entire content in a byte array.
+    <dt><code>FileContentHandler</code>
+    <dd> Stores the content in a temporary file, but performs very
+    badly for files larger than 10 MB.
+    <dt><code>HttpURLContentHandler</code>
+    <dd> Retrieves the content directly from the Livelink server using
+    an <code>HttpURLConnection</code>. Performance is inexplicably
+    disappointing, in line with but consistently 1-1/2 to 3 times slower
+    than the others.
+    <dt><code>PipedContentHandler</code>
+    <dd> Uses a pipe to match the in-memory performance characteristics
+    of the byte array handler without the scalability issues. Combines
+    consistently good performance with small memory
+        consumption. However, this implementation has a potential
+        thread deadlock problem seen in development (though not
+        in production).
+    </dl>
+    The default value is
+    "com.google.enterprise.connector.otex.FileContentHandler"</td>
+  </tr>
+
+  <tr>
+    <td>servtype</td>
+    <td>The database server type.</td>
+    <td>Valid values begin with "MSSQL" or "Oracle". Sybase is not
+    supported. This value may be copied from the <code>servtype</code>
+    parameter in the
+    <code>[dbconnection:<em>connection_name</em>]</code> section of
+    the opentext.ini file. The default value is determined
+    automatically.</td>
   </tr>
 
 </table>

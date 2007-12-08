@@ -135,6 +135,18 @@ class LivelinkTraversalManager
         isSqlServer = isSqlServer();
         selectList = getSelectList();
         contentHandler = getContentHandler();
+
+        /**
+         * If there is a separately specified traversal user (different
+         * than our current user), then impersonate that traversal user
+         * when building the list of documents to index.
+         */
+        String traversalUsername = connector.getTraversalUsername();
+        if ((traversalUsername != null) &&
+            (! traversalUsername.equals(connector.getUsername()))) {
+                client.ImpersonateUserEx(traversalUsername,
+                                         connector.getDomainName());
+        }
     }
 
 
@@ -154,13 +166,10 @@ class LivelinkTraversalManager
             ClientValue results = client.ListNodes(query, "KDual", columns);
 
             // Then check an Oracle-specific query.
-            boolean isOracle;
-            try {
-                results = client.ListNodes(query, "dual", columns);
-                isOracle = true;
-            } catch (RepositoryException e) {
-                isOracle = false;
-            }
+            // We use ListNodesNoThrow() to avoid logging our expected error.
+            results = client.ListNodesNoThrow(query, "dual", columns);
+            boolean isOracle = (results != null);
+
             if (LOGGER.isLoggable(Level.CONFIG)) {
                 LOGGER.config("AUTO DETECT SERVTYPE: " +
                     (isOracle ? "Oracle" : "MSSQL"));
@@ -403,8 +412,8 @@ class LivelinkTraversalManager
     public DocumentList startTraversal() throws RepositoryException {
         // startCheckpoint will either be an initial checkpoint or null
         String checkpoint = connector.getStartCheckpoint();
-        if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("START" +
+        if (LOGGER.isLoggable(Level.INFO)) {
+            LOGGER.info("START" +
                 (checkpoint == null ? "" : ": " + checkpoint));
         }
         return listNodes(checkpoint);
@@ -501,7 +510,7 @@ class LivelinkTraversalManager
      */
     private DocumentList listNodes(String checkpoint)
             throws RepositoryException {
-	while (true) {
+        while (true) {
             ClientValue candidates;
             if (isSqlServer)
                 candidates = getCandidatesSqlServer(checkpoint);
@@ -539,7 +548,7 @@ class LivelinkTraversalManager
                     contentHandler, results, FIELDS, traversalContext,
                     checkpoint);
             }
-	}
+        }
     }
 
 
@@ -561,8 +570,7 @@ class LivelinkTraversalManager
      * @throws RepositoryException
      */
     private ClientValue getResults(String candidatesPredicate)
-        throws RepositoryException
-    {
+            throws RepositoryException {
         String included = getIncluded(candidatesPredicate);
         String excluded = getExcluded(candidatesPredicate);
         StringBuffer buffer = new StringBuffer();

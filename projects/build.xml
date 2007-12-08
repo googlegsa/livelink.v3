@@ -9,7 +9,7 @@
 	<property name="install.dir" value="install" />
 	<property name="otex-lapi.dir" value="otex-lapi" />
 	<property name="downloads.dir" value="downloads" />
-    <property name="build.dir" value="build" />
+	<property name="build.dir" value="build" />
 	<property name="trunk.dir" value=".." />
 
 	<!-- =========================== TASKS =============================== -->
@@ -17,6 +17,9 @@
 	<target name="clean-all">
 		<ant dir="${otex-core.dir}" target="clean" />
 		<ant dir="${otex-lapi.dir}" target="clean" />
+		<delete dir="${build.dir}" />
+		<delete dir="${install.dir}" />
+		<delete dir="${downloads.dir}" />
 	</target>
 
 	<target name="prebuild">
@@ -68,13 +71,18 @@
 
 	<target name="bin-archive" 
 		depends="prebuild,install-otex-core,install-otex-lapi">
-		<property name="bin.archive" value="connector-otex-${version}_en" />
+		<condition property="lang" value="" else="_en">
+			<available file="otex-core/config/OtexConnectorResources_de.properties" />
+		</condition>
+		<property name="bin.archive" value="connector-otex-${version}${lang}" />
 		<zip destfile="${build.dir}/${bin.archive}.zip">
 			<zipfileset dir="${install.dir}/otex-lapi/jar" 
 				prefix="${bin.archive}" />
 			<zipfileset file="../README" prefix="${bin.archive}" />
 			<zipfileset file="../RELEASE_NOTES" 
 				prefix="${bin.archive}" />
+			<zipfileset file="otex-core/config/logging.properties"
+				prefix="${bin.archive}/Config" />
 			<zipfileset file="../COPYING" 
 				prefix="${bin.archive}/License" />
 		</zip>

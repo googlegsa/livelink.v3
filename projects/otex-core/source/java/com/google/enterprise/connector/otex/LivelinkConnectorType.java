@@ -358,63 +358,81 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /**
-     * Holder for a property which should be rendered as a select
-     * list with two values, "true" and "false".
+     * Holder for a property which should be rendered as a set of
+     * radio buttons.
      */
-    /*
-     * We need to use select lists (radio buttons would probably
-     * be an option too) to ensure that a value is always present
-     * for boolean properties. If we let the value be empty,
-     * Spring can't convert the value to boolean when
-     * instantiating the bean.
+    private static class RadioSelectProperty extends FormProperty {
+        private final String[] buttonNames;
+
+        RadioSelectProperty(String name, String[] buttonNames, String defaultValue)
+        {
+            super(name, defaultValue);
+            this.buttonNames = buttonNames;
+        }
+
+        protected void addFormControl(StringBuffer buffer, String value,
+                                      ResourceBundle labels)
+        {
+            if (value == null)
+                value = defaultValue;
+
+            for (int i = 0; i < buttonNames.length; i++) {
+                if (i > 0)	// arrange radio buttons vertically
+                    buffer.append("<br>");
+                String buttonName = buttonNames[i];
+                buffer.append("<input ");
+                appendAttribute(buffer, "type", "radio");
+                appendAttribute(buffer, "name", name);
+                appendAttribute(buffer, "id", name + buttonName);
+                appendAttribute(buffer, "value", buttonName);
+                if (buttonName.equalsIgnoreCase(value))
+                    buffer.append("checked");
+                buffer.append("> ");
+                appendLabel(buffer, name + buttonName,
+                            getLabel(buttonName, labels));
+            }
+        }
+    }
+    
+    
+    /**
+     * Holder for a property which should be rendered as a radio button 
+     * selection with two values, "true" and "false".
      */
-    private static class BooleanSelectProperty extends FormProperty {
+    private static class BooleanSelectProperty extends RadioSelectProperty {
+        static final String[] boolstr = { "true", "false" };
         BooleanSelectProperty(String name, String defaultValue) {
+            super(name, boolstr, defaultValue);
+        }
+    }
+
+
+    /**
+     * Holder for a property which should be rendered as a checkbox
+     * whose values are "true"[checked] or "false"[unchecked].
+     * Selecting an Enabler property usually results in a redisplay
+     * that exposes additional properties.
+     */
+    private static class EnablerProperty extends FormProperty {
+        EnablerProperty(String name, String defaultValue) {
             super(name, defaultValue);
         }
 
         protected void addFormControl(StringBuffer buffer, String value,
             ResourceBundle labels) {
 
-            if (value == null && defaultValue != null)
+            if (value == null)
                 value = defaultValue;
-            boolean isTrue = new Boolean(value).booleanValue();
-
-            // FIXME: Uh, maybe we don't want to depend on the
-            // property name here, eh?
-            if (name.startsWith("enable") && !name.equals("enableNtlm")) {
-                // TODO: Split out a CheckboxProperty class for this.
-                buffer.append("<input ");
-                appendAttribute(buffer, "type", "checkbox");
-                appendAttribute(buffer, "name", name);
-                appendAttribute(buffer, "id", name + "true");
-                appendAttribute(buffer, "value", "true");
-                if (isTrue)
-                    buffer.append("checked");
-                buffer.append("> ");
-                appendLabel(buffer, name + "true", getLabel("enable", labels));
-            } else {
-                // XXX: Surely this could be cleaner.
-                buffer.append("<input ");
-                appendAttribute(buffer, "type", "radio");
-                appendAttribute(buffer, "name", name);
-                appendAttribute(buffer, "id", name + "true");
-                appendAttribute(buffer, "value", "true");
-                if (isTrue)
-                    buffer.append("checked");
-                buffer.append("> ");
-                appendLabel(buffer, name + "true", getLabel("true", labels));
-                buffer.append("<br>");
-                buffer.append("<input ");
-                appendAttribute(buffer, "type", "radio");
-                appendAttribute(buffer, "name", name);
-                appendAttribute(buffer, "id", name + "false");
-                appendAttribute(buffer, "value", "false");
-                if (!isTrue)
-                    buffer.append("checked");
-                buffer.append("> ");
-                appendLabel(buffer, name + "false", getLabel("false", labels));
-            }
+            
+            buffer.append("<input ");
+            appendAttribute(buffer, "type", "checkbox");
+            appendAttribute(buffer, "name", name);
+            appendAttribute(buffer, "id", name + "true");
+            appendAttribute(buffer, "value", "true");
+            if ("true".equalsIgnoreCase(value))
+                buffer.append("checked");
+            buffer.append("> ");
+            appendLabel(buffer, name + "true", getLabel("enable", labels));
         }
     }
 
@@ -497,6 +515,11 @@ public class LivelinkConnectorType implements ConnectorType {
          * to "true".
          */
         private static final ArrayList authenticationEntries;
+        /** Label for the Indexing Traversal properties. */
+        private static final FormProperty indexingLabel;
+        
+        /** Configuration properties for Indexing Traversal properties. */
+        private static final ArrayList indexingEntries;
 
         /** Start tag wrapper for the group labels. */
         /* Public because FormProperty needs it to detect the group headers. */
@@ -512,17 +535,29 @@ public class LivelinkConnectorType implements ConnectorType {
             baseEntries = new ArrayList();
             baseEntries.add(new TextInputProperty("server", true));
             baseEntries.add(new TextInputProperty("port", true, "2099"));
+            /* Story 2888
+            String tunnels[] = { "noTunneling", "httpTunneling", "httpsTunneling" };
+            baseEntries.add(new RadioSelectProperty("enableHttpTunneling",
+                                                    tunnels, tunnels[0]));
+            */                                        
             baseEntries.add(new TextInputProperty("displayUrl", true));
             baseEntries.add(
-                new BooleanSelectProperty("ignoreDisplayUrlErrors", "false")); 
-            baseEntries.add(new TextInputProperty("includedLocationNodes"));
+                new BooleanSelectProperty("ignoreDisplayUrlErrors", "false"));
+
+            /* Story 2888
+            String auths[] = { "livelinkAuthentication",
+                               "httpBasicAuthentication",
+                               "integratedWindowsAuthentication" };
+            baseEntries.add(new RadioSelectProperty("userAuthentication",
+                                                    auths, auths[0]));
+            */
 
             adminLabel = new LabelProperty("livelinkAdmin");
             adminEntries = new ArrayList();
             adminEntries.add(new TextInputProperty("username", true));
             adminEntries.add(new PasswordInputProperty("Password", true));
             adminEntries.add(new TextInputProperty("domainName"));
-            
+
             // These record the state of the enablers. They are a little
             // different from each other, because the useHttpTunneling
             // property is only used by LivelinkConnectorType and its
@@ -539,7 +574,7 @@ public class LivelinkConnectorType implements ConnectorType {
                     "false"));
 
             tunnelingEnabler =
-                new BooleanSelectProperty("enableHttpTunneling", "false");
+                new EnablerProperty("enableHttpTunneling", "false");
             tunnelingEntries = new ArrayList();
             tunnelingEntries.add(new TextInputProperty("livelinkCgi", true));
             tunnelingEntries.add(new BooleanSelectProperty("https", "false"));
@@ -548,8 +583,8 @@ public class LivelinkConnectorType implements ConnectorType {
                     "false"));
 
             authenticationEnabler =
-                new BooleanSelectProperty("enableSeparateAuthentication",
-                    "false");
+                new EnablerProperty("enableSeparateAuthentication", "false");
+                    
             authenticationEntries = new ArrayList();
             authenticationEntries.add(
                 new TextInputProperty("authenticationServer", true));
@@ -565,6 +600,12 @@ public class LivelinkConnectorType implements ConnectorType {
                 new BooleanSelectProperty(
                     "authenticationUseUsernamePasswordWithWebServer",
                     "false"));
+
+            // Indexing Traversal configuration
+            indexingLabel = new LabelProperty("indexing");
+            indexingEntries = new ArrayList();
+            indexingEntries.add(new TextInputProperty("traversalUsername", false)); 
+            indexingEntries.add(new TextInputProperty("includedLocationNodes"));
         }
 
         private final Map data;
@@ -622,6 +663,8 @@ public class LivelinkConnectorType implements ConnectorType {
             addEntry(buffer, authenticationEnabler, false, START_TAG, END_TAG);
             addEntries(buffer, authenticationEntries,
                 hide("useSeparateAuthentication"), INDENTATION, "");
+            addEntry(buffer, indexingLabel, false, START_TAG, END_TAG);
+            addEntries(buffer, indexingEntries, false, INDENTATION, "");
             return buffer.toString();
         }
     }
@@ -805,17 +848,22 @@ public class LivelinkConnectorType implements ConnectorType {
                 if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
                     configFilePath = "jar:" + configFilePath;
                 URL resource = new URL(configFilePath); 
+
+                // XXX: We aren't using EncryptedPropertyPlaceholderConfigurer
+                // here, so we are depending on the default values coming
+                // from getPopulatedConfigForm. So those have to match the
+                // values in the EncryptedPropertyPlaceholderConfigurer
+                // bean in connectorInstance.xml. Using setProperties only
+                // works because we aren't using the
+                // PropertyPlaceholderConfigurer bean with its default
+                // property values. If we were, this call would overwrite
+                // the defaults, and we would need to use setLocation here,
+                // or if we could get the default property values out of
+                // the bean, we could use setPropertiesArray.
                 UrlResource res = new UrlResource(resource);
                 XmlBeanFactory factory = new XmlBeanFactory(res);
                 PropertyPlaceholderConfigurer cfg =
                     new PropertyPlaceholderConfigurer();
-                // XXX: Using setProperties only works because we
-                // don't have a PropertyPlaceholderConfigurer bean
-                // with default property values. If we did, this call
-                // would overwrite the defaults, and we would need to
-                // use setLocation here, or if we could get the
-                // default property values out of the bean, we could
-                // use setPropertiesArray.
                 cfg.setProperties(p);
                 cfg.postProcessBeanFactory(factory);
                 conn = (LivelinkConnector)

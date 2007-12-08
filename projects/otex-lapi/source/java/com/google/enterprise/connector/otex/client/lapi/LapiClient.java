@@ -172,16 +172,38 @@ final class LapiClient implements Client {
     /** {@inheritDoc} */
     public synchronized ClientValue ListNodes(String query, String view,
             String[] columns) throws RepositoryException {
+
+        ClientValue recArray = ListNodesNoThrow(query, view, columns);
+        if (recArray == null)
+            throw new LapiException(session, LOGGER);
+        return recArray;
+    }
+
+    /** {@inheritDoc} */
+    public synchronized ClientValue ListNodesNoThrow(String query, String view,
+            String[] columns) throws RepositoryException {
+
+        /* This ListNodesNoThrow version returns null rather than throwing
+         * an exception on SQL query errors.
+         * LivelinkTraversalManager trie to determine the back-end
+         * repository DB by running an Oracle-specific query that succeeds
+         * on Oracle, but throws an exception for SQL-Server.  The test
+         * probe caught the expected exception, but it was still getting 
+         * logged to the error log (to which users objected).  See Issue 4:
+         * http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=4
+         */
         LLValue recArray = new LLValue();
+        LLValue args = (new LLValue()).setList();
+        LLValue columnsList = (new LLValue()).setList();
+        
+        for (int i = 0; i < columns.length; i++)
+            columnsList.add(columns[i]);
+
         try {
-            LLValue args = (new LLValue()).setList();
-            LLValue columnsList = (new LLValue()).setList();
-            for (int i = 0; i < columns.length; i++)
-                columnsList.add(columns[i]);
             if (documents.ListNodes(query, args, view, columnsList, 
-                    LAPI_DOCUMENTS.PERM_SEECONTENTS, LLValue.LL_FALSE,
-                    recArray) != 0) {
-                throw new LapiException(session, LOGGER);
+                                    LAPI_DOCUMENTS.PERM_SEECONTENTS,
+                                    LLValue.LL_FALSE, recArray) != 0) {
+                return null;
             }
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
@@ -347,6 +369,17 @@ final class LapiClient implements Client {
     public synchronized void ImpersonateUser(String username) {
         session.ImpersonateUser(username);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized void ImpersonateUserEx(String username, String domain) {
+        if ((domain == null) || (domain.length() == 0))
+            session.ImpersonateUser(username);
+        else
+            session.ImpersonateUserEx(username, domain);
+    }
+
 
     /**
      * Gets the category attribute values for the indicated

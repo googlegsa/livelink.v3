@@ -48,6 +48,7 @@ class LivelinkConnectorFactory {
         emptyProperties.put("Password", ""); 
         emptyProperties.put("domainName", ""); 
         emptyProperties.put("displayUrl", ""); 
+        emptyProperties.put("traversalUsername", ""); 
         emptyProperties.put("includedLocationNodes", ""); 
         emptyProperties.put("useHttpTunneling", "false"); 
         emptyProperties.put("livelinkCgi", ""); 

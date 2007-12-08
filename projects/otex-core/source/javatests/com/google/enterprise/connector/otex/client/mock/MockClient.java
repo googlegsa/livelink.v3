@@ -102,6 +102,17 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
+     * Version of ListNodes() that does not throw exceptions.
+     * Since the MockClient version of ListNodes already doesn't
+     * throw exceptions, this doesn't do anything other than that.
+     */
+    public ClientValue ListNodesNoThrow(String query, String view, String[] columns) {
+        return ListNodes(query, view, columns);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
      * This implementation returns an empty assoc.
      */
     public ClientValue GetObjectInfo(int volumeId, int objectId) {
@@ -201,5 +212,15 @@ final class MockClient implements Client {
      */
     public void ImpersonateUser(String username) throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUser");
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation has no effect.
+     */
+    public void ImpersonateUserEx(String username, String domain)
+        throws RepositoryException {
+        LOGGER.fine("Entering MockClient.ImpersonateUserEx");
     }
 }
