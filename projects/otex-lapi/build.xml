@@ -212,7 +212,8 @@
       <fileset dir="${core.dir}/source/java"
         includes="**/*.properties"/>
       <fileset dir="${classes}"/>
-      <fileset dir="${build}" includes="config/**"/>
+      <fileset dir="${build}" includes="config/*.*" 
+        excludes="**/logging.properties" />
       <manifest>
         <!-- Manifest files are limited to 72 byte line lengths, but our
              "official" Title exceeds that by 2 bytes.  The ant Manifest
