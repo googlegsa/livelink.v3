@@ -204,6 +204,11 @@
       <filterset>
         <filter token="constructor-arg" value="" />
       </filterset>
+      <!-- FIXME: Workaround for GSA country code issue. -->
+      <filtermapper>
+        <replacestring from="_pt_BR" to="_pt"/>
+        <replacestring from="_zh_CN" to="_zh"/>
+      </filtermapper>
     </copy>
 
     <tstamp />
