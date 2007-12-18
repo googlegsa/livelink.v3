@@ -670,7 +670,15 @@ class LivelinkTraversalManager
                 LOGGER);
         } else {
             String modifyDate = checkpoint.substring(0, index);
-            String dataId = checkpoint.substring(index + 1);
+
+            // In future, we may embellish the checkpoint with additional items.
+            String dataId;
+            int idEnd = checkpoint.indexOf(',', index + 1);
+            if (idEnd > index)
+                dataId = checkpoint.substring(index + 1, idEnd);
+            else
+                dataId = checkpoint.substring(index + 1);
+
             if (isSqlServer) {
                 return "(ModifyDate > '" + modifyDate +
                     "' or (ModifyDate = '" + modifyDate +
