@@ -145,6 +145,11 @@
         <filter token="constructor-arg" 
                 value="&lt;constructor-arg value=&quot;com.google.enterprise.connector.otex.client.mock.MockClientFactory&quot; /&gt;" />
       </filterset>
+      <!-- FIXME: Workaround for GSA country code issue. -->
+      <filtermapper>
+        <replacestring from="_pt_BR" to="_pt"/>
+        <replacestring from="_zh_CN" to="_zh"/>
+      </filtermapper>
     </copy>
 
     <tstamp />
