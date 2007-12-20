@@ -257,7 +257,6 @@ class LivelinkTraversalManager
                 } catch (NumberFormatException e) {}
             }
             ancesterNodes = buffer.toString();
-
         } else {
         // If we don't have an explicit list of start points, build
         // an implicit list from the list of all volumes, minus those
@@ -411,7 +410,7 @@ class LivelinkTraversalManager
     /** {@inheritDoc} */
     public DocumentList startTraversal() throws RepositoryException {
         // startCheckpoint will either be an initial checkpoint or null
-        String checkpoint = connector.getStartCheckpoint();
+        String checkpoint = connector.getStartCheckpoint(client);
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info("START" +
                 (checkpoint == null ? "" : ": " + checkpoint));
@@ -510,16 +509,18 @@ class LivelinkTraversalManager
      */
     private DocumentList listNodes(String checkpoint)
             throws RepositoryException {
+        int batchsz = batchSize;
         while (true) {
             ClientValue candidates;
             if (isSqlServer)
-                candidates = getCandidatesSqlServer(checkpoint);
+                candidates = getCandidatesSqlServer(checkpoint, batchsz);
             else
-                candidates = getCandidatesOracle(checkpoint);
+                candidates = getCandidatesOracle(checkpoint, batchsz);
             if (candidates.size() == 0) {
                 LOGGER.fine("RESULTSET: no rows.");
                 return null;
-            }
+            } else 
+                LOGGER.fine("CANDIDATES SET: " + candidates.size() + " rows.");
 
             StringBuffer buffer = new StringBuffer();
             buffer.append("DataID in (");
@@ -541,6 +542,10 @@ class LivelinkTraversalManager
                     candidates.toInteger(row, "DataID"));
                 if (LOGGER.isLoggable(Level.FINER))
                     LOGGER.finer("SKIPPING PAST " + checkpoint);
+                // If nothing is passing our filter, we probably have a
+                // sparse database.  Grab larger candidate sets, hoping
+                // to run into anything interesting.
+                batchsz = Math.min(1000, batchsz * 10);
             } else {
                 if (LOGGER.isLoggable(Level.FINE))
                     LOGGER.fine("RESULTSET: " + results.size() + " rows.");
@@ -595,7 +600,7 @@ class LivelinkTraversalManager
     }
 
 
-    private ClientValue getCandidatesSqlServer(String checkpoint)
+    private ClientValue getCandidatesSqlServer(String checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
         if (checkpoint == null)
@@ -607,7 +612,7 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DTree";
         String[] columns = {
-            "top " + batchSize +  " ModifyDate", "DataID", "PermID" };
+            "top " + batchsz +  " ModifyDate", "DataID", "PermID" };
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("CANDIDATES QUERY: " + query);
 
@@ -622,7 +627,7 @@ class LivelinkTraversalManager
      * equal performance, except that it doesn't limit the number of
      * rows, and LAPI materializes the entire result set.
      */
-    private ClientValue getCandidatesOracle(String checkpoint)
+    private ClientValue getCandidatesOracle(String checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
         buffer.append("(select ModifyDate, DataID, PermID from DTree");
@@ -633,7 +638,7 @@ class LivelinkTraversalManager
         buffer.append(ORDER_BY);
         buffer.append(')');
 
-        String query = "rownum <= " + batchSize;
+        String query = "rownum <= " + batchsz;
         String view = buffer.toString();
         String[] columns = new String[] { "*" };
         if (LOGGER.isLoggable(Level.FINEST))

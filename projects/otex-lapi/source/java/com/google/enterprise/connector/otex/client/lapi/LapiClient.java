@@ -185,7 +185,7 @@ final class LapiClient implements Client {
 
         /* This ListNodesNoThrow version returns null rather than throwing
          * an exception on SQL query errors.
-         * LivelinkTraversalManager trie to determine the back-end
+         * LivelinkTraversalManager tries to determine the back-end
          * repository DB by running an Oracle-specific query that succeeds
          * on Oracle, but throws an exception for SQL-Server.  The test
          * probe caught the expected exception, but it was still getting 

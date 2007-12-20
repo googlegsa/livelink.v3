@@ -216,13 +216,7 @@ public class LivelinkConnector implements Connector {
 
     /** The earliest modification date that should be indexed. */
     private String startDate = null;
-
-    /**
-     * If set, this property will be used as initial checkpoint from
-     * which the traversal will start, corresponding to the given date
-     * with a document ID of zero.
-     */
-    private String startCheckpoint = null;
+    private Date parsedStartDate = null;
 
     /** The Livelink traverser client username. */
     private String username;
@@ -738,8 +732,7 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Sets the startDate property, and, as a side-effect, the
-     * startCheckpoint.
+     * Sets the startDate property.
      *
      * @param property is the date string from the config file.
      */
@@ -753,7 +746,7 @@ public class LivelinkConnector implements Connector {
 
     private void validateStartDate(final String property) {
         // If we've validated already, don't do it again.
-        if (startDate != null && startCheckpoint != null)
+        if (startDate != null)
             return;
         if (property.trim().length() == 0) {
             if (LOGGER.isLoggable(Level.FINE))
@@ -779,8 +772,7 @@ public class LivelinkConnector implements Connector {
             }
         }
         startDate = property;
-        startCheckpoint = LivelinkTraversalManager.getCheckpoint(
-            parsedDate, 0);
+        parsedStartDate = parsedDate;
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("STARTDATE: " + property); 
     }
@@ -795,12 +787,54 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Gets the startDate checkpoint.
+     * Gets the startDate checkpoint.  We attempt to forge an initial
+     * checkpoint based upon information gleaned from any startDate or
+     * startLocations specified in the configuration.
      *
-     * @return the checkpoint string
+     * @param client connection to use to seed checkpoint
+     * @return the checkpoint string, or null if indexing the entire DB.
      */
-    String getStartCheckpoint() {
-        return startCheckpoint;
+    String getStartCheckpoint(Client client) {
+
+        // If we have a specified startDate, use it to seed 
+        // our minimum modification timestamp.
+        Date startingDate = parsedStartDate;
+
+        // If the user specified "Items to index", fetch the earliest
+        // modification time for any of those items.  We can forge 
+        // a start checkpoint that skips over any ancient history in
+        // the LL database.  This executes a SQL query of the form:
+        //   select min(ModifyDate) from DTreeAncestors join DTree
+        //   on DTreeAncestors.DataID = DTree.DataID
+        //   where AncestorID in (items to index) 
+        // [Note the actual query is slightly more cryptic to avoid
+        // formatting problems in LL ListNodes function.]
+        String startNodes = getIncludedLocationNodes();
+        if (startNodes != null && startNodes.length() > 0) {
+            try {
+                String query = "1=1";
+                String[] columns = { "minModifyDate" };
+                String view = "(select min(ModifyDate) as minModifyDate from" +
+                    " DTreeAncestors join DTree on DTreeAncestors.DataID =" +
+                    " DTree.DataID where AncestorID in (" + startNodes + "))";
+                ClientValue results = client.ListNodes(query, view, columns);
+                if (results.size() > 0) {
+                    Date minDate = results.toDate(0, "minModifyDate");
+                    if ((startingDate == null) || minDate.after(startingDate))
+                        startingDate = minDate;
+                }                    
+            } catch (Exception e) {
+                // Possible non-date comes back if startNodes yields nothing.
+            }
+        }
+
+        // If we actually found an earliest starting point, forge a checkpoint 
+        // that reflects it.
+        if (startingDate != null) 
+            return LivelinkTraversalManager.getCheckpoint(startingDate, 0);
+
+        // No initial checkpoint, start at first object in the LL Database.
+        return null;
     }
 
     /**
