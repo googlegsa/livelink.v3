@@ -80,9 +80,16 @@ class FileContentHandler implements ContentHandler {
                         try {
                             super.close();
                         } finally {
-                            if (LOGGER.isLoggable(Level.FINER))
-                                LOGGER.finer("DELETE: " + temporaryFile);
-                            temporaryFile.delete();
+                            // close is called again from the finalizer,
+                            // so check whether the file still exists.
+                            // No synchronization is needed, because the
+                            // finalizer can't be running while another
+                            // thread is using this object.
+                            if (temporaryFile.exists()) {
+                                if (LOGGER.isLoggable(Level.FINER))
+                                    LOGGER.finer("DELETE: " + temporaryFile);
+                                temporaryFile.delete();
+                            }
                         }
                     }
                 };
