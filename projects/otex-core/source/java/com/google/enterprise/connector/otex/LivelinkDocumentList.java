@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -239,7 +239,7 @@ class LivelinkDocumentList implements DocumentList {
     /*
      * TODO: Eliminate this iterator and implement nextDocument
      * directly using this code. The gap seems to be just that
-     * LivelinkTest assumes that it can iterator over the DocumentList
+     * LivelinkTest assumes that it can iterate over the DocumentList
      * multiple times, which the new SPI doesn't allow. We could redo
      * the tests to eliminate that requirement, or add an internal
      * reset/restart/beforeFirst method to cause nextDocument to start
@@ -279,9 +279,6 @@ class LivelinkDocumentList implements DocumentList {
         /** Index only category attributes that are marked searchable? */
         boolean includeSearchable;
 
-        /** The set of Subtypes for which we will index hidden items. */
-        HashSet hiddenItemsSubtypes;
-
 
         LivelinkDocumentListIterator() {
             this.row = 0;
@@ -312,13 +309,6 @@ class LivelinkDocumentList implements DocumentList {
             // as it will only slow us down.
             if (excludedCategories.contains("none"))
                 excludedCategories = null;
-
-            // Fetch the Set of Subtypes for which we will index hidden items.
-            hiddenItemsSubtypes = connector.getShowHiddenItems();
-
-            // If we will index all hidden items, we can just skip all the checks.
-            if (hiddenItemsSubtypes.contains("all"))
-                hiddenItemsSubtypes = null;
         }
 
         public boolean hasNext() {
@@ -332,15 +322,6 @@ class LivelinkDocumentList implements DocumentList {
                     volumeId = recArray.toInteger(row, "OwnerID");
                     subType  = recArray.toInteger(row, "Subtype");
                     objectInfo = null;
-
-                    // If we are skipping some hidden items, and this is one
-                    // of those items, then ... well, skip it.
-                    // FIXME: This could throw a NoSuchElementException, even
-                    // if the caller got a positive response to hasNext().
-                    if (skipHiddenItem()) {
-                        row++;
-                        return next();
-                    }
 
                     props = new LivelinkDocument(objectId, fields.length*2);
 
@@ -371,27 +352,6 @@ class LivelinkDocumentList implements DocumentList {
 
         public void remove() {
             throw new UnsupportedOperationException();
-        }
-
-
-        /**
-         * If we as skipping some (or all) hidden items, and this item
-         * qualifies as one to skip, return <code>true</code>, otherwise 
-         * return <code>false</code>.
-         */
-        private boolean skipHiddenItem() throws RepositoryException {
-
-            if ((hiddenItemsSubtypes == null) ||
-                hiddenItemsSubtypes.contains(new Integer(subType))) {
-                return false;
-            }
-
-            // OK. A hidden item of this Subtype should not be indexed.
-            // Check for the hidden display type flag in the ObjectInfo.
-            if (objectInfo == null)
-                objectInfo = client.GetObjectInfo(volumeId, objectId);
-
-            return (objectInfo.toInteger("Catalog") == Client.DISPLAYTYPE_HIDDEN);
         }
 
 

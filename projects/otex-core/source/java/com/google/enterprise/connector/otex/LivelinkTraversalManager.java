@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.google.enterprise.connector.otex;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Map;
@@ -358,6 +359,30 @@ class LivelinkTraversalManager
             buffer.append(" and AncestorID in (");
             buffer.append(excludedLocationNodes);
             buffer.append("))");
+        }
+
+        // TODO: This doesn't handle the subtypes yet. If subtypes are
+        // specified, then hidden items will just not be indexed.
+        HashSet showHiddenItems = connector.getShowHiddenItems();
+        if (!showHiddenItems.contains("all"))
+        {
+            // I'm using Anc here rather than simply A to avoid
+            // conceptually interferring with the A range variable
+            // that LAPI adds behind the scenes.
+            // XXX: We need to qualify the reference to DataID in the
+            // candidatesPredicate with T. Sigh.
+            String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
+            if (buffer.length() > 0)
+                buffer.append(" and ");
+            buffer.append("Catalog <> ");
+            buffer.append(hidden);
+            buffer.append(" and DataID not in (select Anc.DataID ");
+            buffer.append("from DTreeAncestors Anc join DTree T ");
+            buffer.append("on Anc.AncestorID = T.DataID where T.");
+            buffer.append(candidatesPredicate);
+            buffer.append(" and Catalog = ");
+            buffer.append(hidden);
+            buffer.append(')');
         }
 
         String excluded = (buffer.length() > 0) ? buffer.toString() : null;
