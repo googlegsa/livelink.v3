@@ -124,8 +124,7 @@
 
   <target name="run_tests" depends="compile_tests,jar">
     <property name="test.suite" value="*"/>
-    <property name="logging.file" 
-              location="${tests.todir}/test.log" />
+    <property name="logging.file" location="${tests.todir}/test.log" />
     <copy file="${core.dir}/source/javatests/tests.logging.properties"
           tofile="${tests.logging.properties}"
           overwrite="yes">
@@ -173,6 +172,18 @@
 
   <target name="run_tools" depends="compile_tools,jar">
     <property name="test.suite" value="*"/>
+    <property name="logging.file" location="${tests.todir}/test.log" />
+    <copy file="${core.dir}/source/javatests/tests.logging.properties"
+          tofile="${tests.logging.properties}"
+          overwrite="yes">
+      <filterset>
+        <filter token="logging.file"
+                value="${logging.file}"/>
+      </filterset>
+    </copy>
+    <replace file="${tests.logging.properties}" 
+             token="\" value="\\" />
+    <delete file="${logging.file}"/>
     <junit>
       <assertions><enable/></assertions>
       <classpath>
