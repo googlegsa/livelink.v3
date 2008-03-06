@@ -194,7 +194,7 @@ public class LivelinkConnector implements Connector {
     private String includedLocationNodes;
 
     /** The map from subtypes to ExtendedData assoc keys. */
-    private Map extendedDataKeys = new HashMap();
+    private final Map extendedDataKeys = new HashMap();
 
     /** The list of ObjectInfo assoc keys. */
     private String[] objectInfoKeys = null;
@@ -1051,8 +1051,6 @@ public class LivelinkConnector implements Connector {
      * @return the map from integer subtypes
      */
     String[] getExtendedDataKeys(int subType) {
-        if (extendedDataKeys == null)
-            return null;
         return (String[]) extendedDataKeys.get(new Integer(subType));
     }
 
@@ -1077,7 +1075,6 @@ public class LivelinkConnector implements Connector {
     }
 
     private void validateIncludedObjectInfo(final String objectInfoKeysParam) {
-
         String sanikeys = sanitizeListOfStrings(
             objectInfoKeysParam);
         if ((sanikeys != null) && (sanikeys.length() > 0)) {
@@ -1088,17 +1085,15 @@ public class LivelinkConnector implements Connector {
             for (int i = 0; i < keys.size(); i++) {
                 String key = (String) keys.get(i);
                             
-                // If the client asks to index all
-                // ExtendedData, then don't bother
-                // with the selective ExendedData by
+                // If the client asks to index all ExtendedData, then
+                // don't bother with the selective ExendedData by
                 // subtype map.
-                // TODO: unless we can guarantee the order in
-                // which the properties are set,
-                // extendedDataKeys may not have been
-                // initialized yet, so it might overwrite the
-                // null value set here.
+                // TODO: unless we can guarantee the order in which
+                // the properties are set, extendedDataKeys may not
+                // have been initialized yet, so it might add entries
+                // to the map later.
                 if ("ExtendedData".equalsIgnoreCase(key)) {
-                    extendedDataKeys = null;
+                    extendedDataKeys.clear();
                     continue;
                 }
 

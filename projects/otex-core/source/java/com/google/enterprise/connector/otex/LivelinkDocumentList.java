@@ -56,6 +56,11 @@ class LivelinkDocumentList implements DocumentList {
     /** An immutable true value. */
     private static final Value VALUE_TRUE = Value.getBooleanValue(true);
 
+    /** ObjectInfo and VersionInfo assoc fields that hold UserId or GroupId. */
+    private static final String[] USER_FIELD_NAMES = {
+        "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
+        "LockedBy", "Owner" };
+
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
@@ -368,10 +373,10 @@ class LivelinkDocumentList implements DocumentList {
                     ClientValue value =
                         recArray.toValue(row, fields[i].fieldName);
                     if (value.isDefined()) {
-                        if (isUserIdOrGroupId(fields[i].fieldName))
+                        if (isUserIdOrGroupId(fields[i].fieldName)) {
                             // FIXME: hack knows that UserID has 1 propertyName
                             addUserByName(fields[i].propertyNames[0], value);
-                        else
+                        } else
                             props.addProperty(fields[i], value);
                     }
                 }
@@ -477,7 +482,6 @@ class LivelinkDocumentList implements DocumentList {
          */
         private void collectExtendedDataProperties()
                 throws RepositoryException {
-
             String[] fields = connector.getExtendedDataKeys(subType);
             if (fields == null)
                 return;
@@ -488,21 +492,35 @@ class LivelinkDocumentList implements DocumentList {
             if (extendedData == null || !extendedData.hasValue())
                 return;
 
+            // Make a set of the names in the assoc.
+            HashSet names = new HashSet();
+            Enumeration it = extendedData.enumerateNames();
+            while (it.hasMoreElements())
+                names.add(it.nextElement());
+            
             // Decompose the ExtendedData into its atomic values,
             // and add them as properties.
             for (int i = 0; i < fields.length; i++) {
-                ClientValue value = extendedData.toValue(fields[i]);
-                if (value != null && value.hasValue()) {
-                    // XXX: For polls, the Questions field is a
-                    // stringified list of assoc. We're only handling
-                    // this one case, rather than handling stringified
-                    // values generally.
-                    if (subType == Client.POLLSUBTYPE &&
+                if (names.contains(fields[i])) {
+                    ClientValue value = extendedData.toValue(fields[i]);
+                    if (value != null && value.hasValue()) {
+                        // XXX: For polls, the Questions field is a
+                        // stringified list of assoc. We're only handling
+                        // this one case, rather than handling stringified
+                        // values generally.
+                        if (subType == Client.POLLSUBTYPE &&
                             fields[i].equals("Questions")) {
-                        value = value.stringToValue();
-                    }
+                            value = value.stringToValue();
+                        }
 
-                    collectValueProperties(fields[i], value);
+                        collectValueProperties(fields[i], value);
+                    }
+                } else {
+                    if (LOGGER.isLoggable(Level.WARNING)) {
+                        LOGGER.warning("ExtendedData for " + objectId +
+                            " (subtype " + subType + ") has no " +
+                            fields[i] + " feature.");
+                    }
                 }
             }
         }
@@ -533,7 +551,7 @@ class LivelinkDocumentList implements DocumentList {
                     // If the client wished to be more selective, they should
                     // have added specific ExtendedData fields to the map.
                     if ("ExtendedData".equalsIgnoreCase(fields[i]))
-                        collectValueProperties(fields[i], value);                        
+                        collectValueProperties(fields[i], value);
                     else if (isUserIdOrGroupId(fields[i]))
                         addUserByName(fields[i], value);
                     else 
@@ -669,14 +687,14 @@ class LivelinkDocumentList implements DocumentList {
                 // category attributes which can't be read here.
                 int categoryType = categoryId.toInteger("Type");
                 if (Client.CATEGORY_TYPE_LIBRARY != categoryType) {
-                    LOGGER.finer("Unknown category implementation type " +
-                        categoryType + "; skipping");
+                    if (LOGGER.isLoggable(Level.FINER)) {
+                        LOGGER.finer("Unknown category implementation type " +
+                            categoryType + "; skipping");
+                    }
                     continue;
                 }
-                //System.out.println(categoryId.toString("DisplayName"));
 
-                ClientValue categoryVersion;
-                categoryVersion =
+                ClientValue categoryVersion =
                     client.GetObjectAttributesEx(objIdAssoc, categoryId);
                 ClientValue attrNames =
                     client.AttrListNames(categoryVersion, null);
@@ -830,14 +848,17 @@ class LivelinkDocumentList implements DocumentList {
                 return;
             
             // Check the userName cache (if we recently looked up this user).
-            ClientValue userName = (ClientValue) userNameCache.get(new Integer(id));
+            ClientValue userName =
+                (ClientValue) userNameCache.get(new Integer(id));
             if (userName == null) {
                 // User is not in the cache, get the name from the server.
                 ClientValue userInfo = client.GetUserOrGroupByID(id);
                 userName = userInfo.toValue("Name");
                 if (!userName.isDefined()) {
-                    if (LOGGER.isLoggable(Level.WARNING)) 
-                        LOGGER.warning("No user or group name found for ID " + id);
+                    if (LOGGER.isLoggable(Level.WARNING)) {
+                        LOGGER.warning("No user or group name found for ID " +
+                            id);
+                    }
                     return;
                 }
                 
@@ -863,18 +884,11 @@ class LivelinkDocumentList implements DocumentList {
          * @returns true if the field contains a UserID or a GroupID value.
          */
         private boolean isUserIdOrGroupId(String fieldName) {
-            for (int i = 0; i < userFieldNames.length; i++)
-                if (userFieldNames[i].equalsIgnoreCase(fieldName))
+            for (int i = 0; i < USER_FIELD_NAMES.length; i++) {
+                if (USER_FIELD_NAMES[i].equalsIgnoreCase(fieldName))
                     return true;
-
+            }
             return false;
         }
-
     }
-
-    /** ObjectInfo and VersionInfo assoc fields that hold UserId or GroupId. */
-    static final String[] userFieldNames = {
-        "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
-        "LockedBy", "Owner" };
-
 }
