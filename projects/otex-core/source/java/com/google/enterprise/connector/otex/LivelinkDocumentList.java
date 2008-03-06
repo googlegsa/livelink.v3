@@ -839,22 +839,26 @@ class LivelinkDocumentList implements DocumentList {
          * resolve to a name.
          */
         private void addUserByName(String propertyName, ClientValue idValue)
-            throws RepositoryException {
-            
+                throws RepositoryException {
             // If the UserID or GroupID is 0, then ignore it.
             // For reason why, see ObjectInfo Reserved and ReservedBy fields.
             int id = idValue.toInteger();
             if (id == 0)
                 return;
-            
+
             // Check the userName cache (if we recently looked up this user).
             ClientValue userName =
                 (ClientValue) userNameCache.get(new Integer(id));
             if (userName == null) {
                 // User is not in the cache, get the name from the server.
-                ClientValue userInfo = client.GetUserOrGroupByID(id);
-                userName = userInfo.toValue("Name");
-                if (!userName.isDefined()) {
+                try
+                {
+                    ClientValue userInfo = client.GetUserOrGroupByID(id);
+                    userName = userInfo.toValue("Name");
+                } catch (LivelinkException e) {
+                    // no nothing
+                }
+                if (userName == null || !userName.isDefined()) {
                     if (LOGGER.isLoggable(Level.WARNING)) {
                         LOGGER.warning("No user or group name found for ID " +
                             id);
