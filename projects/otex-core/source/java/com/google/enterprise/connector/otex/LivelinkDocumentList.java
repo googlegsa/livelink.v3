@@ -856,7 +856,7 @@ class LivelinkDocumentList implements DocumentList {
                     ClientValue userInfo = client.GetUserOrGroupByID(id);
                     userName = userInfo.toValue("Name");
                 } catch (LivelinkException e) {
-                    // no nothing
+                    // do nothing
                 }
                 if (userName == null || !userName.isDefined()) {
                     if (LOGGER.isLoggable(Level.WARNING)) {

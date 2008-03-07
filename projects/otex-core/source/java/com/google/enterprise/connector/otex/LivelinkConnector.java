@@ -816,7 +816,8 @@ public class LivelinkConnector implements Connector {
                 String[] columns = { "minModifyDate" };
                 String view = "(select min(ModifyDate) as minModifyDate from" +
                     " DTreeAncestors join DTree on DTreeAncestors.DataID =" +
-                    " DTree.DataID where AncestorID in (" + startNodes + "))";
+                    " DTree.DataID where AncestorID in (" + startNodes + ")" +
+                    " or DTree.DataID in (" + startNodes + "))";
                 ClientValue results = client.ListNodes(query, view, columns);
                 if (results.size() > 0) {
                     Date minDate = results.toDate(0, "minModifyDate");
@@ -1097,9 +1098,8 @@ public class LivelinkConnector implements Connector {
                     continue;
                 }
 
-                // Many ObjectInfo fields are already
-                // indexed by default.  Filter out
-                // any duplicates specified here.
+                // Many ObjectInfo fields are already indexed by default.
+                // Filter out any duplicates specified here.
                 for (int j = 0; j < fields.length; j++) {
                     if ((fields[j].propertyNames.length > 0) &&
                         (fields[j].propertyNames[0].equalsIgnoreCase(key))) {
