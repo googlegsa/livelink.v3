@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -156,12 +156,14 @@ final class LapiClient implements Client {
     }
     
     /** {@inheritDoc} */
-    public synchronized ClientValue GetUserOrGroupByID(int id)
+    public synchronized ClientValue GetUserOrGroupByIDNoThrow(int id)
             throws RepositoryException {
         LLValue userInfo = new LLValue();
         try {
             if (users.GetUserOrGroupByID(id, userInfo) != 0) {
-                throw new LapiException(session, LOGGER);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.fine(LapiException.buildMessage(session));
+                return null;
             }
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
@@ -253,6 +255,9 @@ final class LapiClient implements Client {
                 ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
                 ((LapiClientValue) attributeSetPath).getLLValue();
+
+            // LAPI AttrListNames method does not reset the session status.
+            session.setError(0, "");
             if (attributes.AttrListNames(catVersion, attrPath,
                     attrNames) != 0) {
                 throw new LapiException(session, LOGGER); 
@@ -274,6 +279,9 @@ final class LapiClient implements Client {
                 ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
                 ((LapiClientValue) attributeSetPath).getLLValue();
+
+            // LAPI AttrGetInfo method does not reset the session status.
+            session.setError(0, "");
             if (attributes.AttrGetInfo(catVersion, attributeName, attrPath,
                     info) != 0) {
                 throw new LapiException(session, LOGGER);
@@ -295,6 +303,9 @@ final class LapiClient implements Client {
                 ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
                 ((LapiClientValue) attributeSetPath).getLLValue();
+
+            // LAPI AttrGetValues method does not reset the session status.
+            session.setError(0, "");
             if (attributes.AttrGetValues(catVersion, attributeName,
                     LAPI_ATTRIBUTES.ATTR_DATAVALUES, attrPath,
                     attrValues) != 0) {

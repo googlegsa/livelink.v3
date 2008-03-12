@@ -706,9 +706,8 @@ class LivelinkDocumentList implements DocumentList {
                     ClientValue attrInfo =
                         client.AttrGetInfo(categoryVersion, attrName, null);
                     int attrType = attrInfo.toInteger("Type");
-                    if (Client.ATTR_TYPE_SET == attrType) {
+                    if (Client.ATTR_TYPE_SET == attrType)
                         getAttributeSetValues(categoryVersion, attrName);
-                    }
                     else {
                         getAttributeValue(categoryVersion, attrName,
                             attrType, null, attrInfo);
@@ -819,13 +818,10 @@ class LivelinkDocumentList implements DocumentList {
                     continue;
                 // System.out.println("getAttributeValue: k = " + k +
                 // " ; value = " + value.toString2());
-                if (Client.ATTR_TYPE_USER == attrType) {
-                    int userId = value.toInteger();
-                    ClientValue userInfo = client.GetUserOrGroupByID(userId);
-                    props.addProperty(attrName, userInfo.toValue("Name"));
-                } else {
+                if (Client.ATTR_TYPE_USER == attrType)
+                    addUserByName(attrName, value);
+                else
                     props.addProperty(attrName, value);
-                }
             }
         }
 
@@ -851,13 +847,9 @@ class LivelinkDocumentList implements DocumentList {
                 (ClientValue) userNameCache.get(new Integer(id));
             if (userName == null) {
                 // User is not in the cache, get the name from the server.
-                try
-                {
-                    ClientValue userInfo = client.GetUserOrGroupByID(id);
+                ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(id);
+                if (userInfo != null)
                     userName = userInfo.toValue("Name");
-                } catch (LivelinkException e) {
-                    // do nothing
-                }
                 if (userName == null || !userName.isDefined()) {
                     if (LOGGER.isLoggable(Level.WARNING)) {
                         LOGGER.warning("No user or group name found for ID " +

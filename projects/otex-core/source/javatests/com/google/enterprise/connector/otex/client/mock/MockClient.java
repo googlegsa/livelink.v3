@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,7 +65,8 @@ final class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public ClientValue GetUserOrGroupByID(int id) throws RepositoryException {
+    public ClientValue GetUserOrGroupByIDNoThrow(int id)
+            throws RepositoryException {
         return new MockClientValue(
             new String[] { "Name" }, new String[] { "Admin" });
     }
