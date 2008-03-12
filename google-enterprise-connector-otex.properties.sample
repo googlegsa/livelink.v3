@@ -17,6 +17,8 @@ build.connector.manager.home = ${user.home}/gsa/google-enterprise-connector-mana
 # The root of the google-enterprise-connector-otex tree
 build.connector.otex.home = ${user.home}/gsa/google-enterprise-connector-otex
 
+# JDK 1.4 bootclasspath.
+build.bootclasspath = /System/Library/Frameworks/JavaVM.framework/Versions/1.4.2/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Versions/1.4.2/Classes/jsse.jar
 
 
 ##
