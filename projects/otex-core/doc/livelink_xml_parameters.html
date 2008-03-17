@@ -40,31 +40,6 @@
   <tr><th colspan="3">HTTP Tunneling Properties</th></tr>
 
   <tr>
-    <td>httpUsername</td>
-    <td>The Web server user name.
-      <p><em>Livelink API:</em> <code>HTTPUserName</code> attribute in <code>config</code> parameter.</p></td>
-    <td>The default value is empty.</td>
-  </tr>
-
-  <tr>
-    <td>httpPassword</td>
-    <td>The Web server password.
-      <p><em>Livelink API:</em> <code>HTTPPassword</code> attribute in <code>config</code> parameter.</p></td>
-    <td>The default value is empty.</td>
-  </tr>
-
-  <tr>
-    <td>enableNtlm</td>
-    <td>Whether or not to use NTLM authentication.
-      <p><em>Livelink API:</em> <code>EnableNTLM</code> attribute in <code>config</code> parameter.</p></td>
-    <td>The default value is false. See "Session Creation Input
-        Parameters" in the <em>Livelink API
-        Developer's Reference Guide</em> for more information on
-        using NTLM when authenticating.
-    </td>
-  </tr>
-
-  <tr>
     <td>verifyServer</td>
     <td>Specifies whether to verify the Web server's certificate when
       the Use HTTPS property is set to true.
@@ -87,7 +62,7 @@
   </tr>
 
   <tr>
-    <td><em>livelinkCgi, https, useUsernamePasswordWithWebServer</em></td>
+    <td><em>livelinkCgi, httpUsername, httpPassword, enableNtlm, https, useUsernamePasswordWithWebServer</em></td>
     <td><em>Placeholders for the properties file.</em></td>
     <td><em>Specified on the connector configuration form.</em></td>
   </tr>
@@ -137,7 +112,7 @@
   </tr>
         
   <tr>
-    <td><em>authenticationServer, authenticationPort, authenticationHttps, authenticationLivelinkCgi, authenticationDomainName, authenticationUseUsernamePasswordWithWebServer</em></td>
+    <td><em>authenticationServer, authenticationPort, authenticationLivelinkCgi, authenticationEnableNtlm, authenticationHttps, authenticationDomainName, authenticationUseUsernamePasswordWithWebServer</em></td>
     <td><em>Placeholders for the properties file.</em></td>
     <td><em>Specified on the connector configuration form.</em></td>
   </tr>

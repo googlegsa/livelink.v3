@@ -90,6 +90,14 @@ public interface Client
     ClientValue GetServerInfo() throws RepositoryException;
 
     /**
+     * Gets the user ID for the logged in user.
+     *
+     * @return the user ID for the logged in user
+     * @throws RepositoryException if an error occurs
+     */
+    int GetCurrentUserID() throws RepositoryException;
+
+    /**
      * Gets the value of the cookies for the logged in user.
      *
      * @throws RepositoryException if an error occurs

@@ -58,6 +58,15 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
+     * This implementation returns 1000, the user ID of Admin.
+     */
+    public int GetCurrentUserID() throws RepositoryException {
+        return 1000;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
      * This implementation returns an empty list.
      */
     public ClientValue GetCookieInfo() throws RepositoryException {

@@ -82,6 +82,9 @@ class LivelinkDocumentList implements DocumentList {
     /** The TraversalContext from TraversalContextAware Interface */
     private final TraversalContext traversalContext;
 
+    /** This is the checkpoint string for the current DocumentList */
+    private String checkpoint;
+
     /** If the traversal client user is the public content user,
      *  then all documents it sees will be publicly available.
      */
@@ -90,20 +93,17 @@ class LivelinkDocumentList implements DocumentList {
     /** This subset of documents are authorized as public content. */
     private HashSet publicContentDocs = null;
 
-    /** This is the checkpoint string for the current DocumentList */
-    private String checkpoint;
-
     /** This is the DocumentList Iterator */
     private Iterator docIterator;
 
     /** This is a small cache of UserID and GroupID name resolutions. */
-    private HashMap userNameCache;
+    private final HashMap userNameCache = new HashMap(200);
 
     LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, TraversalContext traversalContext,
-            String checkpoint) throws RepositoryException {
-
+            String checkpoint, String currentUsername)
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
         this.valueFactory = client.getClientValueFactory();
@@ -112,10 +112,9 @@ class LivelinkDocumentList implements DocumentList {
         this.fields = fields;
         this.traversalContext = traversalContext;
         this.checkpoint = checkpoint;
-        this.userNameCache = new HashMap(200);
 
         // Subset the docIds in the recArray into Public and Private Docs.
-        findPublicContent();
+        findPublicContent(currentUsername);
 
         // Prime the DocumentList.nextDocument() iterator
         docIterator = iterator();
@@ -164,15 +163,15 @@ class LivelinkDocumentList implements DocumentList {
      * Connector's ClientFactory.  It should really get it from the
      * Session, but at this point we don't know what session we
      * belong to.
+     *
+     * @param currentUsername the currently logged in user; may be impersonated
      */
-    private void findPublicContent() throws RepositoryException {
+    private void findPublicContent(String currentUsername)
+            throws RepositoryException {
         String pcuser = connector.getPublicContentUsername();
-        if ((pcuser != null) && (pcuser.length() > 0)) {
-            String user = connector.getTraversalUsername();
-            if ((user == null) || (user.length() == 0))
-                user = connector.getUsername();
-            isPublicContentUser = pcuser.equals(user);
-            if (! isPublicContentUser) {
+        if (pcuser != null && pcuser.length() > 0) {
+            isPublicContentUser = pcuser.equals(currentUsername);
+            if (!isPublicContentUser) {
                 // Get the subset of the DocIds that have public access.
                 ClientFactory clientFactory = connector.getClientFactory();
                 LivelinkAuthorizationManager authz;

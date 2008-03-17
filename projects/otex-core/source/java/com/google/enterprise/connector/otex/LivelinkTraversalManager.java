@@ -127,6 +127,11 @@ class LivelinkTraversalManager
     /** The TraversalContext from TraversalContextAware Interface */
     private TraversalContext traversalContext = null;
 
+    /**
+     * The current user, either the system administrator or an
+     * impersonated traversal user.
+     */
+    private final String currentUsername;
 
     LivelinkTraversalManager(LivelinkConnector connector,
             ClientFactory clientFactory) throws RepositoryException {
@@ -137,17 +142,30 @@ class LivelinkTraversalManager
         selectList = getSelectList();
         contentHandler = getContentHandler();
 
-        /**
-         * If there is a separately specified traversal user (different
-         * than our current user), then impersonate that traversal user
-         * when building the list of documents to index.
-         */
-        String traversalUsername = connector.getTraversalUsername();
-        if ((traversalUsername != null) &&
-            (! traversalUsername.equals(connector.getUsername()))) {
-                client.ImpersonateUserEx(traversalUsername,
-                                         connector.getDomainName());
+        // Get the current username to compare to the configured
+        // traversalUsername and publicContentUsername.
+        String username = null;
+        try {
+            int id = client.GetCurrentUserID();
+            ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(id);
+            if (userInfo != null)
+                username = userInfo.toString("Name");
+        } catch (LivelinkException e) {
+            // Ignore exceptions, which is conservative. Worst case is
+            // that we will impersonate the already logged in user
+            // and gratuitously check the permissions on all content.
         }
+
+        // If there is a separately specified traversal user (different
+        // than our current user), then impersonate that traversal user
+        // when building the list of documents to index.
+        String traversalUsername = connector.getTraversalUsername();
+        if (traversalUsername != null && !traversalUsername.equals(username)) {
+            client.ImpersonateUserEx(traversalUsername,
+                connector.getDomainName());
+            currentUsername = traversalUsername;
+        } else
+            currentUsername = username;
     }
 
 
@@ -576,7 +594,7 @@ class LivelinkTraversalManager
                     LOGGER.fine("RESULTSET: " + results.size() + " rows.");
                 return new LivelinkDocumentList(connector, client,
                     contentHandler, results, FIELDS, traversalContext,
-                    checkpoint);
+                    checkpoint, currentUsername);
             }
         }
     }

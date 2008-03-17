@@ -143,6 +143,18 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
+    public int GetCurrentUserID() throws RepositoryException {
+        LLValue id = new LLValue();
+        try {
+            if (users.GetCurrentUserID(id) != 0)
+                throw new LapiException(session, LOGGER);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+        return id.toInteger();
+    }
+    
+    /** {@inheritDoc} */
     public synchronized ClientValue GetCookieInfo()
             throws RepositoryException {
         LLValue cookies = new LLValue();
