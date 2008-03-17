@@ -364,15 +364,14 @@ public class LivelinkConnectorType implements ConnectorType {
     private static class RadioSelectProperty extends FormProperty {
         private final String[] buttonNames;
 
-        RadioSelectProperty(String name, String[] buttonNames, String defaultValue)
-        {
+        RadioSelectProperty(String name, String[] buttonNames,
+                String defaultValue) {
             super(name, defaultValue);
             this.buttonNames = buttonNames;
         }
 
         protected void addFormControl(StringBuffer buffer, String value,
-                                      ResourceBundle labels)
-        {
+                ResourceBundle labels) {
             if (value == null)
                 value = defaultValue;
 
@@ -419,8 +418,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         protected void addFormControl(StringBuffer buffer, String value,
-            ResourceBundle labels) {
-
+                ResourceBundle labels) {
             if (value == null)
                 value = defaultValue;
             
@@ -461,8 +459,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
         boolean isHidden(String propertyName) {
             Boolean b = (Boolean) hiddenProperties.get(propertyName);
-            if (b == null) return false;
-            return b.booleanValue();
+            return b != null && b.booleanValue();
         }
 
         void setHideIgnoreDisplayUrlErrors(boolean hide) {
@@ -536,7 +533,8 @@ public class LivelinkConnectorType implements ConnectorType {
             baseEntries.add(new TextInputProperty("server", true));
             baseEntries.add(new TextInputProperty("port", true, "2099"));
             /* Story 2888
-            String tunnels[] = { "noTunneling", "httpTunneling", "httpsTunneling" };
+            String tunnels[] = { "noTunneling", "httpTunneling",
+                "httpsTunneling" };
             baseEntries.add(new RadioSelectProperty("enableHttpTunneling",
                                                     tunnels, tunnels[0]));
             */                                        
@@ -577,6 +575,10 @@ public class LivelinkConnectorType implements ConnectorType {
                 new EnablerProperty("enableHttpTunneling", "false");
             tunnelingEntries = new ArrayList();
             tunnelingEntries.add(new TextInputProperty("livelinkCgi", true));
+            tunnelingEntries.add(new TextInputProperty("httpUsername"));
+            tunnelingEntries.add(new PasswordInputProperty("httpPassword"));
+            tunnelingEntries.add(
+                new BooleanSelectProperty("enableNtlm", "false"));
             tunnelingEntries.add(new BooleanSelectProperty("https", "false"));
             tunnelingEntries.add(
                 new BooleanSelectProperty("useUsernamePasswordWithWebServer",
@@ -593,6 +595,8 @@ public class LivelinkConnectorType implements ConnectorType {
             authenticationEntries.add(
                 new TextInputProperty("authenticationLivelinkCgi", true));
             authenticationEntries.add(
+                new BooleanSelectProperty("authenticationEnableNtlm", "false"));
+            authenticationEntries.add(
                 new BooleanSelectProperty("authenticationHttps", "false"));
             authenticationEntries.add(
                 new TextInputProperty("authenticationDomainName"));
@@ -604,8 +608,10 @@ public class LivelinkConnectorType implements ConnectorType {
             // Indexing Traversal configuration
             indexingLabel = new LabelProperty("indexing");
             indexingEntries = new ArrayList();
-            indexingEntries.add(new TextInputProperty("traversalUsername", false)); 
-            indexingEntries.add(new TextInputProperty("includedLocationNodes"));
+            indexingEntries.add(
+                new TextInputProperty("traversalUsername", false)); 
+            indexingEntries.add(
+                new TextInputProperty("includedLocationNodes"));
         }
 
         private final Map data;
@@ -629,7 +635,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         private void addEntries(StringBuffer buffer, ArrayList entries,
-            boolean hide, String labelPrefix, String labelSuffix) {
+                boolean hide, String labelPrefix, String labelSuffix) {
             for (Iterator i = entries.iterator(); i.hasNext(); ) {
                 FormProperty prop = (FormProperty) i.next();
                 addEntry(buffer, prop, hide, labelPrefix, labelSuffix);
@@ -637,7 +643,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         private void addEntry(StringBuffer buffer, FormProperty prop,
-            boolean hide, String labelPrefix, String labelSuffix) {
+                boolean hide, String labelPrefix, String labelSuffix) {
             if (hide)
                 prop = new HiddenInputProperty(prop);
             if (formContext.isHidden(prop.name))

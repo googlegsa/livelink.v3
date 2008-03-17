@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -143,6 +143,18 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
+    public int GetCurrentUserID() throws RepositoryException {
+        LLValue id = new LLValue();
+        try {
+            if (users.GetCurrentUserID(id) != 0)
+                throw new LapiException(session, LOGGER);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+        return id.toInteger();
+    }
+    
+    /** {@inheritDoc} */
     public synchronized ClientValue GetCookieInfo()
             throws RepositoryException {
         LLValue cookies = new LLValue();
@@ -156,12 +168,14 @@ final class LapiClient implements Client {
     }
     
     /** {@inheritDoc} */
-    public synchronized ClientValue GetUserOrGroupByID(int id)
+    public synchronized ClientValue GetUserOrGroupByIDNoThrow(int id)
             throws RepositoryException {
         LLValue userInfo = new LLValue();
         try {
             if (users.GetUserOrGroupByID(id, userInfo) != 0) {
-                throw new LapiException(session, LOGGER);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.fine(LapiException.buildMessage(session));
+                return null;
             }
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
@@ -253,6 +267,9 @@ final class LapiClient implements Client {
                 ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
                 ((LapiClientValue) attributeSetPath).getLLValue();
+
+            // LAPI AttrListNames method does not reset the session status.
+            session.setError(0, "");
             if (attributes.AttrListNames(catVersion, attrPath,
                     attrNames) != 0) {
                 throw new LapiException(session, LOGGER); 
@@ -274,6 +291,9 @@ final class LapiClient implements Client {
                 ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
                 ((LapiClientValue) attributeSetPath).getLLValue();
+
+            // LAPI AttrGetInfo method does not reset the session status.
+            session.setError(0, "");
             if (attributes.AttrGetInfo(catVersion, attributeName, attrPath,
                     info) != 0) {
                 throw new LapiException(session, LOGGER);
@@ -295,6 +315,9 @@ final class LapiClient implements Client {
                 ((LapiClientValue) categoryVersion).getLLValue();
             LLValue attrPath = (attributeSetPath == null) ? null :
                 ((LapiClientValue) attributeSetPath).getLLValue();
+
+            // LAPI AttrGetValues method does not reset the session status.
+            session.setError(0, "");
             if (attributes.AttrGetValues(catVersion, attributeName,
                     LAPI_ATTRIBUTES.ATTR_DATAVALUES, attrPath,
                     attrValues) != 0) {
@@ -378,461 +401,5 @@ final class LapiClient implements Client {
             session.ImpersonateUser(username);
         else
             session.ImpersonateUserEx(username, domain);
-    }
-
-
-    /**
-     * Gets the category attribute values for the indicated
-     * object. Each attribute name is mapped to a linked list of
-     * values for each occurrence of that attribute. Attributes
-     * with the same name in different categories will have their
-     * values merged into a single list. Attribute sets are
-     * supported, but nested attribute sets are not. User
-     * attributes are resolved into the user or group name.
-     *
-     * @param objId the object id of the Livelink item for which
-     * to retrieve category information
-     * @return a map of attribute names to lists of values
-     * @throws RepositoryException if an error occurs
-     */
-    public Map getCategoryAttributes(int objId) throws RepositoryException {
-        HashMap data = new HashMap(); 
-        try {
-
-            // List the categories. LAPI requires us to use this
-            // Assoc containing the id instead of just passing in
-            // the id. The Assoc may have two other values, Type,
-            // which specifies the kind of object being looked up
-            // (there's only one legal value currently) and
-            // Version, which specifies which version of the
-            // object to use (the default is the current
-            // version).
-            LLValue objectIdAssoc = new LLValue().setAssoc();
-            objectIdAssoc.add("ID", objId); 
-            LLValue categoryIds = new LLValue(); 
-            if (documents.ListObjectCategoryIDs(objectIdAssoc,
-                    categoryIds) != 0) {
-                throw new LapiException(session, LOGGER);
-            }
-
-            // Loop over the categories.
-            int numCategories = categoryIds.size();
-            for (int i = 0; i < numCategories; i++) {
-                LLValue categoryId = categoryIds.toValue(i);
-                // Make sure we know what type of categoryId
-                // object we have. There are also Workflow
-                // category attributes which can't be read here.
-                int categoryType = categoryId.toInteger("Type");
-                if (LAPI_ATTRIBUTES.CATEGORY_TYPE_LIBRARY != categoryType) {
-                    LOGGER.finer("Unknown category implementation type " +
-                        categoryType + "; skipping"); 
-                    continue;
-                }
-                //System.out.println(categoryId.toString("DisplayName")); 
-
-                LLValue categoryVersion = new LLValue();
-                if (documents.GetObjectAttributesEx(objectIdAssoc,
-                        categoryId, categoryVersion) != 0) {
-                    throw new LapiException(session, LOGGER);
-                }
-                LLValue attributeNames = new LLValue();
-                if (attributes.AttrListNames(categoryVersion, null, 
-                        attributeNames) != 0) {
-                    throw new LapiException(session, LOGGER);
-                }
-                
-                // Loop over the attributes for this category.
-                int numAttributes = attributeNames.size();
-                for (int j = 0; j < numAttributes; j++) {
-                    String attributeName = attributeNames.toString(j);
-                    LLValue attributeInfo = new LLValue();
-                    if (attributes.AttrGetInfo(categoryVersion, attributeName,
-                            null, attributeInfo) != 0) {
-                        throw new LapiException(session, LOGGER);
-                    }
-                    int attributeType = attributeInfo.toInteger("Type");
-                    if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == attributeType) {
-                        getAttributeSetValues(data, categoryVersion, 
-                            attributeName); 
-                    }
-                    else {
-                        getAttributeValue(data, categoryVersion,
-                            attributeName, attributeType, null, attributeInfo);
-                    }
-                }
-            }
-        } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER); 
-        }
-        return data; 
-    }
-
-    /**
-     * Gets the values for attributes contained in an attribute set.
-     *
-     * @param data the object in which to store the values
-     * @param categoryVersion the category being read
-     * @param attributeName the name of the attribute set
-     * @throws RepositoryException if an error occurs
-     */
-    private void getAttributeSetValues(Map data, LLValue categoryVersion,
-            String attributeName) throws RepositoryException {
-        // The "path" indicates the set attribute name to look
-        // inside of in other methods like AttrListNames.
-        LLValue attributeSetPath = new LLValue().setList(); 
-        attributeSetPath.add(attributeName); 
-
-        // Get a list of the names of the attributes in the
-        // set. Look up and store the types to avoid repeating
-        // the type lookup when there's more than one instance of
-        // the attribute set.
-        LLValue attributeSetNames = new LLValue(); 
-        if (attributes.AttrListNames(categoryVersion, attributeSetPath,
-                attributeSetNames) != 0) {
-            throw new LapiException(session, LOGGER); 
-        }
-        LLValue[] attributeInfo = new LLValue[attributeSetNames.size()];
-        for (int i = 0; i < attributeSetNames.size(); i++) {
-            String name = attributeSetNames.toString(i); 
-            LLValue info = new LLValue();
-            if (attributes.AttrGetInfo(categoryVersion, name, 
-                    attributeSetPath, info) != 0) {
-                throw new LapiException(session, LOGGER);
-            }
-            attributeInfo[i] = info;
-        }
-
-        // List the values for the set attribute itself. There
-        // may be multiple instances of the set.
-        LLValue setValues = new LLValue();
-        if (attributes.AttrGetValues(categoryVersion,
-                attributeName, LAPI_ATTRIBUTES.ATTR_DATAVALUES,
-                null, setValues) != 0) {
-            throw new LapiException(session, LOGGER);
-        }
-        // Update the path to hold index of the set instance.
-        attributeSetPath.setSize(2); 
-        int numSets = setValues.size();
-        for (int i = 0; i < numSets; i++) {
-            attributeSetPath.setInteger(1, i); 
-            // For each instance (row) of the attribute set, loop
-            // over the attribute names.
-            for (int j = 0; j < attributeSetNames.size(); j++) {
-                int type = attributeInfo[j].toInteger("Type");
-                if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == type) {
-                    LOGGER.finer("Nested attributes sets are not supported.");
-                    continue;
-                }
-                //System.out.println("      " + attributeSetNames.toString(j));
-                getAttributeValue(data, categoryVersion, 
-                    attributeSetNames.toString(j), type,
-                    attributeSetPath, attributeInfo[j]); 
-            }
-        }
-    }
-
-    /**
-     * Gets the values for an attribute.
-     *
-     * @param data the object to hold the values
-     * @param categoryVersion the category version in which the
-     * values are stored 
-     * @param attributeName the name of the attribute whose
-     * values are being read
-     * @param attributeType the type of the attribute data; may not be "SET"
-     * @param attributeSetPath if the attribute is contained
-     * within an attribute set, this is a list containing the set
-     * name and set instance index; otherwise, this should be
-     * null
-     * throws RepositoryException if an error occurs
-     */
-    private void getAttributeValue(Map data, LLValue categoryVersion,
-            String attributeName, int attributeType,
-            LLValue attributeSetPath, LLValue attributeInfo)
-            throws RepositoryException {
-
-        if (LAPI_ATTRIBUTES.ATTR_TYPE_SET == attributeType)
-            throw new IllegalArgumentException("attributeType = SET"); 
-        // Skip attributes marked as not searchable.
-        if (!attributeInfo.toBoolean("Search"))
-            return;
-
-        LLValue attributeValues = new LLValue();
-        if (attributes.AttrGetValues(categoryVersion,
-                attributeName, LAPI_ATTRIBUTES.ATTR_DATAVALUES,
-                attributeSetPath, attributeValues) != 0) {
-            throw new LapiException(session, LOGGER);
-        }
-        // Even a simple attribute type can have multiple values
-        // (displayed as rows in the Livelink UI).
-        int numValues = attributeValues.size();
-        if (numValues == 0)
-            return;
-
-        LinkedList valueList = (LinkedList) data.get(attributeName);
-        if (valueList == null) {
-            valueList = new LinkedList(); 
-            data.put(attributeName, valueList);
-        }
-        for (int k = 0; k < numValues; k++) {
-            // Avoid errors if the attribute hasn't been set.
-            int dataType = attributeValues.toValue(k).type(); 
-            if (LLValue.LL_UNDEFINED == dataType ||
-                    LLValue.LL_ERROR == dataType ||
-                    LLValue.LL_NOTSET == dataType) {
-                continue;
-            }
-            if (LAPI_ATTRIBUTES.ATTR_TYPE_USER == attributeType) {
-                LLValue userInfo = new LLValue();
-                if (users.GetUserOrGroupByID(
-                        attributeValues.toInteger(k),
-                        userInfo) != 0) {
-                    throw new LapiException(session, LOGGER);
-                }
-                valueList.add(userInfo.toString("Name")); 
-            } else {
-                // TODO: what value object should we put here? A
-                // CategoryValue, like the LivelinkValue?
-                valueList.add(attributeValues.toValue(k).toString());
-            }
-        }
-        // Don't return empty attribute value lists.
-        if (valueList.size() == 0)
-            data.remove(attributeName); 
-    }
-
-    /**
-     * Gets the category attribute values for the indicated
-     * object. Each attribute name is mapped to a linked list of
-     * values for each occurrence of that attribute. Attributes
-     * with the same name in different categories will have their
-     * values merged into a single list. Attribute sets are
-     * supported, but nested attribute sets are not. User
-     * attributes are resolved into the user or group name.
-     *
-     * @param objId the object id of the Livelink item for which
-     * to retrieve category information
-     * @return a map of attribute names to lists of values
-     * @throws RepositoryException if an error occurs
-     */
-    /* Alternate implementation of category attribute fetching
-     * which uses the underlying Livelink database tables.
-     */
-    public Map getCategoryAttributes2(int objId) throws RepositoryException {
-        HashMap results = new HashMap(); 
-        try {
-            String[] columns = { "ID", "DefID", "AttrId", "AttrType", 
-                                 "EntryNum", "ValInt", "ValReal", 
-                                 "ValDate", "ValStr", "ValLong" }; 
-            ClientValue attributeData = ListNodes(
-                "ID=" + objId + " order by DefId,AttrId,EntryNum",
-                "LLAttrData", columns); 
-            if (attributeData.size() == 0) {
-                LOGGER.finest("No category data for " + objId); 
-                return results;
-            }
-            Map attributeNames = getAttributeNames2(objId);
-            for (int i = 0; i < attributeData.size(); i++) {
-                String categoryId = attributeData.toString(i, "DefId");
-                String attributeId = attributeData.toString(i, "AttrId");
-                String attributeName = getAttributeName2(
-                    attributeNames, categoryId, attributeId); 
-                if (attributeName == null) {
-                    if (LOGGER.isLoggable(Level.WARNING)) {
-                        LOGGER.warning("No attribute name for cat/attr: " + 
-                            categoryId + "/" + attributeId);
-                    }
-                    continue;
-                }
-                LinkedList valueList = getValueList2(results, attributeName); 
-                int attributeType = attributeData.toInteger(i, "AttrType");
-
-                // TODO: What type of object should be stored for
-                // the data? We don't have access to the original
-                // LLValue.
-                switch (attributeType)
-                {
-                case LAPI_ATTRIBUTES.ATTR_TYPE_BOOL:
-                    // The API methods don't return a value when
-                    // a checkbox is unset, so here we check for
-                    // "0" and don't add a value.
-                    if (attributeData.isDefined(i, "ValInt")) {
-                        int flag = attributeData.toInteger(i, "ValInt");
-                        if (flag != 0)
-                            valueList.add(attributeData.toString(i, "ValInt"));
-                    }
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_DATE:
-                case LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP:
-                    if (attributeData.isDefined(i, "ValDate"))
-                        valueList.add(attributeData.toString(i, "ValDate")); 
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_INT:
-                case LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP:
-                    if (attributeData.isDefined(i, "ValInt"))
-                        valueList.add(attributeData.toString(i, "ValInt")); 
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD:
-                case LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP:
-                    if (attributeData.isDefined(i, "ValStr"))
-                        valueList.add(attributeData.toString(i, "ValStr")); 
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI:
-                    if (attributeData.isDefined(i, "ValLong"))
-                        valueList.add(attributeData.toString(i, "ValLong")); 
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_USER:
-                    if (attributeData.isDefined(i, "ValInt"))
-                    {
-                        LLValue userInfo = new LLValue();
-                        int userId = attributeData.toInteger(i, "ValInt");
-                        if (users.GetUserOrGroupByID(userId, userInfo) != 0) {
-                            throw new LapiException(session, LOGGER);
-                        }
-                        valueList.add(userInfo.toString("Name"));
-                    }
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_REAL:
-                case LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP:
-                    if (attributeData.isDefined(i, "ValReal"))
-                        valueList.add(attributeData.toString(i, "ValReal")); 
-                    break;
-                case LAPI_ATTRIBUTES.ATTR_TYPE_SET:
-                default:
-                    break;
-                }
-                if (valueList.size() == 0)
-                    results.remove(attributeName); 
-            }
-        } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER); 
-        }
-        return results; 
-    }
-
-    /**
-     * Looks up the attribute name in the map built by getAttributeNames2.
-     *
-     * @param attributeNames the map of names
-     * @param categoryId the category id
-     * @param attributeId the attribute id
-     * @return the attribute name, or null
-     */
-    private String getAttributeName2(Map attributeNames, String categoryId, 
-            String attributeId) {
-        String key = categoryId + "_" + attributeId; 
-        return (String) attributeNames.get(key);
-    }
-
-
-    /**
-     * Returns the list of values into which values for the given
-     * attribute should be placed. Adds the list to the set of
-     * results if it isn't present.
-     *
-     * @param results the attribute data results
-     * @param attributeName the attribute name
-     * @return a list for values
-     */
-    private LinkedList getValueList2(Map results, String attributeName)
-    {
-        LinkedList value = (LinkedList) results.get(attributeName);
-        if (value == null)
-        {
-            value = new LinkedList();
-            results.put(attributeName, value);
-        }
-        return value;
-    }
-
-    /**
-     * Builds a map which maps category and attribute ids to
-     * attribute names. The keys are of the form
-     * "categoryId_attributeId".
-     *
-     * @param objId the object id
-     * @return an attribute name map
-     * @throws RepositoryException if an error occurs
-     */
-    /* The CatRegionMap table has a field called "RegionName"
-     * which is of the form "Attr_" + categoryId + "_" +
-     * attributeIndex. This method creates a map from keys of the
-     * form categoryId + "_" + attributeIndex to the attribute names.
-     */
-    private Map getAttributeNames2(int objId) throws RepositoryException {
-        String[] columns = { "CatId", "AttrName", "RegionName" }; 
-        String query = "CatId in (select distinct DefId from LLAttrData " +
-            "where ID = " + objId + ")";
-        ClientValue namesRecArray = ListNodes(query, "CatRegionMap", columns); 
-        HashMap attributeNames = new HashMap(); 
-        for (int i = 0; i < namesRecArray.size(); i++) {
-            String categoryId = namesRecArray.toString(i, "CatId");
-            String region = namesRecArray.toString(i, "RegionName");
-            int u = region.indexOf("_");
-            if (u != -1) {
-                String key = region.substring(u + 1);
-                if (!key.matches("\\d+\\_\\d+")) {
-                    LOGGER.warning("Unknown RegionName format: " + region);
-                    continue;
-                }
-                if (namesRecArray.isDefined(i, "AttrName")) {
-                    attributeNames.put(key, namesRecArray.toString(i,
-                                           "AttrName"));
-                }
-                else
-                    LOGGER.warning("No attribute name for " + region); 
-            }
-            else
-                LOGGER.warning("Unknown RegionName format: " + region);
-        }
-        return attributeNames;
-    }
-
-    /**
-     * Utility to return a printable name for an LLValue data type.
-     *
-     * @param type the type
-     * @return the type name
-     */
-    private String llvalueTypeName(int type) {
-        switch(type) {
-        case LLValue.LL_ASSOC: return "ASSOC"; 
-        case LLValue.LL_BOOLEAN: return "BOOLEAN"; 
-        case LLValue.LL_DATE: return "DATE"; 
-        case LLValue.LL_DOUBLE: return "DOUBLE"; 
-        case LLValue.LL_ERROR: return "ERROR"; 
-        case LLValue.LL_INTEGER: return "INTEGER"; 
-        case LLValue.LL_LIST: return "LIST"; 
-        case LLValue.LL_NOTSET: return "NOTSET"; 
-        case LLValue.LL_RECORD: return "RECORD"; 
-        case LLValue.LL_STRING: return "STRING"; 
-        case LLValue.LL_TABLE: return "TABLE"; 
-        case LLValue.LL_UNDEFINED: return "UNDEFINED"; 
-        }
-        return "UNKNOWN";
-    }
-
-
-    /**
-     * Utility to return a printable name for an attribute type.
-     *
-     * @param type the type
-     * @return the type name
-     */
-    private String attributeTypeName(int type) {
-        switch (type) {
-        case LAPI_ATTRIBUTES.ATTR_TYPE_BOOL: return "BOOL"; 
-        case LAPI_ATTRIBUTES.ATTR_TYPE_DATE: return "DATE";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_DATEPOPUP: return "DATEPOPUP";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_INT: return "INT";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_INTPOPUP: return "INTPOPUP";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_STRFIELD: return "STRFIELD";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_STRMULTI: return "STRMULTI";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_STRPOPUP: return "STRPOPUP";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_USER: return "USER";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_REAL: return "REAL";
-        case LAPI_ATTRIBUTES.ATTR_TYPE_REALPOPUP: return "REALPOPUP";
-        default: return "OTHER TYPE"; 
-        }
     }
 }

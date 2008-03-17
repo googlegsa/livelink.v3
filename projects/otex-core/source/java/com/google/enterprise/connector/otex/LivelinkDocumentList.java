@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,6 +56,11 @@ class LivelinkDocumentList implements DocumentList {
     /** An immutable true value. */
     private static final Value VALUE_TRUE = Value.getBooleanValue(true);
 
+    /** ObjectInfo and VersionInfo assoc fields that hold UserId or GroupId. */
+    private static final String[] USER_FIELD_NAMES = {
+        "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
+        "LockedBy", "Owner" };
+
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
@@ -77,6 +82,9 @@ class LivelinkDocumentList implements DocumentList {
     /** The TraversalContext from TraversalContextAware Interface */
     private final TraversalContext traversalContext;
 
+    /** This is the checkpoint string for the current DocumentList */
+    private String checkpoint;
+
     /** If the traversal client user is the public content user,
      *  then all documents it sees will be publicly available.
      */
@@ -85,20 +93,17 @@ class LivelinkDocumentList implements DocumentList {
     /** This subset of documents are authorized as public content. */
     private HashSet publicContentDocs = null;
 
-    /** This is the checkpoint string for the current DocumentList */
-    private String checkpoint;
-
     /** This is the DocumentList Iterator */
     private Iterator docIterator;
 
     /** This is a small cache of UserID and GroupID name resolutions. */
-    private HashMap userNameCache;
+    private final HashMap userNameCache = new HashMap(200);
 
     LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, TraversalContext traversalContext,
-            String checkpoint) throws RepositoryException {
-
+            String checkpoint, String currentUsername)
+            throws RepositoryException {
         this.connector = connector;
         this.client = client;
         this.valueFactory = client.getClientValueFactory();
@@ -107,10 +112,9 @@ class LivelinkDocumentList implements DocumentList {
         this.fields = fields;
         this.traversalContext = traversalContext;
         this.checkpoint = checkpoint;
-        this.userNameCache = new HashMap(200);
 
         // Subset the docIds in the recArray into Public and Private Docs.
-        findPublicContent();
+        findPublicContent(currentUsername);
 
         // Prime the DocumentList.nextDocument() iterator
         docIterator = iterator();
@@ -159,15 +163,15 @@ class LivelinkDocumentList implements DocumentList {
      * Connector's ClientFactory.  It should really get it from the
      * Session, but at this point we don't know what session we
      * belong to.
+     *
+     * @param currentUsername the currently logged in user; may be impersonated
      */
-    private void findPublicContent() throws RepositoryException {
+    private void findPublicContent(String currentUsername)
+            throws RepositoryException {
         String pcuser = connector.getPublicContentUsername();
-        if ((pcuser != null) && (pcuser.length() > 0)) {
-            String user = connector.getTraversalUsername();
-            if ((user == null) || (user.length() == 0))
-                user = connector.getUsername();
-            isPublicContentUser = pcuser.equals(user);
-            if (! isPublicContentUser) {
+        if (pcuser != null && pcuser.length() > 0) {
+            isPublicContentUser = pcuser.equals(currentUsername);
+            if (!isPublicContentUser) {
                 // Get the subset of the DocIds that have public access.
                 ClientFactory clientFactory = connector.getClientFactory();
                 LivelinkAuthorizationManager authz;
@@ -239,7 +243,7 @@ class LivelinkDocumentList implements DocumentList {
     /*
      * TODO: Eliminate this iterator and implement nextDocument
      * directly using this code. The gap seems to be just that
-     * LivelinkTest assumes that it can iterator over the DocumentList
+     * LivelinkTest assumes that it can iterate over the DocumentList
      * multiple times, which the new SPI doesn't allow. We could redo
      * the tests to eliminate that requirement, or add an internal
      * reset/restart/beforeFirst method to cause nextDocument to start
@@ -274,51 +278,39 @@ class LivelinkDocumentList implements DocumentList {
         private HashSet excludedCategories;
 
         /** Whether to even bother with Category attributes? */
-        boolean doCategories; 
+        private final boolean doCategories; 
 
         /** Index only category attributes that are marked searchable? */
-        boolean includeSearchable;
+        private final boolean includeSearchable;
 
-        /** The set of Subtypes for which we will index hidden items. */
-        HashSet hiddenItemsSubtypes;
-
+        /** Include category names as properties? */
+        private final boolean includeCategoryNames;
 
         LivelinkDocumentListIterator() {
             this.row = 0;
             this.size = recArray.size();
 
-            // Fetch the set of categories to include.  
+            // Fetch the set of categories to include and exclude.
             this.includedCategories = connector.getIncludedCategories();
+            this.excludedCategories = connector.getExcludedCategories();
 
             // Should we index any Category attributes at all?
-            this.doCategories = !(includedCategories.contains("none"));
-            
-            // Should we only include "searchable" attributes? (Otherwise
-            // include all attributes).
+            this.doCategories = !(includedCategories.contains("none") ||
+                excludedCategories.contains("all"));
+
+            // Set qualifiers on the included category attributes.
             this.includeSearchable = includedCategories.contains("searchable");
+            this.includeCategoryNames = includedCategories.contains("name");
 
             // If we index all Categories, don't bother searching the set, 
             // as it will only slow us down.
             if (includedCategories.contains("all"))
                 includedCategories = null;
 
-            // Fetch the set of categories to exclude. 
-            this.excludedCategories = connector.getExcludedCategories();
-            // FIXME:  What if included and excluded contradict each other?
-            if (excludedCategories.contains("all"))
-                this.doCategories = false;
-
             // If we exclude no Categories, don't bother searching the set, 
             // as it will only slow us down.
             if (excludedCategories.contains("none"))
                 excludedCategories = null;
-
-            // Fetch the Set of Subtypes for which we will index hidden items.
-            hiddenItemsSubtypes = connector.getShowHiddenItems();
-
-            // If we will index all hidden items, we can just skip all the checks.
-            if (hiddenItemsSubtypes.contains("all"))
-                hiddenItemsSubtypes = null;
         }
 
         public boolean hasNext() {
@@ -332,15 +324,6 @@ class LivelinkDocumentList implements DocumentList {
                     volumeId = recArray.toInteger(row, "OwnerID");
                     subType  = recArray.toInteger(row, "Subtype");
                     objectInfo = null;
-
-                    // If we are skipping some hidden items, and this is one
-                    // of those items, then ... well, skip it.
-                    // FIXME: This could throw a NoSuchElementException, even
-                    // if the caller got a positive response to hasNext().
-                    if (skipHiddenItem()) {
-                        row++;
-                        return next();
-                    }
 
                     props = new LivelinkDocument(objectId, fields.length*2);
 
@@ -374,27 +357,6 @@ class LivelinkDocumentList implements DocumentList {
         }
 
 
-        /**
-         * If we as skipping some (or all) hidden items, and this item
-         * qualifies as one to skip, return <code>true</code>, otherwise 
-         * return <code>false</code>.
-         */
-        private boolean skipHiddenItem() throws RepositoryException {
-
-            if ((hiddenItemsSubtypes == null) ||
-                hiddenItemsSubtypes.contains(new Integer(subType))) {
-                return false;
-            }
-
-            // OK. A hidden item of this Subtype should not be indexed.
-            // Check for the hidden display type flag in the ObjectInfo.
-            if (objectInfo == null)
-                objectInfo = client.GetObjectInfo(volumeId, objectId);
-
-            return (objectInfo.toInteger("Catalog") == Client.DISPLAYTYPE_HIDDEN);
-        }
-
-
         /** Collects the recarray-based properties. */
         /*
          * TODO: Undefined values will not be added to the property
@@ -408,10 +370,10 @@ class LivelinkDocumentList implements DocumentList {
                     ClientValue value =
                         recArray.toValue(row, fields[i].fieldName);
                     if (value.isDefined()) {
-                        if (isUserIdOrGroupId(fields[i].fieldName))
+                        if (isUserIdOrGroupId(fields[i].fieldName)) {
                             // FIXME: hack knows that UserID has 1 propertyName
                             addUserByName(fields[i].propertyNames[0], value);
-                        else
+                        } else
                             props.addProperty(fields[i], value);
                     }
                 }
@@ -517,7 +479,6 @@ class LivelinkDocumentList implements DocumentList {
          */
         private void collectExtendedDataProperties()
                 throws RepositoryException {
-
             String[] fields = connector.getExtendedDataKeys(subType);
             if (fields == null)
                 return;
@@ -528,21 +489,35 @@ class LivelinkDocumentList implements DocumentList {
             if (extendedData == null || !extendedData.hasValue())
                 return;
 
+            // Make a set of the names in the assoc.
+            HashSet names = new HashSet();
+            Enumeration it = extendedData.enumerateNames();
+            while (it.hasMoreElements())
+                names.add(it.nextElement());
+            
             // Decompose the ExtendedData into its atomic values,
             // and add them as properties.
             for (int i = 0; i < fields.length; i++) {
-                ClientValue value = extendedData.toValue(fields[i]);
-                if (value != null && value.hasValue()) {
-                    // XXX: For polls, the Questions field is a
-                    // stringified list of assoc. We're only handling
-                    // this one case, rather than handling stringified
-                    // values generally.
-                    if (subType == Client.POLLSUBTYPE &&
+                if (names.contains(fields[i])) {
+                    ClientValue value = extendedData.toValue(fields[i]);
+                    if (value != null && value.hasValue()) {
+                        // XXX: For polls, the Questions field is a
+                        // stringified list of assoc. We're only handling
+                        // this one case, rather than handling stringified
+                        // values generally.
+                        if (subType == Client.POLLSUBTYPE &&
                             fields[i].equals("Questions")) {
-                        value = value.stringToValue();
-                    }
+                            value = value.stringToValue();
+                        }
 
-                    collectValueProperties(fields[i], value);
+                        collectValueProperties(fields[i], value);
+                    }
+                } else {
+                    if (LOGGER.isLoggable(Level.WARNING)) {
+                        LOGGER.warning("ExtendedData for " + objectId +
+                            " (subtype " + subType + ") has no " +
+                            fields[i] + " feature.");
+                    }
                 }
             }
         }
@@ -573,7 +548,7 @@ class LivelinkDocumentList implements DocumentList {
                     // If the client wished to be more selective, they should
                     // have added specific ExtendedData fields to the map.
                     if ("ExtendedData".equalsIgnoreCase(fields[i]))
-                        collectValueProperties(fields[i], value);                        
+                        collectValueProperties(fields[i], value);
                     else if (isUserIdOrGroupId(fields[i]))
                         addUserByName(fields[i], value);
                     else 
@@ -673,7 +648,6 @@ class LivelinkDocumentList implements DocumentList {
          * @throws RepositoryException if an error occurs
          */
         private void collectCategoryAttributes() throws RepositoryException {
-
             if (doCategories == false)
                 return;
             
@@ -687,7 +661,6 @@ class LivelinkDocumentList implements DocumentList {
             // version).
             ClientValue objIdAssoc = valueFactory.createAssoc();
             objIdAssoc.add("ID", objectId);
-
             ClientValue categoryIds = client.ListObjectCategoryIDs(objIdAssoc);
 
             // Loop over the categories.
@@ -709,14 +682,26 @@ class LivelinkDocumentList implements DocumentList {
                 // category attributes which can't be read here.
                 int categoryType = categoryId.toInteger("Type");
                 if (Client.CATEGORY_TYPE_LIBRARY != categoryType) {
-                    LOGGER.finer("Unknown category implementation type " +
-                        categoryType + "; skipping");
+                    if (LOGGER.isLoggable(Level.FINER)) {
+                        LOGGER.finer("Unknown category implementation type " +
+                            categoryType + "; skipping");
+                    }
                     continue;
                 }
-                //System.out.println(categoryId.toString("DisplayName"));
 
-                ClientValue categoryVersion;
-                categoryVersion =
+                if (includeCategoryNames) {
+                    // XXX: This is the only property name that is
+                    // hard-coded here like this. I think that's OK,
+                    // because the recarray fields are just hard-coded
+                    // someplace else. "Category" is an ObjectInfo
+                    // attribute name that is unused in Livelink 9.0 or
+                    // later.
+                    ClientValue name = categoryId.toValue("DisplayName");
+                    if (name.hasValue())
+                        props.addProperty("Category", name);
+                }
+
+                ClientValue categoryVersion =
                     client.GetObjectAttributesEx(objIdAssoc, categoryId);
                 ClientValue attrNames =
                     client.AttrListNames(categoryVersion, null);
@@ -728,9 +713,8 @@ class LivelinkDocumentList implements DocumentList {
                     ClientValue attrInfo =
                         client.AttrGetInfo(categoryVersion, attrName, null);
                     int attrType = attrInfo.toInteger("Type");
-                    if (Client.ATTR_TYPE_SET == attrType) {
+                    if (Client.ATTR_TYPE_SET == attrType)
                         getAttributeSetValues(categoryVersion, attrName);
-                    }
                     else {
                         getAttributeValue(categoryVersion, attrName,
                             attrType, null, attrInfo);
@@ -841,13 +825,10 @@ class LivelinkDocumentList implements DocumentList {
                     continue;
                 // System.out.println("getAttributeValue: k = " + k +
                 // " ; value = " + value.toString2());
-                if (Client.ATTR_TYPE_USER == attrType) {
-                    int userId = value.toInteger();
-                    ClientValue userInfo = client.GetUserOrGroupByID(userId);
-                    props.addProperty(attrName, userInfo.toValue("Name"));
-                } else {
+                if (Client.ATTR_TYPE_USER == attrType)
+                    addUserByName(attrName, value);
+                else
                     props.addProperty(attrName, value);
-                }
             }
         }
 
@@ -861,23 +842,26 @@ class LivelinkDocumentList implements DocumentList {
          * resolve to a name.
          */
         private void addUserByName(String propertyName, ClientValue idValue)
-            throws RepositoryException {
-            
+                throws RepositoryException {
             // If the UserID or GroupID is 0, then ignore it.
             // For reason why, see ObjectInfo Reserved and ReservedBy fields.
             int id = idValue.toInteger();
             if (id == 0)
                 return;
-            
+
             // Check the userName cache (if we recently looked up this user).
-            ClientValue userName = (ClientValue) userNameCache.get(new Integer(id));
+            ClientValue userName =
+                (ClientValue) userNameCache.get(new Integer(id));
             if (userName == null) {
                 // User is not in the cache, get the name from the server.
-                ClientValue userInfo = client.GetUserOrGroupByID(id);
-                userName = userInfo.toValue("Name");
-                if (!userName.isDefined()) {
-                    if (LOGGER.isLoggable(Level.WARNING)) 
-                        LOGGER.warning("No user or group name found for ID " + id);
+                ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(id);
+                if (userInfo != null)
+                    userName = userInfo.toValue("Name");
+                if (userName == null || !userName.isDefined()) {
+                    if (LOGGER.isLoggable(Level.WARNING)) {
+                        LOGGER.warning("No user or group name found for ID " +
+                            id);
+                    }
                     return;
                 }
                 
@@ -903,18 +887,11 @@ class LivelinkDocumentList implements DocumentList {
          * @returns true if the field contains a UserID or a GroupID value.
          */
         private boolean isUserIdOrGroupId(String fieldName) {
-            for (int i = 0; i < userFieldNames.length; i++)
-                if (userFieldNames[i].equalsIgnoreCase(fieldName))
+            for (int i = 0; i < USER_FIELD_NAMES.length; i++) {
+                if (USER_FIELD_NAMES[i].equalsIgnoreCase(fieldName))
                     return true;
-
+            }
             return false;
         }
-
     }
-
-    /** ObjectInfo and VersionInfo assoc fields that hold UserId or GroupId. */
-    static final String[] userFieldNames = {
-        "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
-        "LockedBy", "Owner" };
-
 }

@@ -44,24 +44,28 @@ class LivelinkConnectorFactory {
     static {
         emptyProperties.put("server", ""); 
         emptyProperties.put("port", ""); 
+        emptyProperties.put("displayUrl", ""); 
         emptyProperties.put("username", ""); 
         emptyProperties.put("Password", ""); 
         emptyProperties.put("domainName", ""); 
-        emptyProperties.put("displayUrl", ""); 
-        emptyProperties.put("traversalUsername", ""); 
-        emptyProperties.put("includedLocationNodes", ""); 
         emptyProperties.put("useHttpTunneling", "false"); 
         emptyProperties.put("livelinkCgi", ""); 
+        emptyProperties.put("httpUsername", ""); 
+        emptyProperties.put("httpPassword", ""); 
+        emptyProperties.put("enableNtlm", "false"); 
         emptyProperties.put("https", "false"); 
         emptyProperties.put("useUsernamePasswordWithWebServer", "false"); 
         emptyProperties.put("useSeparateAuthentication", "false"); 
         emptyProperties.put("authenticationServer", ""); 
         emptyProperties.put("authenticationPort", "0"); 
-        emptyProperties.put("authenticationDomainName", ""); 
-        emptyProperties.put("authenticationHttps", "false"); 
         emptyProperties.put("authenticationLivelinkCgi", ""); 
+        emptyProperties.put("authenticationEnableNtlm", "false");
+        emptyProperties.put("authenticationHttps", "false"); 
+        emptyProperties.put("authenticationDomainName", ""); 
         emptyProperties.put("authenticationUseUsernamePasswordWithWebServer", 
             "false"); 
+        emptyProperties.put("traversalUsername", ""); 
+        emptyProperties.put("includedLocationNodes", ""); 
     }
 
     /*
