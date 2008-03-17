@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,6 +90,14 @@ public interface Client
     ClientValue GetServerInfo() throws RepositoryException;
 
     /**
+     * Gets the user ID for the logged in user.
+     *
+     * @return the user ID for the logged in user
+     * @throws RepositoryException if an error occurs
+     */
+    int GetCurrentUserID() throws RepositoryException;
+
+    /**
      * Gets the value of the cookies for the logged in user.
      *
      * @throws RepositoryException if an error occurs
@@ -99,6 +107,11 @@ public interface Client
     /**
      * Wraps the <code>LAPI_USERS.GetUserOrGroupByID</code> method.
      * All of the arguments of that method are exposed here.
+     * <p>
+     * This wrapper on <code>GetUserOrGroupByID</code> does not throw
+     * a <code>RepositoryExeception</code> on failure. Rather it
+     * returns a <code>null</code> value instead. [It may still throw
+     * a RepositoryException if a LAPI Runtime error occurs.]
      * 
      * @param id the ID of a user or group.
      * @returns a Record containing information about a user or group
@@ -107,7 +120,7 @@ public interface Client
      * for a user or a group.
      * @throws RepositoryException if an error occurs
      */
-    ClientValue GetUserOrGroupByID(int id) throws RepositoryException;
+    ClientValue GetUserOrGroupByIDNoThrow(int id) throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_DOCUMENTS.ListNodes</code> method.

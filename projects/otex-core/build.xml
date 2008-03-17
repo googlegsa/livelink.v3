@@ -13,6 +13,8 @@
 
   <property name="COMPILE_DEBUG_FLAG" value="true" />
   <property name="COMPILE_DEBUG_LEVEL" value="source,lines,vars" />
+  <property name="COMPILE_TARGET" value="1.4" />
+  <property name="COMPILE_BOOTCLASSPATH" value="${build.bootclasspath}" />
 
   <!-- Define Directories. -->
   <property name="build" value="build" />
@@ -63,7 +65,8 @@
     <javac srcdir="${src}" destdir="${classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="1.4" source="1.4">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+      <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <pathelement location="${spi.jarfile}" />
         <fileset dir="${thirdparty.jar.dir}">
@@ -78,7 +81,8 @@
     <javac srcdir="${tests.src}" destdir="${tests.classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="1.4" source="1.4">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+      <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
           <include name="**/junit.jar" />
