@@ -278,36 +278,34 @@ class LivelinkDocumentList implements DocumentList {
         private HashSet excludedCategories;
 
         /** Whether to even bother with Category attributes? */
-        boolean doCategories; 
+        private final boolean doCategories; 
 
         /** Index only category attributes that are marked searchable? */
-        boolean includeSearchable;
+        private final boolean includeSearchable;
 
+        /** Include category names as properties? */
+        private final boolean includeCategoryNames;
 
         LivelinkDocumentListIterator() {
             this.row = 0;
             this.size = recArray.size();
 
-            // Fetch the set of categories to include.  
+            // Fetch the set of categories to include and exclude.
             this.includedCategories = connector.getIncludedCategories();
+            this.excludedCategories = connector.getExcludedCategories();
 
             // Should we index any Category attributes at all?
-            this.doCategories = !(includedCategories.contains("none"));
-            
-            // Should we only include "searchable" attributes? (Otherwise
-            // include all attributes).
+            this.doCategories = !(includedCategories.contains("none") ||
+                excludedCategories.contains("all"));
+
+            // Set qualifiers on the included category attributes.
             this.includeSearchable = includedCategories.contains("searchable");
+            this.includeCategoryNames = includedCategories.contains("name");
 
             // If we index all Categories, don't bother searching the set, 
             // as it will only slow us down.
             if (includedCategories.contains("all"))
                 includedCategories = null;
-
-            // Fetch the set of categories to exclude. 
-            this.excludedCategories = connector.getExcludedCategories();
-            // FIXME:  What if included and excluded contradict each other?
-            if (excludedCategories.contains("all"))
-                this.doCategories = false;
 
             // If we exclude no Categories, don't bother searching the set, 
             // as it will only slow us down.
@@ -650,7 +648,6 @@ class LivelinkDocumentList implements DocumentList {
          * @throws RepositoryException if an error occurs
          */
         private void collectCategoryAttributes() throws RepositoryException {
-
             if (doCategories == false)
                 return;
             
@@ -664,7 +661,6 @@ class LivelinkDocumentList implements DocumentList {
             // version).
             ClientValue objIdAssoc = valueFactory.createAssoc();
             objIdAssoc.add("ID", objectId);
-
             ClientValue categoryIds = client.ListObjectCategoryIDs(objIdAssoc);
 
             // Loop over the categories.
@@ -691,6 +687,18 @@ class LivelinkDocumentList implements DocumentList {
                             categoryType + "; skipping");
                     }
                     continue;
+                }
+
+                if (includeCategoryNames) {
+                    // XXX: This is the only property name that is
+                    // hard-coded here like this. I think that's OK,
+                    // because the recarray fields are just hard-coded
+                    // someplace else. "Category" is an ObjectInfo
+                    // attribute name that is unused in Livelink 9.0 or
+                    // later.
+                    ClientValue name = categoryId.toValue("DisplayName");
+                    if (name.hasValue())
+                        props.addProperty("Category", name);
                 }
 
                 ClientValue categoryVersion =

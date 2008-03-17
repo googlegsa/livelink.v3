@@ -246,19 +246,21 @@
     <td>A comma-separated list of object IDs for categories, and/or one of
     the following special strings:
     <dl>
+    <dt><code>all</code>
+    <dd>All categories that are applied to the item are indexed.</dd>
     <dt><code>searchable</code>
     <dd>Only attributes that have the <b>Show in Search</b> parameter
     enabled, from each of the categories that are applied to the item,
-    are indexed.  Otherwise, all attributes of the Categories are indexed.</dd>
-    <dt><code>all</code>
-    <dd>All attributes from each of the categories that are applied to
-    the item are indexed.</dd>
+    are indexed.  Otherwise, all attributes of the categories are indexed.</dd>
+    <dt><code>name</code>
+    <dd>The category name will be indexed as the value of a
+    "Category" property.</dd>
     <dt><code>none</code>
     <dd>No attributes from any of the categories that are applied to
     the item are indexed. This value turns off the indexing of
     categories.</dd>
     </dl>
-    <p>Specifying an empty string is the same as "all." The default
+    <p>Specifying an empty string is the same as "all". The default
     value is "all,searchable".</p></td>
   </tr>
 
