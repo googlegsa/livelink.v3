@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -374,6 +374,13 @@ public class LivelinkConnector implements Connector {
      * @param livelinkCgi the path or URL to the Livelink CGI
      */
     public void setLivelinkCgi(String livelinkCgi) {
+        // FIXME: This can be non-empty if HTTP tunneling is disabled
+        // (init handles that case), but if HTTP tunneling is enabled,
+        // then this must set, and we aren't validating that. The
+        // LivelinkConnectorType will skip validation if the section
+        // was just expanded, so if we're here, then we should make
+        // sure that livelinkCgi is non-empty if useHttpTunneling is
+        // true.
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("LIVELINK CGI: " + livelinkCgi);
         clientFactory.setLivelinkCgi(livelinkCgi);
@@ -690,9 +697,6 @@ public class LivelinkConnector implements Connector {
         useSeparateAuthentication = useAuth;
     }
 
-
-    // Authentication parameters
-
     /**
      * Sets the database server type.
      *
@@ -795,7 +799,6 @@ public class LivelinkConnector implements Connector {
      * @return the checkpoint string, or null if indexing the entire DB.
      */
     String getStartCheckpoint(Client client) {
-
         // If we have a specified startDate, use it to seed 
         // our minimum modification timestamp.
         Date startingDate = parsedStartDate;
@@ -1320,6 +1323,28 @@ public class LivelinkConnector implements Connector {
         }
     }
 
+    /**
+     * Sets the Windows domain name to be used for user
+     * authentication. The Windows domain might be used for direct
+     * connections (see the DomainAndName parameter in the [Security]
+     * section of opentext.ini), HTTP tunneling, or separate
+     * authentication.
+     *
+     * @param domain the Windows domain name
+     * @since 1.0.3
+     */
+    /*
+     * TODO: This is a possible model for how to fix issue 3, the
+     * duplication of the useUsernamePasswordWithWebServer parameter.
+     */
+    public void setWindowsDomain(String domain) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("WINDOWS DOMAIN: " + domain);
+        clientFactory.setWindowsDomain(domain);
+        createAuthenticationClientFactory();
+        authenticationClientFactory.setWindowsDomain(domain);
+    }
+    
     /**
      * Sets the host name or IP address for authentication. See {@link
      * #setServer}.

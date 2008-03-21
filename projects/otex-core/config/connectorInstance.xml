@@ -12,6 +12,7 @@
                 <!-- EDIT THESE PROPERTIES -->
                 <!-- Connection and HTTP tunneling properties. -->
                 <property name="connection" value=""/>
+                <property name="windowsDomain" value=""/>
                 <property name="verifyServer" value="false"/>
                 <property name="caRootCerts">
                         <list></list>

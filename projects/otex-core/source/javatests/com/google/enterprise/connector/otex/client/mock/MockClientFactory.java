@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,6 +138,11 @@ public class MockClientFactory implements ClientFactory {
     /** {@inheritDoc} */
     public void setUseUsernamePasswordWithWebServer(boolean value) {
         values.put("setUseUsernamePasswordWithWebServer", new Boolean(value));
+    }
+
+    /** {@inheritDoc} */
+    public void setWindowsDomain(String value) {
+        values.put("setWindowsDomain", value);
     }
 
     /** {@inheritDoc} */

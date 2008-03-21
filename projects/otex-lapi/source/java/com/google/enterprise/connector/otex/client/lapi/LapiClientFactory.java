@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@ public final class LapiClientFactory implements ClientFactory {
     private LLValue config = null;
 
     private boolean useUsernamePasswordWithWebServer = false;
+
+    private String windowsDomain = null;
     
     /** {@inheritDoc} */
     public void setServer(String value) {
@@ -157,6 +159,11 @@ public final class LapiClientFactory implements ClientFactory {
         useUsernamePasswordWithWebServer = value;
     }
 
+    /** {@inheritDoc} */
+    public void setWindowsDomain(String value) {
+        windowsDomain = value;
+    }
+
     /**
      * Sets a string feature in the config assoc.
      *
@@ -229,14 +236,34 @@ public final class LapiClientFactory implements ClientFactory {
      * top-level ones, and the HTTPUserName and HTTPPassword
      * values in the config object. The only way to tell if the
      * config parameters are present is to try to read them and
-     * let LAPI thrown an exception; there's no "isDefined" in
+     * let LAPI thrown an exception; there's no "IsFeature" in
      * the Java LAPI client. Rather than work to see if they're
      * present, we'll just copy the config and ensure that
      * they're not.
+     *
+     * FIXME: Can the username/password ever be null?
+     *
+     * XXX: We are intentionally shadowing the username and password fields
+     * in this method to prevent their accidental use.
      */
-    public Client createClient(String providedUsername, 
-            String providedPassword) {
-        // FIXME: Can the username/password ever be null?
+    public Client createClient(String originalUsername, String password) {
+        // Check for a domain value.
+        String username;
+        int index = originalUsername.indexOf("@");
+        if (index != -1) {
+            String user = originalUsername.substring(0, index);
+            String domain = originalUsername.substring(index + 1);
+            username = domain + '\\' + user;
+        } else if (windowsDomain != null && windowsDomain.length() > 0)
+            username = windowsDomain + '\\' + originalUsername;
+        else
+            username = originalUsername;
+        if (LOGGER.isLoggable(Level.FINER)) {
+            if (username.indexOf('\\') != -1)
+                LOGGER.finer("AUTHENTICATE AS: " + username);
+        }
+
+        // Copy the config.
         LLValue localConfig = null; 
         if (config != null) {
             localConfig = new LLValue().setAssocNotSet(); 
@@ -251,13 +278,15 @@ public final class LapiClientFactory implements ClientFactory {
             }
         }
 
+        // Add the web credentials if needed.
         if (localConfig != null && useUsernamePasswordWithWebServer) {
-            localConfig.add("HTTPUserName", providedUsername); 
-            localConfig.add("HTTPPassword", providedPassword); 
+            localConfig.add("HTTPUserName", username); 
+            localConfig.add("HTTPPassword", password); 
         }
-        logProperties(providedUsername, providedPassword, localConfig); 
+        
+        logProperties(username, password, localConfig); 
         LLSession session = new LLSession(server, port, connection, 
-            providedUsername, providedPassword, localConfig);
+            username, password, localConfig);
         return new LapiClient(session);
     }
 
@@ -290,7 +319,8 @@ public final class LapiClientFactory implements ClientFactory {
             }
             LOGGER.finer("server=" + server + "; port=" + port +
                 "; connection=" + connection + "; username=" +
-                currentUsername + "; password=[...]; useUsernameForWebServer: " + 
+                currentUsername +
+                "; password=[...]; useUsernameForWebServer: " + 
                 useUsernamePasswordWithWebServer + "; " + configString);
         }
     }

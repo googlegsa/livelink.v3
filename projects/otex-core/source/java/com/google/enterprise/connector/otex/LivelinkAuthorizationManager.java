@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,10 +101,13 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * @throws RepositoryException if an error occurs
      */
     public Collection authorizeDocids(Collection docids,
-                                      AuthenticationIdentity identity)
-            throws RepositoryException
-    {
+            AuthenticationIdentity identity) throws RepositoryException {
         String username = identity.getUsername();
+
+        // Remove the DNS-style Windows domain, if there is one.
+        int index = username.indexOf("@");
+        if (index != -1)
+            username = username.substring(0, index);
 
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHORIZE DOCIDS: " + username);
