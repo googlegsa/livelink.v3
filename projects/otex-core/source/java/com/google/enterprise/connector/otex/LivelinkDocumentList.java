@@ -74,7 +74,7 @@ class LivelinkDocumentList implements DocumentList {
     private final ClientValueFactory valueFactory;
 
     /** The table of Livelink data, one row per doc, one column per field. */
-    private final ClientValue recArray;
+    private ClientValue recArray;
 
     /** The recarray fields. */
     private final Field[] fields;
@@ -85,6 +85,9 @@ class LivelinkDocumentList implements DocumentList {
     /** This is the checkpoint string for the current DocumentList */
     private String checkpoint;
 
+    /** This is the retry checkpoint string for the current DocumentList */
+    private String retryCheckpoint;
+
     /** If the traversal client user is the public content user,
      *  then all documents it sees will be publicly available.
      */
@@ -94,7 +97,10 @@ class LivelinkDocumentList implements DocumentList {
     private HashSet publicContentDocs = null;
 
     /** This is the DocumentList Iterator */
-    private Iterator docIterator;
+    private LivelinkDocumentListIterator docIterator;
+
+    /** Count of documents returned in this batch. */
+    private int docsReturned;
 
     /** This is a small cache of UserID and GroupID name resolutions. */
     private final HashMap userNameCache = new HashMap(200);
@@ -103,6 +109,7 @@ class LivelinkDocumentList implements DocumentList {
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, TraversalContext traversalContext,
             String checkpoint, String currentUsername)
+
             throws RepositoryException {
         this.connector = connector;
         this.client = client;
@@ -112,19 +119,80 @@ class LivelinkDocumentList implements DocumentList {
         this.fields = fields;
         this.traversalContext = traversalContext;
         this.checkpoint = checkpoint;
+        this.retryCheckpoint = checkpoint;
 
         // Subset the docIds in the recArray into Public and Private Docs.
         findPublicContent(currentUsername);
 
         // Prime the DocumentList.nextDocument() iterator
-        docIterator = iterator();
+        docIterator = new LivelinkDocumentListIterator();
+        docsReturned = 0;
     }
 
     /**
      * {@inheritDoc}
      */
-    public Document nextDocument() throws RepositoryException {
-        return (docIterator.hasNext()) ? (Document) docIterator.next() : null;
+    public Document nextDocument()
+        throws RepositoryException // Not really; see below.
+    {
+        while (docIterator.hasNext()) {
+            // FIXME: This is a hack.  The Connector Manager does not respond 
+            // well to Exceptions thrown from nextDocument().  Specifically, 
+            // it fails to call checkpoint() to get a new checkpoint or to retry
+            // the current checkpoint a finite number of times before advancing.
+            // This results in an infinite loop for documents that throw
+            // non-transient Exceptions.  Until the CM is fixed, we avoid
+            // throwing Exceptions upward, advancing to the next document here
+            // if we catch an Exception.
+            try {
+                Document doc = docIterator.nextDocument();
+                docsReturned++;
+                return doc;
+            } catch (Throwable t) {
+                LOGGER.severe("Caught exception when fetching a document: " +
+                              t.getMessage());
+
+                // Ping the Livelink Server.  If I can't talk to the server,
+                // I will consider this a transient Exception (server down,
+                // network error, etc).  In that case, return null, signalling
+                // the end of this batch.  The CM will retry this batch later.
+                try {
+                    client.GetCurrentUserID(); 	// ping()
+                } catch (RepositoryException e) {
+                    // The failure seems to be systemic, rather than a problem
+                    // with this particular document.  Restore the previous 
+                    // checkpoint, so that we may retry this document on the
+                    // next pass.  Sleep for a short bit to give the problem a
+                    // chance to clear up, then signal the end of this batch.
+                    checkpoint = retryCheckpoint;
+                    try { Thread.sleep(5000); } catch (Exception ex) {};
+                    break;
+                }
+
+                // This document blew up in our face.  Try the next document.
+                if (docIterator.hasNext() == false) {
+                    // Oops, we ran out of documents in this batch.  If we have
+                    // returned any documents, consider this batch complete.
+                    if (docsReturned > 0)
+                        break;
+
+                    // FIXME: The Connector Manager will loop infinitely on
+                    // the same checkpoint if we returned no documents because
+                    // every document has a non-transient fatal error.  I can
+                    // force the Connector Manager to advance the checkpoint
+                    // by faking an out-of-memory error.  This is an ugly hack
+                    // that relies upon knowledge of the internal workings of
+                    // QueryTraverser.runBatch() in the Connector Manager.
+                    LOGGER.warning("Ignore the following 'Out of JVM Heap " +
+                         "space' or 'NullPointerException' in the log. We " +
+                         "are forcing the retrieval of a new checkpoint.");
+                    throw new OutOfMemoryError("Ignore this error.");
+                }
+            }
+        }
+
+        // No more documents available.
+        return null;
     }
         
     /**
@@ -145,6 +213,7 @@ class LivelinkDocumentList implements DocumentList {
      * @return the checkpoint string.
      */
     public void setCheckpoint(Date modifyDate, int objectId) {
+        retryCheckpoint = checkpoint;
         checkpoint =
             LivelinkTraversalManager.getCheckpoint(modifyDate, objectId);
     }
@@ -317,15 +386,26 @@ class LivelinkDocumentList implements DocumentList {
             return row < size;
         }
 
+        /* Iterator Interface for next object */
         public Object next() {
+            LivelinkDocument doc = null;
+            try {
+                doc = this.nextDocument();
+            } catch (RepositoryException e) {
+                // Convert RepositoryException to an unchecked exception.
+                throw new RuntimeException(e);
+            }
+            if (doc != null)
+                return (Object) doc;
+            else
+                throw new NoSuchElementException();
+        }
+
+        /* Friendlier interface to next() for our consumption. */
+        public LivelinkDocument nextDocument() throws RepositoryException {
             if (row < size) {
                 try {
                     objectId = recArray.toInteger(row, "DataID");
-                    volumeId = recArray.toInteger(row, "OwnerID");
-                    subType  = recArray.toInteger(row, "Subtype");
-                    objectInfo = null;
-
-                    props = new LivelinkDocument(objectId, fields.length*2);
 
                     /* Establish the checkpoint string for this row.
                      * NOTE: This assumes that there is not more than
@@ -335,6 +415,12 @@ class LivelinkDocumentList implements DocumentList {
                      */
                     setCheckpoint(recArray.toDate(row, "ModifyDate"),
                         objectId);
+
+                    volumeId = recArray.toInteger(row, "OwnerID");
+                    subType  = recArray.toInteger(row, "Subtype");
+                    objectInfo = null;
+
+                    props = new LivelinkDocument(objectId, fields.length*2);
 
                     /* collect the various properties for this row */
                     collectRecArrayProperties();
@@ -346,10 +432,11 @@ class LivelinkDocumentList implements DocumentList {
                     row++;
                     return props;
                 } catch (RepositoryException e) {
-                    throw new RuntimeException(e);
+                    row++;
+                    throw e;
                 }
             } else
-                throw new NoSuchElementException();
+                return null;
         }
 
         public void remove() {

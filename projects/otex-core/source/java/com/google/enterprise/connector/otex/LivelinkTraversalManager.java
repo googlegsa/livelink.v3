@@ -458,6 +458,7 @@ class LivelinkTraversalManager
             LOGGER.info("START" +
                 (checkpoint == null ? "" : ": " + checkpoint));
         }
+
         return listNodes(checkpoint);
     }
 
@@ -468,6 +469,18 @@ class LivelinkTraversalManager
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("RESUME: " + checkpoint);
         }
+        
+        // Ping the Livelink Server.  If I can't talk to the server,
+        // I will consider this a transient Exception (server down,
+        // network error, etc).  In that case, return null, signalling
+        // no new documents available at this time.
+        try {
+            client.GetCurrentUserID(); 	// ping()
+        } catch (RepositoryException e) {
+            try { Thread.sleep(5000); } catch (Exception ex) {};
+            return null;
+        }
+        
         return listNodes(checkpoint);
     }
 
