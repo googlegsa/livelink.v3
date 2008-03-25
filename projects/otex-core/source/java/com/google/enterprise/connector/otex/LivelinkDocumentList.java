@@ -282,10 +282,13 @@ class LivelinkDocumentList implements DocumentList {
         public Object next() {
             if (row < size) {
                 try {
-                    return recArray.toString(row++, "DataID");
+                    return recArray.toString(row, "DataID");
                 } catch (RepositoryException e) {
                     LOGGER.warning("LivelinkDocumentList.DocIdIterator.next " +
                         "caught exception - " + e.getMessage());
+                    throw new RuntimeException(e);
+                } finally {
+                    row++;
                 }
             }
             // FIXME: Is this what we want?
@@ -429,11 +432,14 @@ class LivelinkDocumentList implements DocumentList {
                     collectCategoryAttributes();
                     collectDerivedProperties();
 
-                    row++;
                     return props;
-                } catch (RepositoryException e) {
-                    row++;
-                    throw e;
+
+                } catch (RepositoryException re) {
+                    throw re;
+                } catch (Exception e) {
+                    throw new LivelinkException(e, LOGGER);
+                } finally {
+                    row++;	// Advance to next document no matter what happens.
                 }
             } else
                 return null;
