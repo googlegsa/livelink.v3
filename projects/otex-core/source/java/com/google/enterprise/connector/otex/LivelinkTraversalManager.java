@@ -121,6 +121,24 @@ class LivelinkTraversalManager
     /** The client provides access to the server. */
     private final Client client;
 
+    /**
+     * The admin client provides access to the server for the
+     * candidates query. If we use the traversal user, there's a bad
+     * interaction between the SQL query limits (e.g., TOP 100, ROWNUM
+     * &lt;= 100) and Livelink's user permissions checks. If the
+     * traversal user doesn't have permission to see an entire batch,
+     * we have no candidates, and we don't even have a checkpoint at
+     * the end that we could skip past. So when there is a traversal
+     * user, we get the candidates as the system administrator.
+     */
+    private final Client sysadminClient;
+
+    /**
+     * The current user, either the system administrator or an
+     * impersonated traversal user.
+     */
+    private final String currentUsername;
+
     /** The database type, either SQL Server or Oracle. */
     /* XXX: We could use the state or strategy pattern if this gets messy. */
     private final boolean isSqlServer;
@@ -128,12 +146,6 @@ class LivelinkTraversalManager
     /** A starting checkpoint, for efficiency, or <code>null</code. */
     private final String startCheckpoint;
        
-    /**
-     * The current user, either the system administrator or an
-     * impersonated traversal user.
-     */
-    private final String currentUsername;
-
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
 
@@ -147,12 +159,6 @@ class LivelinkTraversalManager
             ClientFactory clientFactory) throws RepositoryException {
         this.connector = connector;
         this.client = clientFactory.createClient();
-
-        // These next two calls must happen before impersonation. The
-        // first one only looks at KDual and dual, and the second one
-        // only selects a single date value for an initial checkpoint.
-        this.isSqlServer = isSqlServer();
-        this.startCheckpoint = getStartCheckpoint();
 
         // Get the current username to compare to the configured
         // traversalUsername and publicContentUsername.
@@ -175,22 +181,29 @@ class LivelinkTraversalManager
         if (traversalUsername != null && !traversalUsername.equals(username)) {
             client.ImpersonateUserEx(traversalUsername,
                 connector.getDomainName());
+            this.sysadminClient  = clientFactory.createClient();
             this.currentUsername = traversalUsername;
-        } else
+        } else {
+            this.sysadminClient = client;
             this.currentUsername = username;
+        }
 
+        this.isSqlServer = isSqlServer();
+        this.startCheckpoint = getStartCheckpoint();
         this.contentHandler = getContentHandler();
     }
 
 
     /**
      * Determines whether the database type is SQL Server or Oracle.
-     * This method uses <code>ListNodes</code> but does not select
-     * either DataID or PermID, or even use the DTree table at all, so
-     * we must call this method as a Livelink system administrator.
      *
      * @return <code>true</code> for SQL Server, or <code>false</code>
      * for Oracle.
+     */
+    /*
+     * We need to use the sysadminClient because this method uses
+     * <code>ListNodes</code> but does not select either DataID or
+     * PermID, or even use the DTree table at all.
      */
     private boolean isSqlServer() throws RepositoryException {
         String servtype = connector.getServtype();
@@ -199,11 +212,12 @@ class LivelinkTraversalManager
             // generic errors when connecting or using ListNodes.
             String query = "1=1"; // ListNodes requires a WHERE clause.
             String[] columns = { "42" };
-            ClientValue results = client.ListNodes(query, "KDual", columns);
+            ClientValue results =
+                sysadminClient.ListNodes(query, "KDual", columns);
 
             // Then check an Oracle-specific query.
             // We use ListNodesNoThrow() to avoid logging our expected error.
-            results = client.ListNodesNoThrow(query, "dual", columns);
+            results = sysadminClient.ListNodesNoThrow(query, "dual", columns);
             boolean isOracle = (results != null);
 
             if (LOGGER.isLoggable(Level.CONFIG)) {
@@ -227,13 +241,13 @@ class LivelinkTraversalManager
      * Gets the startDate checkpoint.  We attempt to forge an initial
      * checkpoint based upon information gleaned from any startDate or
      * includedLocationNodes specified in the configuration.
-     * 
-     * This method uses <code>ListNodes</code> but does not and cannot
-     * select either DataID or PermID, so we must call this method as
-     * a Livelink system administrator.
      *
-     * @param client connection to use to seed checkpoint
      * @return the checkpoint string, or null if indexing the entire DB.
+     */
+    /*
+     * We need to use the sysadminClient because this method uses
+     * <code>ListNodes</code> but does not and cannot select either
+     * DataID or PermID.
      */
     private String getStartCheckpoint() {
         // If we have a specified startDate, use it to seed 
@@ -266,7 +280,8 @@ class LivelinkTraversalManager
                 if (LOGGER.isLoggable(Level.FINEST))
                     LOGGER.finest("START CHECKPOINT VIEW: " + view);
 
-                ClientValue results = client.ListNodes(query, view, columns);
+                ClientValue results =
+                    sysadminClient.ListNodes(query, view, columns);
                 if (results.size() > 0) {
                     Date minDate = results.toDate(0, "minModifyDate");
                     if (startDate == null || minDate.after(startDate))
@@ -743,6 +758,11 @@ class LivelinkTraversalManager
     }
 
 
+    /*
+     * We need to use the sysadminClient to avoid getting no
+     * candidates when the traversal user does not have permission for
+     * any of the potential candidates.
+     */
     private ClientValue getCandidatesSqlServer(String checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
@@ -755,11 +775,11 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DTree";
         String[] columns = {
-            "top " + batchsz +  " ModifyDate", "DataID", "PermID" };
+            "top " + batchsz +  " ModifyDate", "DataID" };
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("CANDIDATES QUERY: " + query);
 
-        return client.ListNodes(query, view, columns);
+        return sysadminClient.ListNodes(query, view, columns);
     }
 
 
@@ -769,11 +789,15 @@ class LivelinkTraversalManager
      * would allow us to eliminate the outer query with ROWNUM and get
      * equal performance, except that it doesn't limit the number of
      * rows, and LAPI materializes the entire result set.
+     * 
+     * We need to use the sysadminClient to avoid getting no
+     * candidates when the traversal user does not have permission for
+     * any of the potential candidates.
      */
     private ClientValue getCandidatesOracle(String checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
-        buffer.append("(select ModifyDate, DataID, PermID from DTree");
+        buffer.append("(select ModifyDate, DataID from DTree");
         if (checkpoint != null) {
             buffer.append(" where ");
             buffer.append(getRestriction(checkpoint));
@@ -787,7 +811,7 @@ class LivelinkTraversalManager
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("CANDIDATES VIEW: " + view);
 
-        return client.ListNodes(query, view, columns);
+        return sysadminClient.ListNodes(query, view, columns);
     }
 
 
