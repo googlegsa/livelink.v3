@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,9 +68,12 @@ final class Field {
      * multiple property names are not ordered in any way.
      *
      * @param fieldName the recarray field name
-     * @param propertyNames the output property names
+     * @param propertyNames the output property names, which may be
+     * an empty array but not <code>null</code>
      */
     private Field(String fieldName, String[] propertyNames) {
+        assert fieldName != null;
+
         // This is obvious by inspection here, but code elsewhere
         // depends on this.
         assert propertyNames != null : fieldName;

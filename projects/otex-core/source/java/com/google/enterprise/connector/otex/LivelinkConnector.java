@@ -215,8 +215,7 @@ public class LivelinkConnector implements Connector {
     private String contentHandler;
 
     /** The earliest modification date that should be indexed. */
-    private String startDate = null;
-    private Date parsedStartDate = null;
+    private Date startDate = null;
 
     /** The Livelink traverser client username. */
     private String username;
@@ -753,8 +752,8 @@ public class LivelinkConnector implements Connector {
         if (startDate != null)
             return;
         if (property.trim().length() == 0) {
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.fine("STARTDATE: No start date specified.");
+            if (LOGGER.isLoggable(Level.CONFIG))
+                LOGGER.config("STARTDATE: " + property);
             return;
         }
         Date parsedDate = null; 
@@ -775,8 +774,7 @@ public class LivelinkConnector implements Connector {
                 return;
             }
         }
-        startDate = property;
-        parsedStartDate = parsedDate;
+        startDate = parsedDate;
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("STARTDATE: " + property); 
     }
@@ -786,59 +784,8 @@ public class LivelinkConnector implements Connector {
      *
      * @return the startDate
      */
-    String getStartDate() {
+    Date getStartDate() {
         return startDate;
-    }
-
-    /**
-     * Gets the startDate checkpoint.  We attempt to forge an initial
-     * checkpoint based upon information gleaned from any startDate or
-     * startLocations specified in the configuration.
-     *
-     * @param client connection to use to seed checkpoint
-     * @return the checkpoint string, or null if indexing the entire DB.
-     */
-    String getStartCheckpoint(Client client) {
-        // If we have a specified startDate, use it to seed 
-        // our minimum modification timestamp.
-        Date startingDate = parsedStartDate;
-
-        // If the user specified "Items to index", fetch the earliest
-        // modification time for any of those items.  We can forge 
-        // a start checkpoint that skips over any ancient history in
-        // the LL database.  This executes a SQL query of the form:
-        //   select min(ModifyDate) from DTreeAncestors join DTree
-        //   on DTreeAncestors.DataID = DTree.DataID
-        //   where AncestorID in (items to index) 
-        // [Note the actual query is slightly more cryptic to avoid
-        // formatting problems in LL ListNodes function.]
-        String startNodes = getIncludedLocationNodes();
-        if (startNodes != null && startNodes.length() > 0) {
-            try {
-                String query = "1=1";
-                String[] columns = { "minModifyDate" };
-                String view = "(select min(ModifyDate) as minModifyDate from" +
-                    " DTreeAncestors join DTree on DTreeAncestors.DataID =" +
-                    " DTree.DataID where AncestorID in (" + startNodes + ")" +
-                    " or DTree.DataID in (" + startNodes + "))";
-                ClientValue results = client.ListNodes(query, view, columns);
-                if (results.size() > 0) {
-                    Date minDate = results.toDate(0, "minModifyDate");
-                    if ((startingDate == null) || minDate.after(startingDate))
-                        startingDate = minDate;
-                }                    
-            } catch (Exception e) {
-                // Possible non-date comes back if startNodes yields nothing.
-            }
-        }
-
-        // If we actually found an earliest starting point, forge a checkpoint 
-        // that reflects it.
-        if (startingDate != null) 
-            return LivelinkTraversalManager.getCheckpoint(startingDate, 0);
-
-        // No initial checkpoint, start at first object in the LL Database.
-        return null;
     }
 
     /**

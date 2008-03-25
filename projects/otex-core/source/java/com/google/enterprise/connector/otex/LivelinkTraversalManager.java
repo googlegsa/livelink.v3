@@ -65,6 +65,12 @@ class LivelinkTraversalManager
      */
     protected static final Field[] FIELDS;
 
+    /**
+     * The columns needed in the database query, which are obtained
+     * from the field names in <code>FIELDS</code>.
+     */
+    private static final String[] SELECT_LIST;
+
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This implementation requires DataID,
@@ -89,6 +95,10 @@ class LivelinkTraversalManager
         list.add(new Field("PermID"));
 
         FIELDS = (Field[]) list.toArray(new Field[0]);
+
+        SELECT_LIST = new String[FIELDS.length];
+        for (int i = 0; i < FIELDS.length; i++)
+            SELECT_LIST[i] = FIELDS[i].fieldName;
     }
 
     /**
@@ -111,8 +121,18 @@ class LivelinkTraversalManager
     /** The client provides access to the server. */
     private final Client client;
 
-    /** The columns needed in the database query. */
-    private final String[] selectList;
+    /** The database type, either SQL Server or Oracle. */
+    /* XXX: We could use the state or strategy pattern if this gets messy. */
+    private final boolean isSqlServer;
+
+    /** A starting checkpoint, for efficiency, or <code>null</code. */
+    private final String startCheckpoint;
+       
+    /**
+     * The current user, either the system administrator or an
+     * impersonated traversal user.
+     */
+    private final String currentUsername;
 
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
@@ -120,27 +140,19 @@ class LivelinkTraversalManager
     /** The number of results to return in each batch. */
     private volatile int batchSize = 100;
 
-    /** The database type, either SQL Server or Oracle. */
-    /* XXX: We could use the state or strategy pattern if this gets messy. */
-    private final boolean isSqlServer;
-
     /** The TraversalContext from TraversalContextAware Interface */
     private TraversalContext traversalContext = null;
-
-    /**
-     * The current user, either the system administrator or an
-     * impersonated traversal user.
-     */
-    private final String currentUsername;
 
     LivelinkTraversalManager(LivelinkConnector connector,
             ClientFactory clientFactory) throws RepositoryException {
         this.connector = connector;
-        client = clientFactory.createClient();
+        this.client = clientFactory.createClient();
 
-        isSqlServer = isSqlServer();
-        selectList = getSelectList();
-        contentHandler = getContentHandler();
+        // These next two calls must happen before impersonation. The
+        // first one only looks at KDual and dual, and the second one
+        // only selects a single date value for an initial checkpoint.
+        this.isSqlServer = isSqlServer();
+        this.startCheckpoint = getStartCheckpoint();
 
         // Get the current username to compare to the configured
         // traversalUsername and publicContentUsername.
@@ -163,14 +175,19 @@ class LivelinkTraversalManager
         if (traversalUsername != null && !traversalUsername.equals(username)) {
             client.ImpersonateUserEx(traversalUsername,
                 connector.getDomainName());
-            currentUsername = traversalUsername;
+            this.currentUsername = traversalUsername;
         } else
-            currentUsername = username;
+            this.currentUsername = username;
+
+        this.contentHandler = getContentHandler();
     }
 
 
     /**
      * Determines whether the database type is SQL Server or Oracle.
+     * This method uses <code>ListNodes</code> but does not select
+     * either DataID or PermID, or even use the DTree table at all, so
+     * we must call this method as a Livelink system administrator.
      *
      * @return <code>true</code> for SQL Server, or <code>false</code>
      * for Oracle.
@@ -207,17 +224,63 @@ class LivelinkTraversalManager
 
 
     /**
-     * Gets the select list for the needed fields.
+     * Gets the startDate checkpoint.  We attempt to forge an initial
+     * checkpoint based upon information gleaned from any startDate or
+     * includedLocationNodes specified in the configuration.
+     * 
+     * This method uses <code>ListNodes</code> but does not and cannot
+     * select either DataID or PermID, so we must call this method as
+     * a Livelink system administrator.
      *
-     * @return a string array of column names
+     * @param client connection to use to seed checkpoint
+     * @return the checkpoint string, or null if indexing the entire DB.
      */
-    private String[] getSelectList() {
-        ArrayList temp = new ArrayList(FIELDS.length);
-        for (int i = 0; i < FIELDS.length; i++) {
-            if (FIELDS[i].fieldName != null)
-                temp.add(FIELDS[i].fieldName);
+    private String getStartCheckpoint() {
+        // If we have a specified startDate, use it to seed 
+        // our minimum modification timestamp.
+        Date startDate = connector.getStartDate();
+
+        // If the user specified "Items to index", fetch the earliest
+        // modification time for any of those items.  We can forge 
+        // a start checkpoint that skips over any ancient history in
+        // the LL database.  This executes a SQL query of the form:
+        //   select min(ModifyDate) from DTreeAncestors join DTree
+        //   on DTreeAncestors.DataID = DTree.DataID
+        //   where AncestorID in (items to index)
+        //   or DataID in (items to index)
+        // [Note the actual query is slightly more cryptic to avoid a
+        // SQL error caused by the range variable inserted into the
+        // query by ListNodes, and by range variables introduced here
+        // to make it easier to test the query in SQL Server
+        // Enterprise Manager or Query Analyzer.]
+        String startNodes = connector.getIncludedLocationNodes();
+        if (startNodes != null && startNodes.length() > 0) {
+            String ancestorNodes = getAncestorNodes(startNodes);
+            try {
+                String query = "1=1";
+                String[] columns = { "minModifyDate" };
+                String view = "(select min(ModifyDate) as minModifyDate from " +
+                    "DTreeAncestors Anc join DTree T on Anc.DataID = " +
+                    "T.DataID where AncestorID in (" + ancestorNodes + ") " +
+                    "or T.DataID in (" + startNodes + "))";
+                if (LOGGER.isLoggable(Level.FINEST))
+                    LOGGER.finest("START CHECKPOINT VIEW: " + view);
+
+                ClientValue results = client.ListNodes(query, view, columns);
+                if (results.size() > 0) {
+                    Date minDate = results.toDate(0, "minModifyDate");
+                    if (startDate == null || minDate.after(startDate))
+                        startDate = minDate;
+                }                    
+            } catch (Exception e) {
+                // Possible non-date comes back if startNodes yields nothing.
+            }
         }
-        return (String[]) temp.toArray(new String[temp.size()]);
+
+        // If we actually found an earliest starting point, forge a
+        // checkpoint that reflects it. Otherwise, start at first
+        // object in the Livelink database.
+        return (startDate != null) ? getCheckpoint(startDate, 0) : null;
     }
 
     /**
@@ -477,13 +540,12 @@ class LivelinkTraversalManager
     /** {@inheritDoc} */
     public DocumentList startTraversal() throws RepositoryException {
         // startCheckpoint will either be an initial checkpoint or null
-        String checkpoint = connector.getStartCheckpoint(client);
         if (LOGGER.isLoggable(Level.INFO)) {
-            LOGGER.info("START" +
-                (checkpoint == null ? "" : ": " + checkpoint));
+            LOGGER.info("START TRAVERSAL: " + batchSize + " rows" + 
+                (startCheckpoint == null ? "" : " from " + startCheckpoint) +
+                ".");
         }
-
-        return listNodes(checkpoint);
+        return listNodes(startCheckpoint);
     }
 
 
@@ -491,7 +553,8 @@ class LivelinkTraversalManager
     public DocumentList resumeTraversal(String checkpoint)
             throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("RESUME: " + checkpoint);
+            LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
+                checkpoint + ".");
         }
         
         // Ping the Livelink Server.  If I can't talk to the server,
@@ -672,7 +735,7 @@ class LivelinkTraversalManager
 
         String query = buffer.toString();
         String view = "WebNodes";
-        String[] columns = selectList;
+        String[] columns = SELECT_LIST;
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("RESULTS QUERY: " + query);
 
@@ -743,9 +806,9 @@ class LivelinkTraversalManager
      * we're using TO_DATE with Oracle in order to work with Oracle
      * 8i, and therefore with Livelink 9.0 or later.
      *
-     * TODO: Validate the checkpoint. We could move the validatation
-     * to resumeTraversal, which is the only place a non-null
-     * checkpoint could come from.
+     * TODO: Validate the checkpoint. We have checkpoints coming from
+     * the Connector Manager, from a configured starting date, or from
+     * the earliest modification date of the included location nodes.
      */
     private String getRestriction(String checkpoint)
             throws RepositoryException {

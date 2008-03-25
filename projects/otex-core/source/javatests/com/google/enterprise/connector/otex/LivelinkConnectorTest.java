@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.Map;
+import java.util.Date;
 
 import com.google.enterprise.connector.otex.ConfigurationException;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
@@ -116,13 +117,17 @@ public class LivelinkConnectorTest extends TestCase {
     public void testStartDate1() throws Exception {
         connector.setStartDate("2007-09-27 01:12:13");
         connector.login();
-        assertEquals("2007-09-27 01:12:13", connector.getStartDate()); 
+        Date startDate = connector.getStartDate();
+        assertNotNull(startDate);
+        assertEquals("Thu Sep 27 01:12:13 PDT 2007", startDate.toString());
     }
 
     public void testStartDate2() throws Exception {
         connector.setStartDate("2007-09-27");
         connector.login();
-        assertEquals("2007-09-27", connector.getStartDate()); 
+        Date startDate = connector.getStartDate();
+        assertNotNull(startDate);
+        assertEquals("Thu Sep 27 00:00:00 PDT 2007", startDate.toString());
     }
 
     public void testStartDate3() throws Exception {
@@ -146,9 +151,13 @@ public class LivelinkConnectorTest extends TestCase {
     public void testStartDate6() throws Exception {
         connector.setStartDate("2007-09-27 01:12:13");
         connector.login();
-        assertEquals("2007-09-27 01:12:13", connector.getStartDate()); 
+        Date startDate = connector.getStartDate();
+        assertNotNull(startDate);
+        assertEquals("Thu Sep 27 01:12:13 PDT 2007", startDate.toString());
         connector.login();
-        assertEquals("2007-09-27 01:12:13", connector.getStartDate()); 
+        startDate = connector.getStartDate();
+        assertNotNull(startDate);
+        assertEquals("Thu Sep 27 01:12:13 PDT 2007", startDate.toString());
     }
 
     public void testStartDate7() throws Exception {
