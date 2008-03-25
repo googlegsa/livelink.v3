@@ -250,38 +250,15 @@ class LivelinkTraversalManager
         // If we have an explict list of start locations, build a
         // query that includes only those and their descendants.
         String startNodes = connector.getIncludedLocationNodes();
-        String ancesterNodes;
+        String ancestorNodes;
         if (startNodes != null && startNodes.length() > 0) {
-            // Projects, Discussions, Channels, and TaskLists have a rather
-            // strange behaviour.  Their contents have a VolumeID that is the
-            // same as the container's ObjectID, and an AncesterID that is the
-            // negation the container's ObjectID.  To catch that, I am going
-            // to create a superset list that adds the negation of everything
-            // in the specified the specified list.  We believe this is safe,
-            // as negative values of standard containers (folders, compound 
-            // docs, etc) simply should not exist, so we shouldn't get any 
-            // false positives.
-            StringBuffer buffer = new StringBuffer();
-            StringTokenizer tok =
-                new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
-            while (tok.hasMoreTokens()) {
-                String objId = tok.nextToken();
-                if (buffer.length() > 0)
-                    buffer.append(',');
-                buffer.append(objId);
-                try {
-                    int intId = Integer.parseInt(objId);
-                    buffer.append(',');
-                    buffer.append(-intId);
-                } catch (NumberFormatException e) {}
-            }
-            ancesterNodes = buffer.toString();
+            ancestorNodes = getAncestorNodes(startNodes);
         } else {
-        // If we don't have an explicit list of start points, build
-        // an implicit list from the list of all volumes, minus those
-        // that are explicitly excluded.
+            // If we don't have an explicit list of start points,
+            // build an implicit list from the list of all volumes,
+            // minus those that are explicitly excluded.
             startNodes = getStartingVolumes(candidatesPredicate);
-            ancesterNodes = startNodes;
+            ancestorNodes = startNodes;
         }
 
         StringBuffer buffer = new StringBuffer();
@@ -291,13 +268,40 @@ class LivelinkTraversalManager
         buffer.append("DTreeAncestors where ");
         buffer.append(candidatesPredicate);
         buffer.append(" and AncestorID in (");
-        buffer.append(ancesterNodes);
+        buffer.append(ancestorNodes);
         buffer.append(")))");
         String included = buffer.toString();
 
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("INCLUDED: " + included);
         return included;
+    }
+
+    private String getAncestorNodes(String startNodes) {
+        // Projects, Discussions, Channels, and TaskLists have a rather
+        // strange behaviour.  Their contents have a VolumeID that is the
+        // same as the container's ObjectID, and an AncestorID that is the
+        // negation the container's ObjectID.  To catch that, I am going
+        // to create a superset list that adds the negation of everything
+        // in the specified the specified list.  We believe this is safe,
+        // as negative values of standard containers (folders, compound 
+        // docs, etc) simply should not exist, so we shouldn't get any 
+        // false positives.
+        StringBuffer buffer = new StringBuffer();
+        StringTokenizer tok =
+            new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
+        while (tok.hasMoreTokens()) {
+            String objId = tok.nextToken();
+            if (buffer.length() > 0)
+                buffer.append(',');
+            buffer.append(objId);
+            try {
+                int intId = Integer.parseInt(objId);
+                buffer.append(',');
+                buffer.append(-intId);
+            } catch (NumberFormatException e) {}
+        }
+        return buffer.toString();
     }
 
     /**
@@ -379,8 +383,9 @@ class LivelinkTraversalManager
             buffer.append("))");
         }
 
-        // TODO: This doesn't handle the subtypes yet. If subtypes are
-        // specified, then hidden items will just not be indexed.
+        // TODO: This doesn't handle the subtypes yet. If
+        // showHiddenItems is a list of subtypes, then hidden items
+        // will just not be indexed.
         HashSet showHiddenItems = connector.getShowHiddenItems();
         if (!showHiddenItems.contains("all"))
         {
@@ -388,7 +393,10 @@ class LivelinkTraversalManager
             // conceptually interferring with the A range variable
             // that LAPI adds behind the scenes.
             // XXX: We need to qualify the reference to DataID in the
-            // candidatesPredicate with T. Sigh.
+            // candidatesPredicate with Anc. We "know" that DataID
+            // appears at the beginning of candidatesPredicate, so we
+            // just leave a hanging "Anc." just before that. See
+            // listNodes, where the predicate is created. Sigh.
             String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
             if (buffer.length() > 0)
                 buffer.append(" and ");
@@ -396,10 +404,26 @@ class LivelinkTraversalManager
             buffer.append(hidden);
             buffer.append(" and DataID not in (select Anc.DataID ");
             buffer.append("from DTreeAncestors Anc join DTree T ");
-            buffer.append("on Anc.AncestorID = T.DataID where T.");
+            buffer.append("on Anc.AncestorID = T.DataID where Anc.");
             buffer.append(candidatesPredicate);
-            buffer.append(" and Catalog = ");
+            buffer.append(" and T.Catalog = ");
             buffer.append(hidden);
+
+            // TODO: This is rework from getIncluded, but I didn't
+            // want to merge the two methods on the fly because it
+            // would break the tests.
+            String startNodes = connector.getIncludedLocationNodes();
+            if (startNodes != null && startNodes.length() > 0) {
+                String ancestorNodes = getAncestorNodes(startNodes);
+                buffer.append(" and Anc.AncestorID not in (");
+                buffer.append(startNodes);
+                buffer.append(") and Anc.AncestorID not in ");
+                buffer.append("(select AncestorID from DTreeAncestors ");
+                buffer.append("where DataID in (");
+                buffer.append(ancestorNodes);
+                buffer.append("))");
+            }
+
             buffer.append(')');
         }
 
