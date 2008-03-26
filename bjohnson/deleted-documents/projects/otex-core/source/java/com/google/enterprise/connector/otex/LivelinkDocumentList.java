@@ -20,9 +20,9 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.NoSuchElementException;
 
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Document;
@@ -79,14 +79,14 @@ class LivelinkDocumentList implements DocumentList {
     /** The recarray fields. */
     private final Field[] fields;
 
+    /** The table of Livelink deleted data, one row per object */
+    private final ClientValue delArray;
+
     /** The TraversalContext from TraversalContextAware Interface */
     private final TraversalContext traversalContext;
 
-    /** This is the checkpoint string for the current DocumentList */
-    private String checkpoint;
-
-    /** This is the retry checkpoint string for the current DocumentList */
-    private String retryCheckpoint;
+    /** The current checkpoint reflecting the cursor in the DocumentList */
+    private Checkpoint checkpoint;
 
     /** If the traversal client user is the public content user,
      *  then all documents it sees will be publicly available.
@@ -107,19 +107,20 @@ class LivelinkDocumentList implements DocumentList {
 
     LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
-            Field[] fields, TraversalContext traversalContext,
-            String checkpoint, String currentUsername)
+            Field[] fields, ClientValue delArray, 
+            TraversalContext traversalContext, Checkpoint checkpoint,
+            String currentUsername)
+        throws RepositoryException {
 
-            throws RepositoryException {
         this.connector = connector;
         this.client = client;
         this.valueFactory = client.getClientValueFactory();
         this.contentHandler = contentHandler;
         this.recArray = recArray;
+        this.delArray = delArray;
         this.fields = fields;
         this.traversalContext = traversalContext;
         this.checkpoint = checkpoint;
-        this.retryCheckpoint = checkpoint;
 
         // Subset the docIds in the recArray into Public and Private Docs.
         findPublicContent(currentUsername);
@@ -164,7 +165,7 @@ class LivelinkDocumentList implements DocumentList {
                     // checkpoint, so that we may retry this document on the
                     // next pass.  Sleep for a short bit to give the problem a
                     // chance to clear up, then signal the end of this batch.
-                    checkpoint = retryCheckpoint;
+                    checkpoint.restore();
                     try { Thread.sleep(5000); } catch (Exception ex) {};
                     break;
                 }
@@ -199,25 +200,13 @@ class LivelinkDocumentList implements DocumentList {
      * {@inheritDoc}
      */
     public String checkpoint() throws RepositoryException {
+        String cp = checkpoint.toString();
+
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("CHECKPOINT: " + checkpoint);
+            LOGGER.fine("CHECKPOINT: " + cp);
 
-        return checkpoint;
+        return cp;
     }
-
-    /**
-     * Generate a checkpoint string from a date and an object Id.
-     *
-     * @param modifyDate the date at which to start
-     * @param objectId the object id at which to start
-     * @return the checkpoint string.
-     */
-    public void setCheckpoint(Date modifyDate, int objectId) {
-        retryCheckpoint = checkpoint;
-        checkpoint =
-            LivelinkTraversalManager.getCheckpoint(modifyDate, objectId);
-    }
-
 
     /**
      * If we have a Public Content User specified, some of the
@@ -269,7 +258,6 @@ class LivelinkDocumentList implements DocumentList {
         /** The size of the recarray. */
         private final int size;
 
-
         public DocIdIterator() {
             this.row = 0;
             this.size = recArray.size();
@@ -285,13 +273,12 @@ class LivelinkDocumentList implements DocumentList {
                     return recArray.toString(row, "DataID");
                 } catch (RepositoryException e) {
                     LOGGER.warning("LivelinkDocumentList.DocIdIterator.next " +
-                        "caught exception - " + e.getMessage());
+                                   "caught exception - " + e.getMessage());
                     throw new RuntimeException(e);
                 } finally {
                     row++;
                 }
             }
-            // FIXME: Is this what we want?
             return null;
         }
 
@@ -322,11 +309,17 @@ class LivelinkDocumentList implements DocumentList {
      * over again at the beginning.
      */
     private class LivelinkDocumentListIterator implements Iterator {
-        /** The current row of the recarray. */
-        private int row;
+        /** The current row of the recArray. */
+        private int insRow;
 
-        /** The size of the recarray. */
-        private final int size;
+        /** The size of the recArray. */
+        private final int insSize;
+
+        /** The current row of the delArray. */
+        private int delRow;
+
+        /** The size of the delArray. */
+        private final int delSize;
 
         /** The object ID of the current row. */
         private int objectId;
@@ -359,34 +352,46 @@ class LivelinkDocumentList implements DocumentList {
         private final boolean includeCategoryNames;
 
         LivelinkDocumentListIterator() {
-            this.row = 0;
-            this.size = recArray.size();
+            this.delRow = 0;
+            this.delSize = (delArray == null) ? 0 : delArray.size();
 
-            // Fetch the set of categories to include and exclude.
-            this.includedCategories = connector.getIncludedCategories();
-            this.excludedCategories = connector.getExcludedCategories();
+            this.insRow = 0;
+            this.insSize = (recArray == null) ? 0 : recArray.size();
 
-            // Should we index any Category attributes at all?
-            this.doCategories = !(includedCategories.contains("none") ||
-                excludedCategories.contains("all"));
-
-            // Set qualifiers on the included category attributes.
-            this.includeSearchable = includedCategories.contains("searchable");
-            this.includeCategoryNames = includedCategories.contains("name");
-
-            // If we index all Categories, don't bother searching the set, 
-            // as it will only slow us down.
-            if (includedCategories.contains("all"))
-                includedCategories = null;
-
-            // If we exclude no Categories, don't bother searching the set, 
-            // as it will only slow us down.
-            if (excludedCategories.contains("none"))
-                excludedCategories = null;
+            if (insSize > 0) {
+                // Fetch the set of categories to include and exclude.
+                this.includedCategories = connector.getIncludedCategories();
+                this.excludedCategories = connector.getExcludedCategories();
+                
+                // Should we index any Category attributes at all?
+                this.doCategories = !(includedCategories.contains("none") ||
+                                      excludedCategories.contains("all"));
+                
+                // Set qualifiers on the included category attributes.
+                this.includeSearchable = includedCategories.contains("searchable");
+                this.includeCategoryNames = includedCategories.contains("name");
+                
+                // If we index all Categories, don't bother searching the set, 
+                // as it will only slow us down.
+                if (includedCategories.contains("all"))
+                    includedCategories = null;
+                
+                // If we exclude no Categories, don't bother searching the set, 
+                // as it will only slow us down.
+                if (excludedCategories.contains("none"))
+                    excludedCategories = null;
+            } else {
+                // Avoid stupid variable not initialized warnings.
+                this.doCategories = false;
+                this.includeSearchable = false;
+                this.includeCategoryNames = false;
+                this.includedCategories = null;
+                this.excludedCategories = null;
+            }
         }
 
         public boolean hasNext() {
-            return row < size;
+            return (insRow < insSize) || (delRow < delSize);
         }
 
         /* Iterator Interface for next object */
@@ -406,47 +411,105 @@ class LivelinkDocumentList implements DocumentList {
 
         /* Friendlier interface to next() for our consumption. */
         public LivelinkDocument nextDocument() throws RepositoryException {
-            if (row < size) {
+            if (!hasNext())
+                return null;
+
+            /* Walk two separate lists: inserts and deletes.
+             * Process the request in date order.  If an insert and 
+             * a delete have the same date, process inserts first.
+             */
+            Date insDate = null, delDate = null;
+            int dateComp = 0;
+            objectInfo = null;
+
+            // Peek at the next item to insert,
+            if (insRow < insSize) {
                 try {
-                    objectId = recArray.toInteger(row, "DataID");
+                    insDate = recArray.toDate(insRow, "ModifyDate");
+                } catch (RepositoryException e1) {
+                    insRow++;
+                    throw e1;
+                }
+            } else
+                dateComp = 1;
 
-                    /* Establish the checkpoint string for this row.
-                     * NOTE: This assumes that there is not more than
-                     * one active iterator on the docList. In the SPI
-                     * world that is true. however the tests iterate
-                     * over the docList several times.
-                     */
-                    setCheckpoint(recArray.toDate(row, "ModifyDate"),
-                        objectId);
+            // ... and the next item to delete.
+            if (delRow < delSize) {
+                try {
+                    delDate = delArray.toDate(delRow, "AuditDate");
+                } catch (RepositoryException e1) {
+                    delRow++;
+                    throw e1;
+                }
+            } else
+                dateComp = -1;
 
-                    volumeId = recArray.toInteger(row, "OwnerID");
-                    subType  = recArray.toInteger(row, "Subtype");
-                    objectInfo = null;
+            // Process earlier modification/deletion times first.
+            // If timestamps are the same, process Inserts before Deletes.
+            // This way, if an item is added to the Livelink DB
+            // then deleted immediately we will be sure to process
+            // the insert before the delete.
+            if (dateComp == 0)
+                dateComp = insDate.compareTo(delDate);
 
+            if (dateComp <= 0) {
+                try {
+                    // Return an Inserted Item.
+                    objectId = recArray.toInteger(insRow, "DataID");
+                    volumeId = recArray.toInteger(insRow, "OwnerID");
+                    subType  = recArray.toInteger(insRow, "Subtype");
+                    
                     props = new LivelinkDocument(objectId, fields.length*2);
-
-                    /* collect the various properties for this row */
+                    
+                    // Collect the various properties for this row.
                     collectRecArrayProperties();
                     collectObjectInfoProperties();
                     collectVersionProperties();
                     collectCategoryAttributes();
                     collectDerivedProperties();
-
-                    return props;
-
-                } catch (RepositoryException re) {
-                    throw re;
-                } catch (Exception e) {
-                    throw new LivelinkException(e, LOGGER);
                 } finally {
-                    row++;	// Advance to next document no matter what happens.
+                    // Establish the checkpoint for this row. 
+                    checkpoint.setInsertCheckpoint(insDate, objectId);
+                    insRow++;
                 }
-            } else
-                return null;
+            } else {
+                try {
+                    // return a Deleted Item
+                    objectId = delArray.toInteger(delRow, "DataID");
+
+                    LOGGER.fine("Deleted item[" + delRow + "]: DataID " + objectId + "   AuditDate " + delDate + "    EventID " + delArray.toValue(delRow, "EventID").toString2());
+
+                    props = new LivelinkDocument(objectId, 2);
+                    collectDeletedObjectAttributes();
+                } finally {
+                    // Establish the checkpoint for this row. 
+                    checkpoint.setDeleteCheckpoint(delDate, 
+                                  delArray.toString(delRow, "EventID"));
+                    delRow++;
+                }
+            }
+
+            return props;
         }
+
 
         public void remove() {
             throw new UnsupportedOperationException();
+        }
+
+
+        /**
+         * For items to be deleted from the index, we need only supply
+         * the GSA DocId and a Delete action properties.
+         */
+        private void collectDeletedObjectAttributes()
+            throws RepositoryException
+        {
+            props.addProperty(SpiConstants.PROPNAME_DOCID,
+                              Value.getLongValue(objectId));
+            props.addProperty(SpiConstants.PROPNAME_ACTION,
+                              Value.getStringValue(
+                              SpiConstants.ActionType.DELETE.toString()));
         }
 
 
@@ -461,7 +524,7 @@ class LivelinkDocumentList implements DocumentList {
             for (int i = 0; i < fields.length; i++) {
                 if (fields[i].propertyNames.length > 0) {
                     ClientValue value =
-                        recArray.toValue(row, fields[i].fieldName);
+                        recArray.toValue(insRow, fields[i].fieldName);
                     if (value.isDefined()) {
                         if (isUserIdOrGroupId(fields[i].fieldName)) {
                             // FIXME: hack knows that UserID has 1 propertyName
@@ -491,7 +554,7 @@ class LivelinkDocumentList implements DocumentList {
             // even though it has no content, push a Title tag so that
             // the GSA can at least display a meaningful name.
             if (contentValue == null) {
-                String name = recArray.toString(row, "Name");
+                String name = recArray.toString(insRow, "Name");
                 props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
                     VALUE_TEXT_HTML);
                 props.addProperty(SpiConstants.PROPNAME_CONTENT,
@@ -532,7 +595,7 @@ class LivelinkDocumentList implements DocumentList {
             // there are rows in DVersData but FetchVersion
             // fails. So we're guessing here that if MimeType
             // is non-null then there should be a blob.
-            ClientValue mimeType = recArray.toValue(row, "MimeType");
+            ClientValue mimeType = recArray.toValue(insRow, "MimeType");
             if (!mimeType.isDefined())
                 return null;
 
@@ -541,7 +604,7 @@ class LivelinkDocumentList implements DocumentList {
             // value. For example, the value returned by
             // GetObjectInfo may be different than the
             // value retrieved from the database.
-            int size = recArray.toInteger(row, "DataSize");
+            int size = recArray.toInteger(insRow, "DataSize");
             if (size <= 0)
                 return null;
 
@@ -607,7 +670,7 @@ class LivelinkDocumentList implements DocumentList {
                     }
                 } else {
                     if (LOGGER.isLoggable(Level.WARNING)) {
-                        LOGGER.warning("ExtendedData for " + objectId +
+                        LOGGER.warning("Extended data for " + objectId +
                             " (subtype " + subType + ") has no " +
                             fields[i] + " feature.");
                     }
@@ -636,7 +699,7 @@ class LivelinkDocumentList implements DocumentList {
             for (int i = 0; i < fields.length; i++) {
                 ClientValue value = objectInfo.toValue(fields[i]);
                 if (value != null && value.hasValue()) {
-                    // ExtendedData is the only non-atomic type, so explode it.
+                    // Extended data is the only non-atomic type, so explode it.
                     // If the client specified it, slurp all the ExtendedData.
                     // If the client wished to be more selective, they should
                     // have added specific ExtendedData fields to the map.
@@ -664,7 +727,7 @@ class LivelinkDocumentList implements DocumentList {
             // Make sure this item has versions. See the MimeType, Version and
             // DataSize comments in collectContentProperty().  If DataSize is
             // not defined, then the item has no versions.
-            ClientValue dataSize = recArray.toValue(row, "DataSize");
+            ClientValue dataSize = recArray.toValue(insRow, "DataSize");
             if (!dataSize.isDefined())
                 return;
 
