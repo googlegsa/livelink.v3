@@ -296,10 +296,13 @@ class LivelinkTraversalManager
         // a checkpoint from the last event in the audit log.
         try {
             String query = "EventID in (select max(EventID) from DAuditNew)";
-            String[] columns = { "EventID", "AuditDate" };
+            String[] columnsOracle = { "EventID", "AuditDate" };
+            String[] columnsSqlServer = { "CAST(EventID as bigint) as EventID",
+                                          "AuditDate" };
             String view = "DAuditNew";
             ClientValue results =
-                sysadminClient.ListNodes(query, view, columns);
+                sysadminClient.ListNodes(query, view,
+                               isSqlServer ? columnsSqlServer : columnsOracle);
             if (results.size() > 0) {
                 checkpoint.setDeleteCheckpoint(results.toDate(0, "AuditDate"),
                                                results.toString(0, "EventID"));
@@ -937,9 +940,11 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DAuditNew";
         String[] columns = {
-            "top " + batchsz +  " AuditDate", "EventID", "DataID" };
+            "top " + batchsz + " AuditDate",
+            "CAST(EventID as bigint) as EventID", "DataID" };
+
         if (LOGGER.isLoggable(Level.FINEST))
-            LOGGER.finest("CANDIDATES QUERY: " + query);
+            LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
 
         return sysadminClient.ListNodes(query, view, columns);
     }
