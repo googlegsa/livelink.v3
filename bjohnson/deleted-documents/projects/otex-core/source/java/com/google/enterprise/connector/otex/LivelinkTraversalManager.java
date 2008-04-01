@@ -914,7 +914,8 @@ class LivelinkTraversalManager
             return null;
 
         StringBuffer buffer = new StringBuffer();
-        buffer.append("(AuditStr = 'Delete'");
+        // buffer.append("(AuditStr = 'Delete'");
+        buffer.append("(AuditID = 2");
 
         // Only include delete events after the checkpoint.
         String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
@@ -968,10 +969,11 @@ class LivelinkTraversalManager
         
         StringBuffer buffer = new StringBuffer();
         buffer.append("(select AuditDate, EventID, DataID from DAuditNew");
-        buffer.append(" where (AuditStr = 'Delete'");
+        // buffer.append(" where (AuditStr = 'Delete'");
+        buffer.append(" where (AuditID = 2");
 
         // Only include delete events after the checkpoint.
-        String deleteDate = dateFormat.toSqlString(checkpoint.insertDate);
+        String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
         buffer.append(" and (AuditDate > TO_DATE('");
         buffer.append(deleteDate);
         buffer.append("', 'YYYY-MM-DD HH24:MI:SS') or (AuditDate = TO_DATE('");
