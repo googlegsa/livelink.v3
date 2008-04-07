@@ -74,7 +74,7 @@ class LivelinkDocumentList implements DocumentList {
     private final ClientValueFactory valueFactory;
 
     /** The table of Livelink data, one row per doc, one column per field. */
-    private ClientValue recArray;
+    private final ClientValue recArray;
 
     /** The recarray fields. */
     private final Field[] fields;
@@ -109,7 +109,6 @@ class LivelinkDocumentList implements DocumentList {
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, TraversalContext traversalContext,
             String checkpoint, String currentUsername)
-
             throws RepositoryException {
         this.connector = connector;
         this.client = client;
@@ -410,12 +409,12 @@ class LivelinkDocumentList implements DocumentList {
                 try {
                     objectId = recArray.toInteger(row, "DataID");
 
-                    /* Establish the checkpoint string for this row.
-                     * NOTE: This assumes that there is not more than
-                     * one active iterator on the docList. In the SPI
-                     * world that is true. however the tests iterate
-                     * over the docList several times.
-                     */
+                    // Establish the checkpoint string for this row as
+                    // early as we can.
+                    // NOTE: This assumes that there is not more than
+                    // one active iterator on the docList. In the SPI
+                    // world that is true. however the tests iterate
+                    // over the docList several times.
                     setCheckpoint(recArray.toDate(row, "ModifyDate"),
                         objectId);
 
@@ -425,7 +424,7 @@ class LivelinkDocumentList implements DocumentList {
 
                     props = new LivelinkDocument(objectId, fields.length*2);
 
-                    /* collect the various properties for this row */
+                    // collect the various properties for this row
                     collectRecArrayProperties();
                     collectObjectInfoProperties();
                     collectVersionProperties();
@@ -433,13 +432,12 @@ class LivelinkDocumentList implements DocumentList {
                     collectDerivedProperties();
 
                     return props;
-
                 } catch (RepositoryException re) {
                     throw re;
                 } catch (Exception e) {
                     throw new LivelinkException(e, LOGGER);
                 } finally {
-                    row++;	// Advance to next document no matter what happens.
+                    row++; // Advance to next document no matter what happens.
                 }
             } else
                 return null;
