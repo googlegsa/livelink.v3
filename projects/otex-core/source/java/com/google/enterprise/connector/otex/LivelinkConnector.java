@@ -1529,12 +1529,11 @@ public class LivelinkConnector implements Connector {
         // and confirm the availability of the overview action.
         Client client = clientFactory.createClient();
         ClientValue serverInfo = client.GetServerInfo();
-        boolean hasCharacterEncoding; // Set below.
 
         // Get the server version, which is a string like "9.5.0".
         String serverVersion = serverInfo.toString("ServerVersion");
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("SERVER VERSION: " + serverVersion);
+        if (LOGGER.isLoggable(Level.INFO))
+            LOGGER.info("LIVELINK SERVER VERSION: " + serverVersion);
         String[] versions = serverVersion.split("\\.");
         int majorVersion;
         int minorVersion;
@@ -1557,27 +1556,6 @@ public class LivelinkConnector implements Connector {
                 "unsupportedVersion", new String[] { "9.5" });
         }
 
-        /* [task 4046] Limiting support to 9.5 or greater.
-        // Check for Livelink 9.2 or earlier; omit excluded volumes
-        // and locations if needed. XXX: The DTreeAncestors table was
-        // introduced in Livelink 9.5. Just bailing like this is weak,
-        // but Livelink 9.2 is not officially supported, so there are
-        // limits to how much work is worthwhile here.
-        if (majorVersion == 9 && minorVersion <= 2) {
-            if (LOGGER.isLoggable(Level.WARNING)) {
-                LOGGER.warning("ExcludedVolumeTypes and " +
-                    "ExcludedLocationNodes are not supported under " +
-                    "Livelink 9.2 or earlier.");
-            }
-            excludedVolumeTypes = null;
-            excludedLocationNodes = null;
-
-            // Livelink 9.2 does not return the CharacterEncoding field.
-            hasCharacterEncoding = false;
-        } else
-        */
-            hasCharacterEncoding = true;
-
         // Check for Livelink 9.5 or earlier; change overview action
         // if needed. We only check for the default entry, because if
         // the map has been customized, perhaps the user knows what
@@ -1596,16 +1574,14 @@ public class LivelinkConnector implements Connector {
         }
 
         // Set the character encodings in the client factories if needed.
-        if (hasCharacterEncoding) {
-            int serverEncoding = serverInfo.toInteger("CharacterEncoding");
-            if (serverEncoding == Client.CHARACTER_ENCODING_UTF8) {
-                LOGGER.config("ENCODING: UTF-8");
-                clientFactory.setEncoding("UTF-8");
-                if (authenticationClientFactory != null)
-                    authenticationClientFactory.setEncoding("UTF-8");
-            }
+        int serverEncoding = serverInfo.toInteger("CharacterEncoding");
+        if (serverEncoding == Client.CHARACTER_ENCODING_UTF8) {
+            LOGGER.config("ENCODING: UTF-8");
+            clientFactory.setEncoding("UTF-8");
+            if (authenticationClientFactory != null)
+                authenticationClientFactory.setEncoding("UTF-8");
         }
-
+ 
         return new LivelinkSession(this, clientFactory, authenticationManager);
     }
 }
