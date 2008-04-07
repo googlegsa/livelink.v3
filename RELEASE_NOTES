@@ -12,6 +12,32 @@ and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 1.0.3, Apr 7, 2008
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.0.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fix issue 17 to support NTLM authentication for search users.
+  * Fix issue 18 to correct several issues with indexing hidden items.
+  * Fix issue 19 to avoid a SQL error when the traverser user is defined.
+  * Fix issue 20 where traversal may stop prematurely.
+  * Fix issue 21 to avoid a potentially infinite loop during traversal.
+
+Version Compatibility
+---------------------
+Connectors created using versions 1.0.0 through 1.0.2 may be used with
+this version. This version works with Connector Manager versions 1.0.2
+and 1.0.3. Version 1.0.3 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+
 Release 1.0.2, Mar 17, 2008
 ===========================
 
