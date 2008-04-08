@@ -37,6 +37,9 @@ this version. This version works with Connector Manager versions 1.0.2
 and 1.0.3. Version 1.0.3 is recommended. This product is designed to
 function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
 
+Customers with custom connectorInstance.xml files must update those
+files. Please contact Google Enterprise Support for assistance.
+
 
 Release 1.0.2, Mar 17, 2008
 ===========================
