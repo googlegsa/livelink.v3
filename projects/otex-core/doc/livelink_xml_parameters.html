@@ -24,6 +24,17 @@
   </tr>
 
   <tr>
+    <td>windowsDomain</td>
+    <td>The Windows domain to authenticate users against.
+      <p><em>Livelink API:</em> <code>userName</code> parameter.</p></td>
+    <td>The Windows domain is prepended to the username of search users
+      for authentication. This value is not used for the Livelink
+      system administrator or the traversal user. This parameter will
+      always be used, whether authentication is done via HTTP
+      tunneling or not. The default value is empty.</td>
+  </tr>
+
+  <tr>
     <td><em>server, port, displayUrl</em></td>
     <td><em>Placeholders for the properties file.</em></td>
     <td><em>Specified on the connector configuration form.</em></td>

@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -215,8 +215,7 @@ public class LivelinkConnector implements Connector {
     private String contentHandler;
 
     /** The earliest modification date that should be indexed. */
-    private String startDate = null;
-    private Date parsedStartDate = null;
+    private Date startDate = null;
 
     /** The Livelink traverser client username. */
     private String username;
@@ -374,6 +373,13 @@ public class LivelinkConnector implements Connector {
      * @param livelinkCgi the path or URL to the Livelink CGI
      */
     public void setLivelinkCgi(String livelinkCgi) {
+        // FIXME: This can be non-empty if HTTP tunneling is disabled
+        // (init handles that case), but if HTTP tunneling is enabled,
+        // then this must set, and we aren't validating that. The
+        // LivelinkConnectorType will skip validation if the section
+        // was just expanded, so if we're here, then we should make
+        // sure that livelinkCgi is non-empty if useHttpTunneling is
+        // true.
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("LIVELINK CGI: " + livelinkCgi);
         clientFactory.setLivelinkCgi(livelinkCgi);
@@ -690,9 +696,6 @@ public class LivelinkConnector implements Connector {
         useSeparateAuthentication = useAuth;
     }
 
-
-    // Authentication parameters
-
     /**
      * Sets the database server type.
      *
@@ -749,8 +752,8 @@ public class LivelinkConnector implements Connector {
         if (startDate != null)
             return;
         if (property.trim().length() == 0) {
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.fine("STARTDATE: No start date specified.");
+            if (LOGGER.isLoggable(Level.CONFIG))
+                LOGGER.config("STARTDATE: " + property);
             return;
         }
         Date parsedDate = null; 
@@ -771,8 +774,7 @@ public class LivelinkConnector implements Connector {
                 return;
             }
         }
-        startDate = property;
-        parsedStartDate = parsedDate;
+        startDate = parsedDate;
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("STARTDATE: " + property); 
     }
@@ -782,60 +784,8 @@ public class LivelinkConnector implements Connector {
      *
      * @return the startDate
      */
-    String getStartDate() {
+    Date getStartDate() {
         return startDate;
-    }
-
-    /**
-     * Gets the startDate checkpoint.  We attempt to forge an initial
-     * checkpoint based upon information gleaned from any startDate or
-     * startLocations specified in the configuration.
-     *
-     * @param client connection to use to seed checkpoint
-     * @return the checkpoint string, or null if indexing the entire DB.
-     */
-    String getStartCheckpoint(Client client) {
-
-        // If we have a specified startDate, use it to seed 
-        // our minimum modification timestamp.
-        Date startingDate = parsedStartDate;
-
-        // If the user specified "Items to index", fetch the earliest
-        // modification time for any of those items.  We can forge 
-        // a start checkpoint that skips over any ancient history in
-        // the LL database.  This executes a SQL query of the form:
-        //   select min(ModifyDate) from DTreeAncestors join DTree
-        //   on DTreeAncestors.DataID = DTree.DataID
-        //   where AncestorID in (items to index) 
-        // [Note the actual query is slightly more cryptic to avoid
-        // formatting problems in LL ListNodes function.]
-        String startNodes = getIncludedLocationNodes();
-        if (startNodes != null && startNodes.length() > 0) {
-            try {
-                String query = "1=1";
-                String[] columns = { "minModifyDate" };
-                String view = "(select min(ModifyDate) as minModifyDate from" +
-                    " DTreeAncestors join DTree on DTreeAncestors.DataID =" +
-                    " DTree.DataID where AncestorID in (" + startNodes + ")" +
-                    " or DTree.DataID in (" + startNodes + "))";
-                ClientValue results = client.ListNodes(query, view, columns);
-                if (results.size() > 0) {
-                    Date minDate = results.toDate(0, "minModifyDate");
-                    if ((startingDate == null) || minDate.after(startingDate))
-                        startingDate = minDate;
-                }                    
-            } catch (Exception e) {
-                // Possible non-date comes back if startNodes yields nothing.
-            }
-        }
-
-        // If we actually found an earliest starting point, forge a checkpoint 
-        // that reflects it.
-        if (startingDate != null) 
-            return LivelinkTraversalManager.getCheckpoint(startingDate, 0);
-
-        // No initial checkpoint, start at first object in the LL Database.
-        return null;
     }
 
     /**
@@ -1321,6 +1271,28 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
+     * Sets the Windows domain name to be used for user
+     * authentication. The Windows domain might be used for direct
+     * connections (see the DomainAndName parameter in the [Security]
+     * section of opentext.ini), HTTP tunneling, or separate
+     * authentication.
+     *
+     * @param domain the Windows domain name
+     * @since 1.0.3
+     */
+    /*
+     * TODO: This is a possible model for how to fix issue 3, the
+     * duplication of the useUsernamePasswordWithWebServer parameter.
+     */
+    public void setWindowsDomain(String domain) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("WINDOWS DOMAIN: " + domain);
+        clientFactory.setWindowsDomain(domain);
+        createAuthenticationClientFactory();
+        authenticationClientFactory.setWindowsDomain(domain);
+    }
+    
+    /**
      * Sets the host name or IP address for authentication. See {@link
      * #setServer}.
      *
@@ -1557,12 +1529,11 @@ public class LivelinkConnector implements Connector {
         // and confirm the availability of the overview action.
         Client client = clientFactory.createClient();
         ClientValue serverInfo = client.GetServerInfo();
-        boolean hasCharacterEncoding; // Set below.
 
         // Get the server version, which is a string like "9.5.0".
         String serverVersion = serverInfo.toString("ServerVersion");
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("SERVER VERSION: " + serverVersion);
+        if (LOGGER.isLoggable(Level.INFO))
+            LOGGER.info("LIVELINK SERVER VERSION: " + serverVersion);
         String[] versions = serverVersion.split("\\.");
         int majorVersion;
         int minorVersion;
@@ -1585,27 +1556,6 @@ public class LivelinkConnector implements Connector {
                 "unsupportedVersion", new String[] { "9.5" });
         }
 
-        /* [task 4046] Limiting support to 9.5 or greater.
-        // Check for Livelink 9.2 or earlier; omit excluded volumes
-        // and locations if needed. XXX: The DTreeAncestors table was
-        // introduced in Livelink 9.5. Just bailing like this is weak,
-        // but Livelink 9.2 is not officially supported, so there are
-        // limits to how much work is worthwhile here.
-        if (majorVersion == 9 && minorVersion <= 2) {
-            if (LOGGER.isLoggable(Level.WARNING)) {
-                LOGGER.warning("ExcludedVolumeTypes and " +
-                    "ExcludedLocationNodes are not supported under " +
-                    "Livelink 9.2 or earlier.");
-            }
-            excludedVolumeTypes = null;
-            excludedLocationNodes = null;
-
-            // Livelink 9.2 does not return the CharacterEncoding field.
-            hasCharacterEncoding = false;
-        } else
-        */
-            hasCharacterEncoding = true;
-
         // Check for Livelink 9.5 or earlier; change overview action
         // if needed. We only check for the default entry, because if
         // the map has been customized, perhaps the user knows what
@@ -1624,16 +1574,14 @@ public class LivelinkConnector implements Connector {
         }
 
         // Set the character encodings in the client factories if needed.
-        if (hasCharacterEncoding) {
-            int serverEncoding = serverInfo.toInteger("CharacterEncoding");
-            if (serverEncoding == Client.CHARACTER_ENCODING_UTF8) {
-                LOGGER.config("ENCODING: UTF-8");
-                clientFactory.setEncoding("UTF-8");
-                if (authenticationClientFactory != null)
-                    authenticationClientFactory.setEncoding("UTF-8");
-            }
+        int serverEncoding = serverInfo.toInteger("CharacterEncoding");
+        if (serverEncoding == Client.CHARACTER_ENCODING_UTF8) {
+            LOGGER.config("ENCODING: UTF-8");
+            clientFactory.setEncoding("UTF-8");
+            if (authenticationClientFactory != null)
+                authenticationClientFactory.setEncoding("UTF-8");
         }
-
+ 
         return new LivelinkSession(this, clientFactory, authenticationManager);
     }
 }

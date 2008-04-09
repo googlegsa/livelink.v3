@@ -1,17 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
+        <!-- EDIT THIS BEAN DEFINTION WITH CUSTOM PROPERTY VALUES -->
+        <bean id="Livelink_Enterprise_Server"
+                class="com.google.enterprise.connector.otex.LivelinkConnector"
+                parent="Livelink_Enterprise_Server_Defaults" 
+                singleton="false">
+
+                <!-- COPY CUSTOM PROPERTY VALUES HERE -->
+
+        </bean>
+
+        <!-- EDIT THIS BEAN DEFINTION WITH CAUTION -->
         <bean id="authenticationManager"
                 class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
                 singleton="false"/>
 
-        <bean id="Livelink_Enterprise_Server"
-                class="com.google.enterprise.connector.otex.LivelinkConnector"
-                dependency-check="all" singleton="false">
+        <!-- 
+             DO NOT EDIT BELOW THIS LINE.
+             Override these properties by copying them to the
+             Livelink_Enterprise_Server bean, above
+        -->
+        <bean id="Livelink_Enterprise_Server_Defaults">
 
-                <!-- EDIT THESE PROPERTIES -->
+                <!-- OVERRIDE THESE PROPERTIES BY COPYING -->
                 <!-- Connection and HTTP tunneling properties. -->
                 <property name="connection" value=""/>
+                <property name="windowsDomain" value=""/>
                 <property name="verifyServer" value="false"/>
                 <property name="caRootCerts">
                         <list></list>
@@ -73,13 +88,13 @@
                         </map>
                 </property>
 
-                <!-- EDIT THESE PROPERTIES WITH CAUTION -->
+                <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING -->
                 <property name="authenticationManager" ref="authenticationManager"/>
                 <property name="contentHandler"
                         value="com.google.enterprise.connector.otex.FileContentHandler"/>
                 <property name="servtype" value=""/>
 
-                <!-- DO NOT EDIT BELOW THIS LINE -->
+                <!-- DO NOT OVERRIDE PROPERTIES BELOW THIS LINE -->
                 <property name="server" value="${server}"/>
                 <property name="port" value="${port}"/>
                 <property name="username" value="${username}"/>

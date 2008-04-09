@@ -65,6 +65,12 @@ class LivelinkTraversalManager
      */
     protected static final Field[] FIELDS;
 
+    /**
+     * The columns needed in the database query, which are obtained
+     * from the field names in <code>FIELDS</code>.
+     */
+    private static final String[] SELECT_LIST;
+
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This implementation requires DataID,
@@ -89,6 +95,10 @@ class LivelinkTraversalManager
         list.add(new Field("PermID"));
 
         FIELDS = (Field[]) list.toArray(new Field[0]);
+
+        SELECT_LIST = new String[FIELDS.length];
+        for (int i = 0; i < FIELDS.length; i++)
+            SELECT_LIST[i] = FIELDS[i].fieldName;
     }
 
     /**
@@ -111,21 +121,17 @@ class LivelinkTraversalManager
     /** The client provides access to the server. */
     private final Client client;
 
-    /** The columns needed in the database query. */
-    private final String[] selectList;
-
-    /** A concrete strategy for retrieving the content from the server. */
-    private final ContentHandler contentHandler;
-
-    /** The number of results to return in each batch. */
-    private volatile int batchSize = 100;
-
-    /** The database type, either SQL Server or Oracle. */
-    /* XXX: We could use the state or strategy pattern if this gets messy. */
-    private final boolean isSqlServer;
-
-    /** The TraversalContext from TraversalContextAware Interface */
-    private TraversalContext traversalContext = null;
+    /**
+     * The admin client provides access to the server for the
+     * candidates query. If we use the traversal user, there's a bad
+     * interaction between the SQL query limits (e.g., TOP 100, ROWNUM
+     * &lt;= 100) and Livelink's user permissions checks. If the
+     * traversal user doesn't have permission to see an entire batch,
+     * we have no candidates, and we don't even have a checkpoint at
+     * the end that we could skip past. So when there is a traversal
+     * user, we get the candidates as the system administrator.
+     */
+    private final Client sysadminClient;
 
     /**
      * The current user, either the system administrator or an
@@ -133,14 +139,26 @@ class LivelinkTraversalManager
      */
     private final String currentUsername;
 
+    /** The database type, either SQL Server or Oracle. */
+    /* XXX: We could use the state or strategy pattern if this gets messy. */
+    private final boolean isSqlServer;
+
+    /** A starting checkpoint, for efficiency, or <code>null</code. */
+    private final String startCheckpoint;
+       
+    /** A concrete strategy for retrieving the content from the server. */
+    private final ContentHandler contentHandler;
+
+    /** The number of results to return in each batch. */
+    private volatile int batchSize = 100;
+
+    /** The TraversalContext from TraversalContextAware Interface */
+    private TraversalContext traversalContext = null;
+
     LivelinkTraversalManager(LivelinkConnector connector,
             ClientFactory clientFactory) throws RepositoryException {
         this.connector = connector;
-        client = clientFactory.createClient();
-
-        isSqlServer = isSqlServer();
-        selectList = getSelectList();
-        contentHandler = getContentHandler();
+        this.client = clientFactory.createClient();
 
         // Get the current username to compare to the configured
         // traversalUsername and publicContentUsername.
@@ -163,9 +181,16 @@ class LivelinkTraversalManager
         if (traversalUsername != null && !traversalUsername.equals(username)) {
             client.ImpersonateUserEx(traversalUsername,
                 connector.getDomainName());
-            currentUsername = traversalUsername;
-        } else
-            currentUsername = username;
+            this.sysadminClient  = clientFactory.createClient();
+            this.currentUsername = traversalUsername;
+        } else {
+            this.sysadminClient = client;
+            this.currentUsername = username;
+        }
+
+        this.isSqlServer = isSqlServer();
+        this.startCheckpoint = getStartCheckpoint();
+        this.contentHandler = getContentHandler();
     }
 
 
@@ -175,6 +200,11 @@ class LivelinkTraversalManager
      * @return <code>true</code> for SQL Server, or <code>false</code>
      * for Oracle.
      */
+    /*
+     * We need to use the sysadminClient because this method uses
+     * <code>ListNodes</code> but does not select either DataID or
+     * PermID, or even use the DTree table at all.
+     */
     private boolean isSqlServer() throws RepositoryException {
         String servtype = connector.getServtype();
         if (servtype == null) {
@@ -182,11 +212,12 @@ class LivelinkTraversalManager
             // generic errors when connecting or using ListNodes.
             String query = "1=1"; // ListNodes requires a WHERE clause.
             String[] columns = { "42" };
-            ClientValue results = client.ListNodes(query, "KDual", columns);
+            ClientValue results =
+                sysadminClient.ListNodes(query, "KDual", columns);
 
             // Then check an Oracle-specific query.
             // We use ListNodesNoThrow() to avoid logging our expected error.
-            results = client.ListNodesNoThrow(query, "dual", columns);
+            results = sysadminClient.ListNodesNoThrow(query, "dual", columns);
             boolean isOracle = (results != null);
 
             if (LOGGER.isLoggable(Level.CONFIG)) {
@@ -207,17 +238,64 @@ class LivelinkTraversalManager
 
 
     /**
-     * Gets the select list for the needed fields.
+     * Gets the startDate checkpoint.  We attempt to forge an initial
+     * checkpoint based upon information gleaned from any startDate or
+     * includedLocationNodes specified in the configuration.
      *
-     * @return a string array of column names
+     * @return the checkpoint string, or null if indexing the entire DB.
      */
-    private String[] getSelectList() {
-        ArrayList temp = new ArrayList(FIELDS.length);
-        for (int i = 0; i < FIELDS.length; i++) {
-            if (FIELDS[i].fieldName != null)
-                temp.add(FIELDS[i].fieldName);
+    /*
+     * We need to use the sysadminClient because this method uses
+     * <code>ListNodes</code> but does not and cannot select either
+     * DataID or PermID.
+     */
+    private String getStartCheckpoint() {
+        // If we have a specified startDate, use it to seed 
+        // our minimum modification timestamp.
+        Date startDate = connector.getStartDate();
+
+        // If the user specified "Items to index", fetch the earliest
+        // modification time for any of those items.  We can forge 
+        // a start checkpoint that skips over any ancient history in
+        // the LL database.  This executes a SQL query of the form:
+        //   select min(ModifyDate) from DTreeAncestors join DTree
+        //   on DTreeAncestors.DataID = DTree.DataID
+        //   where AncestorID in (items to index)
+        //   or DataID in (items to index)
+        // [Note the actual query is slightly more cryptic to avoid a
+        // SQL error caused by the range variable inserted into the
+        // query by ListNodes, and by range variables introduced here
+        // to make it easier to test the query in SQL Server
+        // Enterprise Manager or Query Analyzer.]
+        String startNodes = connector.getIncludedLocationNodes();
+        if (startNodes != null && startNodes.length() > 0) {
+            String ancestorNodes = getAncestorNodes(startNodes);
+            try {
+                String query = "1=1";
+                String[] columns = { "minModifyDate" };
+                String view = "(select min(ModifyDate) as minModifyDate from " +
+                    "DTreeAncestors Anc join DTree T on Anc.DataID = " +
+                    "T.DataID where AncestorID in (" + ancestorNodes + ") " +
+                    "or T.DataID in (" + startNodes + "))";
+                if (LOGGER.isLoggable(Level.FINEST))
+                    LOGGER.finest("START CHECKPOINT VIEW: " + view);
+
+                ClientValue results =
+                    sysadminClient.ListNodes(query, view, columns);
+                if (results.size() > 0) {
+                    Date minDate = results.toDate(0, "minModifyDate");
+                    if (startDate == null || minDate.after(startDate))
+                        startDate = minDate;
+                }                    
+            } catch (Exception e) {
+                // Possible non-date comes back if startNodes yields nothing.
+            }
         }
-        return (String[]) temp.toArray(new String[temp.size()]);
+
+        // If we actually found an earliest starting point, forge a
+        // checkpoint that reflects it. Otherwise, start at first
+        // object in the Livelink database.
+        return (startDate != null) ? getCheckpoint(startDate, 0) : null;
     }
 
     /**
@@ -250,38 +328,15 @@ class LivelinkTraversalManager
         // If we have an explict list of start locations, build a
         // query that includes only those and their descendants.
         String startNodes = connector.getIncludedLocationNodes();
-        String ancesterNodes;
+        String ancestorNodes;
         if (startNodes != null && startNodes.length() > 0) {
-            // Projects, Discussions, Channels, and TaskLists have a rather
-            // strange behaviour.  Their contents have a VolumeID that is the
-            // same as the container's ObjectID, and an AncesterID that is the
-            // negation the container's ObjectID.  To catch that, I am going
-            // to create a superset list that adds the negation of everything
-            // in the specified the specified list.  We believe this is safe,
-            // as negative values of standard containers (folders, compound 
-            // docs, etc) simply should not exist, so we shouldn't get any 
-            // false positives.
-            StringBuffer buffer = new StringBuffer();
-            StringTokenizer tok =
-                new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
-            while (tok.hasMoreTokens()) {
-                String objId = tok.nextToken();
-                if (buffer.length() > 0)
-                    buffer.append(',');
-                buffer.append(objId);
-                try {
-                    int intId = Integer.parseInt(objId);
-                    buffer.append(',');
-                    buffer.append(-intId);
-                } catch (NumberFormatException e) {}
-            }
-            ancesterNodes = buffer.toString();
+            ancestorNodes = getAncestorNodes(startNodes);
         } else {
-        // If we don't have an explicit list of start points, build
-        // an implicit list from the list of all volumes, minus those
-        // that are explicitly excluded.
+            // If we don't have an explicit list of start points,
+            // build an implicit list from the list of all volumes,
+            // minus those that are explicitly excluded.
             startNodes = getStartingVolumes(candidatesPredicate);
-            ancesterNodes = startNodes;
+            ancestorNodes = startNodes;
         }
 
         StringBuffer buffer = new StringBuffer();
@@ -291,13 +346,40 @@ class LivelinkTraversalManager
         buffer.append("DTreeAncestors where ");
         buffer.append(candidatesPredicate);
         buffer.append(" and AncestorID in (");
-        buffer.append(ancesterNodes);
+        buffer.append(ancestorNodes);
         buffer.append(")))");
         String included = buffer.toString();
 
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("INCLUDED: " + included);
         return included;
+    }
+
+    private String getAncestorNodes(String startNodes) {
+        // Projects, Discussions, Channels, and TaskLists have a rather
+        // strange behaviour.  Their contents have a VolumeID that is the
+        // same as the container's ObjectID, and an AncestorID that is the
+        // negation the container's ObjectID.  To catch that, I am going
+        // to create a superset list that adds the negation of everything
+        // in the specified the specified list.  We believe this is safe,
+        // as negative values of standard containers (folders, compound 
+        // docs, etc) simply should not exist, so we shouldn't get any 
+        // false positives.
+        StringBuffer buffer = new StringBuffer();
+        StringTokenizer tok =
+            new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
+        while (tok.hasMoreTokens()) {
+            String objId = tok.nextToken();
+            if (buffer.length() > 0)
+                buffer.append(',');
+            buffer.append(objId);
+            try {
+                int intId = Integer.parseInt(objId);
+                buffer.append(',');
+                buffer.append(-intId);
+            } catch (NumberFormatException e) {}
+        }
+        return buffer.toString();
     }
 
     /**
@@ -379,8 +461,9 @@ class LivelinkTraversalManager
             buffer.append("))");
         }
 
-        // TODO: This doesn't handle the subtypes yet. If subtypes are
-        // specified, then hidden items will just not be indexed.
+        // TODO: This doesn't handle the subtypes yet. If
+        // showHiddenItems is a list of subtypes, then hidden items
+        // will just not be indexed.
         HashSet showHiddenItems = connector.getShowHiddenItems();
         if (!showHiddenItems.contains("all"))
         {
@@ -388,7 +471,10 @@ class LivelinkTraversalManager
             // conceptually interferring with the A range variable
             // that LAPI adds behind the scenes.
             // XXX: We need to qualify the reference to DataID in the
-            // candidatesPredicate with T. Sigh.
+            // candidatesPredicate with Anc. We "know" that DataID
+            // appears at the beginning of candidatesPredicate, so we
+            // just leave a hanging "Anc." just before that. See
+            // listNodes, where the predicate is created. Sigh.
             String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
             if (buffer.length() > 0)
                 buffer.append(" and ");
@@ -396,10 +482,26 @@ class LivelinkTraversalManager
             buffer.append(hidden);
             buffer.append(" and DataID not in (select Anc.DataID ");
             buffer.append("from DTreeAncestors Anc join DTree T ");
-            buffer.append("on Anc.AncestorID = T.DataID where T.");
+            buffer.append("on Anc.AncestorID = T.DataID where Anc.");
             buffer.append(candidatesPredicate);
-            buffer.append(" and Catalog = ");
+            buffer.append(" and T.Catalog = ");
             buffer.append(hidden);
+
+            // TODO: This is rework from getIncluded, but I didn't
+            // want to merge the two methods on the fly because it
+            // would break the tests.
+            String startNodes = connector.getIncludedLocationNodes();
+            if (startNodes != null && startNodes.length() > 0) {
+                String ancestorNodes = getAncestorNodes(startNodes);
+                buffer.append(" and Anc.AncestorID not in (");
+                buffer.append(startNodes);
+                buffer.append(") and Anc.AncestorID not in ");
+                buffer.append("(select AncestorID from DTreeAncestors ");
+                buffer.append("where DataID in (");
+                buffer.append(ancestorNodes);
+                buffer.append("))");
+            }
+
             buffer.append(')');
         }
 
@@ -453,12 +555,12 @@ class LivelinkTraversalManager
     /** {@inheritDoc} */
     public DocumentList startTraversal() throws RepositoryException {
         // startCheckpoint will either be an initial checkpoint or null
-        String checkpoint = connector.getStartCheckpoint(client);
         if (LOGGER.isLoggable(Level.INFO)) {
-            LOGGER.info("START" +
-                (checkpoint == null ? "" : ": " + checkpoint));
+            LOGGER.info("START TRAVERSAL: " + batchSize + " rows" + 
+                (startCheckpoint == null ? "" : " from " + startCheckpoint) +
+                ".");
         }
-        return listNodes(checkpoint);
+        return listNodes(startCheckpoint);
     }
 
 
@@ -466,8 +568,21 @@ class LivelinkTraversalManager
     public DocumentList resumeTraversal(String checkpoint)
             throws RepositoryException {
         if (LOGGER.isLoggable(Level.FINE)) {
-            LOGGER.fine("RESUME: " + checkpoint);
+            LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
+                checkpoint + ".");
         }
+        
+        // Ping the Livelink Server.  If I can't talk to the server,
+        // I will consider this a transient Exception (server down,
+        // network error, etc).  In that case, return null, signalling
+        // no new documents available at this time.
+        try {
+            client.GetCurrentUserID(); 	// ping()
+        } catch (RepositoryException e) {
+            try { Thread.sleep(5000); } catch (Exception ex) {};
+            return null;
+        }
+        
         return listNodes(checkpoint);
     }
 
@@ -635,7 +750,7 @@ class LivelinkTraversalManager
 
         String query = buffer.toString();
         String view = "WebNodes";
-        String[] columns = selectList;
+        String[] columns = SELECT_LIST;
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("RESULTS QUERY: " + query);
 
@@ -643,6 +758,11 @@ class LivelinkTraversalManager
     }
 
 
+    /*
+     * We need to use the sysadminClient to avoid getting no
+     * candidates when the traversal user does not have permission for
+     * any of the potential candidates.
+     */
     private ClientValue getCandidatesSqlServer(String checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
@@ -655,11 +775,11 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DTree";
         String[] columns = {
-            "top " + batchsz +  " ModifyDate", "DataID", "PermID" };
+            "top " + batchsz +  " ModifyDate", "DataID" };
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("CANDIDATES QUERY: " + query);
 
-        return client.ListNodes(query, view, columns);
+        return sysadminClient.ListNodes(query, view, columns);
     }
 
 
@@ -669,11 +789,15 @@ class LivelinkTraversalManager
      * would allow us to eliminate the outer query with ROWNUM and get
      * equal performance, except that it doesn't limit the number of
      * rows, and LAPI materializes the entire result set.
+     * 
+     * We need to use the sysadminClient to avoid getting no
+     * candidates when the traversal user does not have permission for
+     * any of the potential candidates.
      */
     private ClientValue getCandidatesOracle(String checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
-        buffer.append("(select ModifyDate, DataID, PermID from DTree");
+        buffer.append("(select ModifyDate, DataID from DTree");
         if (checkpoint != null) {
             buffer.append(" where ");
             buffer.append(getRestriction(checkpoint));
@@ -687,7 +811,7 @@ class LivelinkTraversalManager
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("CANDIDATES VIEW: " + view);
 
-        return client.ListNodes(query, view, columns);
+        return sysadminClient.ListNodes(query, view, columns);
     }
 
 
@@ -706,9 +830,9 @@ class LivelinkTraversalManager
      * we're using TO_DATE with Oracle in order to work with Oracle
      * 8i, and therefore with Livelink 9.0 or later.
      *
-     * TODO: Validate the checkpoint. We could move the validatation
-     * to resumeTraversal, which is the only place a non-null
-     * checkpoint could come from.
+     * TODO: Validate the checkpoint. We have checkpoints coming from
+     * the Connector Manager, from a configured starting date, or from
+     * the earliest modification date of the included location nodes.
      */
     private String getRestriction(String checkpoint)
             throws RepositoryException {
