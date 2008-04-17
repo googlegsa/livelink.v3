@@ -284,11 +284,21 @@ class LivelinkTraversalManager
                     sysadminClient.ListNodes(query, view, columns);
                 if (results.size() > 0) {
                     Date minDate = results.toDate(0, "minModifyDate");
+                    if (LOGGER.isLoggable(Level.FINEST)) {
+                        LOGGER.finest("START CHECKPOINT COMPARING: " +
+                            startDate + " TO: " + minDate);
+                    }
                     if (startDate == null || minDate.after(startDate))
                         startDate = minDate;
-                }                    
+                } else {
+                    if (LOGGER.isLoggable(Level.FINER))
+                        LOGGER.finer("START CHECKPOINT EMPTY JOIN");
+                }
             } catch (Exception e) {
                 // Possible non-date comes back if startNodes yields nothing.
+                if (LOGGER.isLoggable(Level.FINER))
+                    LOGGER.log(Level.FINER, "START CHECKPOINT ERROR: " +
+                        startDate, e);
             }
         }
 
