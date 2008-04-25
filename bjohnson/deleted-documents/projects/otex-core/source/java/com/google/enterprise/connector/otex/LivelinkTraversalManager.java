@@ -71,6 +71,12 @@ class LivelinkTraversalManager
      */
     private static final String[] SELECT_LIST;
 
+    /**
+     * True if the Connector Manager handles Delete Actions, false
+     * otherwise.
+     */
+    private static final boolean deleteSupported;
+
     static {
         // ListNodes requires the DataID and PermID columns to be
         // included here. This implementation requires DataID,
@@ -99,6 +105,9 @@ class LivelinkTraversalManager
         SELECT_LIST = new String[FIELDS.length];
         for (int i = 0; i < FIELDS.length; i++)
             SELECT_LIST[i] = FIELDS[i].fieldName;
+
+        // Check to see if the Connector Manager supports Deleted Documents.
+        deleteSupported = isDeleteSupported();
     }
 
     
@@ -183,6 +192,21 @@ class LivelinkTraversalManager
         this.contentHandler = getContentHandler();
     }
 
+
+    /**
+     * Determines if the controlling Connector Manager supports the
+     * Delete Action, which purges deleted documents from the index.
+     *
+     * @return <code>true</code> if the Connector Manager handles 
+     * Delete Actions, <code>false</code> otherwise.
+     */
+    private static boolean isDeleteSupported() {
+        try {
+            return SpiConstants.ActionType.DELETE.toString() != null;
+        } catch (java.lang.NoClassDefFoundError e) {
+            return false;
+        }
+    }
 
     /**
      * Determines whether the database type is SQL Server or Oracle.
@@ -294,24 +318,26 @@ class LivelinkTraversalManager
 
         // We only care about Delete actions from now going forward, so forge
         // a checkpoint from the last event in the audit log.
-        try {
-            String query = "EventID in (select max(EventID) from DAuditNew)";
-            String[] columnsOracle = { "EventID", "AuditDate" };
-            String[] columnsSqlServer = { "CAST(EventID as bigint) as EventID",
-                                          "AuditDate" };
-            String view = "DAuditNew";
-            ClientValue results =
-                sysadminClient.ListNodes(query, view,
-                               isSqlServer ? columnsSqlServer : columnsOracle);
-            if (results.size() > 0) {
-                checkpoint.setDeleteCheckpoint(results.toDate(0, "AuditDate"),
-                                               results.toString(0, "EventID"));
-            }
-        } catch (Exception e) {
-            // If there is no audit trail, then no initial Delete Checkpoint.
-            if (LOGGER.isLoggable(Level.WARNING)) {
-                LOGGER.warning("Error establishing initial Deleted Items " +
-                               " Checkpoint: " + e.getMessage());
+        if (deleteSupported) {
+            try {
+                String query = "EventID in (select max(EventID) from DAuditNew)";
+                String[] columnsOracle = { "EventID", "AuditDate" };
+                String[] columnsSqlServer = { "CAST(EventID as bigint) as EventID",
+                                              "AuditDate" };
+                String view = "DAuditNew";
+                ClientValue results =
+                    sysadminClient.ListNodes(query, view,
+                                   isSqlServer ? columnsSqlServer : columnsOracle);
+                if (results.size() > 0) {
+                    checkpoint.setDeleteCheckpoint(results.toDate(0, "AuditDate"),
+                                                   results.toString(0, "EventID"));
+                }
+            } catch (Exception e) {
+                // If there is no audit trail, then no initial Delete Checkpoint.
+                if (LOGGER.isLoggable(Level.WARNING)) {
+                    LOGGER.warning("Error establishing initial Deleted Items " +
+                                   " Checkpoint: " + e.getMessage());
+                }
             }
         }
 
@@ -601,7 +627,7 @@ class LivelinkTraversalManager
         // If we were handed an old-style checkpoint, that means the
         // user upgraded the connector, but has not reindexed.  Update
         // the checkpoint to the newer style.
-        if (Checkpoint.isOldStyle(checkpoint)) {
+        if (deleteSupported && Checkpoint.isOldStyle(checkpoint)) {
             checkpoint = Checkpoint.upgrade(checkpoint);
             if (LOGGER.isLoggable(Level.FINE))
                 LOGGER.fine("UPGRADED OLD-STYLE CHECKPOINT: " + checkpoint);
@@ -910,7 +936,8 @@ class LivelinkTraversalManager
     private ClientValue getDeletesSqlServer(Checkpoint checkpoint, int batchsz)
         throws RepositoryException {
         
-        if ((checkpoint == null) || (checkpoint.deleteDate == null))
+        if ((deleteSupported == false) ||
+            (checkpoint == null) || (checkpoint.deleteDate == null))
             return null;
 
         StringBuffer buffer = new StringBuffer();
@@ -964,7 +991,8 @@ class LivelinkTraversalManager
     private ClientValue getDeletesOracle(Checkpoint checkpoint, int batchsz)
         throws RepositoryException {
 
-        if ((checkpoint == null) || (checkpoint.deleteDate == null))
+        if ((deleteSupported == false) ||
+            (checkpoint == null) || (checkpoint.deleteDate == null))
             return null;
         
         StringBuffer buffer = new StringBuffer();
@@ -1003,5 +1031,4 @@ class LivelinkTraversalManager
 
         return sysadminClient.ListNodes(query, view, columns);
     }
-
 }

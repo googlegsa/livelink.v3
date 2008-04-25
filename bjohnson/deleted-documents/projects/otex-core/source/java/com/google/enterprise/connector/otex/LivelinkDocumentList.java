@@ -499,18 +499,19 @@ class LivelinkDocumentList implements DocumentList {
 
         /**
          * For items to be deleted from the index, we need only supply
-         * the GSA DocId and a Delete action properties.
+         * the GSA the DocId, lastModified date,  and a Delete action
+         * properties.
          */
         private void collectDeletedObjectAttributes()
             throws RepositoryException
         {
             props.addProperty(SpiConstants.PROPNAME_DOCID,
                               Value.getLongValue(objectId));
+            props.addProperty(SpiConstants.PROPNAME_LASTMODIFIED,
+                              delArray.toValue(delRow, "AuditDate"));
             props.addProperty(SpiConstants.PROPNAME_ACTION,
                               Value.getStringValue(
                               SpiConstants.ActionType.DELETE.toString()));
-            props.addProperty(SpiConstants.PROPNAME_LASTMODIFIED,
-                              delArray.toValue(delRow, "AuditDate"));
         }
 
 
