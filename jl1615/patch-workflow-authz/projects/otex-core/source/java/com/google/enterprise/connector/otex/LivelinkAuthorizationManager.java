@@ -45,9 +45,19 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
     /** Client factory for obtaining client instances. */
     private final ClientFactory clientFactory;
 
-    /** Do we exclude Deleted Documents from search results? */
-    private boolean purgeDeletedDocs = false;
+    /** 
+     * If deleted documents are excluded from indexing, then we should
+     * also remove documents from search results that were deleted
+     * after they were indexed.
+     */
+    private boolean purgeDeletedDocs;
 
+    /**
+     * FIXME: Temporary patch to remove workflow attachments from the
+     * search results if the workflow volume is excluded from
+     * indexing.
+     */
+    private int workflowVolumeId;
 
     /**
      * Constructor - caches client factory, connector, and
@@ -61,7 +71,20 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         super();
         this.clientFactory = clientFactory;
         this.connector = connector;
-        this.purgeDeletedDocs = excludeDeletedDocuments();
+        this.purgeDeletedDocs = excludeVolume(402);
+        if (excludeVolume(161)) {
+            // There isn't an AccessWorkflowWS function.
+            Client client = clientFactory.createClient();
+            ClientValue results = client.ListNodes("SubType = 161", "DTree",
+                new String[] { "DataID", "PermId" });
+            if (results.size() > 0) {
+                workflowVolumeId = results.toInteger(0, "DataID");
+                LOGGER.finest("EXCLUDING WORKFLOW VOLUME: " +
+                    workflowVolumeId);
+            } else
+                workflowVolumeId = 0;
+        } else
+            workflowVolumeId = 0;
     }
 
 
@@ -224,42 +247,43 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             query.append(')');
         }
 
+        if (workflowVolumeId != 0) {
+            query.append(" and OwnerID <> -" + workflowVolumeId);
+        }
+
         return query.toString();
     }
 
 
     /**
-     * Returns a boolean representing whether the Undelete Workspace
-     * is excluded from indexing.  If deleted documents are excluded
-     * from indexing, then we should also remove documents from
-     * search results that were deleted after they were indexed.
+     * Returns a boolean representing whether the given volume
+     * is excluded from indexing.  
      *
-     * The connector can be configured to exclude Undelete Workspace
-     * either by specifying the Deleted Document Volumes SubType (402)
-     * in the excludedVolumeTypes, or by specifying the NodeID of 
-     * the Undelete Workspace in the excludedLocationNodes.
+     * The connector can be configured to exclude volumes either by
+     * specifying the volume's SubType in the excludedVolumeTypes, or
+     * by specifying the NodeID of the volume in the
+     * excludedLocationNodes.
      *
-     * @return true if the Undelete Workspace is excluded from indexing,
+     * @return true if the volume is excluded from indexing,
      * false otherwise.
      */
-    private boolean excludeDeletedDocuments() throws RepositoryException {
-        // First look for Deleted Documents Volume subtype 402 specified
-        // in the excludeVolumeTypes.
+    private boolean excludeVolume(int subtype) throws RepositoryException {
+        // First look for volume subtype in the excludedVolumeTypes.
         String exclVolTypes = connector.getExcludedVolumeTypes();
         if ((exclVolTypes != null) && (exclVolTypes.length() > 0)) {
             String[] subtypes = exclVolTypes.split(",");
             for (int i = 0; i < subtypes.length; i++) {
-                if ("402".equals(subtypes[i]))
+                if (String.valueOf(subtype).equals(subtypes[i]))
                     return true;
             }
         }
 
-        // If volume subtype 402 was not excluded, then look for
-        // explicitly excluded Undelete Workspace nodes in
-        // excludedLocationNodes.
+        // If volume subtype was not excluded, then look for
+        // explicitly excluded volume nodes in excludedLocationNodes.
         String exclNodes = connector.getExcludedLocationNodes();
         if ((exclNodes != null) && (exclNodes.length() > 0)) {
-            String query = "SubType = 402 and DataID in (" + exclNodes + ")";
+            String query =
+                "SubType = " + subtype + " and DataID in (" + exclNodes + ")";
             LOGGER.finest(query);                                                  
             Client client = clientFactory.createClient();
             StringBuffer buf = new StringBuffer();
