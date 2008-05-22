@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+        <!-- EDIT THIS BEAN DEFINTION WITH CUSTOM PROPERTY VALUES -->
+        <bean id="Livelink_Enterprise_Server"
+                class="com.google.enterprise.connector.otex.LivelinkConnector"
+                parent="Livelink_Enterprise_Server_Defaults" 
+                singleton="false">
+
+                <!-- COPY CUSTOM PROPERTY VALUES HERE -->
+
+        </bean>
+
+        <!-- EDIT THIS BEAN DEFINTION WITH CAUTION -->
+        <bean id="authenticationManager"
+                class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
+                singleton="false"/>
+
+        <!-- 
+             DO NOT EDIT BELOW THIS LINE.
+             Override these properties by copying them to the
+             Livelink_Enterprise_Server bean, above
+        -->
+        <bean id="Livelink_Enterprise_Server_Defaults">
+
+                <!-- OVERRIDE THESE PROPERTIES BY COPYING -->
+                <!-- Connection and HTTP tunneling properties. -->
+                <property name="connection" value=""/>
+                <property name="windowsDomain" value=""/>
+                <property name="verifyServer" value="false"/>
+                <property name="caRootCerts">
+                        <list></list>
+                </property>
+
+                <!-- Separate authentication properties. -->
+                <property name="authenticationConnection" value=""/>
+                <property name="authenticationVerifyServer" value="false"/>
+                <property name="authenticationCaRootCerts">
+                        <list></list>
+                </property>
+
+                <!-- Indexing properties. -->
+                <property name="startDate" value=""/>
+                <property name="publicContentUsername" value=""/>
+                <property name="publicContentDisplayUrl" value=""/>
+
+                <property name="excludedNodeTypes"
+                        value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
+                <property name="excludedVolumeTypes" value="148,162"/>
+                <property name="excludedLocationNodes" value=""/>
+                <property name="includedExtendedData">
+                        <map>
+                                <entry key="130,134" value="Content" />
+                                <entry key="202" 
+                                        value="Mission,Goals,Objectives,Initiatives" />
+                                <entry key="206" value="Instructions,Comments" />
+                                <entry key="208" value="Headline,Story" />
+
+                                <entry key="218" value="Instruction,Questions" />
+                        </map>
+                </property>
+                <property name="includedObjectInfo" value="" />
+                <property name="includedVersionInfo" value="" />
+                <property name="includedCategories" value="all,searchable" />
+                <property name="excludedCategories" value="" />
+                <property name="showHiddenItems" value="false" />
+
+                <property name="displayPatterns">
+                        <map>
+                                <entry key="141" value="?func=llworkspace" />
+                                <entry key="142"
+                                        value="?func=ll&amp;objtype=142&amp;objAction=browse" />
+                                <entry key="default"
+                                        value="?func=ll&amp;objId={0}&amp;objAction={3}" />
+                        </map>
+                </property>
+                <property name="displayActions">
+                        <map>
+                                <entry key="0,202,136" value="browse" />
+                                <entry key="130,134,215" value="view" />
+                                <entry key="144" value="overview" />
+                                <entry key="204" value="BrowseTaskList" />
+                                <entry key="206" value="BrowseTask" />
+                                <entry key="207" value="ViewChannel" />
+                                <entry key="208" value="ViewNews" />
+                                <entry key="218" value="OpenPoll" />
+                                <entry key="default" value="properties" />
+                        </map>
+                </property>
+
+                <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING -->
+                <property name="authenticationManager" ref="authenticationManager"/>
+                <property name="contentHandler"
+                        value="com.google.enterprise.connector.otex.FileContentHandler"/>
+                <property name="servtype" value=""/>
+
+                <!-- DO NOT OVERRIDE PROPERTIES BELOW THIS LINE -->
+                <property name="server" value="${server}"/>
+                <property name="port" value="${port}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${Password}"/>
+                <property name="domainName" value="${domainName}"/>
+                <property name="displayUrl" value="${displayUrl}"/>
+
+                <property name="useHttpTunneling" value="${useHttpTunneling}"/>
+                <property name="livelinkCgi" value="${livelinkCgi}"/>
+                <property name="httpUsername" value="${httpUsername}"/>
+                <property name="httpPassword" value="${httpPassword}"/>
+                <property name="enableNtlm" value="${enableNtlm}"/>
+                <property name="https" value="${https}"/>
+                <property name="useUsernamePasswordWithWebServer"
+                        value="${useUsernamePasswordWithWebServer}"/>
+
+                <property name="useSeparateAuthentication"
+                        value="${useSeparateAuthentication}"/>
+                <property name="authenticationServer"
+                        value="${authenticationServer}"/>
+                <property name="authenticationPort"
+                        value="${authenticationPort}"/>
+                <property name="authenticationDomainName"
+                        value="${authenticationDomainName}"/>
+                <property name="authenticationLivelinkCgi"
+                        value="${authenticationLivelinkCgi}"/>
+                <property name="authenticationEnableNtlm"
+                        value="${authenticationEnableNtlm}"/>
+                <property name="authenticationHttps"
+                        value="${authenticationHttps}"/>
+                <property name="authenticationUseUsernamePasswordWithWebServer"
+                        value="${authenticationUseUsernamePasswordWithWebServer}"/>
+
+                <property name="traversalUsername"
+                        value="${traversalUsername}"/>
+                <property name="includedLocationNodes"
+                        value="${includedLocationNodes}"/>
+                @constructor-arg@
+        </bean>
+
+        <bean id="propertyPlaceholderConfigurer" 
+                class="com.google.enterprise.connector.instantiator.EncryptedPropertyPlaceholderConfigurer"> 
+                <property name="properties"> 
+                        <props> 
+                                <prop key="httpUsername"></prop>
+                                <prop key="httpPassword"></prop>
+                                <prop key="enableNtlm">false</prop>
+                                <prop key="authenticationEnableNtlm">false</prop>
+                                <prop key="traversalUsername"></prop> 
+                        </props> 
+                </property> 
+        </bean>
+</beans>
