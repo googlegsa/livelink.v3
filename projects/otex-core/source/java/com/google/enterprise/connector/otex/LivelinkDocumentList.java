@@ -608,6 +608,8 @@ class LivelinkDocumentList implements DocumentList {
             // GetObjectInfo may be different than the
             // value retrieved from the database.
             int size = recArray.toInteger(insRow, "DataSize");
+            if (LOGGER.isLoggable(Level.FINER))
+                LOGGER.finer("CONTENT DATASIZE = " + size);
             if (size <= 0)
                 return null;
 
@@ -621,6 +623,12 @@ class LivelinkDocumentList implements DocumentList {
                 // Is this MimeType supported?
                 String mt = mimeType.toString();
                 if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
+                    return null;
+            } else {
+                // If there is no traversal context, we'll enforce a
+                // limit of 30 MB. This limit is hard-coded in the GSA
+                // anyway.
+                if (size > 30 * 1024 * 1024)
                     return null;
             }
 
