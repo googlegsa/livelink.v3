@@ -300,6 +300,10 @@ class LivelinkTraversalManager
                 ClientValue results =
                     sysadminClient.ListNodes(query, view, columns);
                 if (results.size() > 0) {
+                    if (LOGGER.isLoggable(Level.FINER)) {
+                        LOGGER.finer("START CHECKPOINT DATE: " +
+                            results.toString(0, "minModifyDate"));
+                    }
                     Date minDate = results.toDate(0, "minModifyDate");
                     if (LOGGER.isLoggable(Level.FINEST)) {
                         LOGGER.finest("START CHECKPOINT COMPARING: " +
@@ -383,7 +387,6 @@ class LivelinkTraversalManager
      * @return the SQL conditional expression
      */
     String getIncluded(String candidatesPredicate) {
-
         // If we have an explict list of start locations, build a
         // query that includes only those and their descendants.
         String startNodes = connector.getIncludedLocationNodes();
@@ -463,7 +466,7 @@ class LivelinkTraversalManager
         buffer.append("(select DataID from DTreeAncestors where ");
         buffer.append(candidatesPredicate);
         buffer.append(
-                "or DataID in (select AncestorID from DTreeAncestors where ");
+                " or DataID in (select AncestorID from DTreeAncestors where ");
         buffer.append(candidatesPredicate);
         buffer.append(") group by DataID having count(*) = 1)");
   
