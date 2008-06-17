@@ -537,7 +537,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 "httpsTunneling" };
             baseEntries.add(new RadioSelectProperty("enableHttpTunneling",
                                                     tunnels, tunnels[0]));
-            */                                        
+            */
             baseEntries.add(new TextInputProperty("displayUrl", true));
             baseEntries.add(
                 new BooleanSelectProperty("ignoreDisplayUrlErrors", "false"));
@@ -647,7 +647,7 @@ public class LivelinkConnectorType implements ConnectorType {
             if (hide)
                 prop = new HiddenInputProperty(prop);
             if (formContext.isHidden(prop.name))
-                prop = new HiddenInputProperty(prop);                
+                prop = new HiddenInputProperty(prop);
             prop.addToBuffer(buffer, labelPrefix, labelSuffix,
                 getProperty(prop.name), labels);
         }
@@ -1057,9 +1057,11 @@ public class LivelinkConnectorType implements ConnectorType {
      * @return the formatted error message
      * @throws MissingResourceException if the message isn't found
      */
-    private String httpNotFound(ResourceBundle bundle, String urlString) {
+    private String httpNotFound(ResourceBundle bundle, String urlString,
+            int httpResponseCode, String httpResponseMessage) {
         return MessageFormat.format(bundle.getString("httpNotFound"),
-            new Object[] { urlString }); 
+            new Object[] { urlString, new Integer(httpResponseCode),
+                           httpResponseMessage }); 
     }
 
     /**
@@ -1068,9 +1070,19 @@ public class LivelinkConnectorType implements ConnectorType {
      *
      * <ol>
      * <li>The URL syntax is valid.
-     * <li>A connection can be made and the content read.
-     * <li>If the URL uses HTTP or HTTPS, the response code was not 404.
+     * <li>If the URL uses HTTP or HTTPS:
+     *   <ol>
+     *   <li>A connection can be made and the response read.
+     *   <li>The response code was not 404,
+     *   or any of the following related but less common errors: 
+     *   400, 405, 410, or 414.
+     *   </ol>
      * </ol>
+     *
+     * The 405 (Method Not Allowed) is related because the Sun Java
+     * System Web Server, and possibly Apache, return this code rather
+     * than a 404 if you attempt to access a CGI program in an unknown
+     * directory.
      *
      * When testing an HTTPS URL, we override server certificate
      * validation to skip trying to verify the server's
@@ -1093,60 +1105,70 @@ public class LivelinkConnectorType implements ConnectorType {
      * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4912484
      * The above Sun bug report documents that openConnection
      * doesn't try to connect. 
+     * 
+     * This method has package access and returns the HTTP response
+     * code so that it can be unit tested. A return value of 0 is
+     * arbitrary and unused by the tests.
      */
-    private void validateUrl(String urlString, ResourceBundle bundle)
+    int validateUrl(String urlString, ResourceBundle bundle)
             throws UrlConfigurationException {
         if (urlString == null || urlString.trim().length() == 0)
-            return;
+            return 0;
 
         try {
             URL url = new URL(urlString);
             URLConnection conn = url.openConnection(); 
 
-            // If we're using Java 1.5 or later, URLConnection
-            // has timeout methods.
-            try {
-                final Integer[] connectTimeoutArg = new Integer[] {
-                    new Integer(60) }; 
-                final Integer[] readTimeoutArg = new Integer[] {
-                    new Integer(60 * 1000) }; 
-                Class c = conn.getClass(); 
-                Method setConnectTimeout = c.getMethod("setConnectTimeout",
-                    new Class[] { int.class });
-                setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg); 
-                Method setReadTimeout = c.getMethod("setReadTimeout",
-                    new Class[] { int.class });
-                setReadTimeout.invoke(conn, readTimeoutArg); 
-            } catch (NoSuchMethodException m) {
-                LOGGER.log(Level.FINEST, "No timeout methods");
-                // Ignore; we're probably on Java 1.4.
-            } catch (Throwable t) {
-                LOGGER.log(Level.WARNING, "Error setting connection timeout",
-                    t);
+            if (!(conn instanceof HttpURLConnection)) {
+                // If the URL is not an HTTP or HTTPS URL, which is
+                // incredibly unlikely, we don't check anything beyond
+                // the URL syntax.
+                return 0;
             }
 
-            if (conn instanceof HttpsURLConnection)
-                setTrustingTrustManager((HttpsURLConnection) conn); 
+            HttpURLConnection httpConn = (HttpURLConnection) conn;
+            if (httpConn instanceof HttpsURLConnection)
+                setTrustingTrustManager((HttpsURLConnection) httpConn); 
+            setTimeouts(conn);
+            httpConn.setRequestMethod("HEAD");
+            httpConn.setInstanceFollowRedirects(false);
+
+            httpConn.connect();
             try {
-                conn.getContent(); // Read and discard response content.
-            } catch (Throwable t) {
-                LOGGER.log(Level.FINEST, "Failed to read content", t); 
-            }
-            if (conn instanceof HttpURLConnection) {
-                int responseCode = ((HttpURLConnection) conn).
-                    getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                int responseCode = httpConn.getResponseCode();
+                String responseMessage = httpConn.getResponseMessage();
+
+                switch (responseCode) {
+                case HttpURLConnection.HTTP_BAD_REQUEST:
+                case HttpURLConnection.HTTP_NOT_FOUND:
+                case HttpURLConnection.HTTP_BAD_METHOD:
+                case HttpURLConnection.HTTP_GONE:
+                case HttpURLConnection.HTTP_REQ_TOO_LONG:
+                    if (LOGGER.isLoggable(Level.SEVERE)) {
+                        LOGGER.severe("DISPLAY URL HTTP RESPONSE: " +
+                            responseCode + " " + responseMessage);
+                    }
                     throw new UrlConfigurationException(
-                        httpNotFound(bundle, urlString));
+                        httpNotFound(bundle, urlString, responseCode,
+                            responseMessage));
+
+                default:
+                    if (LOGGER.isLoggable(Level.CONFIG)) {
+                        LOGGER.config("DISPLAY URL HTTP RESPONSE: " +
+                            responseCode + " " + responseMessage);
+                    }
+                    break;
                 }
-                ((HttpURLConnection) conn).disconnect();
+                return responseCode;
+            } finally {
+                httpConn.disconnect();
             }
         } catch (UrlConfigurationException u) {
             throw u;
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in Livelink URL validation", t);
             String text = getExceptionMessages(urlString, t); 
-            throw new UrlConfigurationException(text);
+            throw new UrlConfigurationException(text, t);
         }
     }
 
@@ -1160,7 +1182,7 @@ public class LivelinkConnectorType implements ConnectorType {
     private void setTrustingTrustManager(HttpsURLConnection conn)
             throws Exception {
         SSLContext sc = SSLContext.getInstance("SSL");
-        LOGGER.log(Level.FINEST, "SSLContext: " + sc);         
+        LOGGER.log(Level.FINEST, "SSLContext: " + sc);
         sc.init(null, trustAllCerts, null);
         SSLSocketFactory factory = sc.getSocketFactory(); 
         LOGGER.log(Level.FINEST, "SSLSocketFactory: " + factory); 
@@ -1169,6 +1191,36 @@ public class LivelinkConnectorType implements ConnectorType {
             conn.getSSLSocketFactory()); 
     }
 
+    /**
+     * Sets the connect and read timeouts of the given URLConnection.
+     * This is only possible with Java SE 5.0 or later. With earlier
+     * versions, we don't do anything.
+     */
+    private void setTimeouts(URLConnection conn) throws Exception {
+        // If we're using Java 1.5 or later, URLConnection
+        // has timeout methods.
+        try {
+            final Integer[] connectTimeoutArg = new Integer[] {
+                new Integer(5 * 1000) }; 
+            final Integer[] readTimeoutArg = new Integer[] {
+                new Integer(60 * 1000) }; 
+            Class c = conn.getClass(); 
+            Method setConnectTimeout = c.getMethod("setConnectTimeout",
+                new Class[] { int.class });
+            setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg); 
+            Method setReadTimeout = c.getMethod("setReadTimeout",
+                new Class[] { int.class });
+            setReadTimeout.invoke(conn, readTimeoutArg); 
+        } catch (NoSuchMethodException m) {
+            // Ignore; we're probably on Java 1.4.
+            LOGGER.log(Level.FINEST,
+                "No timeout methods; we're probably on Java 1.4.");
+        } catch (Throwable t) {
+            LOGGER.log(Level.WARNING, "Error setting connection timeout",
+                t);
+        }
+    }
+    
     /**
      * Returns the exception's message, or the exception class
      * name if no message is present.

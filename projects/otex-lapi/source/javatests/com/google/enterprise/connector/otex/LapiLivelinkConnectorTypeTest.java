@@ -14,24 +14,10 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Locale;
-import java.util.logging.Logger;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.Properties;
-import java.util.ResourceBundle;
-import javax.swing.text.html.HTML;
-import javax.swing.text.html.HTMLEditorKit;
-import javax.swing.text.html.parser.ParserDelegator;
-import javax.swing.text.MutableAttributeSet;
 import com.google.enterprise.connector.spi.ConfigureResponse;
-import junit.framework.Test;
-import junit.framework.TestCase;
 
 /**
  * Tests the LivelinkConnectorType implementation.
