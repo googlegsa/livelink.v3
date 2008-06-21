@@ -12,7 +12,7 @@ and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
-Release 1.1.0, Jun 15, 2008
+Release 1.1.0, Jun 20, 2008
 ===========================
 
 Introduction
@@ -27,6 +27,8 @@ Summary of Changes
     used with Connector Manager 1.1.0.
   * Only metadata is indexed if the document file is larger than 30 MB.
   * Items in the Workflow Volume are no longer indexed by default.
+  * Fixed issue 27 to avoid logging spurious exceptions validating URLs.
+  * Fixed issue 28 to detect missing entries in the DTreeAncestors table.
 
 Version Compatibility
 ---------------------
