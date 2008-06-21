@@ -106,7 +106,6 @@ public interface Client
 
     /**
      * Wraps the <code>LAPI_USERS.GetUserOrGroupByID</code> method.
-     * All of the arguments of that method are exposed here.
      * <p>
      * This wrapper on <code>GetUserOrGroupByID</code> does not throw
      * a <code>RepositoryExeception</code> on failure. Rather it
@@ -122,6 +121,13 @@ public interface Client
      */
     ClientValue GetUserOrGroupByIDNoThrow(int id) throws RepositoryException;
 
+    /**
+     * Wraps the <code>LAPI_DOCUMENTS.AccessEnterpriseWS</code> method.
+     * 
+     * @return information about the user's Enterprise workspace
+     */
+    ClientValue AccessEnterpriseWS() throws RepositoryException;
+    
     /**
      * Wraps the <code>LAPI_DOCUMENTS.ListNodes</code> method.
      * Not all of the arguments of that method are exposed here.

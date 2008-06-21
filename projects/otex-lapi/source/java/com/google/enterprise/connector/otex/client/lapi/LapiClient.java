@@ -131,7 +131,7 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public ClientValue GetServerInfo() throws RepositoryException {
+    public synchronized ClientValue GetServerInfo() throws RepositoryException {
         LLValue value = new LLValue();
         try {
             if (documents.GetServerInfo(value) != 0)
@@ -143,7 +143,7 @@ final class LapiClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public int GetCurrentUserID() throws RepositoryException {
+    public synchronized int GetCurrentUserID() throws RepositoryException {
         LLValue id = new LLValue();
         try {
             if (users.GetCurrentUserID(id) != 0)
@@ -183,6 +183,19 @@ final class LapiClient implements Client {
         return new LapiClientValue(userInfo);
     }
 
+    /** {@inheritDoc} */
+    public synchronized ClientValue AccessEnterpriseWS()
+            throws RepositoryException {
+        LLValue info = new LLValue();
+        try {
+            if (documents.AccessEnterpriseWS(info) != 0)
+                throw new LapiException(session, LOGGER);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+        return new LapiClientValue(info);
+    }
+    
     /** {@inheritDoc} */
     public synchronized ClientValue ListNodes(String query, String view,
             String[] columns) throws RepositoryException {
