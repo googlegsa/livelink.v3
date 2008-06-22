@@ -415,10 +415,9 @@ class LivelinkDocumentList implements DocumentList {
             if (!hasNext())
                 return null;
 
-            /* Walk two separate lists: inserts and deletes.
-             * Process the request in date order.  If an insert and 
-             * a delete have the same date, process inserts first.
-             */
+            // Walk two separate lists: inserts and deletes.
+            // Process the request in date order.  If an insert and 
+            // a delete have the same date, process inserts first.
             Date insDate = null, delDate = null;
             int dateComp = 0;
             objectInfo = null;
@@ -478,13 +477,16 @@ class LivelinkDocumentList implements DocumentList {
                     // return a Deleted Item
                     objectId = delArray.toInteger(delRow, "DataID");
 
-                    // LOGGER.fine("Deleted item[" + delRow + "]: DataID " + objectId + "   AuditDate " + delDate + "    EventID " + delArray.toValue(delRow, "EventID").toString2());
+                    // LOGGER.fine("Deleted item[" + delRow + "]: DataID " +
+                    //     objectId + "   AuditDate " + delDate +
+                    //     "    EventID " +
+                    //     delArray.toValue(delRow, "EventID").toString2());
                     props = new LivelinkDocument(objectId, 3);
                     collectDeletedObjectAttributes();
                 } finally {
                     // Establish the checkpoint for this row. 
                     checkpoint.setDeleteCheckpoint(delDate, 
-                                 delArray.toString(delRow, "EventID"));
+                        delArray.toValue(delRow, "EventID"));
                     delRow++;
                 }
             }

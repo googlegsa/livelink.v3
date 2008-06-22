@@ -235,17 +235,14 @@ class LivelinkTraversalManager
             try {
                 String query =
                     "EventID in (select max(EventID) from DAuditNew)";
-                String[] columnsOracle = { "EventID", "AuditDate" };
-                String[] columnsSqlServer = {
-                    "CAST(EventID as bigint) as EventID", "AuditDate" };
+                String[] columns = { "EventID", "AuditDate" };
                 String view = "DAuditNew";
                 ClientValue results =
-                    sysadminClient.ListNodes(query, view,
-                        isSqlServer ? columnsSqlServer : columnsOracle);
+                    sysadminClient.ListNodes(query, view, columns);
                 if (results.size() > 0) {
                     checkpoint.setDeleteCheckpoint(
                         results.toDate(0, "AuditDate"),
-                        results.toString(0, "EventID"));
+                        results.toValue(0, "EventID"));
                 }
             } catch (Exception e) {
                 // If there is no audit trail, then no initial Delete
@@ -875,7 +872,7 @@ class LivelinkTraversalManager
 
         // Exclude items with a SubType we know we excluded when indexing.
         String excludedNodeTypes = connector.getExcludedNodeTypes();
-        if ((excludedNodeTypes != null) && (excludedNodeTypes.length() > 0)) {
+        if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
             buffer.append(" and SubType not in (");
             buffer.append(excludedNodeTypes);
             buffer.append(')');
@@ -887,8 +884,7 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DAuditNew";
         String[] columns = {
-            "top " + batchsz + " AuditDate",
-            "CAST(EventID as bigint) as EventID", "DataID" };
+            "top " + batchsz + " AuditDate", "EventID", "DataID" };
 
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
@@ -910,14 +906,14 @@ class LivelinkTraversalManager
      */
     private ClientValue getDeletesOracle(Checkpoint checkpoint, int batchsz)
             throws RepositoryException {
-        if ((deleteSupported == false) ||
-                (checkpoint == null) || (checkpoint.deleteDate == null)) {
+        if (deleteSupported == false ||
+                checkpoint == null || checkpoint.deleteDate == null) {
             return null;
         }
-        
+
         StringBuffer buffer = new StringBuffer();
         buffer.append("(select AuditDate, EventID, DataID from DAuditNew");
-        // buffer.append(" where (AuditStr = 'Delete'");
+        // This is the same as "(AuditStr = 'Delete'".
         buffer.append(" where (AuditID = 2");
 
         // Only include delete events after the checkpoint.
@@ -932,7 +928,7 @@ class LivelinkTraversalManager
 
         // Exclude items with a SubType we know we excluded when indexing.
         String excludedNodeTypes = connector.getExcludedNodeTypes();
-        if ((excludedNodeTypes != null) && (excludedNodeTypes.length() > 0)) {
+        if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
             buffer.append(" and SubType not in (");
             buffer.append(excludedNodeTypes);
             buffer.append(')');

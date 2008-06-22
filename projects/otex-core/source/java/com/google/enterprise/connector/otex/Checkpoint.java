@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,43 +18,49 @@ import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
-/** Create and parse the checkpoint strings passed back and forth between 
- *  the connector and the Google appliance traverser.
+/**
+ * Create and parse the checkpoint strings passed back and forth between 
+ * the connector and the Google appliance traverser.
  */
-
 class Checkpoint {
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(Checkpoint.class.getName());
 
     /** The formatter used for the Date portions of checkpoints. */
-    private static final LivelinkDateFormat dateFmt = LivelinkDateFormat.getInstance();
+    private static final LivelinkDateFormat dateFmt =
+        LivelinkDateFormat.getInstance();
 
-    /** Inserted items portion of the checkpoint. */
-    public int  insertDataId;	// DataID of the last item inserted.
-    public Date insertDate;		// ModifyDate of the last item inserted.
+    /** DataID of the last item inserted. */
+    public int  insertDataId; 
 
+    /** ModifyDate of the last item inserted. */
+    public Date insertDate;
 
-    /** Deleted items portion of the checkpoint. */
-    public long deleteEventId;	// EventID of the last item deleted.
-    public Date deleteDate;		// EventDate of the last item deleted.
+    /** EventID of the last item deleted. */
+    public long deleteEventId;
 
-    /** Backup versions if the insert and delete checkpoints,
-     *  so that we may restore a checkpoint when attempting to
-     *  retry failed items.
+    /** EventDate of the last item deleted. */
+    public Date deleteDate;
+
+    /**
+     * Backup versions of the insert and delete checkpoints,
+     * so that we may restore a checkpoint when attempting to
+     * retry failed items.
      */
-    private int  oldInsertDataId;
+    private int oldInsertDataId;
     private Date oldInsertDate;
     private long oldDeleteEventId;
     private Date oldDeleteDate;
     
 
     /** Generic Constructor */
-    Checkpoint() {}
+    Checkpoint() {
+    }
+
 
     /**
      * Constructor given a checkpoint string.  Checkpoints are passed
@@ -94,7 +100,6 @@ class Checkpoint {
                         oldDeleteEventId = deleteEventId;
                     }
                 }
-                
             } catch (Exception e) {
                 throw new LivelinkException("Invalid checkpoint: " + 
                                             checkpoint,
@@ -106,6 +111,7 @@ class Checkpoint {
 
     /**
      * Set the Inserted Items portion of the checkpoint.
+     * 
      * @param date the ModifyDate of the last item inserted.
      * @param dataId the DataID of the last item inserted.
      */
@@ -113,6 +119,7 @@ class Checkpoint {
         // Remember previous insert checkpoint as a restore point.
         oldInsertDate = insertDate;
         oldInsertDataId = insertDataId;
+
         // Set the new insert checkpoint.
         insertDate = date;
         insertDataId = dataId;
@@ -120,54 +127,46 @@ class Checkpoint {
         
      
     /**
-     * Set the Inserted Items portion of the checkpoint.
-     * @param date the ModifyDate of the last item inserted.
-     * @param dataId String representation of the DataID of
-     * the last item inserted.
-     */
-    public void setInsertCheckpoint(Date date, String dataId)
-        throws RepositoryException
-    {
-        try { setInsertCheckpoint(date, Integer.parseInt(dataId)); }
-        catch (NumberFormatException e) {
-            throw new LivelinkException("Invalid checkpoint: " + 
-                                        date + "," + dataId,
-                                        LOGGER);
-        }
-    }
-        
-     
-
-    /**
-     * Set the Deleted Items portion of the checkpoint.
+     * Sets the Deleted Items portion of the checkpoint. Livelink
+     * returns the EventID from Oracle as an integer, and from SQL
+     * Server as a double. LAPI doesn't support a long integer, so
+     * casting the SQL Server column to BIGINT doesn't work. Casting
+     * to an INT might lose precision. Instead, this method accepts a
+     * <code>ClientValue</code>, which can be either an
+     * <code>INTEGER</code> or a <code>DOUBLE</code>.
+     * 
      * @param date the AuditDate of the last item deleted.
      * @param eventId the EventID of the last item deleted.
+     * @throws RepositoryException if an unexpected runtime error occurs
      */
-    public void setDeleteCheckpoint(Date date, long eventId) {
+    public void setDeleteCheckpoint(Date date, ClientValue eventId)
+            throws RepositoryException {
         // Remember the current delete checkpoint as a restore point.
         oldDeleteDate = deleteDate;
         oldDeleteEventId = deleteEventId;
+
         // Set the new delete checkpoint.
         deleteDate = date;
-        deleteEventId = eventId;
-    }
+        switch (eventId.type()) {
 
+        case ClientValue.INTEGER:
+            deleteEventId = eventId.toInteger();
+            break;
 
-    /**
-     * Set the Deleted Items portion of the checkpoint.
-     * @param date the AuditDate of the last item deleted.
-     * @param eventId String representation the EventID of
-     * the last item deleted.
-     */
-    public void setDeleteCheckpoint(Date date, String eventId)
-        throws RepositoryException
-    {
-        try { setDeleteCheckpoint(date, Long.parseLong(eventId)); }
-        catch (NumberFormatException e) {
-            throw new LivelinkException("Invalid checkpoint: " + 
-                                        date + "," + eventId,
-                                        LOGGER);
+        case ClientValue.DOUBLE:
+            deleteEventId = (long) eventId.toDouble();
+            break;
 
+        default:
+            // XXX: EventID is a NUMBER(10) in Oracle, and a NUMERIC(10,0)
+            // in SQL Server, so 9,999,999,999 is the largest number that
+            // can be represented. By choosing this, we are sure to make
+            // progress, although it is possible that we will skip some
+            // deletes. That is better than an infinite loop.
+            LOGGER.info("UNKNOWN EVENT ID TYPE: " + eventId.type() +
+                "; value = " + eventId.toString2());
+            deleteEventId = 9999999999L;
+            break;
         }
     }
 
@@ -181,6 +180,7 @@ class Checkpoint {
         return (checkpoint == null) ||
                (checkpoint.indexOf(',') == checkpoint.lastIndexOf(','));
     }
+
 
     /**
      * Update a checkpoint string from old-style to new-style.
@@ -235,5 +235,4 @@ class Checkpoint {
 
         return  buffer.toString();
     }
-    
 }
