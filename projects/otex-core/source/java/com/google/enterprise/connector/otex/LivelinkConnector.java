@@ -42,7 +42,6 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 public class LivelinkConnector implements Connector {
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnector.class.getName());
@@ -1792,9 +1791,18 @@ public class LivelinkConnector implements Connector {
         // (in that order, because we need the database type for the
         // DTreeAncestors queries).
         autoDetectServtype(client);
-        validateDTreeAncestors(client);
-        validateIncludedLocationStartDate(client);
-        validateEnterpriseWorkspaceAncestors(client);
+
+        // Check first to see if we are going to need the
+        // DTreeAncestors table.
+        if (!hiddenItemsSubtypes.contains("all") ||
+                (includedLocationNodes != null &&
+                    includedLocationNodes.length() > 0) ||
+                (excludedLocationNodes != null &&
+                    excludedLocationNodes.length() > 0)) {
+            validateDTreeAncestors(client);
+            validateIncludedLocationStartDate(client);
+            validateEnterpriseWorkspaceAncestors(client);
+        }
         
         return new LivelinkSession(this, clientFactory, authenticationManager);
     }

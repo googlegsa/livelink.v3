@@ -271,47 +271,56 @@ class LivelinkTraversalManager
      * (<em>includedLocationNodes</em>) or an implicit
      * list of all non-excluded Volumes.
      *
-     * If explicit starting nodes are not provided, then we build a list 
-     * of implicit starting points based upon all available volume roots,
-     * less those that are explicitly excluded (excludedVolumeTypes).
-     *
-     * This will then return a SQL expression of the general form:
+     * If explicit starting nodes are not provided, we return a SQL
+     * expression of the following form:
      *
      * <pre>
      *     (DataID in (<em>includedLocationNodes</em>) or
      *      DataID in
      *         (select DataID from DTreeAncestors where AncestorID in
-     *             <em>includedLocationNodes</em>))
+     *             (<em>includedLocationNodes</em>)))
+     * </pre>
+     *
+     * Otherwise, we just avoid items in the excluded volume types
+     * (but not items in otherwise included subvolumes), and return
+     * a SQL expression of the following form:
+     *
+     * <pre>
+     *     -OwnerID not in (select DataID from DTree where SubType in
+     *         (<em>excludedVolumeTypes</em>))
      * </pre>
      * 
      * @return the SQL conditional expression
      */
     String getIncluded(String candidatesPredicate) {
-        // If we have an explict list of start locations, build a
-        // query that includes only those and their descendants.
+        StringBuffer buffer = new StringBuffer();
+
         String startNodes = connector.getIncludedLocationNodes();
-        String ancestorNodes;
         if (startNodes != null && startNodes.length() > 0) {
-            ancestorNodes = getAncestorNodes(startNodes);
+            // If we have an explict list of start locations, build a
+            // query that includes only those and their descendants.
+            String ancestorNodes = getAncestorNodes(startNodes);
+            buffer.append("(DataID in (");
+            buffer.append(startNodes);
+            buffer.append(") or DataID in (select DataID from ");
+            buffer.append("DTreeAncestors where ");
+            buffer.append(candidatesPredicate);
+            buffer.append(" and AncestorID in (");
+            buffer.append(ancestorNodes);
+            buffer.append(")))");
         } else {
-            // If we don't have an explicit list of start points,
-            // build an implicit list from the list of all volumes,
-            // minus those that are explicitly excluded.
-            startNodes = getStartingVolumes(candidatesPredicate);
-            ancestorNodes = startNodes;
+            String excludedVolumes = connector.getExcludedVolumeTypes();
+            if (excludedVolumes != null && excludedVolumes.length() > 0) {
+                // If we don't have an explicit list of start points,
+                // just avoid the excluded volume types.
+                buffer.append("-OwnerID not in (select DataID from DTree ");
+                buffer.append("where SubType in (");
+                buffer.append(excludedVolumes);
+                buffer.append("))");
+            }
         }
 
-        StringBuffer buffer = new StringBuffer();
-        buffer.append("(DataID in (");
-        buffer.append(startNodes);
-        buffer.append(") or DataID in (select DataID from ");
-        buffer.append("DTreeAncestors where ");
-        buffer.append(candidatesPredicate);
-        buffer.append(" and AncestorID in (");
-        buffer.append(ancestorNodes);
-        buffer.append(")))");
         String included = buffer.toString();
-
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("INCLUDED: " + included);
         return included;
@@ -345,42 +354,6 @@ class LivelinkTraversalManager
     }
 
     /**
-     * Returns a SQL subquery that should expand to the lists of 
-     * volumes to traverse.  These are all root-level 
-     * volumes that are not of an excluded volume type. The basic form
-     * of the subquery is
-     *
-     * <pre>
-     *          select DataID from DTree where DataID in
-     *             (select AncestorID from DTreeAncestors
-     *              group by DataID having count(*) = 1) and not
-     *             SubType in (<em>excludedVolumeTypes</em>)
-     * </pre>
-     *
-     * @return SQL sub-expression
-     */
-    public String getStartingVolumes(String candidatesPredicate) {
-        StringBuffer buffer = new StringBuffer();
-
-        buffer.append("select DataID from DTree where DataID in ");
-        buffer.append("(select DataID from DTreeAncestors where ");
-        buffer.append(candidatesPredicate);
-        buffer.append(
-                " or DataID in (select AncestorID from DTreeAncestors where ");
-        buffer.append(candidatesPredicate);
-        buffer.append(") group by DataID having count(*) = 1)");
-  
-        String excludedVolumes = connector.getExcludedVolumeTypes();
-        if (excludedVolumes != null && excludedVolumes.length() > 0) {
-            buffer.append(" and (SubType not in (");
-            buffer.append(excludedVolumes);
-            buffer.append("))");
-        }
-
-        return buffer.toString();
-    }
-
-    /**
      * Gets a SQL conditional expression that excludes nodes that
      * should not be traversed. This returns a SQL expression of the
      * form
@@ -391,6 +364,8 @@ class LivelinkTraversalManager
      *         (select DataID from DTreeAncestors where AncestorID in
      *                 (<em>excludedLocationNodes</em>))
      * </pre>
+     * 
+     * FIXME: This SQL expression doesn't account for hidden items.
      *
      * The returned expression is simplified in the obvious way when
      * one or more of the configuration parameters is null or empty.
@@ -448,9 +423,6 @@ class LivelinkTraversalManager
             buffer.append(" and T.Catalog = ");
             buffer.append(hidden);
 
-            // TODO: This is rework from getIncluded, but I didn't
-            // want to merge the two methods on the fly because it
-            // would break the tests.
             String startNodes = connector.getIncludedLocationNodes();
             if (startNodes != null && startNodes.length() > 0) {
                 String ancestorNodes = getAncestorNodes(startNodes);
