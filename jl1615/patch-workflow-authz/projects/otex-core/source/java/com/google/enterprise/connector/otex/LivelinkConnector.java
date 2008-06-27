@@ -42,7 +42,6 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 public class LivelinkConnector implements Connector {
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnector.class.getName());
