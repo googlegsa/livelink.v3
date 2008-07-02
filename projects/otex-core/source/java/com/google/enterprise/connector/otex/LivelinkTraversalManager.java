@@ -398,46 +398,6 @@ class LivelinkTraversalManager
             buffer.append("))");
         }
 
-        // TODO: This doesn't handle the subtypes yet. If
-        // showHiddenItems is a list of subtypes, then hidden items
-        // will just not be indexed.
-        HashSet showHiddenItems = connector.getShowHiddenItems();
-        if (!showHiddenItems.contains("all")) {
-            // I'm using Anc here rather than simply A to avoid
-            // conceptually interfering with the "a" range variable
-            // that LAPI adds behind the scenes.
-            // XXX: We need to qualify the reference to DataID in the
-            // candidatesPredicate with Anc. We "know" that DataID
-            // appears at the beginning of candidatesPredicate, so we
-            // just leave a hanging "Anc." just before that. See
-            // listNodes, where the predicate is created. Sigh.
-            String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
-            if (buffer.length() > 0)
-                buffer.append(" and ");
-            buffer.append("Catalog <> ");
-            buffer.append(hidden);
-            buffer.append(" and DataID not in (select Anc.DataID ");
-            buffer.append("from DTreeAncestors Anc join DTree T ");
-            buffer.append("on Anc.AncestorID = T.DataID where Anc.");
-            buffer.append(candidatesPredicate);
-            buffer.append(" and T.Catalog = ");
-            buffer.append(hidden);
-
-            String startNodes = connector.getIncludedLocationNodes();
-            if (startNodes != null && startNodes.length() > 0) {
-                String ancestorNodes = getAncestorNodes(startNodes);
-                buffer.append(" and Anc.AncestorID not in (");
-                buffer.append(startNodes);
-                buffer.append(") and Anc.AncestorID not in ");
-                buffer.append("(select AncestorID from DTreeAncestors ");
-                buffer.append("where DataID in (");
-                buffer.append(ancestorNodes);
-                buffer.append("))");
-            }
-
-            buffer.append(')');
-        }
-
         String excluded = (buffer.length() > 0) ? buffer.toString() : null;
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("EXCLUDED: " + excluded);

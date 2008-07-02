@@ -32,6 +32,8 @@ public class LivelinkConnectorTest extends TestCase {
         connector.setPort(System.getProperty("connector.port"));
         connector.setUsername(System.getProperty("connector.username"));
         connector.setPassword(System.getProperty("connector.password"));
+
+        connector.setShowHiddenItems("true");
     }
 
     public void testSanitizingListsOfIntegers() {

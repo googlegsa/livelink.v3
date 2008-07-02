@@ -62,7 +62,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         String excluded = lqtm.getExcluded(null);
         String included = lqtm.getIncluded(null);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in") == -1);
+        assertNull(excluded);
     }    
 
 
@@ -77,7 +77,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         String excluded = lqtm.getExcluded(null);
         String included = lqtm.getIncluded(null);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in") == -1);
+        assertNull(excluded);
     }    
 
 
@@ -109,7 +109,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         String excluded = lqtm.getExcluded(null);
         String included = lqtm.getIncluded(null);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in") == -1);
+        assertNull(excluded);
         assertTrue(included, included.indexOf("-OwnerID not in") != -1);
         assertTrue(included,
             included.indexOf("SubType in (148,162)") != -1);
@@ -239,38 +239,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         String excluded = lqtm.getExcluded(null);
         String included = lqtm.getIncluded(null);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in") == -1);
+        assertNull(excluded);
         assertEquals("(DataID in (2000) or DataID in (select DataID from " +
             "DTreeAncestors where null and AncestorID in (2000,-2000)))",
             included);
-    }
-
-
-    /**
-     * Tests that subtype numbers in the showHiddenItems property are
-     * ignored.
-     *
-     * @throws RepositoryException if an unexpected error occurs
-     */
-    public void testHiddenItemSubtypes() throws RepositoryException {
-        conn.setExcludedVolumeTypes("");
-        conn.setExcludedNodeTypes("");
-        conn.setExcludedLocationNodes("");
-
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-
-        assertTrue(excluded, excluded.indexOf("null and AncestorID") == -1); 
-        assertTrue(excluded, excluded.indexOf("SubType not in") == -1); 
-
-        conn.setShowHiddenItems("{ 1234 }");
-
-        sess = conn.login();
-        lqtm = (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded2 = lqtm.getExcluded(null);
-
-        assertEquals((Object) excluded, excluded2);
     }
 }

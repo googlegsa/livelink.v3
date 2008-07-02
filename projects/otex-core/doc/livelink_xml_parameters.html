@@ -90,17 +90,6 @@
   </tr>
 
   <tr>
-    <td>authenticationEnableNtlm</td>
-    <td>Whether or not to use NTLM authentication.
-      <p><em>Livelink API:</em> <code>EnableNTLM</code> attribute in <code>config</code> parameter.</p></td>
-    <td>The default value is false. See "Session Creation Input
-        Parameters" in the <em>Livelink API
-        Developer's Reference Guide</em> for more information on
-        using NTLM when authenticating.
-    </td>
-  </tr>
-
-  <tr>
     <td>authenticationVerifyServer</td>
     <td>Specifies whether to verify the Web server's certificate when
       the authenticationHttps property is set to true.
@@ -149,16 +138,20 @@
 
   <tr>
     <td>publicContentUsername</td>
-    <td>Indexed items that are accessible by this user are marked
-    as public documents. Public documents do not require
-    authentication or authorization.
+    <td>Indexed items that are accessible by this user are marked as
+    public documents. Public documents do not require authentication
+    or authorization. 
+    <p>If the value specified for this property matches the traversal
+    username (whether explicitly specified, or implicitly, as the
+    system administrator), then all indexed content will be marked as
+    public without checking permissions.</p>
     <p class="note"><b>Note: This property bypasses Livelink
     security.</b> Items that are made public are shown in the search
     results without authentication or authorization. The content of
-    these items is available through the "Cached" and "Text
-    Version" links. These items are not accessible within Livelink
-    unless you have a Livelink customization that makes this
-    possible.</td>
+    these items is available through the "Cached" and "Text Version"
+    links. These items are not accessible within Livelink without
+    authentication unless you have a Livelink customization that makes
+    this possible.</td>
     <td>A Livelink username. The default value is empty.</td>
   </tr>
 
@@ -166,7 +159,8 @@
     <td>publicContentDisplayUrl</td>
     <td>Specifies the Livelink URL which should be used in search
         results which link to public documents.</td>
-    <td>A Livelink URL. The default value is empty.</td>
+    <td>A Livelink URL. If the value is empty, the value of the
+    displayUrl property will be used. The default value is empty.</td>
   </tr>
 
   <tr>
@@ -186,13 +180,23 @@
     <td>excludedVolumeTypes</td>
     <td>Specifies the volume types that you want to exclude from
     indexing. Excluding a volume type means that no volumes of that
-    type or any of the items that the volumes contain are indexed.</td>
+    type or any of the items that the volumes contain are indexed.
+    <p>This property is not hierarchical. Only items whose OwnerID
+    matches a volume of the excluded type will be excluded. Items in
+    non-excluded subvolumes will be indexed. To exclude entire
+    hierarchies, specify the items to be excluded by object ID rather
+    than type, using the excludedLocationNodes property.</p>
+    <p>By default, the Undelete workspace (subtype 402) is not
+    excluded. If the Undelete workspace is excluded, either here or by
+    object ID in excludedLocationNodes, then previously indexed
+    documents now in the Undelete workspace will be excluded by the
+    authorization checks.</p></td>
     <td>A comma-separated list of volume type numbers, optionally
     enclosed by braces. If this property is not specified, no volume
     types are excluded from indexing. This value may be copied
     from the <code>ExcludedVolumeTypes</code> parameter in the
     <code>[LivelinkExtractor]</code> section of the opentext.ini file.
-    The default value is "148,162".</td>
+    The default value is "148,161,162".</td>
   </tr>
 
   <tr>
@@ -200,7 +204,11 @@
     <td>Specifies the IDs of the nodes that you want to exclude from
     indexing. Excluding a node means that it is not indexed, and
     if it is a container, none of the items it contains are
-    indexed.</td>
+    indexed.
+    <p>Excluding nodes requires the use of the DTreeAncestors table in
+    Livelink, which in turn requires that the Livelink Recommender
+    agent be enabled. The latest monthly Livelink patches are
+    recommended.</p></td>
     <td>A comma-separated list of object IDs, optionally enclosed by
     braces. The default value is empty.</td>
   </tr>
@@ -298,7 +306,13 @@
 
   <tr>
     <td>showHiddenItems</td>
-    <td>Specifies whether hidden items are indexed and searchable.</td>
+    <td>Specifies whether hidden items, or their children, are shown
+    in the search results. This property is used for authorization,
+    and not for indexing.
+    <p>Excluding hidden items, by setting this property to false,
+    requires the use of the DTreeAncestors table in Livelink, which in
+    turn requires that the Livelink Recommender agent be enabled. The
+    latest monthly Livelink patches are recommended.</p></td>
     <td>One of the following values:
     <dl>
     <dt><code>{}</code> or <code>false</code>
@@ -309,7 +323,7 @@
     <p>This value may be copied from the <code>ShowHiddenItems</code>
     parameter in the <code>[Explorer]</code> section or in the
     <code>[Atlas]</code> section of the opentext.ini file. The
-    default value is "false".</p>
+    default value is "true".</p>
     <p>Subtype numbers in the list are silently accepted, but ignored.</p></td>
   </tr>
 
@@ -348,7 +362,7 @@
     entry to the map:</p>
     <dl>
       <dt>144
-      <dd>/{0}/{0}?func=doc.Fetch&amp;nodeid={0}&viewType=1
+      <dd>/open/{0}
     </dl>
     </td>
   </tr>
@@ -450,12 +464,11 @@
     disappointing, in line with but consistently 1-1/2 to 3 times slower
     than the others.
     <dt><code>PipedContentHandler</code>
-    <dd> Uses a pipe to match the in-memory performance characteristics
-    of the byte array handler without the scalability issues. Combines
-    consistently good performance with small memory
-        consumption. However, this implementation has a potential
-        thread deadlock problem seen in development (though not
-        in production).
+    <dd> Uses a pipe to match the in-memory performance
+    characteristics of the byte array handler without the scalability
+    issues. Combines consistently good performance with small memory
+    consumption. However, this implementation has a potential thread
+    deadlock problem seen in development (though not in production).
     </dl>
     The default value is
     "com.google.enterprise.connector.otex.FileContentHandler"</td>
