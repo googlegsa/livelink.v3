@@ -63,7 +63,7 @@
                 <property name="includedVersionInfo" value="" />
                 <property name="includedCategories" value="all,searchable" />
                 <property name="excludedCategories" value="" />
-                <property name="showHiddenItems" value="false" />
+                <property name="showHiddenItems" value="true" />
 
                 <property name="displayPatterns">
                         <map>

@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,33 +104,28 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
                 currentProperty.put("tag", tagname);
                 cacheAttrs(currentProperty, attrs);
                 cacheCurrentProperty();
-            }
-            else if (tag == HTML.Tag.SELECT) {
+            } else if (tag == HTML.Tag.SELECT) {
                 startNewProperty();
                 currentProperty.put("tag", tagname);
                 cacheAttrs(currentProperty, attrs);
                 currentOptions = new ArrayList();
-            }
-            else if (tag == HTML.Tag.OPTION) {
+            } else if (tag == HTML.Tag.OPTION) {
                 HashMap option = new HashMap();
                 cacheAttrs(option, attrs);
                 currentOptions.add(option);
-            }
-            else if (tag == HTML.Tag.TEXTAREA) {
+            } else if (tag == HTML.Tag.TEXTAREA) {
                 startNewProperty();
                 currentProperty.put("tag", tagname);
                 cacheAttrs(currentProperty, attrs);
                 currentText = new StringBuffer();
-            }
-            else if (tag == HTML.Tag.HTML ||
-                tag == HTML.Tag.HEAD ||
-                tag == HTML.Tag.BODY ||
-                tag == HTML.Tag.TABLE ||
-                tag == HTML.Tag.TR ||
-                tag == HTML.Tag.TD) {
+            } else if (tag == HTML.Tag.HTML ||
+                    tag == HTML.Tag.HEAD ||
+                    tag == HTML.Tag.BODY ||
+                    tag == HTML.Tag.TABLE ||
+                    tag == HTML.Tag.TR ||
+                    tag == HTML.Tag.TD) {
                 // skip
-            }
-            else if (tagname.equals("label")) {
+            } else if (tagname.equals("label")) {
                 // If this is a label for an input, store the
                 // label value as a property of the input.
                 if (attrs.getAttribute(HTML.Attribute.ENDTAG) != null) {
@@ -149,8 +144,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
                 }
                 cacheAttrs(currentProperty, attrs);
                 currentText = new StringBuffer();
-            }
-            else {
+            } else {
                 LOGGER.fine("<" + tag + ">");
                 //fail("Unexpected HTML tag " + tag);
             }
@@ -177,8 +171,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
             if (tag == HTML.Tag.SELECT) {
                 currentProperty.put("options", currentOptions);
                 cacheCurrentProperty();
-            }
-            else if (tag == HTML.Tag.TEXTAREA) {
+            } else if (tag == HTML.Tag.TEXTAREA) {
                 currentProperty.put("text", currentText.toString());
                 cacheCurrentProperty();
             }
