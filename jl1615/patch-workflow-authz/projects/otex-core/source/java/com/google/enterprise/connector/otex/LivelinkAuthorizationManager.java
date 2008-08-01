@@ -136,7 +136,13 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             LOGGER.fine("AUTHORIZE DOCIDS: " + username);
 
         AuthzDocList authorized = new AuthzDocList(docids.size());
-        addAuthorizedDocids(docids.iterator(), username, authorized);
+        try {
+            // Mercer-specific hack: try lower case version of username first.
+            addAuthorizedDocids(docids.iterator(), username.toLowerCase(),
+                                authorized);
+        } catch (RepositoryException e) {
+            addAuthorizedDocids(docids.iterator(), username, authorized);
+        }
         authorized.trimToSize();
 
         if (LOGGER.isLoggable(Level.FINEST)) {
