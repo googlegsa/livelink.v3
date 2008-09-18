@@ -575,7 +575,15 @@ class LivelinkTraversalManager
         Checkpoint checkpoint = new Checkpoint(checkpointStr);
         int batchsz = batchSize;
 
-        while (true) {
+        // If our available content appears to be sparsely distributed
+        // across the repository, we want to give ourself a chance to
+        // accelerate through the sparse regions, grabbing larger sets
+        // of candidates looking for something applicable.  However,
+        // we cannot do this indefinitely or we will run afoul of the
+        // Connector Manager's thread timeout.
+        long startTime = System.currentTimeMillis();
+        long maxTimeSlice = 1000L * 60 * 2;
+        while (System.currentTimeMillis() - startTime < maxTimeSlice) {
             ClientValue candidates, deletes, results = null;
             if (isSqlServer) {
                 candidates = getCandidatesSqlServer(checkpoint, batchsz);
@@ -639,6 +647,13 @@ class LivelinkTraversalManager
                     traversalContext, checkpoint, currentUsername);
             }
         }
+
+        // We searched for awhile, but did not find any candidates that
+        // passed the restrictions.  However, there are still more candidates
+        // to consider.  Indicate to the Connector Manager that this batch
+        // has no documents, but to reschedule us immediately to keep looking.
+        LOGGER.fine("RESULTSET: 0 rows, so far.");
+        return new LivelinkDocumentList(checkpoint);
     }
 
 
