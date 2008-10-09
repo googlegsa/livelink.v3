@@ -47,7 +47,6 @@ import com.google.enterprise.connector.otex.client.ClientValue;
  */
 class LivelinkTraversalManager
         implements TraversalManager, TraversalContextAware {
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkTraversalManager.class.getName());
@@ -70,6 +69,12 @@ class LivelinkTraversalManager
      * from the field names in <code>FIELDS</code>.
      */
     private static final String[] SELECT_LIST;
+
+    /**
+     * True if the Connector Manager handles Delete Actions, false
+     * otherwise.  FIXME: Remove this check after CM 1.0.5 is released.
+     */
+    private static final boolean deleteSupported;
 
     static {
         // ListNodes requires the DataID and PermID columns to be
@@ -99,19 +104,9 @@ class LivelinkTraversalManager
         SELECT_LIST = new String[FIELDS.length];
         for (int i = 0; i < FIELDS.length; i++)
             SELECT_LIST[i] = FIELDS[i].fieldName;
-    }
 
-    /**
-     * Constructs a checkpoint string from the given date and object ID.
-     *
-     * @param modifyDate the date for the checkpoint
-     * @param objectId the object ID for the checkpoint
-     * @return a checkpoint string of the form "yyyy-mm-dd hh:mm:ss,n",
-     *     where n is the object ID
-     */
-    static String getCheckpoint(Date modifyDate, int objectId) {
-        return LivelinkDateFormat.getInstance().toSqlString(modifyDate) +
-            ',' + objectId;
+        // Check to see if the Connector Manager supports Deleted Documents.
+        deleteSupported = isDeleteSupported();
     }
 
     
@@ -143,14 +138,15 @@ class LivelinkTraversalManager
     /* XXX: We could use the state or strategy pattern if this gets messy. */
     private final boolean isSqlServer;
 
-    /** A starting checkpoint, for efficiency, or <code>null</code. */
-    private final String startCheckpoint;
-       
     /** A concrete strategy for retrieving the content from the server. */
     private final ContentHandler contentHandler;
 
     /** The number of results to return in each batch. */
     private volatile int batchSize = 100;
+
+    /** Date formatter used to construct checkpoint dates */
+    private final LivelinkDateFormat dateFormat =
+        LivelinkDateFormat.getInstance();
 
     /** The TraversalContext from TraversalContextAware Interface */
     private TraversalContext traversalContext = null;
@@ -188,51 +184,23 @@ class LivelinkTraversalManager
             this.currentUsername = username;
         }
 
-        this.isSqlServer = isSqlServer();
-        this.startCheckpoint = getStartCheckpoint();
+        this.isSqlServer = connector.isSqlServer();
         this.contentHandler = getContentHandler();
     }
 
 
     /**
-     * Determines whether the database type is SQL Server or Oracle.
+     * Determines if the controlling Connector Manager supports the
+     * Delete Action, which purges deleted documents from the index.
      *
-     * @return <code>true</code> for SQL Server, or <code>false</code>
-     * for Oracle.
+     * @return <code>true</code> if the Connector Manager handles 
+     * Delete Actions, <code>false</code> otherwise.
      */
-    /*
-     * We need to use the sysadminClient because this method uses
-     * <code>ListNodes</code> but does not select either DataID or
-     * PermID, or even use the DTree table at all.
-     */
-    private boolean isSqlServer() throws RepositoryException {
-        String servtype = connector.getServtype();
-        if (servtype == null) {
-            // Autodetection of the database type. First, ferret out
-            // generic errors when connecting or using ListNodes.
-            String query = "1=1"; // ListNodes requires a WHERE clause.
-            String[] columns = { "42" };
-            ClientValue results =
-                sysadminClient.ListNodes(query, "KDual", columns);
-
-            // Then check an Oracle-specific query.
-            // We use ListNodesNoThrow() to avoid logging our expected error.
-            results = sysadminClient.ListNodesNoThrow(query, "dual", columns);
-            boolean isOracle = (results != null);
-
-            if (LOGGER.isLoggable(Level.CONFIG)) {
-                LOGGER.config("AUTO DETECT SERVTYPE: " +
-                    (isOracle ? "Oracle" : "MSSQL"));
-            }
-            return !isOracle;
-        } else {
-            // This is basically startsWithIgnoreCase.
-            boolean matches = servtype.regionMatches(true, 0, "MSSQL", 0, 5);
-            if (LOGGER.isLoggable(Level.CONFIG)) {
-                LOGGER.config("CONFIGURED SERVTYPE: " +
-                    (matches ? "MSSQL" : "Oracle"));
-            }
-            return matches;
+    private static boolean isDeleteSupported() {
+        try {
+            return SpiConstants.ActionType.DELETE.toString() != null;
+        } catch (java.lang.NoClassDefFoundError e) {
+            return false;
         }
     }
 
@@ -250,62 +218,47 @@ class LivelinkTraversalManager
      * DataID or PermID.
      */
     private String getStartCheckpoint() {
-        // If we have a specified startDate, use it to seed 
-        // our minimum modification timestamp.
+        // Checkpoint we are forging.
+        Checkpoint checkpoint = new Checkpoint();
+
+        // If we have an earliest starting point, forge a checkpoint
+        // that reflects it. Otherwise, start at first object in the
+        // Livelink database.
         Date startDate = connector.getStartDate();
+        if (startDate != null)
+            checkpoint.setInsertCheckpoint(startDate, 0);
 
-        // If the user specified "Items to index", fetch the earliest
-        // modification time for any of those items.  We can forge 
-        // a start checkpoint that skips over any ancient history in
-        // the LL database.  This executes a SQL query of the form:
-        //   select min(ModifyDate) from DTreeAncestors join DTree
-        //   on DTreeAncestors.DataID = DTree.DataID
-        //   where AncestorID in (items to index)
-        //   or DataID in (items to index)
-        // [Note the actual query is slightly more cryptic to avoid a
-        // SQL error caused by the range variable inserted into the
-        // query by ListNodes, and by range variables introduced here
-        // to make it easier to test the query in SQL Server
-        // Enterprise Manager or Query Analyzer.]
-        String startNodes = connector.getIncludedLocationNodes();
-        if (startNodes != null && startNodes.length() > 0) {
-            String ancestorNodes = getAncestorNodes(startNodes);
+        // We don't care about any existing Delete events in the audit
+        // logs, since we're just starting the traversal, so forge a
+        // checkpoint from the last event in the audit log.
+        if (deleteSupported) {
             try {
-                String query = "1=1";
-                String[] columns = { "minModifyDate" };
-                String view = "(select min(ModifyDate) as minModifyDate from " +
-                    "DTreeAncestors Anc join DTree T on Anc.DataID = " +
-                    "T.DataID where AncestorID in (" + ancestorNodes + ") " +
-                    "or T.DataID in (" + startNodes + "))";
-                if (LOGGER.isLoggable(Level.FINEST))
-                    LOGGER.finest("START CHECKPOINT VIEW: " + view);
-
+                String query =
+                    "EventID in (select max(EventID) from DAuditNew)";
+                String[] columns = { "EventID", "AuditDate" };
+                String view = "DAuditNew";
                 ClientValue results =
                     sysadminClient.ListNodes(query, view, columns);
                 if (results.size() > 0) {
-                    Date minDate = results.toDate(0, "minModifyDate");
-                    if (LOGGER.isLoggable(Level.FINEST)) {
-                        LOGGER.finest("START CHECKPOINT COMPARING: " +
-                            startDate + " TO: " + minDate);
-                    }
-                    if (startDate == null || minDate.after(startDate))
-                        startDate = minDate;
-                } else {
-                    if (LOGGER.isLoggable(Level.FINER))
-                        LOGGER.finer("START CHECKPOINT EMPTY JOIN");
+                    checkpoint.setDeleteCheckpoint(
+                        results.toDate(0, "AuditDate"),
+                        results.toValue(0, "EventID"));
                 }
             } catch (Exception e) {
-                // Possible non-date comes back if startNodes yields nothing.
-                if (LOGGER.isLoggable(Level.FINER))
-                    LOGGER.log(Level.FINER, "START CHECKPOINT ERROR: " +
-                        startDate, e);
+                // If there is no audit trail, then no initial Delete
+                // Checkpoint.
+                if (LOGGER.isLoggable(Level.WARNING)) {
+                    LOGGER.warning(
+                        "Error establishing initial Deleted Items " +
+                        "Checkpoint: " + e.getMessage());
+                }
             }
         }
 
-        // If we actually found an earliest starting point, forge a
-        // checkpoint that reflects it. Otherwise, start at first
-        // object in the Livelink database.
-        return (startDate != null) ? getCheckpoint(startDate, 0) : null;
+        String startCheckpoint = checkpoint.toString();
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("START CHECKPOINT: " + startCheckpoint);
+        return startCheckpoint;
     }
 
     /**
@@ -373,7 +326,7 @@ class LivelinkTraversalManager
         return included;
     }
 
-    private String getAncestorNodes(String startNodes) {
+    static String getAncestorNodes(String startNodes) {
         // Projects, Discussions, Channels, and TaskLists have a rather
         // strange behaviour.  Their contents have a VolumeID that is the
         // same as the container's ObjectID, and an AncestorID that is the
@@ -445,47 +398,6 @@ class LivelinkTraversalManager
             buffer.append("))");
         }
 
-        // TODO: This doesn't handle the subtypes yet. If
-        // showHiddenItems is a list of subtypes, then hidden items
-        // will just not be indexed.
-        HashSet showHiddenItems = connector.getShowHiddenItems();
-        if (!showHiddenItems.contains("all"))
-        {
-            // I'm using Anc here rather than simply A to avoid
-            // conceptually interferring with the A range variable
-            // that LAPI adds behind the scenes.
-            // XXX: We need to qualify the reference to DataID in the
-            // candidatesPredicate with Anc. We "know" that DataID
-            // appears at the beginning of candidatesPredicate, so we
-            // just leave a hanging "Anc." just before that. See
-            // listNodes, where the predicate is created. Sigh.
-            String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
-            if (buffer.length() > 0)
-                buffer.append(" and ");
-            buffer.append("Catalog <> ");
-            buffer.append(hidden);
-            buffer.append(" and DataID not in (select Anc.DataID ");
-            buffer.append("from DTreeAncestors Anc join DTree T ");
-            buffer.append("on Anc.AncestorID = T.DataID where Anc.");
-            buffer.append(candidatesPredicate);
-            buffer.append(" and T.Catalog = ");
-            buffer.append(hidden);
-
-            String startNodes = connector.getIncludedLocationNodes();
-            if (startNodes != null && startNodes.length() > 0) {
-                String ancestorNodes = getAncestorNodes(startNodes);
-                buffer.append(" and Anc.AncestorID not in (");
-                buffer.append(startNodes);
-                buffer.append(") and Anc.AncestorID not in ");
-                buffer.append("(select AncestorID from DTreeAncestors ");
-                buffer.append("where DataID in (");
-                buffer.append(ancestorNodes);
-                buffer.append("))");
-            }
-
-            buffer.append(')');
-        }
-
         String excluded = (buffer.length() > 0) ? buffer.toString() : null;
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("EXCLUDED: " + excluded);
@@ -536,6 +448,7 @@ class LivelinkTraversalManager
     /** {@inheritDoc} */
     public DocumentList startTraversal() throws RepositoryException {
         // startCheckpoint will either be an initial checkpoint or null
+        String startCheckpoint = getStartCheckpoint();
         if (LOGGER.isLoggable(Level.INFO)) {
             LOGGER.info("START TRAVERSAL: " + batchSize + " rows" + 
                 (startCheckpoint == null ? "" : " from " + startCheckpoint) +
@@ -543,16 +456,28 @@ class LivelinkTraversalManager
         }
         return listNodes(startCheckpoint);
     }
-
-
+    
+    
     /** {@inheritDoc} */
     public DocumentList resumeTraversal(String checkpoint)
-            throws RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE)) {
+        throws RepositoryException {
+        // Resume with no checkpoint is the same as Start.
+        if (checkpoint == null || checkpoint.length() == 0)
+            return startTraversal();
+
+        if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
                 checkpoint + ".");
-        }
         
+        // If we were handed an old-style checkpoint, that means the
+        // user upgraded the connector, but has not reindexed.  Update
+        // the checkpoint to the newer style.
+        if (deleteSupported && Checkpoint.isOldStyle(checkpoint)) {
+            checkpoint = Checkpoint.upgrade(checkpoint);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine("UPGRADED OLD-STYLE CHECKPOINT: " + checkpoint);
+        }
+
         // Ping the Livelink Server.  If I can't talk to the server,
         // I will consider this a transient Exception (server down,
         // network error, etc).  In that case, return null, signalling
@@ -560,13 +485,12 @@ class LivelinkTraversalManager
         try {
             client.GetCurrentUserID(); 	// ping()
         } catch (RepositoryException e) {
-            try { Thread.sleep(5000); } catch (Exception ex) {};
             return null;
         }
-        
+
         return listNodes(checkpoint);
     }
-
+    
     /** {@inheritDoc} */
     public void setTraversalContext(TraversalContext traversalContext) {
         this.traversalContext = traversalContext;
@@ -635,62 +559,84 @@ class LivelinkTraversalManager
      * <em>after_last_checkpoint</em> condition to arrive at a list of
      * candidates. The second applies the inclusions and exclusions,
      * using the candidates to avoid subqueries that select a large
-     * number of rows.
+     * number of rows. The second also implicitly applies permissions.
      * 
      * If the first query returns no candidates, there is nothing to
      * return. If the second query returns no results, we need to try
      * again with the next batch of candidates.
      *
-     * @param checkpoint a checkpoint string, or <code>null</code> if
-     * a new traversal should be started
+     * @param checkpointStr a checkpoint string, or <code>null</code> 
+     * if a new traversal should be started
      * @return a batch of results starting at the checkpoint, if there
      * is one, or the beginning of the traversal order, otherwise
      */
-    private DocumentList listNodes(String checkpoint)
+    private DocumentList listNodes(String checkpointStr)
             throws RepositoryException {
+        Checkpoint checkpoint = new Checkpoint(checkpointStr);
         int batchsz = batchSize;
+
         while (true) {
-            ClientValue candidates;
-            if (isSqlServer)
+            ClientValue candidates, deletes, results = null;
+            if (isSqlServer) {
                 candidates = getCandidatesSqlServer(checkpoint, batchsz);
-            else
-                candidates = getCandidatesOracle(checkpoint, batchsz);
-            if (candidates.size() == 0) {
-                LOGGER.fine("RESULTSET: no rows.");
-                return null;
-            } else 
-                LOGGER.fine("CANDIDATES SET: " + candidates.size() + " rows.");
-
-            StringBuffer buffer = new StringBuffer();
-            buffer.append("DataID in (");
-            for (int i = 0; i < candidates.size(); i++) {
-                buffer.append(candidates.toInteger(i, "DataID"));
-                buffer.append(',');
-            }
-            buffer.setCharAt(buffer.length() - 1, ')');
-            String candidatesPredicate = buffer.toString();
-
-            ClientValue results = getResults(candidatesPredicate);
-            if (results.size() == 0) {
-                // Reset the checkpoint here to match the last
-                // candidate, so that we will get the next batch of
-                // candidates the next time through the loop.
-                int row = candidates.size() - 1; // last row
-                checkpoint = getCheckpoint(
-                    candidates.toDate(row, "ModifyDate"),
-                    candidates.toInteger(row, "DataID"));
-                if (LOGGER.isLoggable(Level.FINER))
-                    LOGGER.finer("SKIPPING PAST " + checkpoint);
-                // If nothing is passing our filter, we probably have a
-                // sparse database.  Grab larger candidate sets, hoping
-                // to run into anything interesting.
-                batchsz = Math.min(1000, batchsz * 10);
+                deletes = getDeletesSqlServer(checkpoint, batchsz);
             } else {
+                candidates = getCandidatesOracle(checkpoint, batchsz);
+                deletes = getDeletesOracle(checkpoint, batchsz);
+            }
+
+            int numInserts = (candidates == null) ? 0 : candidates.size();
+            int numDeletes = (deletes == null) ? 0 : deletes.size();
+
+            if ((numInserts + numDeletes) == 0) {
                 if (LOGGER.isLoggable(Level.FINE))
-                    LOGGER.fine("RESULTSET: " + results.size() + " rows.");
+                    LOGGER.fine("RESULTSET: no rows.");
+                return null;
+            }
+
+            // Apply the inclusion, exclusions, and permissions to the
+            // candidates.
+            if (numInserts > 0) {
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.fine("CANDIDATES SET: " + numInserts + " rows.");
+
+                StringBuffer buffer = new StringBuffer();
+                buffer.append("DataID in (");
+                for (int i = 0; i < numInserts; i++) {
+                    buffer.append(candidates.toInteger(i, "DataID"));
+                    buffer.append(',');
+                }
+                buffer.setCharAt(buffer.length() - 1, ')');
+                results = getResults(buffer.toString());
+                numInserts = (results == null) ? 0 : results.size();
+
+                if (numInserts == 0) {
+                    // Reset the checkpoint here to match the last
+                    // candidate, so that we will get the next batch of
+                    // candidates the next time through the loop.
+                    int row = candidates.size() - 1; // last row
+                    checkpoint.insertDate =
+                        candidates.toDate(row, "ModifyDate");
+                    checkpoint.insertDataId =
+                        candidates.toInteger(row, "DataID");
+              
+                    if (LOGGER.isLoggable(Level.FINER))
+                        LOGGER.finer("SKIPPING PAST " + checkpoint.toString());
+                    // If nothing is passing our filter, we probably have a
+                    // sparse database.  Grab larger candidate sets, hoping
+                    // to run into anything interesting.
+                    batchsz = Math.min(1000, batchsz * 10);
+                }
+            }
+
+            if ((numInserts + numDeletes) > 0) {
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    LOGGER.fine("RESULTSET: " + numInserts + " rows.  " +
+                                "DELETESET: " + numDeletes + " rows.");
+                }
                 return new LivelinkDocumentList(connector, client,
-                    contentHandler, results, FIELDS, traversalContext,
-                    checkpoint, currentUsername);
+                    contentHandler, results, FIELDS, deletes,
+                    traversalContext, checkpoint, currentUsername);
             }
         }
     }
@@ -700,10 +646,16 @@ class LivelinkTraversalManager
      * The sort order of the traversal. We need a complete ordering
      * based on the modification date, in order to get incremental
      * crawling without duplicates.
-     *
-     * @see #getRestriction
      */
     private static final String ORDER_BY = " order by ModifyDate, DataID";
+
+    /**
+     * The sort order of the deleted documents traversal. We need a
+     * complete ordering based on the event date, in order to get
+     * incremental crawling without duplicates.
+     */
+    private static final String DELETE_ORDER_BY =
+        " order by AuditDate, EventID";
 
 
     /**
@@ -744,13 +696,22 @@ class LivelinkTraversalManager
      * candidates when the traversal user does not have permission for
      * any of the potential candidates.
      */
-    private ClientValue getCandidatesSqlServer(String checkpoint, int batchsz)
-            throws RepositoryException {
+    private ClientValue getCandidatesSqlServer(Checkpoint checkpoint,
+            int batchsz) throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
-        if (checkpoint == null)
+        if ((checkpoint == null) || (checkpoint.insertDate == null))
             buffer.append("1=1");
-        else 
-            buffer.append(getRestriction(checkpoint));
+        else {
+            String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
+            buffer.append("(ModifyDate > '");
+            buffer.append(modifyDate);
+            buffer.append("' or (ModifyDate = '");
+            buffer.append(modifyDate);
+            buffer.append("' and DataID > ");
+            buffer.append(checkpoint.insertDataId);
+            buffer.append("))");
+        }
+
         buffer.append(ORDER_BY);
 
         String query = buffer.toString();
@@ -775,13 +736,26 @@ class LivelinkTraversalManager
      * candidates when the traversal user does not have permission for
      * any of the potential candidates.
      */
-    private ClientValue getCandidatesOracle(String checkpoint, int batchsz)
+    private ClientValue getCandidatesOracle(Checkpoint checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
         buffer.append("(select ModifyDate, DataID from DTree");
-        if (checkpoint != null) {
-            buffer.append(" where ");
-            buffer.append(getRestriction(checkpoint));
+        if ((checkpoint != null) && (checkpoint.insertDate != null)) {
+            /* The TIMESTAMP literal, part of the SQL standard, was first
+             * supported by Oracle 9i, and not at all by SQL Server. SQL
+             * Server doesn't require a prefix on timestamp literals, and
+             * we're using TO_DATE with Oracle in order to work with Oracle
+             * 8i, and therefore with Livelink 9.0 or later.
+             */
+            String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
+            buffer.append(" where (ModifyDate > TO_DATE('");
+            buffer.append(modifyDate);
+            buffer.append(
+                "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('");
+            buffer.append(modifyDate);
+            buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and DataID > ");
+            buffer.append(checkpoint.insertDataId);
+            buffer.append("))");
         }
         buffer.append(ORDER_BY);
         buffer.append(')');
@@ -796,52 +770,113 @@ class LivelinkTraversalManager
     }
 
 
-    /**
-     * Gets a SQL condition representing the given checkpoint. This
-     * condition depends on the sort order of the traversal.
-     *
-     * @param checkpoint
-     * @return a SQL condition returning items following the checkpoint
-     * @see #ORDER_BY
-     */
+    /** Fetches the list of Deleted Items candidates for SQL Server. */
     /*
-     * The TIMESTAMP literal, part of the SQL standard, was first
-     * supported by Oracle 9i, and not at all by SQL Server. SQL
-     * Server doesn't require a prefix on timestamp literals, and
-     * we're using TO_DATE with Oracle in order to work with Oracle
-     * 8i, and therefore with Livelink 9.0 or later.
-     *
-     * TODO: Validate the checkpoint. We have checkpoints coming from
-     * the Connector Manager, from a configured starting date, or from
-     * the earliest modification date of the included location nodes.
+     * I try limit the list of delete candidates to those
+     * recently deleted (via a checkpoint) and items only of
+     * SubTypes we would have indexed in the first place.
+     * Unfortunately, Livelink loses an items ancestral histroy
+     * when recording the delete event in the audit logs, so
+     * I cannot determine if the deleted item came from
+     * an explicitly included location, or an explicitly
+     * excluded location.
      */
-    private String getRestriction(String checkpoint)
+    private ClientValue getDeletesSqlServer(Checkpoint checkpoint, int batchsz)
             throws RepositoryException {
-        int index = checkpoint.indexOf(',');
-        if (index == -1) {
-            throw new LivelinkException("Invalid checkpoint " + checkpoint,
-                LOGGER);
-        } else {
-            String modifyDate = checkpoint.substring(0, index);
-
-            // In future, we may embellish the checkpoint with additional items.
-            String dataId;
-            int idEnd = checkpoint.indexOf(',', index + 1);
-            if (idEnd > index)
-                dataId = checkpoint.substring(index + 1, idEnd);
-            else
-                dataId = checkpoint.substring(index + 1);
-
-            if (isSqlServer) {
-                return "(ModifyDate > '" + modifyDate +
-                    "' or (ModifyDate = '" + modifyDate +
-                    "' and DataID > " + dataId + "))";
-            } else {
-                return "(ModifyDate > TO_DATE('" + modifyDate +
-                    "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('" +
-                    modifyDate + "', 'YYYY-MM-DD HH24:MI:SS') and DataID > " +
-                    dataId + "))";
-            }
+        if (deleteSupported == false ||
+                checkpoint == null || checkpoint.deleteDate == null) {
+            return null;
         }
+
+        StringBuffer buffer = new StringBuffer();
+        // This is the same as "(AuditStr = 'Delete'".
+        buffer.append("(AuditID = 2");
+
+        // Only include delete events after the checkpoint.
+        String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
+        buffer.append(" and (AuditDate > '");
+        buffer.append(deleteDate);
+        buffer.append("' or (AuditDate = '");
+        buffer.append(deleteDate);
+        buffer.append("' and EventID > ");
+        buffer.append(checkpoint.deleteEventId);
+        buffer.append("))");
+
+        // Exclude items with a SubType we know we excluded when indexing.
+        String excludedNodeTypes = connector.getExcludedNodeTypes();
+        if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
+            buffer.append(" and SubType not in (");
+            buffer.append(excludedNodeTypes);
+            buffer.append(')');
+        }
+
+        buffer.append(')');
+        buffer.append(DELETE_ORDER_BY);
+
+        String query = buffer.toString();
+        String view = "DAuditNew";
+        String[] columns = {
+            "top " + batchsz + " AuditDate", "EventID", "DataID" };
+
+        if (LOGGER.isLoggable(Level.FINEST))
+            LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
+
+        return sysadminClient.ListNodes(query, view, columns);
+    }
+
+
+    /** Fetches the list of Deleted Items candidates for Oracle. */
+    /*
+     * I try limit the list of delete candidates to those
+     * recently deleted (via a checkpoint) and items only of
+     * SubTypes we would have indexed in the firstplace.
+     * Unfortunately, Livelink loses an items ancestral histroy
+     * when recording the delete event in the audit logs, so
+     * I cannot determine if the deleted item came from
+     * an explicitly included location, or an explicitly
+     * excluded location.
+     */
+    private ClientValue getDeletesOracle(Checkpoint checkpoint, int batchsz)
+            throws RepositoryException {
+        if (deleteSupported == false ||
+                checkpoint == null || checkpoint.deleteDate == null) {
+            return null;
+        }
+
+        StringBuffer buffer = new StringBuffer();
+        buffer.append("(select AuditDate, EventID, DataID from DAuditNew");
+        // This is the same as "(AuditStr = 'Delete'".
+        buffer.append(" where (AuditID = 2");
+
+        // Only include delete events after the checkpoint.
+        String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
+        buffer.append(" and (AuditDate > TO_DATE('");
+        buffer.append(deleteDate);
+        buffer.append("', 'YYYY-MM-DD HH24:MI:SS') or (AuditDate = TO_DATE('");
+        buffer.append(deleteDate);
+        buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and EventID > ");
+        buffer.append(checkpoint.deleteEventId);
+        buffer.append("))");
+
+        // Exclude items with a SubType we know we excluded when indexing.
+        String excludedNodeTypes = connector.getExcludedNodeTypes();
+        if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
+            buffer.append(" and SubType not in (");
+            buffer.append(excludedNodeTypes);
+            buffer.append(')');
+        }
+
+        buffer.append(')');
+        buffer.append(DELETE_ORDER_BY);
+        buffer.append(')');
+
+        String query = "rownum <= " + batchsz;
+        String view = buffer.toString();
+        String[] columns = new String[] { "*" };
+
+        if (LOGGER.isLoggable(Level.FINEST))
+            LOGGER.finest("DELETE CANDIDATES VIEW: " + view);
+
+        return sysadminClient.ListNodes(query, view, columns);
     }
 }

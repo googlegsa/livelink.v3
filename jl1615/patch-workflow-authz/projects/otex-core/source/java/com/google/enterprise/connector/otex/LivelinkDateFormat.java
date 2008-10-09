@@ -15,8 +15,11 @@
 package com.google.enterprise.connector.otex;
 
 import java.text.SimpleDateFormat;
+import java.text.ParsePosition;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.TimeZone;
 
 /**
@@ -24,6 +27,11 @@ import java.util.TimeZone;
  * different ways: ISO8601 GMT time and SQL local time.
  */
 class LivelinkDateFormat {
+
+    /** The logger for this class. */
+    private static final Logger LOGGER =
+        Logger.getLogger(LivelinkDateFormat.class.getName());
+
 
     /** A GMT calendar for converting timestamps to UTC. */
     private final Calendar gmtCalendar =
@@ -119,6 +127,33 @@ class LivelinkDateFormat {
      */
     public synchronized String toRfc822String(Date value) {
         return rfc822.format(value);
+    }
+
+
+    /**
+     * Parses a string representation of a Date according to the the
+     * known underlying DateFormats.
+     *
+     * @param dateStr a String representation of a Date.
+     * @return a Date parsed from the string, or null, if error.
+     */
+    public Date parse(String dateStr) {
+        ParsePosition ppos = new ParsePosition(0);
+        Date date = null;
+        if (dateStr.length() > 10) {
+            char c = dateStr.charAt(10);
+            if (c == ' ')
+                date = sql.parse(dateStr, ppos);
+            else if (c == 'T')
+                date = iso8601.parse(dateStr, ppos);
+            else
+                date = rfc822.parse(dateStr, ppos);
+        }
+
+        if (date == null) 
+            LOGGER.warning("Unable to parse date: " + dateStr);
+
+        return date;
     }
 
 }

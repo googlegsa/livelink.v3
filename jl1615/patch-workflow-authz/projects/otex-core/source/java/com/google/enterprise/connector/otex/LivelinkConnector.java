@@ -174,6 +174,12 @@ public class LivelinkConnector implements Connector {
     /** The database server type, either "MSSQL" or "Oracle". */
     private String servtype;
 
+    /**
+     * Whether the database server is SQL Server, or if it isn't,
+     * it's Oracle.
+     */
+    private boolean isSqlServer;
+
     /** The Traversal username.  */
     private String traversalUsername;
 
@@ -599,7 +605,8 @@ public class LivelinkConnector implements Connector {
                 value = sanitizeListOfStrings((String) value).split(",");
                 break;
             default:
-                throw new AssertionError("This can't happen.");
+                throw new AssertionError("This can't happen (" +
+                    valueType + ")");
             }
 
             if ("default".equals(key))
@@ -724,15 +731,58 @@ public class LivelinkConnector implements Connector {
     }
 
     /**
-     * Gets the database server type, either "MSSQL" or "Oracle", or
-     * <code>null</code> if the database type is not configured.
+     * Determines whether the database type is SQL Server or Oracle.
      *
-     * @return the database server type
+     * @param client the sysadmin client to use for the query
+     * @return <code>true</code> for SQL Server, or <code>false</code>
+     * for Oracle.
      */
-    String getServtype() {
-        return servtype;
+    /*
+     * The client must be a sysadmin client because this method uses
+     * <code>ListNodes</code> but does not select either DataID or
+     * PermID, or even use the DTree table at all.
+     */
+    private void autoDetectServtype(Client client) throws RepositoryException {
+        boolean isSqlServer;
+        if (servtype == null) {
+            // Autodetection of the database type. First, ferret out
+            // generic errors when connecting or using ListNodes.
+            String query = "1=1"; // ListNodes requires a WHERE clause.
+            String[] columns = { "42" };
+            ClientValue results = client.ListNodes(query, "KDual", columns);
+
+            // Then check an Oracle-specific query.
+            // We use ListNodesNoThrow() to avoid logging our expected error.
+            results = client.ListNodesNoThrow(query, "dual", columns);
+            isSqlServer = (results == null);
+
+            if (LOGGER.isLoggable(Level.INFO)) {
+                LOGGER.info("AUTO DETECT SERVTYPE: " +
+                    (isSqlServer ? "MSSQL" : "Oracle"));
+            }
+        } else {
+            // This is basically startsWithIgnoreCase.
+            isSqlServer = servtype.regionMatches(true, 0, "MSSQL", 0, 5);
+
+            if (LOGGER.isLoggable(Level.CONFIG)) {
+                LOGGER.config("CONFIGURED SERVTYPE: " +
+                    (isSqlServer ? "MSSQL" : "Oracle"));
+            }
+        }
+        this.isSqlServer = isSqlServer;
     }
 
+    /**
+     * Gets whether the database type is SQL Server or Oracle.
+     *
+     * @return <code>true</code> for SQL Server, or <code>false</code>
+     * for Oracle.
+     */
+    boolean isSqlServer() {
+        return this.isSqlServer;
+    }
+
+    
     /**
      * Sets the startDate property.
      *
@@ -1198,7 +1248,6 @@ public class LivelinkConnector implements Connector {
      * @param hidden comma-separated list of subtypes or special keywords.
      */
     public void setShowHiddenItems(final String hidden) {
-
         propertyValidators.add(new PropertyValidator() {
             void validate() {
                 hiddenItemsSubtypes = new HashSet();
@@ -1514,6 +1563,163 @@ public class LivelinkConnector implements Connector {
             ((ConnectorAware) authenticationManager).setConnector(this); 
     }
 
+    /**
+     * Validates the DTreeAncestors table in the Livelink database,
+     * which must be populated for the connector to work. This is a
+     * coarse check to see if the table is completely empty.
+     *
+     * @param client the sysadmin client to use for the query
+     */
+    /*
+     * The client must be a sysadmin client because this method uses
+     * <code>ListNodes</code> but we don't want a lack of permissions
+     * to give a false positive. Also, this method does not select
+     * either DataID or PermID, or even use the DTree table at all.
+     */
+    private void validateDTreeAncestors(Client client)
+            throws RepositoryException {
+        String query;
+        String view = "DTreeAncestors";
+        String[] columns;
+        if (isSqlServer) {
+            query = "1=1";
+            columns = new String[] { "TOP 1 DataID" };
+        } else {
+            query = "rownum = 1";
+            columns = new String[] { "DataID" };
+        }
+        ClientValue ancestors = client.ListNodes(query, view, columns);
+        if (ancestors.size() == 0) {
+            throw new LivelinkException(
+                "The Livelink DTreeAncestors table is empty. Please make " +
+                "sure that the Livelink Recommender agent is enabled.",
+                LOGGER, "emptyAncestors", null);
+        }
+    }
+    
+    /**
+     * Validates the DTreeAncestors table in the Livelink database,
+     * which must be populated for the connector to work. This is a
+     * check to see if any of the Items to Index are included in the
+     * table.
+     *
+     * As a by-product, this method may update the startDate, if the
+     * earliest modification date found is later than the configured
+     * startDate.
+     *
+     * @param client the sysadmin client to use for the query
+     */
+    /*
+     * The client must be a sysadmin client because this methods uses
+     * <code>ListNodes</code> but we don't want a lack of permissions
+     * to give a false positive. Also, this method does not select
+     * either DataID or PermID.
+     */
+    private void validateIncludedLocationStartDate(Client client)
+            throws RepositoryException {
+        // If the user specified "Items to index", fetch the earliest
+        // modification time for any of those items.  We can forge 
+        // a start checkpoint that skips over any ancient history in
+        // the LL database.  This executes a SQL query of the form:
+        //   select min(ModifyDate) from DTreeAncestors join DTree
+        //   on DTreeAncestors.DataID = DTree.DataID
+        //   where AncestorID in (items to index)
+        //   or DataID in (items to index)
+        // [Note the actual query is slightly more cryptic to avoid a
+        // SQL error caused by the range variable inserted into the
+        // query by ListNodes, and by range variables introduced here
+        // to make it easier to test the query in SQL Server
+        // Enterprise Manager or Query Analyzer.]
+        if (includedLocationNodes != null &&
+                includedLocationNodes.length() > 0) {
+            String ancestorNodes = LivelinkTraversalManager.getAncestorNodes(
+                includedLocationNodes);
+            String query = "1=1";
+            String[] columns = { "minModifyDate" };
+            String view = "(select min(ModifyDate) as minModifyDate from " +
+                "DTreeAncestors Anc join DTree T on Anc.DataID = " +
+                "T.DataID where AncestorID in (" + ancestorNodes + ") " +
+                "or T.DataID in (" + includedLocationNodes + "))";
+            ClientValue results = client.ListNodes(query, view, columns);
+
+            if (results.size() > 0 &&
+                    results.isDefined(0, "minModifyDate")) {
+                Date minDate = results.toDate(0, "minModifyDate");
+                if (LOGGER.isLoggable(Level.FINEST))
+                    LOGGER.finest("COMPUTED START DATE: " + minDate);
+                if (startDate == null || minDate.after(startDate)) {
+                    startDate = minDate;
+                    if (LOGGER.isLoggable(Level.INFO)) {
+                        LOGGER.info("INCLUDED LOCATION START DATE: " +
+                            startDate);
+                    }
+                }
+            } else {
+                throw new LivelinkException(
+                    "The Livelink DTreeAncestors table is missing entries " +
+                    "for all of the items to index.", LOGGER,
+                    "missingAncestors", null);
+            }
+        }
+    }
+    
+    /**
+     * Validates the DTreeAncestors table in the Livelink database,
+     * which must be populated for the connector to work. This is a
+     * check for items in the Enterprise workspace that aren't listed
+     * in DTreeAncestors. To avoid problems with false positives, if
+     * items are missing a warning is logged, but no exceptions are
+     * thrown.
+     *
+     * @param client the sysadmin client to use for the query
+     * @throws RepositoryException if an I/O errors communicating with
+     * the Livelink server
+     */
+    /*
+     * The client must be a sysadmin client because this methods uses
+     * <code>ListNodes</code> but we don't want a lack of permissions
+     * to give a false positive. Also, this method does not select
+     * PermID, although it could.
+     */
+    private void validateEnterpriseWorkspaceAncestors(Client client)
+            throws RepositoryException {
+        if (!LOGGER.isLoggable(Level.WARNING))
+            return;
+
+        ClientValue info = client.AccessEnterpriseWS();
+        String id = info.toString("ID");
+        String volumeId = info.toString("VolumeID");
+        
+        // For the correlated subquery to work, we have to refer to
+        // DTree using the "a" range variable that LAPI adds behind
+        // the scenes. This query is designed to be very fast and
+        // avoid table scans. For performance reasons, we don't
+        // restrict this query by subtype.
+        String query = "not exists (select DataID from DTreeAncestors " +
+            "where DataID = a.DataID and AncestorID = " + id + ") " +
+            "and OwnerID = " + volumeId + " and DataID <> " + id;
+        String view = "DTree";
+        String[] columns;
+        if (isSqlServer) {
+            columns = new String[] { "TOP 1 DataID" };
+        } else {
+            query += " and rownum = 1";
+            columns = new String[] { "DataID" };
+        }
+
+        // FIXME: We don't want to log the exception as an error, but it
+        // would be nice to be able to log it as a warning.
+        ClientValue missing = client.ListNodesNoThrow(query, view, columns);
+        if (missing == null) {
+            LOGGER.warning("Unable to check for missing entries in the " +
+                "Livelink DTreeAncestors table.");
+        } else if (missing.size() > 0) {
+            LOGGER.warning("The Livelink DTreeAncestors table " +
+                "may be missing entries from the Enterprise workspace (" +
+                id + ").");
+        }
+    }
+    
     /** {@inheritDoc} */
     public Session login()
             throws RepositoryLoginException, RepositoryException {
@@ -1548,7 +1754,7 @@ public class LivelinkConnector implements Connector {
             minorVersion = 5;
         }
 
-        // [task 4046] The connector requires Livelink 9.5 or later.
+        // The connector requires Livelink 9.5 or later.
         if ((majorVersion < 9) || (majorVersion == 9 && minorVersion < 5)) {
             throw new LivelinkException(
                 "Livelink 9.5 or later is required.", LOGGER, 
@@ -1580,7 +1786,24 @@ public class LivelinkConnector implements Connector {
             if (authenticationClientFactory != null)
                 authenticationClientFactory.setEncoding("UTF-8");
         }
- 
+
+        // Get the database type and check the DTreeAncestors table
+        // (in that order, because we need the database type for the
+        // DTreeAncestors queries).
+        autoDetectServtype(client);
+
+        // Check first to see if we are going to need the
+        // DTreeAncestors table.
+        if (!hiddenItemsSubtypes.contains("all") ||
+                (includedLocationNodes != null &&
+                    includedLocationNodes.length() > 0) ||
+                (excludedLocationNodes != null &&
+                    excludedLocationNodes.length() > 0)) {
+            validateDTreeAncestors(client);
+            validateIncludedLocationStartDate(client);
+            validateEnterpriseWorkspaceAncestors(client);
+        }
+        
         return new LivelinkSession(this, clientFactory, authenticationManager);
     }
 }

@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
-import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -23,7 +22,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.logging.Logger;
-import java.util.MissingResourceException;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import javax.swing.text.html.HTML;
@@ -395,7 +393,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
      * The enableNtlm property has been removed from the form. It
      * must be set by editing the xml file.
      */
-    /*
     public void testValidateConfigIgnoredEnableNtlm() throws Exception {
         Properties props = getValidProperties();
         props.setProperty("enableNtlm", "true");
@@ -403,7 +400,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
             connectorType.validateConfig(props, defaultLocale, null);
         assertValid(response);
     }
-    */
 
     /**
      * Tests the validateConfig method with HTTP tunneling disabled
@@ -417,6 +413,68 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         assertValid(response);
     }
 
+    /**
+     * Tests URL validation. This test requires the
+     * connector.displayUrl system property to be set. The URL can
+     * point at anything valid; it doesn't have to a Livelink server.
+     */
+    public void testValidateUrl() throws Exception {
+        ResourceBundle bundle = ResourceBundle.getBundle(
+            "config.OtexConnectorResources", defaultLocale);
+        String displayUrl = System.getProperty("connector.displayUrl");
+
+        // Test 1: Configured URL (presumably correct)
+        int code = connectorType.validateUrl(displayUrl, bundle);
+        assertTrue(code == 200 || code == 401);
+
+        // Test 2: Invalid path
+        try {
+            // This should usually fail, but it won't if the entire
+            // web server requires authorization.
+            code = connectorType.validateUrl(
+                displayUrl.replaceFirst("Livelink", "LivelinkXyzzy"), bundle);
+            assertEquals(401, code);
+        } catch (UrlConfigurationException e) {
+        }
+
+        if (displayUrl.endsWith("livelink")) {
+            // Test 3: Invalid CGI
+            try {
+                // This should usually fail, but it won't if the entire
+                // web server requires authorization.
+                code = connectorType.validateUrl(displayUrl + ".exe", bundle);
+                assertEquals(401, code);
+            } catch (UrlConfigurationException e) {
+            }
+
+            // Test 4: Invalid CGI in unknown directory.
+            try {
+                // This should usually fail, but it won't if the entire
+                // web server requires authorization.
+                code = connectorType.validateUrl(
+                    displayUrl.replaceFirst("Livelink", "LivelinkXyzzy") +
+                    ".exe", bundle);
+                assertEquals(401, code);
+            } catch (UrlConfigurationException e) {
+            }
+        }
+
+        // Test 5: Invalid host
+        try {
+            code = connectorType.validateUrl("http://xyzzy/", bundle);
+            fail();
+        } catch (UrlConfigurationException e) {
+        }
+
+        // Test 6: Invalid protocol
+        try {
+            code = connectorType.validateUrl(
+                displayUrl.replaceFirst("http", "xyzzy"), bundle);
+            fail();
+        } catch (UrlConfigurationException e) {
+        }
+    }
+    
 
     /** Helper method to get valid direct connection properties. */
     protected Properties getValidProperties() {

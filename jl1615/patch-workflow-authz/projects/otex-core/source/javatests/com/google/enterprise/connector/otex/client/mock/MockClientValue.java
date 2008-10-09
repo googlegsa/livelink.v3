@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -132,7 +132,7 @@ public final class MockClientValue implements ClientValue {
     }
 
     public boolean isDefined(int row, String field) {
-        throw new IllegalArgumentException();
+        return getValue(row, field) != null;
     }
     
     public boolean hasValue() {
@@ -149,7 +149,11 @@ public final class MockClientValue implements ClientValue {
     }
 
     public Date toDate(int row, String field) {
-        throw new IllegalArgumentException();
+        Object v = getValue(row, field);
+        if (v instanceof Date)
+            return (Date) v;
+        else
+            throw new IllegalArgumentException();
     }
 
     public double toDouble(int row, String field) {
@@ -248,92 +252,115 @@ public final class MockClientValue implements ClientValue {
         throw new IllegalArgumentException();
     }
 
-    /** {@inheritDoc} */
     public int add(String key, boolean obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, char obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, int obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, long obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, float obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, double obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, Object obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, Boolean obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, Double obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, Float obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, Integer obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, Long obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, String obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String key, java.util.Date obj) {
         throw new IllegalArgumentException();
     }
 
-    /** {@inheritDoc} */
     public int add(Object obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(boolean obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(char obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(int obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(long obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(float obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(double obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(Boolean obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(Double obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(Float obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(Integer obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(Long obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(String obj) {
         throw new IllegalArgumentException();
     }
+
     public int add(java.util.Date obj) {
         throw new IllegalArgumentException();
     }
-
 }

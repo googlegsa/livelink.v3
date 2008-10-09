@@ -50,29 +50,39 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * also remove documents from search results that were deleted
      * after they were indexed.
      */
-    private boolean purgeDeletedDocs;
+    private final boolean purgeDeletedDocs;
 
     /**
      * FIXME: Temporary patch to remove workflow attachments from the
      * search results if the workflow volume is excluded from
      * indexing.
      */
-    private int workflowVolumeId;
+    private final int workflowVolumeId;
 
     /**
-     * Constructor - caches client factory, connector, and
-     * looks to see if deleted documents are to be excluded
-     * from search results.
+     * If showHiddenItems is false, then we need to excluded hidden
+     * items from the authorized documents. We handle hidden items at
+     * authorization time, like a special permission, rather than at
+     * indexing time.
+     */
+    /*
+     * TODO: This doesn't handle the subtypes yet. If showHiddenItems
+     * is a list of subtypes, then hidden items will not be
+     * authorized.
+     */
+    private final boolean showHiddenItems;
+
+    /**
+     * Constructor - caches client factory, connector, and for
+     * additional kinds of items that should be excluded from search
+     * results.
      */
     LivelinkAuthorizationManager(LivelinkConnector connector,
-                                 ClientFactory clientFactory)
-        throws RepositoryException
-    {
-        super();
+            ClientFactory clientFactory) throws RepositoryException {
         this.clientFactory = clientFactory;
         this.connector = connector;
-        this.purgeDeletedDocs = excludeVolume(402);
-        if (excludeVolume(161)) {
+        this.purgeDeletedDocs = isExcludedVolume(402);
+        if (isExcludedVolume(161)) {
             // There isn't an AccessWorkflowWS function.
             Client client = clientFactory.createClient();
             ClientValue results = client.ListNodes("SubType = 161", "DTree",
@@ -85,6 +95,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
                 workflowVolumeId = 0;
         } else
             workflowVolumeId = 0;
+        this.showHiddenItems = connector.getShowHiddenItems().contains("all");
     }
 
 
@@ -101,7 +112,9 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
          *
          * @param size initial capacity for the ArrayList.
          */
-        public AuthzDocList(int size) { super(size); }
+        public AuthzDocList(int size) {
+            super(size);
+        }
 
         /**
          * Override add(), to add an AuthorizationResponse object
@@ -132,8 +145,10 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         if (index != -1)
             username = username.substring(0, index);
 
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHORIZE DOCIDS: " + username);
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine("AUTHORIZE DOCIDS: " + new ArrayList(docids) +
+                " FOR: " + username);
+        }
 
         AuthzDocList authorized = new AuthzDocList(docids.size());
         try {
@@ -156,7 +171,8 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
                               authorized.contains(ar));
                 LOGGER.finest("AUTHORIZED " + docid + ": " + ok);
             }
-        }
+        } else if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("AUTHORIZED: " + authorized.size() + " documents.");
 
         return authorized;
     }
@@ -207,14 +223,14 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       ListNodes call on the class object or something.
     */
     public void addAuthorizedDocids(Iterator iterator, String username,
-            Collection authorized) throws RepositoryException
-    {
+            Collection authorized) throws RepositoryException {
         Client client = clientFactory.createClient();
         client.ImpersonateUserEx(username, connector.getDomainName());
 
         String query;
         while ((query = getDocidQuery(iterator)) != null) {
-            LOGGER.finest(query);
+            if (LOGGER.isLoggable(Level.FINEST))
+                LOGGER.finest("AUTHORIZATION QUERY: " + query);
             ClientValue results = client.ListNodes(query, "WebNodes",
                 new String[] { "DataID", "PermID" });
             for (int i = 0; i < results.size(); i++)
@@ -229,14 +245,21 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * At most, 1,000 docids will be added to the query due to SQL
      * syntax limits in Oracle.
      *
-     * If we are excluding Deleted Documents from the result set,
-     * add a subquery to eliminate those docids with the that are
-     * in the DeletedDocuments table.
+     * If we are excluding deleted documents from the result set,
+     * add a subquery to eliminate those docids that are
+     * in the DeletedDocs table.
+     *
+     * If we are excluding items in the workflow volume, add a subquery
+     * to eliminate those.
+     *
+     * If we are excluding hidden items, add a subquery to eliminate
+     * those.
      *
      * @param docids the docids to include in the query
      * @return the SQL query string; null if no docids are provided
      */
-    private String getDocidQuery(Iterator iterator) {
+    /* This method has package access so that it can be unit tested. */
+    String getDocidQuery(Iterator iterator) {
         if (!iterator.hasNext())
             return null; 
 
@@ -253,8 +276,37 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
             query.append(')');
         }
 
-        if (workflowVolumeId != 0) {
+        if (workflowVolumeId != 0)
             query.append(" and OwnerID <> -" + workflowVolumeId);
+
+        if (!showHiddenItems) {
+            // This is a correlated subquery (using the implicit "a"
+            // range variable added by LAPI) to only check for the
+            // documents we're authorizing.
+            String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
+            query.append(" and Catalog <> ");
+            query.append(hidden);
+            query.append(" and DataID not in (select Anc.DataID ");
+            query.append("from DTreeAncestors Anc join DTree T ");
+            query.append("on Anc.AncestorID = T.DataID ");
+            query.append("where Anc.DataID = a.DataID ");
+            query.append("and T.Catalog = ");
+            query.append(hidden);
+
+            String startNodes = connector.getIncludedLocationNodes();
+            if (startNodes != null && startNodes.length() > 0) {
+                String ancestorNodes =
+                    LivelinkTraversalManager.getAncestorNodes(startNodes);
+                query.append(" and Anc.AncestorID not in (");
+                query.append(startNodes);
+                query.append(") and Anc.AncestorID not in ");
+                query.append("(select AncestorID from DTreeAncestors ");
+                query.append("where DataID in (");
+                query.append(ancestorNodes);
+                query.append("))");
+            }
+
+            query.append(')');
         }
 
         return query.toString();
@@ -273,7 +325,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      * @return true if the volume is excluded from indexing,
      * false otherwise.
      */
-    private boolean excludeVolume(int subtype) throws RepositoryException {
+    private boolean isExcludedVolume(int subtype) throws RepositoryException {
         // First look for volume subtype in the excludedVolumeTypes.
         String exclVolTypes = connector.getExcludedVolumeTypes();
         if ((exclVolTypes != null) && (exclVolTypes.length() > 0)) {
@@ -290,11 +342,10 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         if ((exclNodes != null) && (exclNodes.length() > 0)) {
             String query =
                 "SubType = " + subtype + " and DataID in (" + exclNodes + ")";
-            LOGGER.finest(query);                                                  
+            LOGGER.finest(query);
             Client client = clientFactory.createClient();
-            StringBuffer buf = new StringBuffer();
             ClientValue results = client.ListNodes(query, "DTree",
-                                         new String[] { "DataID", "PermId" });
+                new String[] { "DataID", "PermId" });
             if (results.size() > 0) 
                 return true;
         }
