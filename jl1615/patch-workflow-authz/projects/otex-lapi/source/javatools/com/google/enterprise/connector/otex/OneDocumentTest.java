@@ -56,16 +56,16 @@ public class OneDocumentTest extends TestCase {
         int objectId = getId();
 
         // Extract the LastModifiedDate of the DocID from Livelink
-        // to construct a checkpoint
+        // to forge a checkpoint.
         ClientValue docInfo = client.GetObjectInfo(0, objectId);
-        Date modDate = docInfo.toDate("ModifyDate");
-        String checkpoint =
-            LivelinkTraversalManager.getCheckpoint(modDate, objectId - 1);
+        Checkpoint checkpoint = new Checkpoint();
+        checkpoint.setInsertCheckpoint(docInfo.toDate("ModifyDate"),
+                                       objectId - 1);
 
         // Now push that one document
         TraversalManager mgr = sess.getTraversalManager();
         mgr.setBatchHint(1);
-        DocumentList rs = mgr.resumeTraversal(checkpoint);
+        DocumentList rs = mgr.resumeTraversal(checkpoint.toString() + ',');
         processResultSet(rs);
     }
 

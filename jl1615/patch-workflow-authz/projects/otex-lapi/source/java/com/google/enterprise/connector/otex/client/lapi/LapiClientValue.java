@@ -116,6 +116,24 @@ public final class LapiClientValue implements ClientValue {
         return value.type();
     }
     
+    public String typeByName(int type) {
+        switch (type) {
+        case ASSOC: return "ASSOC";
+        case BOOLEAN: return "BOOLEAN";
+        case DATE: return "DATE";
+        case DOUBLE: return "DOUBLE";
+        case ERROR: return "ERROR";
+        case INTEGER: return "INTEGER";
+        case LIST: return "LIST";
+        case NOTSET: return "NOTSET";
+        case RECORD: return "RECORD";
+        case STRING: return "STRING";
+        case TABLE: return "TABLE";
+        case UNDEFINED: return "UNDEFINED";
+        }
+        return "UNKNOWN TYPE";
+    }
+
     /** {@inheritDoc} */
     public Enumeration enumerateNames() {
         final Enumeration names = value.enumerateNames();
@@ -461,7 +479,7 @@ public final class LapiClientValue implements ClientValue {
     /** {@inheritDoc} */
     public String toString2() throws RepositoryException {
         try {
-            return value.toString(); // + " (type = " + value.type() + ")";
+            return value.toString(); // + " (type = " + typeByName(value.type()) + ")";
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {
