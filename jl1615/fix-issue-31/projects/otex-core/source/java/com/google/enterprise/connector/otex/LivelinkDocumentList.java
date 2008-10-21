@@ -621,7 +621,7 @@ class LivelinkDocumentList implements DocumentList {
                     return null;
 
                 // Is this MimeType supported?
-                String mt = mimeType.toString();
+                String mt = mimeType.toString2();
                 if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
                     return null;
             } else {
