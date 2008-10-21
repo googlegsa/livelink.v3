@@ -12,6 +12,32 @@ and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 1.1.1, Oct 20, 2008
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.1.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fixed issue 31 to avoid potential infinite loops during traversal.
+
+Version Compatibility
+---------------------
+Connectors created using versions 1.0.0 through 1.1.0 may be used with
+this version. This version works with Connector Manager versions 1.0.2
+through 1.1.0. Version 1.1.0 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
 Release 1.1.0, Jul 2, 2008
 ===========================
 

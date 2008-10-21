@@ -178,16 +178,14 @@ class LivelinkDocumentList implements DocumentList {
                         break;
 
                     // FIXME: The Connector Manager will loop infinitely on
-                    // the same checkpoint if we returned no documents because
-                    // every document has a non-transient fatal error.  I can
-                    // force the Connector Manager to advance the checkpoint
-                    // by faking an out-of-memory error.  This is an ugly hack
-                    // that relies upon knowledge of the internal workings of
-                    // QueryTraverser.runBatch() in the Connector Manager.
-                    LOGGER.warning("Ignore the following 'Out of JVM Heap " +
-                         "space' or 'NullPointerException' in the log. We " +
-                         "are forcing the retrieval of a new checkpoint.");
-                    throw new OutOfMemoryError("Ignore this error.");
+                    // the same checkpoint if every document has a
+                    // non-transient fatal error and we return null here.
+                    // Force the Connector Manager to advance the
+                    // checkpoint by sending a bogus document delete
+                    // request that the GSA will ignore. This is an ugly
+                    // hack that should not appear on the trunk, where an
+                    // empty document list works.
+                    return new EmptyDocumentList(null).nextDocument();
                 }
             }
         }
@@ -623,7 +621,7 @@ class LivelinkDocumentList implements DocumentList {
                     return null;
 
                 // Is this MimeType supported?
-                String mt = mimeType.toString();
+                String mt = mimeType.toString2();
                 if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
                     return null;
             } else {
