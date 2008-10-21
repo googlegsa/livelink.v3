@@ -29,7 +29,6 @@ import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
@@ -106,10 +105,6 @@ class LivelinkDocumentList implements DocumentList {
     /** This is a small cache of UserID and GroupID name resolutions. */
     private final HashMap userNameCache = new HashMap(200);
 
-    /**
-     * Constructor for non-trivial document set.  Iterate over a
-     * RecArray of items returned from Livelink.
-     */
     LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
             Field[] fields, ClientValue delArray, 
@@ -136,39 +131,20 @@ class LivelinkDocumentList implements DocumentList {
     }
 
     /**
-     * Constructor for an empty document list.
-     */
-    LivelinkDocumentList(Checkpoint checkpoint) {
-        this.checkpoint = checkpoint;
-        this.docIterator = null;
-        this.connector = null;
-        this.client = null;
-        this.valueFactory = null;
-        this.contentHandler = null;
-        this.recArray = null;
-        this.delArray = null;
-        this.fields = null;
-        this.traversalContext = null;
-    }
-
-    /**
      * {@inheritDoc}
      */
     public Document nextDocument()
-        throws RepositoryException
+        throws RepositoryException // Not really; see below.
     {
-        if (docIterator == null) {
-            return null;
-        } else if (docIterator.hasNext()) {
-            // The Connector Manager does not handle individual document
-            // failures very well.  If processing a document throws an 
-            // exception, we will try to determine if the failure is
-            // transient (like server not responding), or permanent
-            // (like the document is corrupt and can never be fetched).
-            // In the case of transient errors, we want to provide a
-            // checkpoint that allows the failed document to be retried
-            // at a later time.  In the case of a permanent failure for
-            // a document, we want to simply skip it and go onto the next.
+        while (docIterator.hasNext()) {
+            // FIXME: This is a hack.  The Connector Manager does not respond 
+            // well to Exceptions thrown from nextDocument().  Specifically, 
+            // it fails to call checkpoint() to get a new checkpoint or to retry
+            // the current checkpoint a finite number of times before advancing.
+            // This results in an infinite loop for documents that throw
+            // non-transient Exceptions.  Until the CM is fixed, we avoid
+            // throwing Exceptions upward, advancing to the next document here
+            // if we catch an Exception.
             try {
                 Document doc = docIterator.nextDocument();
                 docsReturned++;
@@ -179,23 +155,38 @@ class LivelinkDocumentList implements DocumentList {
 
                 // Ping the Livelink Server.  If I can't talk to the server,
                 // I will consider this a transient Exception (server down,
-                // network error, etc).  In that case, throw a
-                // RepositoryException up to the Connector Manager,
-                // signalling the end of this batch.  The CM will retry later.
+                // network error, etc).  In that case, return null, signalling
+                // the end of this batch.  The CM will retry this batch later.
                 try {
                     client.GetCurrentUserID(); 	// ping()
                 } catch (RepositoryException e) {
                     // The failure seems to be systemic, rather than a problem
                     // with this particular document.  Restore the previous 
                     // checkpoint, so that we may retry this document on the
-                    // next pass.
+                    // next pass.  Sleep for a short bit to give the problem a
+                    // chance to clear up, then signal the end of this batch.
                     checkpoint.restore();
-                    throw e;
+                    try { Thread.sleep(5000); } catch (Exception ex) {};
+                    break;
                 }
 
-                // It does not appear to be a transient failure.  Assume this
-                // document contains permanent failures, and skip over it.
-                throw new RepositoryDocumentException(t);
+                // This document blew up in our face.  Try the next document.
+                if (docIterator.hasNext() == false) {
+                    // Oops, we ran out of documents in this batch.  If we have
+                    // returned any documents, consider this batch complete.
+                    if (docsReturned > 0)
+                        break;
+
+                    // FIXME: The Connector Manager will loop infinitely on
+                    // the same checkpoint if every document has a
+                    // non-transient fatal error and we return null here.
+                    // Force the Connector Manager to advance the
+                    // checkpoint by sending a bogus document delete
+                    // request that the GSA will ignore. This is an ugly
+                    // hack that should not appear on the trunk, where an
+                    // empty document list works.
+                    return new EmptyDocumentList(null).nextDocument();
+                }
             }
         }
 

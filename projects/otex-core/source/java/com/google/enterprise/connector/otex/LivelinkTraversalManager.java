@@ -653,7 +653,7 @@ class LivelinkTraversalManager
         // to consider.  Indicate to the Connector Manager that this batch
         // has no documents, but to reschedule us immediately to keep looking.
         LOGGER.fine("RESULTSET: 0 rows, so far.");
-        return new LivelinkDocumentList(checkpoint);
+        return new EmptyDocumentList(checkpoint);
     }
 
 
