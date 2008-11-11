@@ -54,6 +54,12 @@ import org.springframework.core.io.UrlResource;
  * Supports the configuration properties used by the Livelink Connector.
  */
 public class LivelinkConnectorType implements ConnectorType {
+
+    /** The connector properties version property name. */
+    public static final String VERSION_PROPERTY =
+        "LivelinkConnectorPropertyVersion";
+    public static final String VERSION_NUMBER = "1";
+
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnectorType.class.getName());
@@ -442,14 +448,8 @@ public class LivelinkConnectorType implements ConnectorType {
 
         FormContext(Map configData) {
             hiddenProperties = new HashMap(); 
-            
-            String ignoreDisplayUrlErrors = 
-                (String) configData.get("ignoreDisplayUrlErrors");
-            if (ignoreDisplayUrlErrors == null)
-                ignoreDisplayUrlErrors = "false"; 
-            Boolean ignore = Boolean.valueOf(ignoreDisplayUrlErrors);
             hiddenProperties.put("ignoreDisplayUrlErrors", 
-                ignore.equals(Boolean.TRUE) ? Boolean.FALSE : Boolean.TRUE); 
+                ignoreDisplayUrlErrors(configData) ? Boolean.FALSE : Boolean.TRUE); 
         }
 
         void setHidden(String propertyName, boolean hide) {
@@ -758,8 +758,14 @@ public class LivelinkConnectorType implements ConnectorType {
             ResourceBundle bundle, Map configData, FormContext formContext) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("Response data: " + getMaskedMap(configData));
-        FormBuilder form = new FormBuilder(bundle, configData, formContext);
-        return new ConfigureResponse(message, form.getFormSnippet());
+        if (message != null || formContext != null) {
+            FormBuilder form = new FormBuilder(bundle, configData, formContext);
+            return new ConfigureResponse(message, form.getFormSnippet());
+        } else if (configData != null) {
+            return new ConfigureResponse(null, null, configData);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -781,14 +787,6 @@ public class LivelinkConnectorType implements ConnectorType {
      * user in the web server's authentication scheme.
      */
     /*
-     * We'd like to be able to invoke ConnectorManager to get a
-     * connector instance, to be sure that the properties being
-     * validated are being validated in the same way in which
-     * they'll be used.
-     *
-     * For now, use Spring to mimic the instantiation of
-     * LivelinkConnector here.
-     *
      * TODO: Add init method and parameter validation to
      * LivelinkConnector.
      */
@@ -804,14 +802,15 @@ public class LivelinkConnectorType implements ConnectorType {
             FormContext formContext = new FormContext(configData); 
 
             // We want to change the passed in properties, but avoid
-            // changing the configData parameter. 
-            Properties p = copyProperties(configData);
+            // changing the original configData parameter.
+            HashMap config = new HashMap(configData);
+            config.put(VERSION_PROPERTY, VERSION_NUMBER);
 
             // Update the properties to copy the enabler properties to
             // the uses.
-            Boolean changeHttp = changeFormDisplay(p, "useHttpTunneling",
-                "enableHttpTunneling");
-            Boolean changeAuth = changeFormDisplay(p,
+            Boolean changeHttp = changeFormDisplay(config, 
+                "useHttpTunneling", "enableHttpTunneling");
+            Boolean changeAuth = changeFormDisplay(config,
                 "useSeparateAuthentication", "enableSeparateAuthentication");
 
             // Skip validation if one of the groups has been enabled.
@@ -824,56 +823,14 @@ public class LivelinkConnectorType implements ConnectorType {
                     LOGGER.finest("SKIPPING VALIDATION: changeHttp = " +
                         changeHttp + "; changeAuth = " + changeAuth);
                 }
-                return getResponse(null, bundle, p, formContext);
+                return getResponse(null, bundle, config, formContext);
             }
             
             // Instantiate a LivelinkConnector to check connectivity.
             LivelinkConnector conn = null;
             try {
-                // TODO: be able to locate connectorInstance.xml
-                // elsewhere outside the jar file to support
-                // hand-edits.
-
-                // From our class, traipse through the class loader,
-                // the URL to this class file, the URL to the jar
-                // file containing this class, and make our way to
-                // the config file located in that jar file.
-                Class thisClass = LivelinkConnectorType.class;
-                ClassLoader loader = thisClass.getClassLoader();
-                String jarPath = thisClass.getName().replace('.', '/') +
-                    ".class";
-                URL bootstrapJarUrl = loader.getResource(jarPath);
-                // We're always in a jar file.
-                JarURLConnection connection =
-                    (JarURLConnection) bootstrapJarUrl.openConnection();
-                URL jarFileUrl = connection.getJarFileURL();
-                String configFilePath = jarFileUrl.toString() + 
-                    "!/config/connectorInstance.xml"; 
-                // I don't know for sure that getJarFileURL always
-                // returns "file" rather than "jar".
-                if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
-                    configFilePath = "jar:" + configFilePath;
-                URL resource = new URL(configFilePath); 
-
-                // XXX: We aren't using EncryptedPropertyPlaceholderConfigurer
-                // here, so we are depending on the default values coming
-                // from getPopulatedConfigForm. So those have to match the
-                // values in the EncryptedPropertyPlaceholderConfigurer
-                // bean in connectorInstance.xml. Using setProperties only
-                // works because we aren't using the
-                // PropertyPlaceholderConfigurer bean with its default
-                // property values. If we were, this call would overwrite
-                // the defaults, and we would need to use setLocation here,
-                // or if we could get the default property values out of
-                // the bean, we could use setPropertiesArray.
-                UrlResource res = new UrlResource(resource);
-                XmlBeanFactory factory = new XmlBeanFactory(res);
-                PropertyPlaceholderConfigurer cfg =
-                    new PropertyPlaceholderConfigurer();
-                cfg.setProperties(p);
-                cfg.postProcessBeanFactory(factory);
-                conn = (LivelinkConnector)
-                    factory.getBean("Livelink_Enterprise_Server");
+                conn = (LivelinkConnector) 
+                    connectorFactory.makeConnector(config);
             } catch (Throwable t) {
                 LOGGER.log(Level.WARNING, "Failed to create connector", t);
                 t = t.getCause();
@@ -888,82 +845,53 @@ public class LivelinkConnectorType implements ConnectorType {
                         LOGGER.warning(t.toString());
                     t = t.getCause();
                 }
-                return getResponse(failedInstantiation(bundle), bundle, p, 
-                    formContext);
+                return getResponse(failedInstantiation(bundle), bundle,
+                                   config, formContext);
             }
 
-            boolean ignoreDisplayUrlErrors = Boolean.valueOf(
-                p.getProperty("ignoreDisplayUrlErrors", "false")).
-                booleanValue();
-            if (!ignoreDisplayUrlErrors) {
+            if (!ignoreDisplayUrlErrors(config)) {
                 try {
-                    LOGGER.log(Level.FINER, "Validating display URL " + 
-                        p.getProperty("displayUrl")); 
-                    validateUrl(p.getProperty("displayUrl"), bundle); 
+                    String url = (String) config.get("displayUrl");
+                    LOGGER.finer("Validating display URL " + url);
+                    validateUrl(url, bundle); 
+                    url = conn.getPublicContentDisplayUrl();
+                    LOGGER.finer("Validating public content display URL " + url);
+                    validateUrl(url, bundle);
                 } catch (UrlConfigurationException e) {
                     LOGGER.log(Level.WARNING, "Error in configuration", e);
                     formContext.setHideIgnoreDisplayUrlErrors(false);
                     return getResponse(
                         errorInConfiguration(bundle, e.getLocalizedMessage()),
-                        bundle, p, formContext);
+                        bundle, config, formContext);
                 } 
             }
-
-            // TODO: validate publicContentDisplayUrl. Since this is
-            // only set in a custom XML file, we have to wait until
-            // the ConnectorManager starts doing the instantiation
-            // and uses the custom file so we can query the connector
-            // for the property value.
 
             try {
                 conn.login();
             } catch (LivelinkException e) {
                 // XXX: Should this be an errorInConfiguration error?
                 return getResponse(e.getLocalizedMessage(bundle), bundle,
-                    p, formContext); 
+                    config, formContext); 
             } catch (ConfigurationException c) {
                 LOGGER.log(Level.WARNING, "Error in configuration", c);
                 return getResponse(
                     errorInConfiguration(bundle, c.getLocalizedMessage(bundle)),
-                    bundle, p, formContext); 
+                    bundle, config, formContext); 
             } catch (Throwable t) {
                 LOGGER.log(Level.WARNING, "Error in configuration", t);
                 return getResponse(
                     errorInConfiguration(bundle, t.getLocalizedMessage()),
-                    bundle, p, formContext);
+                    bundle, config, formContext);
             }
 
-            if (changeHttp != null || changeAuth != null)
-                return getResponse(null, bundle, p, formContext);
-            else
-                return null;
+            // Return the OK configuration.
+            return getResponse(null, null, config, null);
+
         } catch (Throwable t) {
             // One last catch to be sure we return a message. 
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
             return getErrorResponse(getExceptionMessages(null, t)); 
         }
-    }
-
-    /**
-     * Copies the given map into a new <code>Properties</code>
-     * instance. Works with parameters that are any kind of <code>Map</code>,
-     * including <code>Properties</code> instances.
-     *
-     * @param original a property map
-     * @return a copy of the map as a <code>Properties</code> instance
-     */
-    private Properties copyProperties(Map original) {
-        // If it is a Properties object, we'll just wrap it to avoid
-        // changing the underlying object. If it's another kind of
-        // map, then putAll should work.
-        Properties copy;
-        if (original instanceof Properties)
-            copy = new Properties((Properties) original);
-        else {
-            copy = new Properties();
-            copy.putAll(original);
-        }
-        return copy;
     }
 
     /**
@@ -974,18 +902,15 @@ public class LivelinkConnectorType implements ConnectorType {
      * replaced by the string "[...]"
      */
     private Map getMaskedMap(Map original) {
-        // The map may be a Properties instance, so we need to iterate
-        // over the property names in that case. We will copy the map
-        // to a Properties instance to handle that.
-        Properties p = copyProperties(original);
         HashMap copy = new HashMap();
-        Enumeration it = p.propertyNames();
-        while (it.hasMoreElements()) {
-            String key = (String) it.nextElement();
+        Iterator entries = original.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry entry = (Map.Entry) entries.next();
+            String key = (String) entry.getKey();
             if (key.endsWith("assword"))
                 copy.put(key, "[...]");
             else
-                copy.put(key, p.getProperty(key));
+                copy.put(key, entry.getValue());
         }
         return copy;
     }
@@ -996,23 +921,24 @@ public class LivelinkConnectorType implements ConnectorType {
      * current state property value is changed to match the requested
      * state.
      *
-     * @param p the form properties
+     * @param config the form properties
      * @param useName the name of the current state property
      * @param enableName the name of the requested state property
      * @return <code>Boolean.TRUE</code> if the property should be enabled,
      * <code>Boolean.FALSE</code> if the property should be disabled, or
      * <code>null</code> if it has not changed
      */
-    private Boolean changeFormDisplay(Properties p, String useName,
+    private Boolean changeFormDisplay(Map config, String useName,
         String enableName) {
         if (LOGGER.isLoggable(Level.FINE)) {
             LOGGER.fine("ENABLED " + enableName + ": " +
-                p.getProperty(enableName));
+                        (String) config.get(enableName));
         }
-        boolean enable = new Boolean(p.getProperty(enableName)).booleanValue();
-        boolean use = new Boolean(p.getProperty(useName)).booleanValue();
+        boolean enable =
+            new Boolean((String) config.get(enableName)).booleanValue();
+        boolean use = new Boolean((String) config.get(useName)).booleanValue();
         if (enable != use) {
-            p.setProperty(useName, enable ? "true" : "false");
+            config.put(useName, enable ? "true" : "false");
             if (LOGGER.isLoggable(Level.FINE))
                 LOGGER.fine("SETTING " + useName + ": " + enable);
             return enable ? Boolean.TRUE : Boolean.FALSE;
@@ -1253,5 +1179,17 @@ public class LivelinkConnectorType implements ConnectorType {
         while ((next = next.getCause()) != null) 
             buffer.append(getExceptionMessage(next));
         return buffer.toString(); 
+    }
+
+    /**
+     * Return a boolean representing the state of the
+     * ignoreDisplayUrlErrors configuration property.
+     */
+    private static boolean ignoreDisplayUrlErrors(Map config) {
+        String value = (String) config.get("ignoreDisplayUrlErrors");
+        if (value != null) {
+            return new Boolean(value).booleanValue();
+        }
+        return false;
     }
 }
