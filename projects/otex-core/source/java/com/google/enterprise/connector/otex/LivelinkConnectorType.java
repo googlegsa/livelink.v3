@@ -15,10 +15,9 @@
 package com.google.enterprise.connector.otex;
 
 import java.lang.reflect.Method;
-import java.net.HttpURLConnection; 
-import java.net.URL; 
-import java.net.URLConnection; 
-import java.net.JarURLConnection; 
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
@@ -30,7 +29,6 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
-import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,12 +41,8 @@ import javax.net.ssl.X509TrustManager;
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorFactory;
 import com.google.enterprise.connector.spi.ConnectorType;
-import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
-import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.beans.PropertyAccessException;
 import org.springframework.beans.PropertyBatchUpdateException;
-import org.springframework.core.io.UrlResource;
-
 
 /**
  * Supports the configuration properties used by the Livelink Connector.
@@ -63,9 +57,9 @@ public class LivelinkConnectorType implements ConnectorType {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnectorType.class.getName());
-    
+
     /** An all-trusting TrustManager for SSL URL validation. */
-    private static final TrustManager[] trustAllCerts = 
+    private static final TrustManager[] trustAllCerts =
         new TrustManager[] {
             new X509TrustManager() {
                 public X509Certificate[] getAcceptedIssuers() {
@@ -77,8 +71,8 @@ public class LivelinkConnectorType implements ConnectorType {
                     return;
                 }
                 public void checkClientTrusted(
-                    X509Certificate[] certs, 
-                    String authType) 
+                    X509Certificate[] certs,
+                    String authType)
                     throws CertificateException {
                     return;
                 }
@@ -246,7 +240,7 @@ public class LivelinkConnectorType implements ConnectorType {
             ResourceBundle labels) {
         }
     }
-    
+
     /**
      * Holder for a property which should be rendered as a text
      * input element.
@@ -398,10 +392,10 @@ public class LivelinkConnectorType implements ConnectorType {
             }
         }
     }
-    
-    
+
+
     /**
-     * Holder for a property which should be rendered as a radio button 
+     * Holder for a property which should be rendered as a radio button
      * selection with two values, "true" and "false".
      */
     private static class BooleanSelectProperty extends RadioSelectProperty {
@@ -427,7 +421,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 ResourceBundle labels) {
             if (value == null)
                 value = defaultValue;
-            
+
             buffer.append("<input ");
             appendAttribute(buffer, "type", "checkbox");
             appendAttribute(buffer, "name", name);
@@ -444,16 +438,16 @@ public class LivelinkConnectorType implements ConnectorType {
      * Encapsulates form display properties.
      */
     private static class FormContext {
-        private HashMap hiddenProperties; 
+        private HashMap hiddenProperties;
 
         FormContext(Map configData) {
-            hiddenProperties = new HashMap(); 
-            hiddenProperties.put("ignoreDisplayUrlErrors", 
-                ignoreDisplayUrlErrors(configData) ? Boolean.FALSE : Boolean.TRUE); 
+            hiddenProperties = new HashMap();
+            hiddenProperties.put("ignoreDisplayUrlErrors",
+                ignoreDisplayUrlErrors(configData) ? Boolean.FALSE : Boolean.TRUE);
         }
 
         void setHidden(String propertyName, boolean hide) {
-            hiddenProperties.put(propertyName, 
+            hiddenProperties.put(propertyName,
                 hide ? Boolean.TRUE : Boolean.FALSE);
         }
 
@@ -463,11 +457,11 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         void setHideIgnoreDisplayUrlErrors(boolean hide) {
-            setHidden("ignoreDisplayUrlErrors", hide); 
+            setHidden("ignoreDisplayUrlErrors", hide);
         }
 
         boolean getHideIgnoreDisplayUrlErrors() {
-            return isHidden("ignoreDisplayUrlErrors"); 
+            return isHidden("ignoreDisplayUrlErrors");
         }
     }
 
@@ -481,7 +475,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
         /** Label for the Livelink System Administrator properties. */
         private static final FormProperty adminLabel;
-        
+
         /**
          * Configuration properties for the Livelink System
          * Administrator, which are always displayed.
@@ -514,7 +508,7 @@ public class LivelinkConnectorType implements ConnectorType {
         private static final ArrayList authenticationEntries;
         /** Label for the Indexing Traversal properties. */
         private static final FormProperty indexingLabel;
-        
+
         /** Configuration properties for Indexing Traversal properties. */
         private static final ArrayList indexingEntries;
 
@@ -586,7 +580,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
             authenticationEnabler =
                 new EnablerProperty("enableSeparateAuthentication", "false");
-                    
+
             authenticationEntries = new ArrayList();
             authenticationEntries.add(
                 new TextInputProperty("authenticationServer", true));
@@ -609,7 +603,7 @@ public class LivelinkConnectorType implements ConnectorType {
             indexingLabel = new LabelProperty("indexing");
             indexingEntries = new ArrayList();
             indexingEntries.add(
-                new TextInputProperty("traversalUsername", false)); 
+                new TextInputProperty("traversalUsername", false));
             indexingEntries.add(
                 new TextInputProperty("includedLocationNodes"));
         }
@@ -619,7 +613,7 @@ public class LivelinkConnectorType implements ConnectorType {
         private FormContext formContext;
 
         FormBuilder(ResourceBundle labels) {
-            this(labels, Collections.EMPTY_MAP, 
+            this(labels, Collections.EMPTY_MAP,
                 new FormContext(Collections.EMPTY_MAP));
         }
 
@@ -707,7 +701,7 @@ public class LivelinkConnectorType implements ConnectorType {
             "<tr><td colspan=\"2\"><font color=\"red\">");
         buffer.append(error); // FIXME: HTML escaping?
         buffer.append("</font></td></tr>");
-        return new ConfigureResponse(null, buffer.toString()); 
+        return new ConfigureResponse(null, buffer.toString());
     }
 
     /**
@@ -721,7 +715,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 new FormBuilder(getResources(locale)).getFormSnippet());
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
-            return getErrorResponse(getExceptionMessages(null, t)); 
+            return getErrorResponse(getExceptionMessages(null, t));
         }
     }
 
@@ -736,11 +730,11 @@ public class LivelinkConnectorType implements ConnectorType {
             LOGGER.config("getPopulatedConfigForm locale: " + locale);
         }
         try {
-            return getResponse(null, getResources(locale), configData, 
+            return getResponse(null, getResources(locale), configData,
                 new FormContext(configData));
         } catch (Throwable t) {
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
-            return getErrorResponse(getExceptionMessages(null, t)); 
+            return getErrorResponse(getExceptionMessages(null, t));
         }
     }
 
@@ -754,7 +748,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * @param formContext A context which may be configured by
      * the caller to affect the form generation
      */
-    private ConfigureResponse getResponse(String message, 
+    private ConfigureResponse getResponse(String message,
             ResourceBundle bundle, Map configData, FormContext formContext) {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("Response data: " + getMaskedMap(configData));
@@ -798,8 +792,8 @@ public class LivelinkConnectorType implements ConnectorType {
         }
 
         try {
-            ResourceBundle bundle = getResources(locale); 
-            FormContext formContext = new FormContext(configData); 
+            ResourceBundle bundle = getResources(locale);
+            FormContext formContext = new FormContext(configData);
 
             // We want to change the passed in properties, but avoid
             // changing the original configData parameter.
@@ -808,7 +802,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
             // Update the properties to copy the enabler properties to
             // the uses.
-            Boolean changeHttp = changeFormDisplay(config, 
+            Boolean changeHttp = changeFormDisplay(config,
                 "useHttpTunneling", "enableHttpTunneling");
             Boolean changeAuth = changeFormDisplay(config,
                 "useSeparateAuthentication", "enableSeparateAuthentication");
@@ -825,14 +819,15 @@ public class LivelinkConnectorType implements ConnectorType {
                 }
                 return getResponse(null, bundle, config, formContext);
             }
-            
+
             // Instantiate a LivelinkConnector to check connectivity.
             LivelinkConnector conn = null;
             try {
-                conn = (LivelinkConnector) 
+                conn = (LivelinkConnector)
                     connectorFactory.makeConnector(config);
             } catch (Throwable t) {
-                LOGGER.log(Level.WARNING, "Failed to create connector", t);
+                //                LOGGER.log(Level.WARNING, "Failed to create connector", t);
+                LOGGER.log(Level.WARNING, "Failed to create connector: " + t.toString());
                 t = t.getCause();
                 while (t != null) {
                     if (t instanceof PropertyBatchUpdateException) {
@@ -853,7 +848,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 try {
                     String url = (String) config.get("displayUrl");
                     LOGGER.finer("Validating display URL " + url);
-                    validateUrl(url, bundle); 
+                    validateUrl(url, bundle);
                     url = conn.getPublicContentDisplayUrl();
                     LOGGER.finer("Validating public content display URL " + url);
                     validateUrl(url, bundle);
@@ -863,7 +858,7 @@ public class LivelinkConnectorType implements ConnectorType {
                     return getResponse(
                         errorInConfiguration(bundle, e.getLocalizedMessage()),
                         bundle, config, formContext);
-                } 
+                }
             }
 
             try {
@@ -871,12 +866,12 @@ public class LivelinkConnectorType implements ConnectorType {
             } catch (LivelinkException e) {
                 // XXX: Should this be an errorInConfiguration error?
                 return getResponse(e.getLocalizedMessage(bundle), bundle,
-                    config, formContext); 
+                    config, formContext);
             } catch (ConfigurationException c) {
                 LOGGER.log(Level.WARNING, "Error in configuration", c);
                 return getResponse(
                     errorInConfiguration(bundle, c.getLocalizedMessage(bundle)),
-                    bundle, config, formContext); 
+                    bundle, config, formContext);
             } catch (Throwable t) {
                 LOGGER.log(Level.WARNING, "Error in configuration", t);
                 return getResponse(
@@ -888,9 +883,9 @@ public class LivelinkConnectorType implements ConnectorType {
             return getResponse(null, null, config, null);
 
         } catch (Throwable t) {
-            // One last catch to be sure we return a message. 
+            // One last catch to be sure we return a message.
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
-            return getErrorResponse(getExceptionMessages(null, t)); 
+            return getErrorResponse(getExceptionMessages(null, t));
         }
     }
 
@@ -914,7 +909,7 @@ public class LivelinkConnectorType implements ConnectorType {
         }
         return copy;
     }
-    
+
     /**
      * Checks whether a property for showing and hiding other
      * parameters on the form has changed. If it has changed, the
@@ -955,10 +950,10 @@ public class LivelinkConnectorType implements ConnectorType {
      * @return the formatted error message
      * @throws MissingResourceException if the message isn't found
      */
-    private String errorInConfiguration(ResourceBundle bundle, 
+    private String errorInConfiguration(ResourceBundle bundle,
             String message) {
         return MessageFormat.format(bundle.getString("errorInConfiguration"),
-            new Object[] { message }); 
+            new Object[] { message });
     }
 
     /**
@@ -971,7 +966,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * @throws MissingResourceException if the message isn't found
      */
     private String failedInstantiation(ResourceBundle bundle) {
-        return bundle.getString("failedInstantiation"); 
+        return bundle.getString("failedInstantiation");
     }
 
     /**
@@ -987,7 +982,7 @@ public class LivelinkConnectorType implements ConnectorType {
             int httpResponseCode, String httpResponseMessage) {
         return MessageFormat.format(bundle.getString("httpNotFound"),
             new Object[] { urlString, new Integer(httpResponseCode),
-                           httpResponseMessage }); 
+                           httpResponseMessage });
     }
 
     /**
@@ -1000,7 +995,7 @@ public class LivelinkConnectorType implements ConnectorType {
      *   <ol>
      *   <li>A connection can be made and the response read.
      *   <li>The response code was not 404,
-     *   or any of the following related but less common errors: 
+     *   or any of the following related but less common errors:
      *   400, 405, 410, or 414.
      *   </ol>
      * </ol>
@@ -1030,8 +1025,8 @@ public class LivelinkConnectorType implements ConnectorType {
      *
      * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4912484
      * The above Sun bug report documents that openConnection
-     * doesn't try to connect. 
-     * 
+     * doesn't try to connect.
+     *
      * This method has package access and returns the HTTP response
      * code so that it can be unit tested. A return value of 0 is
      * arbitrary and unused by the tests.
@@ -1043,7 +1038,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
         try {
             URL url = new URL(urlString);
-            URLConnection conn = url.openConnection(); 
+            URLConnection conn = url.openConnection();
 
             if (!(conn instanceof HttpURLConnection)) {
                 // If the URL is not an HTTP or HTTPS URL, which is
@@ -1054,7 +1049,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
             HttpURLConnection httpConn = (HttpURLConnection) conn;
             if (httpConn instanceof HttpsURLConnection)
-                setTrustingTrustManager((HttpsURLConnection) httpConn); 
+                setTrustingTrustManager((HttpsURLConnection) httpConn);
             setTimeouts(conn);
             httpConn.setRequestMethod("HEAD");
             httpConn.setInstanceFollowRedirects(false);
@@ -1093,7 +1088,7 @@ public class LivelinkConnectorType implements ConnectorType {
             throw u;
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in Livelink URL validation", t);
-            String text = getExceptionMessages(urlString, t); 
+            String text = getExceptionMessages(urlString, t);
             throw new UrlConfigurationException(text, t);
         }
     }
@@ -1110,11 +1105,11 @@ public class LivelinkConnectorType implements ConnectorType {
         SSLContext sc = SSLContext.getInstance("SSL");
         LOGGER.log(Level.FINEST, "SSLContext: " + sc);
         sc.init(null, trustAllCerts, null);
-        SSLSocketFactory factory = sc.getSocketFactory(); 
-        LOGGER.log(Level.FINEST, "SSLSocketFactory: " + factory); 
+        SSLSocketFactory factory = sc.getSocketFactory();
+        LOGGER.log(Level.FINEST, "SSLSocketFactory: " + factory);
         conn.setSSLSocketFactory(factory);
         LOGGER.log(Level.FINEST, "Using socket factory: " +
-            conn.getSSLSocketFactory()); 
+            conn.getSSLSocketFactory());
     }
 
     /**
@@ -1127,16 +1122,16 @@ public class LivelinkConnectorType implements ConnectorType {
         // has timeout methods.
         try {
             final Integer[] connectTimeoutArg = new Integer[] {
-                new Integer(5 * 1000) }; 
+                new Integer(5 * 1000) };
             final Integer[] readTimeoutArg = new Integer[] {
-                new Integer(60 * 1000) }; 
-            Class c = conn.getClass(); 
+                new Integer(60 * 1000) };
+            Class c = conn.getClass();
             Method setConnectTimeout = c.getMethod("setConnectTimeout",
                 new Class[] { int.class });
-            setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg); 
+            setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg);
             Method setReadTimeout = c.getMethod("setReadTimeout",
                 new Class[] { int.class });
-            setReadTimeout.invoke(conn, readTimeoutArg); 
+            setReadTimeout.invoke(conn, readTimeoutArg);
         } catch (NoSuchMethodException m) {
             // Ignore; we're probably on Java 1.4.
             LOGGER.log(Level.FINEST,
@@ -1146,7 +1141,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 t);
         }
     }
-    
+
     /**
      * Returns the exception's message, or the exception class
      * name if no message is present.
@@ -1158,7 +1153,7 @@ public class LivelinkConnectorType implements ConnectorType {
         String message = t.getLocalizedMessage();
         if (message != null)
             return message;
-        return t.getClass().getName(); 
+        return t.getClass().getName();
     }
 
     /**
@@ -1174,11 +1169,11 @@ public class LivelinkConnectorType implements ConnectorType {
         StringBuffer buffer = new StringBuffer();
         if (description != null)
             buffer.append(description).append(" ");
-        buffer.append(getExceptionMessage(t)).append(" "); 
+        buffer.append(getExceptionMessage(t)).append(" ");
         Throwable next = t;
-        while ((next = next.getCause()) != null) 
+        while ((next = next.getCause()) != null)
             buffer.append(getExceptionMessage(next));
-        return buffer.toString(); 
+        return buffer.toString();
     }
 
     /**

@@ -16,6 +16,9 @@ package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.common.StringUtils;
 import com.google.enterprise.connector.pusher.FeedConnection;
+import com.google.enterprise.connector.pusher.FeedData;
+import com.google.enterprise.connector.pusher.GsaFeedData;
+import com.google.enterprise.connector.pusher.FeedException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,7 +29,7 @@ public class MockFileFeedConnection implements FeedConnection {
     StringBuffer buf = null;
 
     private final PrintStream printStream;
-  
+
     public String getFeed() {
         String result;
         if (buf == null) {
@@ -42,27 +45,31 @@ public class MockFileFeedConnection implements FeedConnection {
         printStream = ps;
     }
 
-    public String sendData(String dataSource, String feedType, InputStream data)
-        throws IOException {
-//    String dataStr = StringUtils.streamToString(data);
-//    buf.append(dataStr);
-//    printStream.println(dataStr);
-        long before = System.currentTimeMillis();
-        if (true) {
-            byte[] buffer = new byte[4096];
-            int count = 0;
-            while ((count = data.read(buffer)) != -1)
-                printStream.write(buffer, 0, count);
-            printStream.println();
-        } else {
-            int ch;
-            while ((ch = data.read()) != -1)
-                printStream.write(ch);
-            printStream.println();
+    public String sendData(String dataSource, FeedData feedData)
+        throws FeedException {
+        try {
+            InputStream data = ((GsaFeedData)feedData).getData();
+            //    String dataStr = StringUtils.streamToString(data);
+            //    buf.append(dataStr);
+            //    printStream.println(dataStr);
+            long before = System.currentTimeMillis();
+            if (true) {
+                byte[] buffer = new byte[4096];
+                int count = 0;
+                while ((count = data.read(buffer)) != -1)
+                    printStream.write(buffer, 0, count);
+                printStream.println();
+            } else {
+                int ch;
+                while ((ch = data.read()) != -1)
+                    printStream.write(ch);
+                printStream.println();
+            }
+            long after = System.currentTimeMillis();
+            System.out.println("Elapsed time = " + (after - before));
+        } catch (IOException e) {
+            throw new FeedException("IO Error.", e);
         }
-        long after = System.currentTimeMillis();
-        System.out.println("Elapsed time = " + (after - before));
-        //        return "Mock response";
         return "Success";
     }
 

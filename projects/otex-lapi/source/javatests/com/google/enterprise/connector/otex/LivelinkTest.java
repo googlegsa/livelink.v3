@@ -77,7 +77,7 @@ public class LivelinkTest extends TestCase {
         }
     }
 
-    
+
     /**
      * Return the first result from traversal.
      * @param TraversalManager the traversal manager to query
@@ -103,7 +103,7 @@ public class LivelinkTest extends TestCase {
         // XXX: What's supposed to happen if the result set is empty?
         if (docList == null)
             return null;
-        
+
         Document doc = null;
         Iterator it = docList.iterator();
         while (it.hasNext()) {
@@ -284,10 +284,12 @@ public class LivelinkTest extends TestCase {
     private Document countResultSet(LivelinkDocumentList docList)
             throws RepositoryException {
         Document doc = null;
-        Iterator it = docList.iterator();
-        while (it.hasNext()) {
-            rowCount++;
-            doc = (Document) it.next();
+        if (docList != null) {
+            Iterator it = docList.iterator();
+            while (it.hasNext()) {
+                rowCount++;
+                doc = (Document) it.next();
+            }
         }
         return doc;
     }
@@ -311,12 +313,14 @@ public class LivelinkTest extends TestCase {
     private Document processResultSet(LivelinkDocumentList docList, Set nodes)
             throws RepositoryException {
         Document doc = null;
-        Iterator it = docList.iterator();
-        while (it.hasNext()) {
-            doc = (Document) it.next();
-            Property prop = doc.findProperty(SpiConstants.PROPNAME_DOCID);
-            String value = prop.nextValue().toString();
-            assertTrue(value, nodes.add(value));
+        if (docList != null) {
+            Iterator it = docList.iterator();
+            while (it.hasNext()) {
+                doc = (Document) it.next();
+                Property prop = doc.findProperty(SpiConstants.PROPNAME_DOCID);
+                String value = prop.nextValue().toString();
+                assertTrue(value, nodes.add(value));
+            }
         }
         return doc;
     }

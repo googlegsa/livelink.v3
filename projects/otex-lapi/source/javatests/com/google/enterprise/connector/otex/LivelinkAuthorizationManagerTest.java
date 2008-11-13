@@ -52,16 +52,16 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     /** The AuthorizationManager. */
     private LivelinkAuthorizationManager authManager;
-        
+
 
     /**
      * Establishes a session and obtains an AuthorizationManager
-     * for testing. 
+     * for testing.
      *
      * @throws RepositoryException if login fails
      */
     public void setUp() throws RepositoryException {
-        conn = LivelinkConnectorFactory.getConnector("connector."); 
+        conn = LivelinkConnectorFactory.getConnector("connector.");
         session = (LivelinkSession) conn.login();
         authManager = (LivelinkAuthorizationManager) session.
             getAuthorizationManager();
@@ -70,7 +70,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     /**
      * Authorizes a user for a list of documents.
-     * 
+     *
      * @param docids a list of document IDs
      * @param username the username to authorize
      */
@@ -79,6 +79,9 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         AuthenticationIdentity identity = new AuthenticationIdentity() {
                 public String getUsername() { return username; }
                 public String getPassword() { return null; }
+                public String getCookie(String c) { return null; }
+                public String setCookie(String c, String v) { return null; }
+                public Set getCookieNames() { return null; }
             };
         return authManager.authorizeDocids(docids, identity);
     }
@@ -92,7 +95,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         ArrayList data = new ArrayList();
         // Manually-created test docs (LL 95 on swift)
         data.add(new IdAuth("34314", false)); // not ok for llglobal - Rant.rtf in Admin Workspace
-        data.add(new IdAuth("30792", true)); // ok 
+        data.add(new IdAuth("30792", true)); // ok
         data.add(new IdAuth("33040", true)); // ok Public Content ACL
         data.add(new IdAuth("33135", true)); // ok Public Content Default Group
         data.add(new IdAuth("33029", true)); // ok Public Access Document
@@ -101,9 +104,9 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         ArrayList docids = new ArrayList();
         for (int i = 0; i < data.size(); i++)
             docids.add(((IdAuth) data.get(i)).id);
-        Collection authzList; 
+        Collection authzList;
         authzList = authorizeDocids(docids, "llglobal");
-        mCheckForUser("llglobal", data, authzList); 
+        mCheckForUser("llglobal", data, authzList);
 
         // Put Admin second to tell if we can open up permissions
         // after impersonating llglobal (in a test scenario where
@@ -112,7 +115,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         // it seems that we can.
         ((IdAuth) data.get(0)).auth = true;
         authzList = authorizeDocids(docids, "Admin");
-        mCheckForUser("Admin", data, authzList); 
+        mCheckForUser("Admin", data, authzList);
     }
 
 
@@ -144,7 +147,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
                     found = a;
                 }
             }
-            
+
             if (authz.auth) {
                 assertNotNull("DocId " + docid + " should have passed " +
                               "authorization for user " + username +
@@ -183,29 +186,29 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         }
 
         long start = 0;
-        long end = 0; 
+        long end = 0;
 
         start = System.currentTimeMillis();
         authorizeDocids(docids, "Admin");
         end = System.currentTimeMillis();
         long adminTime = end - start;
-        //System.out.println("authorizeDocids (Admin): docs/time = " + 
-        //    docids.size() + "/" + adminTime); 
+        //System.out.println("authorizeDocids (Admin): docs/time = " +
+        //    docids.size() + "/" + adminTime);
 
         start = System.currentTimeMillis();
         authorizeDocids(docids, "llglobal");
         end = System.currentTimeMillis();
         long llglobalTime = end - start;
-        //System.out.println("authorizeDocids (llglobal): docs/time = " + 
-        //    docids.size() + "/" + llglobalTime); 
+        //System.out.println("authorizeDocids (llglobal): docs/time = " +
+        //    docids.size() + "/" + llglobalTime);
 
         start = System.currentTimeMillis();
         authorizeDocids(docids, "llglobal-external");
         end = System.currentTimeMillis();
         long llglobalExternalTime = end - start;
         //System.out.println(
-        //    "authorizeDocids (llglobal-external): docs/time = " + 
-        //    docids.size() + "/" + llglobalExternalTime); 
+        //    "authorizeDocids (llglobal-external): docs/time = " +
+        //    docids.size() + "/" + llglobalExternalTime);
     }
 
 

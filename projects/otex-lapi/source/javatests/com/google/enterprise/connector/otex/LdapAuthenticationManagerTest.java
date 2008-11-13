@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.util.Set;
+
 import junit.framework.TestCase;
 
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
@@ -25,7 +27,7 @@ public class LdapAuthenticationManagerTest extends TestCase {
 
     protected void setUp() {
         String name = getName().substring(4).toLowerCase();
-        //System.out.println(name); 
+        //System.out.println(name);
         manager = new LdapAuthenticationManager();
         manager.setProviderUrl(System.getProperty(name + ".providerUrl"));
         manager.setSecurityPrincipalPattern(
@@ -33,7 +35,7 @@ public class LdapAuthenticationManagerTest extends TestCase {
     }
 
     public void testLdapEscaping() throws Exception {
-        assertEquals("foo", manager.escapeUsername("foo")); 
+        assertEquals("foo", manager.escapeUsername("foo"));
         assertEquals("\\#foo", manager.escapeUsername("#foo"));
         assertEquals("\\ bar", manager.escapeUsername(" bar"));
         assertEquals("bar\\ ", manager.escapeUsername("bar "));
@@ -41,7 +43,7 @@ public class LdapAuthenticationManagerTest extends TestCase {
         assertEquals("embedd\\\"ed", manager.escapeUsername("embedd\"ed"));
         assertEquals("\\<foo\\>", manager.escapeUsername("<foo>"));
         assertEquals("hi \\<there\\> you", manager.escapeUsername("hi <there> you"));
-        assertEquals((Object) "domain\\\\username", 
+        assertEquals((Object) "domain\\\\username",
             manager.escapeUsername("domain\\username"));
     }
 
@@ -53,18 +55,21 @@ public class LdapAuthenticationManagerTest extends TestCase {
     }
 
     public void testLdaps() throws Exception {
-        System.setProperty("javax.net.ssl.trustStore", 
-            System.getProperty("ldaps.trustStore")); 
-        assertTrue("valid user", authenticate("gemerson", "test"));        
+        System.setProperty("javax.net.ssl.trustStore",
+            System.getProperty("ldaps.trustStore"));
+        assertTrue("valid user", authenticate("gemerson", "test"));
         assertFalse("invalid user", authenticate("foo", "test"));
     }
 
-    private boolean authenticate(final String username, 
+    private boolean authenticate(final String username,
             final String password) {
         try {
             AuthenticationIdentity identity = new AuthenticationIdentity() {
                     public String getUsername() { return username; }
                     public String getPassword() { return password; }
+                    public String getCookie(String c) { return null; }
+                    public String setCookie(String c, String v) { return null; }
+                    public Set getCookieNames() { return null; }
                 };
             return manager.authenticate(identity).isValid();
         }
@@ -73,4 +78,4 @@ public class LdapAuthenticationManagerTest extends TestCase {
         }
     }
 
-}    
+}

@@ -34,6 +34,7 @@ import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.manager.Context;
+import com.google.enterprise.connector.pusher.FeedException;
 import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.PushException;
 import com.google.enterprise.connector.pusher.DocPusher;
@@ -56,11 +57,11 @@ public class PushOneDocumentTest extends TestCase {
     //private String feedServer = "8.6.49.37";
     private String feedServer = "gogol.vizdom.com";
     private int feedPort = 19900;
-            
+
     public void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
         sess = (LivelinkSession) conn.login();
-        client = sess.getFactory().createClient(); 
+        client = sess.getFactory().createClient();
         pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort));
 
         // Iinitialize the Context for DocPusher.take.
@@ -73,8 +74,8 @@ public class PushOneDocumentTest extends TestCase {
             dir + Context.DEFAULT_JUNIT_CONTEXT_LOCATION,
             dir + Context.DEFAULT_JUNIT_COMMON_DIR_PATH);
     }
-    
-    public void testTraversal() throws RepositoryException, PushException {
+
+    public void testTraversal() throws Exception {
         int objectId = getId();
 
         // Extract the LastModifiedDate of the DocID from Livelink
@@ -103,7 +104,7 @@ public class PushOneDocumentTest extends TestCase {
     }
 
     private void pushResultSet(DocumentList docList)
-        throws RepositoryException, PushException {
+        throws RepositoryException, PushException, FeedException {
 
         Document doc;
 

@@ -16,6 +16,8 @@ package com.google.enterprise.connector.otex;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Set;
+
 import junit.framework.TestCase;
 
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
@@ -27,7 +29,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
  * Tests the LivelinkAuthenticationManager.
  */
 /* This test depends on externally-configured Livelink connection
- * properties. 
+ * properties.
  */
 public class LivelinkAuthenticationManagerTest extends TestCase {
 
@@ -39,7 +41,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
 
     /** The AuthenticationManager. */
     private AuthenticationManager authManager;
-        
+
     /**
      * Tests authenticating with LAPI.
      *
@@ -52,7 +54,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
 
 
     /**
-     * Tests authenticating with LAPI through the Livelink CGI process. 
+     * Tests authenticating with LAPI through the Livelink CGI process.
      *
      * @throws Exception if an error occurs
      */
@@ -84,8 +86,8 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
         setUpDsExternal();
         testAuthentication("llglobal-external", "Gibson");
         assertFalse("Internal user who shouldn't be able to log in " +
-            "through the external web server", 
-            authenticate("llglobal", "Gibson")); 
+            "through the external web server",
+            authenticate("llglobal", "Gibson"));
     }
 
 
@@ -99,8 +101,8 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
         setUpDsInternal();
         testAuthentication("Admin", "livelink");
         assertFalse("External user who shouldn't be able to log in " +
-            "through the internal web server", 
-            authenticate("llglobal-external", "Gibson")); 
+            "through the internal web server",
+            authenticate("llglobal-external", "Gibson"));
     }
 
 
@@ -111,9 +113,9 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      * @throws Exception if an error occurs
      */
     public void testAuthenticationManagerChainLivelink() throws Exception {
-        setUpChain1(); 
+        setUpChain1();
         assertTrue(authManager instanceof AuthenticationManagerChain);
-        testAuthentication("llglobal", "Gibson"); 
+        testAuthentication("llglobal", "Gibson");
     }
 
 
@@ -124,24 +126,24 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      * @throws Exception if an error occurs
      */
     public void testAuthenticationManagerChainLdapLivelink() throws Exception {
-        setUpChain2(); 
+        setUpChain2();
         assertTrue(authManager instanceof AuthenticationManagerChain);
-        // Livelink user. 
-        assertTrue("Livelink user not authenticated", 
-            authenticate("llglobal", "Gibson")); 
+        // Livelink user.
+        assertTrue("Livelink user not authenticated",
+            authenticate("llglobal", "Gibson"));
         // LDAP user
         assertTrue("LDAP user not authenticated",
-            authenticate("gemerson", "test")); 
+            authenticate("gemerson", "test"));
     }
 
 
     private void testAuthentication(String username, String password)
             throws Exception {
-        assertTrue("Valid user: " + username, 
-            authenticate(username, password, true)); 
-        assertFalse("Valid user, invalid password", 
-            authenticate("llglobal", "foo")); 
-        assertFalse("Invalid user", 
+        assertTrue("Valid user: " + username,
+            authenticate(username, password, true));
+        assertFalse("Valid user, invalid password",
+            authenticate("llglobal", "foo"));
+        assertFalse("Invalid user",
             authenticate("foo", "foo"));
 
         // FIXME: llnobody only exists on Livelink 9.5 on
@@ -149,24 +151,27 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
         //any more?  assertTrue("No Enterprise workspace access",
         //authenticate("llnobody", "Gibson", true));
     }
-    
+
 
     private boolean authenticate(String username, String password) {
-        return authenticate(username, password, false); 
+        return authenticate(username, password, false);
     }
-    
+
     private boolean authenticate(final String username, final String password,
             boolean log) {
         try {
             AuthenticationIdentity identity = new AuthenticationIdentity() {
                     public String getUsername() { return username; }
                     public String getPassword() { return password; }
+                    public String getCookie(String c) { return null; }
+                    public String setCookie(String c, String v) { return null; }
+                    public Set getCookieNames() { return null; }
                 };
             return authManager.authenticate(identity).isValid();
         }
         catch (RepositoryException e) {
             if (log)
-                System.out.println(getName() + " " + e.getMessage()); 
+                System.out.println(getName() + " " + e.getMessage());
             return false;
         }
     }
@@ -183,13 +188,13 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
         authManager = (AuthenticationManager) session.
             getAuthenticationManager();
     }
-        
+
 
     /**
      * Sets the properties for direct LAPI connections.
      */
     private void setUpLapi() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-lapi."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-lapi.");
         finishSetup();
     }
 
@@ -198,7 +203,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      * Sets the properties for Livelink CGI connections.
      */
     private void setUpCgi() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-cgi."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-cgi.");
         finishSetup();
     }
 
@@ -208,7 +213,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      * front of the Livelink CGI.
      */
     private void setUpProxy() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-proxy."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-proxy.");
         finishSetup();
     }
 
@@ -218,7 +223,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      * Directory Services-enabled web server.
      */
     private void setUpDsExternal() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-ds-external."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-ds-external.");
         finishSetup();
     }
 
@@ -229,37 +234,37 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
      * instance.
      */
     private void setUpDsInternal() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-ds-internal."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-ds-internal.");
         finishSetup();
     }
 
     private void setUpChain1() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-lapi."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-lapi.");
 
         ArrayList managers = new ArrayList();
-        managers.add(new LivelinkAuthenticationManager()); 
-        AuthenticationManagerChain chain = new AuthenticationManagerChain(); 
+        managers.add(new LivelinkAuthenticationManager());
+        AuthenticationManagerChain chain = new AuthenticationManagerChain();
         chain.setAuthenticationManagers(managers);
-        conn.setAuthenticationManager(chain); 
+        conn.setAuthenticationManager(chain);
         finishSetup();
     }
 
     private void setUpChain2() throws Exception {
-        conn = LivelinkConnectorFactory.getConnector("authenticate-lapi."); 
+        conn = LivelinkConnectorFactory.getConnector("authenticate-lapi.");
 
         LdapAuthenticationManager ldap = new LdapAuthenticationManager();
-        ldap.setProviderUrl(System.getProperty("ldap.providerUrl")); 
+        ldap.setProviderUrl(System.getProperty("ldap.providerUrl"));
         ldap.setSecurityPrincipalPattern(
-            System.getProperty("ldap.securityPrincipalPattern")); 
+            System.getProperty("ldap.securityPrincipalPattern"));
 
         ArrayList managers = new ArrayList();
-        managers.add(ldap); 
-        managers.add(new LivelinkAuthenticationManager()); 
-        
-        AuthenticationManagerChain chain = new AuthenticationManagerChain(); 
+        managers.add(ldap);
+        managers.add(new LivelinkAuthenticationManager());
+
+        AuthenticationManagerChain chain = new AuthenticationManagerChain();
         chain.setAuthenticationManagers(managers);
 
-        conn.setAuthenticationManager(chain); 
+        conn.setAuthenticationManager(chain);
         finishSetup();
     }
 }

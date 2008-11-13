@@ -20,8 +20,8 @@ import java.io.File;
 import java.io.PrintStream;
 
 import com.google.enterprise.connector.manager.Context;
-import com.google.enterprise.connector.persist.ConnectorStateStore;
-import com.google.enterprise.connector.persist.MockConnectorStateStore;
+import com.google.enterprise.connector.instantiator.MockInstantiator;
+import com.google.enterprise.connector.persist.ConnectorNotFoundException;
 import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.DocPusher;
 import com.google.enterprise.connector.pusher.MockPusher;
@@ -41,7 +41,7 @@ import junit.textui.TestRunner;
 /**
  * This is a copy of the QueryTraverserTest class with modifications
  * to use the Livelink connector rather than the mock JCR connector.
- * 
+ *
  * @author ziff@google.com (Your Name Here)
  * @author johnl@vizdom.com (John Lacey)
  */
@@ -51,7 +51,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
     }
 
     private LivelinkConnector conn;
-    
+
     public void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
 
@@ -69,13 +69,13 @@ public class LivelinkQueryTraverserTest extends TestCase {
     /**
      * Test method for
      * {@link com.google.enterprise.connector.traversal.QueryTraverser#runBatch(int)}.
-     * 
-     * @throws InterruptedException 
+     *
+     * @throws InterruptedException
      */
     public final void testRunBatch() throws IOException,
             RepositoryLoginException, RepositoryException,
-            InterruptedException {
-    
+            InterruptedException, ConnectorNotFoundException {
+
         runTestBatches(1);
         runTestBatches(5);
         runTestBatches(25);
@@ -86,7 +86,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
 
     private void runTestBatches(int batchSize) throws IOException,
             RepositoryLoginException, RepositoryException,
-            InterruptedException {
+            InterruptedException, ConnectorNotFoundException {
 
         Session sess = conn.login();
         TraversalManager qtm = sess.getTraversalManager();
@@ -99,15 +99,16 @@ public class LivelinkQueryTraverserTest extends TestCase {
             //new MockPusher(System.out);
             //new DocPusher(new MockFeedConnection());
             new DocPusher(new MockFileFeedConnection(out));
-        ConnectorStateStore connectorStateStore =
-            new MockConnectorStateStore();
+        MockInstantiator instantiator = new MockInstantiator();
 
         Traverser traverser = new QueryTraverser(pusher, qtm,
-            connectorStateStore, connectorName);
+            instantiator, connectorName);
+
+        instantiator.setupTraverser(connectorName, traverser);
 
         System.out.println();
         System.out.println("Running batch test batchsize " + batchSize);
-    
+
         int docsProcessed = -1;
         int totalDocsProcessed = 0;
         int batchNumber = 0;
@@ -116,7 +117,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
             totalDocsProcessed += docsProcessed;
             System.out.println("Batch# " + batchNumber + " docs " +
                 docsProcessed + " checkpoint " +
-                connectorStateStore.getConnectorState(connectorName));
+                instantiator.getConnectorState(connectorName));
             batchNumber++;
         }
         //        Assert.assertEquals(378, totalDocsProcessed);

@@ -324,7 +324,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
      */
     public void testValidateConfigBadInput() throws Exception {
         ConfigureResponse response =
-            connectorType.validateConfig(emptyProperties, defaultLocale, null);
+            connectorType.validateConfig(emptyProperties, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertNotNull("Missing ConfigureResponse", response);
         HashMap form = getForm(response);
         assertValue(form, "server", "");
@@ -345,8 +346,9 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.put("username", "me");
         props.put("password", "pw");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
-        assertNull("Missing ConfigureResponse", response);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
+        assertValid(response);
     }
 
     /**
@@ -356,7 +358,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     public void testValidateConfigValidLivelinkInput() throws Exception {
         Properties props = getValidProperties();
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertValid(response);
     }
 
@@ -369,7 +372,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "false");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertValid(response);
     }
 
@@ -382,7 +386,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertValid(response);
     }
 
@@ -397,7 +402,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         Properties props = getValidProperties();
         props.setProperty("enableNtlm", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertValid(response);
     }
 
@@ -409,7 +415,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         Properties props = getValidProperties();
         props.setProperty("useUsernamePasswordWithWebServer", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertValid(response);
     }
 
@@ -474,11 +481,12 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         } catch (UrlConfigurationException e) {
         }
     }
-    
+
 
     /** Helper method to get valid direct connection properties. */
     protected Properties getValidProperties() {
-        Properties props = new Properties(emptyProperties);
+        Properties props = new Properties();
+        props.putAll(emptyProperties);
         props.setProperty("server", System.getProperty("connector.server"));
         props.setProperty("port", System.getProperty("connector.port"));
         props.setProperty("username",
@@ -487,7 +495,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
             System.getProperty("connector.Password"));
         return props;
     }
-    
+
     protected HashMap getForm(ConfigureResponse response) throws Exception {
         String snippet = response.getFormSnippet();
         if (Boolean.getBoolean("printform")) {
@@ -502,18 +510,30 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     }
 
     protected void assertValid(ConfigureResponse response) {
+        // A valid response is either a null response or a
+        // response with no message or form snippet.
         if (response != null) {
-            String message = "Got ConfigureResponse with valid input";
-            if (response.getMessage() != null)
-                message += ": " + response.getMessage();
-            fail(message);
+            String resMessage = response.getMessage();
+            if (response.getFormSnippet() != null || resMessage != null) {
+                String message = "Got ConfigureResponse with valid input";
+                if (resMessage != null)
+                    message += ": " + resMessage;
+                fail(message);
+            }
         }
     }
-    
+
     protected void assertInvalid(ConfigureResponse response) {
-        assertNotNull("Got no ConfigureResponse with invalid input", response);
+        // A valid response is either a null response or a
+        // response with no message or form snippet.
+        if (response == null) {
+            fail("Got no ConfigureResponse with invalid input");
+        } else if (response.getMessage() == null &&
+                   response.getFormSnippet() == null) {
+            fail("Got error-free ConfigureResponse with invalid input");
+        }
     }
-    
+
     protected void assertValue(HashMap form, String name,
             String expectedValue) {
         HashMap element = (HashMap) form.get(name);

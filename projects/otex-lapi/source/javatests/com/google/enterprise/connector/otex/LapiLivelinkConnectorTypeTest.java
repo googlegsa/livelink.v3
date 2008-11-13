@@ -27,27 +27,30 @@ public class LapiLivelinkConnectorTypeTest
 
     public void testUrlValidation() throws Exception {
         Map props = getValidProperties();
-        props.put("displayUrl", System.getProperty("validateurl.goodUrl")); 
+        props.put("displayUrl", System.getProperty("validateurl.goodUrl"));
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
-        assertNull("Valid URL failed", response); 
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
+        assertValid(response);
 
         for (int i = 0; i < 5; i++) {
             String url = System.getProperty("validateurl.badUrl." + i);
             if (url == null)
                 break;
-            props.put("displayUrl", url); 
-            response = connectorType.validateConfig(props, defaultLocale, null);
-            assertNotNull("Invalid URL succeeded:" + url, response); 
-            HashMap form = getForm(response); 
-            assertIsNotHidden(form, "ignoreDisplayUrlErrors"); 
+            props.put("displayUrl", url);
+            response = connectorType.validateConfig(props, defaultLocale,
+                LivelinkConnectorFactory.getInstance());
+            assertNotNull("Invalid URL succeeded:" + url, response);
+            HashMap form = getForm(response);
+            assertIsNotHidden(form, "ignoreDisplayUrlErrors");
             assertValue(form, "ignoreDisplayUrlErrors", "false");
         }
 
         props.put("displayUrl", System.getProperty("validateurl.badUrl.0"));
         props.put("ignoreDisplayUrlErrors", "true");
-        response = connectorType.validateConfig(props, defaultLocale, null);
-        assertNull("Didn't ignore errors", response); 
+        response = connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
+        assertValid(response);
     }
 
     /**
@@ -62,7 +65,8 @@ public class LapiLivelinkConnectorTypeTest
         props.put("username", "me");
         props.put("Password", "pw");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertNotNull("Missing ConfigureResponse", response);
         HashMap form = getForm(response);
         assertValue(form, "server", "myhost");
@@ -84,7 +88,8 @@ public class LapiLivelinkConnectorTypeTest
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "false");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertInvalid(response);
     }
 
@@ -99,7 +104,8 @@ public class LapiLivelinkConnectorTypeTest
         props.setProperty("livelinkCgi", "/frog");
         props.setProperty("https", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertInvalid(response);
     }
 
@@ -114,7 +120,8 @@ public class LapiLivelinkConnectorTypeTest
         props.setProperty("useHttpTunneling", "true");
         props.setProperty("https", "true");
         ConfigureResponse response =
-            connectorType.validateConfig(props, defaultLocale, null);
+            connectorType.validateConfig(props, defaultLocale,
+            LivelinkConnectorFactory.getInstance());
         assertValid(response);
     }
 }
