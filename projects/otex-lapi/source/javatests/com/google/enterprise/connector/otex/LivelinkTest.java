@@ -44,12 +44,38 @@ public class LivelinkTest extends TestCase {
     private LivelinkConnector conn;
 
     /** The ISO 8601 date format returned in property values. */
-    private final SimpleDateFormat iso8601 =
+    private final SimpleDateFormat iso8601millis =
         new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+
+    private final SimpleDateFormat iso8601secs =
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+    private final SimpleDateFormat iso8601mins =
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+
+    private final SimpleDateFormat iso8601hrs =
+        new SimpleDateFormat("yyyy-MM-dd'T'HH'Z'");
+
+    private final SimpleDateFormat iso8601dayz =
+        new SimpleDateFormat("yyyy-MM-dd'Z'");
+
+    private final SimpleDateFormat iso8601day =
+        new SimpleDateFormat("yyyy-MM-dd");
 
     /** A default date formatter for the current locale. */
     private final DateFormat defaultDateFormat =
         DateFormat.getDateInstance();
+
+    private Date parseDate(String dateStr) throws ParseException {
+        switch (dateStr.length()) {
+        case 10: return iso8601day.parse(dateStr);
+        case 11: return iso8601dayz.parse(dateStr);
+        case 14: return iso8601hrs.parse(dateStr);
+        case 17: return iso8601mins.parse(dateStr);
+        case 20: return iso8601secs.parse(dateStr);
+        default: return iso8601millis.parse(dateStr);
+        }
+    }
 
     public void setUp() throws RepositoryException {
         conn = LivelinkConnectorFactory.getConnector("connector.");
@@ -192,10 +218,10 @@ public class LivelinkTest extends TestCase {
      * @throws RepositoryException on failure
      */
     public void testStartDate() throws RepositoryException {
-        String startDateString = "May 10, 2007"; // Why not?
+        String startDateString = "2007-05-10"; // Why not?
         Date startDate = null;
         try {
-            startDate = defaultDateFormat.parse(startDateString);
+            startDate = parseDate(startDateString);
         }
         catch (ParseException e) {
             fail("Unable to parse start date: " + startDateString);
@@ -210,7 +236,7 @@ public class LivelinkTest extends TestCase {
         assertNotNull("First doc is null.", doc);
         String dateStr = doc.findProperty("ModifyDate").nextValue().toString();
         try {
-            Date docDate = iso8601.parse(dateStr);
+            Date docDate = parseDate(dateStr);
 
             assertTrue("First doc is newer than startDate.",
                 docDate.before(startDate));
@@ -257,7 +283,7 @@ public class LivelinkTest extends TestCase {
 
             // Check that the modify date is new enough
             try {
-                Date docDate = iso8601.parse(dateStr);
+                Date docDate = parseDate(dateStr);
                 assertFalse("Document is older than " +
                     defaultDateFormat.format(date) +
                     ". (Id="+ docId + "; Name=\"" +

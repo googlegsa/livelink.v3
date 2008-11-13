@@ -109,18 +109,21 @@ public class LivelinkQueryTraverserTest extends TestCase {
         System.out.println();
         System.out.println("Running batch test batchsize " + batchSize);
 
-        int docsProcessed = -1;
+        int docsProcessed = 0;
         int totalDocsProcessed = 0;
         int batchNumber = 0;
-        while (docsProcessed != 0) {
+        do {
             docsProcessed = traverser.runBatch(batchSize);
-            totalDocsProcessed += docsProcessed;
+            if (docsProcessed > 0) {
+                totalDocsProcessed += docsProcessed;
+            }
             System.out.println("Batch# " + batchNumber + " docs " +
                 docsProcessed + " checkpoint " +
                 instantiator.getConnectorState(connectorName));
             batchNumber++;
-        }
+        } while (docsProcessed > 0);
+
         //        Assert.assertEquals(378, totalDocsProcessed);
-        Assert.assertEquals(687, totalDocsProcessed);	// [bmj] Additional testdata in LL?
+        Assert.assertEquals(691, totalDocsProcessed);	// [bmj] Additional testdata in LL?
     }
 }
