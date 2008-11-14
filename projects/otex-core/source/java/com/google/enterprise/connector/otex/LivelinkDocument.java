@@ -27,6 +27,7 @@ import java.util.Set;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.SimpleProperty;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.otex.client.Client;
@@ -78,12 +79,12 @@ class LivelinkDocument implements Document {
      */
     public Property findProperty(String name) throws RepositoryException {
         Object values = properties.get(name);
-        if (values == null) 
+        if (values == null)
             return null;
         else {
             if (LOGGER.isLoggable(Level.FINEST))
                 LOGGER.finest("PROPERTY: " + name + " = " + values);
-            return new LivelinkProperty((LinkedList) values);
+            return new SimpleProperty((LinkedList) values);
         }
     }
 
@@ -134,29 +135,6 @@ class LivelinkDocument implements Document {
             addProperty(names[j], getValue(value));
     }
 
-
-    /**
-     * {@inheritDoc}
-     */
-    /*
-     * TODO: We could use SimpleProperty instead, except that the lazy
-     * initialization of the iterator there bugs me.
-     */
-    private static class LivelinkProperty implements Property {
-        private final Iterator iterator;
-        
-        LivelinkProperty(LinkedList values) {
-            this.iterator = values.iterator();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        public Value nextValue() throws RepositoryException {
-            return (iterator.hasNext()) ? (Value) iterator.next() : null;
-        }
-    }
-
     /**
      * Creates a <code>Value</code> (of the appropriate type) from
      * a <code>ClientValue</code>. Complex <code>ClientValue</code>
@@ -173,13 +151,13 @@ class LivelinkDocument implements Document {
             case ClientValue.DATE:
                 Calendar c = Calendar.getInstance();
                 c.setTime(clientValue.toDate());
-                // Livelink only stores timestamps to the nearest second, 
+                // Livelink only stores timestamps to the nearest second,
                 // but LAPI constructs a Date object that includes milli-
                 // seconds, which are taken from the current time.  So we
                 // need to avoid using the milliseconds in the parameter.
                 c.clear(Calendar.MILLISECOND);
                 return Value.getDateValue(c);
-            case ClientValue.DOUBLE: 
+            case ClientValue.DOUBLE:
                 return Value.getDoubleValue(clientValue.toDouble());
             case ClientValue.INTEGER:
                 return Value.getLongValue(clientValue.toInteger());
