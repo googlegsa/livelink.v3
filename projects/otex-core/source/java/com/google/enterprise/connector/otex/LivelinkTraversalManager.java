@@ -109,7 +109,7 @@ class LivelinkTraversalManager
         deleteSupported = isDeleteSupported();
     }
 
-    
+
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
 
@@ -193,7 +193,7 @@ class LivelinkTraversalManager
      * Determines if the controlling Connector Manager supports the
      * Delete Action, which purges deleted documents from the index.
      *
-     * @return <code>true</code> if the Connector Manager handles 
+     * @return <code>true</code> if the Connector Manager handles
      * Delete Actions, <code>false</code> otherwise.
      */
     private static boolean isDeleteSupported() {
@@ -289,7 +289,7 @@ class LivelinkTraversalManager
      *     -OwnerID not in (select DataID from DTree where SubType in
      *         (<em>excludedVolumeTypes</em>))
      * </pre>
-     * 
+     *
      * @return the SQL conditional expression
      */
     String getIncluded(String candidatesPredicate) {
@@ -333,8 +333,8 @@ class LivelinkTraversalManager
         // negation the container's ObjectID.  To catch that, I am going
         // to create a superset list that adds the negation of everything
         // in the specified the specified list.  We believe this is safe,
-        // as negative values of standard containers (folders, compound 
-        // docs, etc) simply should not exist, so we shouldn't get any 
+        // as negative values of standard containers (folders, compound
+        // docs, etc) simply should not exist, so we shouldn't get any
         // false positives.
         StringBuffer buffer = new StringBuffer();
         StringTokenizer tok =
@@ -364,7 +364,7 @@ class LivelinkTraversalManager
      *         (select DataID from DTreeAncestors where AncestorID in
      *                 (<em>excludedLocationNodes</em>))
      * </pre>
-     * 
+     *
      * FIXME: This SQL expression doesn't account for hidden items.
      *
      * The returned expression is simplified in the obvious way when
@@ -450,14 +450,14 @@ class LivelinkTraversalManager
         // startCheckpoint will either be an initial checkpoint or null
         String startCheckpoint = getStartCheckpoint();
         if (LOGGER.isLoggable(Level.INFO)) {
-            LOGGER.info("START TRAVERSAL: " + batchSize + " rows" + 
+            LOGGER.info("START TRAVERSAL: " + batchSize + " rows" +
                 (startCheckpoint == null ? "" : " from " + startCheckpoint) +
                 ".");
         }
         return listNodes(startCheckpoint);
     }
-    
-    
+
+
     /** {@inheritDoc} */
     public DocumentList resumeTraversal(String checkpoint)
         throws RepositoryException {
@@ -468,7 +468,7 @@ class LivelinkTraversalManager
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
                 checkpoint + ".");
-        
+
         // If we were handed an old-style checkpoint, that means the
         // user upgraded the connector, but has not reindexed.  Update
         // the checkpoint to the newer style.
@@ -490,7 +490,7 @@ class LivelinkTraversalManager
 
         return listNodes(checkpoint);
     }
-    
+
     /** {@inheritDoc} */
     public void setTraversalContext(TraversalContext traversalContext) {
         this.traversalContext = traversalContext;
@@ -513,7 +513,7 @@ class LivelinkTraversalManager
      *
      * <pre>
      *     SELECT <em>columns</em>
-     *     FROM WebNodes 
+     *     FROM WebNodes
      *     WHERE <em>after_last_checkpoint</em>
      *         AND <em>included_minus_excluded</em>
      *     ORDER BY ModifyDate, DataID
@@ -541,7 +541,7 @@ class LivelinkTraversalManager
      * number of rows returned, the included and excluded logic is
      * complicated, and the obvious queries perform badly, especially
      * on Oracle.
-     * 
+     *
      * For Oracle, we use ROWNUM, and for SQL
      * Server, we use TOP, which requires SQL Server 7.0. The
      * <code>ROW_NUMBER()</code> function is supported by Oracle and
@@ -560,12 +560,12 @@ class LivelinkTraversalManager
      * candidates. The second applies the inclusions and exclusions,
      * using the candidates to avoid subqueries that select a large
      * number of rows. The second also implicitly applies permissions.
-     * 
+     *
      * If the first query returns no candidates, there is nothing to
      * return. If the second query returns no results, we need to try
      * again with the next batch of candidates.
      *
-     * @param checkpointStr a checkpoint string, or <code>null</code> 
+     * @param checkpointStr a checkpoint string, or <code>null</code>
      * if a new traversal should be started
      * @return a batch of results starting at the checkpoint, if there
      * is one, or the beginning of the traversal order, otherwise
@@ -583,7 +583,11 @@ class LivelinkTraversalManager
         // Connector Manager's thread timeout.
         long startTime = System.currentTimeMillis();
         long maxTimeSlice = 1000L * 60 * 2;
-        while (System.currentTimeMillis() - startTime < maxTimeSlice) {
+
+        for (long loopCount = 0;
+             (System.currentTimeMillis() - startTime < maxTimeSlice);
+             loopCount++) {
+
             ClientValue candidates, deletes, results = null;
             if (isSqlServer) {
                 candidates = getCandidatesSqlServer(checkpoint, batchsz);
@@ -597,9 +601,12 @@ class LivelinkTraversalManager
             int numDeletes = (deletes == null) ? 0 : deletes.size();
 
             if ((numInserts + numDeletes) == 0) {
-                if (LOGGER.isLoggable(Level.FINE))
+                if (loopCount == 0) {
                     LOGGER.fine("RESULTSET: no rows.");
-                return null;
+                    return null;	// No new documents available.
+                } else {
+                    break;			// Force a new checkpoint.
+                }
             }
 
             // Apply the inclusion, exclusions, and permissions to the
@@ -607,6 +614,12 @@ class LivelinkTraversalManager
             if (numInserts > 0) {
                 if (LOGGER.isLoggable(Level.FINE))
                     LOGGER.fine("CANDIDATES SET: " + numInserts + " rows.");
+
+                // Remember the last insert candidate, so we may advance
+                // passed all the candidates for the next batch.
+                checkpoint.setAdvanceCheckpoint(
+                     candidates.toDate(numInserts - 1, "ModifyDate"),
+                     candidates.toInteger(numInserts - 1, "DataID"));
 
                 StringBuffer buffer = new StringBuffer();
                 buffer.append("DataID in (");
@@ -617,24 +630,6 @@ class LivelinkTraversalManager
                 buffer.setCharAt(buffer.length() - 1, ')');
                 results = getResults(buffer.toString());
                 numInserts = (results == null) ? 0 : results.size();
-
-                if (numInserts == 0) {
-                    // Reset the checkpoint here to match the last
-                    // candidate, so that we will get the next batch of
-                    // candidates the next time through the loop.
-                    int row = candidates.size() - 1; // last row
-                    checkpoint.insertDate =
-                        candidates.toDate(row, "ModifyDate");
-                    checkpoint.insertDataId =
-                        candidates.toInteger(row, "DataID");
-              
-                    if (LOGGER.isLoggable(Level.FINER))
-                        LOGGER.finer("SKIPPING PAST " + checkpoint.toString());
-                    // If nothing is passing our filter, we probably have a
-                    // sparse database.  Grab larger candidate sets, hoping
-                    // to run into anything interesting.
-                    batchsz = Math.min(1000, batchsz * 10);
-                }
             }
 
             if ((numInserts + numDeletes) > 0) {
@@ -646,6 +641,17 @@ class LivelinkTraversalManager
                     contentHandler, results, FIELDS, deletes,
                     traversalContext, checkpoint, currentUsername);
             }
+
+            // If nothing is passing our filter, we probably have a
+            // sparse database.  Grab larger candidate sets, hoping
+            // to run into anything interesting.
+            batchsz = Math.min(1000, batchsz * 10);
+
+            // Advance the checkpoint to the end of this batch of
+            // candidates and grab the next batch.
+            checkpoint.advanceToEnd();
+            if (LOGGER.isLoggable(Level.FINER))
+                LOGGER.finer("SKIPPING PAST " + checkpoint.toString());
         }
 
         // We searched for awhile, but did not find any candidates that
@@ -676,7 +682,7 @@ class LivelinkTraversalManager
     /**
      * Filters the candidates down and returns the main recarray needed
      * for the DocumentList.
-     * 
+     *
      * @return the main query results
      * @throws RepositoryException
      */
@@ -746,7 +752,7 @@ class LivelinkTraversalManager
      * would allow us to eliminate the outer query with ROWNUM and get
      * equal performance, except that it doesn't limit the number of
      * rows, and LAPI materializes the entire result set.
-     * 
+     *
      * We need to use the sysadminClient to avoid getting no
      * candidates when the traversal user does not have permission for
      * any of the potential candidates.

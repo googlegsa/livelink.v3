@@ -112,7 +112,7 @@ class LivelinkDocumentList implements DocumentList {
      */
     LivelinkDocumentList(LivelinkConnector connector, Client client,
             ContentHandler contentHandler, ClientValue recArray,
-            Field[] fields, ClientValue delArray, 
+            Field[] fields, ClientValue delArray,
             TraversalContext traversalContext, Checkpoint checkpoint,
             String currentUsername)
         throws RepositoryException {
@@ -157,11 +157,9 @@ class LivelinkDocumentList implements DocumentList {
     public Document nextDocument()
         throws RepositoryException
     {
-        if (docIterator == null) {
-            return null;
-        } else if (docIterator.hasNext()) {
+        if (docIterator != null && docIterator.hasNext()) {
             // The Connector Manager does not handle individual document
-            // failures very well.  If processing a document throws an 
+            // failures very well.  If processing a document throws an
             // exception, we will try to determine if the failure is
             // transient (like server not responding), or permanent
             // (like the document is corrupt and can never be fetched).
@@ -186,7 +184,7 @@ class LivelinkDocumentList implements DocumentList {
                     client.GetCurrentUserID(); 	// ping()
                 } catch (RepositoryException e) {
                     // The failure seems to be systemic, rather than a problem
-                    // with this particular document.  Restore the previous 
+                    // with this particular document.  Restore the previous
                     // checkpoint, so that we may retry this document on the
                     // next pass.
                     checkpoint.restore();
@@ -200,9 +198,10 @@ class LivelinkDocumentList implements DocumentList {
         }
 
         // No more documents available.
+        checkpoint.advanceToEnd();
         return null;
     }
-        
+
     /**
      * {@inheritDoc}
      */
@@ -346,12 +345,12 @@ class LivelinkDocumentList implements DocumentList {
 
         /** The set of categories to include. */
         private HashSet includedCategories;
-        
+
         /** The set of categories to exclude. */
         private HashSet excludedCategories;
 
         /** Whether to even bother with Category attributes? */
-        private final boolean doCategories; 
+        private final boolean doCategories;
 
         /** Index only category attributes that are marked searchable? */
         private final boolean includeSearchable;
@@ -370,21 +369,21 @@ class LivelinkDocumentList implements DocumentList {
                 // Fetch the set of categories to include and exclude.
                 this.includedCategories = connector.getIncludedCategories();
                 this.excludedCategories = connector.getExcludedCategories();
-                
+
                 // Should we index any Category attributes at all?
                 this.doCategories = !(includedCategories.contains("none") ||
                                       excludedCategories.contains("all"));
-                
+
                 // Set qualifiers on the included category attributes.
                 this.includeSearchable = includedCategories.contains("searchable");
                 this.includeCategoryNames = includedCategories.contains("name");
-                
-                // If we index all Categories, don't bother searching the set, 
+
+                // If we index all Categories, don't bother searching the set,
                 // as it will only slow us down.
                 if (includedCategories.contains("all"))
                     includedCategories = null;
-                
-                // If we exclude no Categories, don't bother searching the set, 
+
+                // If we exclude no Categories, don't bother searching the set,
                 // as it will only slow us down.
                 if (excludedCategories.contains("none"))
                     excludedCategories = null;
@@ -423,7 +422,7 @@ class LivelinkDocumentList implements DocumentList {
                 return null;
 
             // Walk two separate lists: inserts and deletes.
-            // Process the request in date order.  If an insert and 
+            // Process the request in date order.  If an insert and
             // a delete have the same date, process inserts first.
             Date insDate = null, delDate = null;
             int dateComp = 0;
@@ -465,9 +464,9 @@ class LivelinkDocumentList implements DocumentList {
                     objectId = recArray.toInteger(insRow, "DataID");
                     volumeId = recArray.toInteger(insRow, "OwnerID");
                     subType  = recArray.toInteger(insRow, "Subtype");
-                    
+
                     props = new LivelinkDocument(objectId, fields.length*2);
-                    
+
                     // Collect the various properties for this row.
                     collectRecArrayProperties();
                     collectObjectInfoProperties();
@@ -475,7 +474,7 @@ class LivelinkDocumentList implements DocumentList {
                     collectCategoryAttributes();
                     collectDerivedProperties();
                 } finally {
-                    // Establish the checkpoint for this row. 
+                    // Establish the checkpoint for this row.
                     checkpoint.setInsertCheckpoint(insDate, objectId);
                     insRow++;
                 }
@@ -491,8 +490,8 @@ class LivelinkDocumentList implements DocumentList {
                     props = new LivelinkDocument(objectId, 3);
                     collectDeletedObjectAttributes();
                 } finally {
-                    // Establish the checkpoint for this row. 
-                    checkpoint.setDeleteCheckpoint(delDate, 
+                    // Establish the checkpoint for this row.
+                    checkpoint.setDeleteCheckpoint(delDate,
                         delArray.toValue(delRow, "EventID"));
                     delRow++;
                 }
@@ -577,10 +576,10 @@ class LivelinkDocumentList implements DocumentList {
             collectExtendedDataProperties();
 
             // DISPLAYURL
-            String displayUrl = isPublic ? 
+            String displayUrl = isPublic ?
                 connector.getPublicContentDisplayUrl() :
-                connector.getDisplayUrl(); 
-            String url = connector.getDisplayUrl(displayUrl, 
+                connector.getDisplayUrl();
+            String url = connector.getDisplayUrl(displayUrl,
                 subType, objectId, volumeId);
             props.addProperty(SpiConstants.PROPNAME_DISPLAYURL,
                               Value.getStringValue(url));
@@ -670,7 +669,7 @@ class LivelinkDocumentList implements DocumentList {
             Enumeration it = extendedData.enumerateNames();
             while (it.hasMoreElements())
                 names.add(it.nextElement());
-            
+
             // Decompose the ExtendedData into its atomic values,
             // and add them as properties.
             for (int i = 0; i < fields.length; i++) {
@@ -713,7 +712,7 @@ class LivelinkDocumentList implements DocumentList {
                 objectInfo = client.GetObjectInfo(volumeId, objectId);
             if (objectInfo == null || !objectInfo.hasValue())
                 return;
-                    
+
             // Extract the objectInfo items of interest and add them to the
             // property map.  We know there are no compound objectInfo fields.
             for (int i = 0; i < fields.length; i++) {
@@ -727,7 +726,7 @@ class LivelinkDocumentList implements DocumentList {
                         collectValueProperties(fields[i], value);
                     else if (isUserIdOrGroupId(fields[i]))
                         addUserByName(fields[i], value);
-                    else 
+                    else
                         props.addProperty(fields[i], value);
                 }
             }
@@ -755,7 +754,7 @@ class LivelinkDocumentList implements DocumentList {
             versionInfo = client.GetVersionInfo(volumeId, objectId, 0);
             if (versionInfo == null || !versionInfo.hasValue())
                 return;
-                    
+
             // Extract the versionInfo items of interest and add them to the
             // property map.  We know there are no compound versionInfo fields.
             for (int i = 0; i < fields.length; i++) {
@@ -768,7 +767,7 @@ class LivelinkDocumentList implements DocumentList {
                 }
             }
         }
-            
+
 
         /**
          * Collects properties in an LLValue.
@@ -826,7 +825,7 @@ class LivelinkDocumentList implements DocumentList {
         private void collectCategoryAttributes() throws RepositoryException {
             if (doCategories == false)
                 return;
-            
+
             // List the categories. LAPI requires us to use this
             // Assoc containing the id instead of just passing in
             // the id. The Assoc may have two other values, Type,
@@ -1040,7 +1039,7 @@ class LivelinkDocumentList implements DocumentList {
                     }
                     return;
                 }
-                
+
                 // If the cache was full, flush it.  Not sophisicated MRU, but
                 // good enough for our needs.
                 if (userNameCache.size() > 100)

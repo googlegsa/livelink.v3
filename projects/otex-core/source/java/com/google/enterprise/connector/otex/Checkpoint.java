@@ -22,7 +22,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
- * Create and parse the checkpoint strings passed back and forth between 
+ * Create and parse the checkpoint strings passed back and forth between
  * the connector and the Google appliance traverser.
  */
 class Checkpoint {
@@ -35,7 +35,7 @@ class Checkpoint {
         LivelinkDateFormat.getInstance();
 
     /** DataID of the last item inserted. */
-    public int  insertDataId; 
+    public int  insertDataId;
 
     /** ModifyDate of the last item inserted. */
     public Date insertDate;
@@ -46,6 +46,12 @@ class Checkpoint {
     /** EventDate of the last item deleted. */
     public Date deleteDate;
 
+    /** DataID of the last inserted item candidate. */
+    private int  advInsertDataId;
+
+    /** ModifyDate of the last inserted item candidate. */
+    private Date advInsertDate;
+
     /**
      * Backup versions of the insert and delete checkpoints,
      * so that we may restore a checkpoint when attempting to
@@ -55,7 +61,7 @@ class Checkpoint {
     private Date oldInsertDate;
     private long oldDeleteEventId;
     private Date oldDeleteDate;
-    
+
 
     /** Generic Constructor */
     Checkpoint() {
@@ -64,9 +70,9 @@ class Checkpoint {
 
     /**
      * Constructor given a checkpoint string.  Checkpoints are passed
-     * between the GSA and the Connector in the form of a string.
-     * This parses the checkpoint string.
-     * @param checkpoint  A checkpoint string representation.
+     * between the Connector Manager and the Connector in the form of
+     * a string.  This parses the checkpoint string.
+     * @param checkpoint  A checkpoint String representation.
      * @throws RepositoryException
      */
     Checkpoint(String checkpoint) throws RepositoryException {
@@ -101,7 +107,7 @@ class Checkpoint {
                     }
                 }
             } catch (Exception e) {
-                throw new LivelinkException("Invalid checkpoint: " + 
+                throw new LivelinkException("Invalid checkpoint: " +
                                             checkpoint,
                                             LOGGER);
             }
@@ -111,7 +117,7 @@ class Checkpoint {
 
     /**
      * Set the Inserted Items portion of the checkpoint.
-     * 
+     *
      * @param date the ModifyDate of the last item inserted.
      * @param dataId the DataID of the last item inserted.
      */
@@ -124,8 +130,8 @@ class Checkpoint {
         insertDate = date;
         insertDataId = dataId;
     }
-        
-     
+
+
     /**
      * Sets the Deleted Items portion of the checkpoint. Livelink
      * returns the EventID from Oracle as an integer, and from SQL
@@ -134,7 +140,7 @@ class Checkpoint {
      * to an INT might lose precision. Instead, this method accepts a
      * <code>ClientValue</code>, which can be either an
      * <code>INTEGER</code> or a <code>DOUBLE</code>.
-     * 
+     *
      * @param date the AuditDate of the last item deleted.
      * @param eventId the EventID of the last item deleted.
      * @throws RepositoryException if an unexpected runtime error occurs
@@ -167,6 +173,34 @@ class Checkpoint {
                 "; value = " + eventId.toString2());
             deleteEventId = 9999999999L;
             break;
+        }
+    }
+
+
+    /**
+     * Set the checkpoint for the last Inserted Items Candidate.
+     *
+     * @param date the ModifyDate of the last insert candidate.
+     * @param dataId the DataID of the last insert candidate.
+     */
+    public void setAdvanceCheckpoint(Date date, int dataId) {
+        // Set the final insert candidate checkpoint.
+        advInsertDate = date;
+        advInsertDataId = dataId;
+    }
+
+
+    /**
+     * Advance the checkpoint passed the last candidates
+     * considered (not just passed the last documents returned).
+     * This can help avoid reconsidering candidate documents
+     * that have already been rejected.  Especially useful
+     * for sparse retrieval situations.
+     */
+    public void advanceToEnd() {
+        if (advInsertDate != null) {
+            insertDate = advInsertDate;
+            insertDataId = advInsertDataId;
         }
     }
 
@@ -210,7 +244,7 @@ class Checkpoint {
 
 
     /**
-     * @returns the Checkpoint as a String (desired by the GSA).
+     * @returns the Checkpoint as a String.
      */
     public String toString() {
         // A null checkpoint is OK.
@@ -220,7 +254,7 @@ class Checkpoint {
         StringBuffer buffer = new StringBuffer();
 
         // The Inserted items checkpoint.
-        if (insertDate != null) 
+        if (insertDate != null)
             buffer.append(dateFmt.toSqlString(insertDate));
         buffer.append(',');
         buffer.append(insertDataId);

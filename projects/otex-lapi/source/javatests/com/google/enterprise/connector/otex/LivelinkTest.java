@@ -95,8 +95,8 @@ public class LivelinkTest extends TestCase {
         System.out.println("============ startTraversal ============");
         LivelinkDocumentList docList =
             (LivelinkDocumentList) mgr.startTraversal();
-        Document lastNode;
-        while ((lastNode = processResultSet(docList)) != null) {
+        while (docList != null) {
+            processResultSet(docList);
             String checkpoint = docList.checkpoint();
             System.out.println("============ resumeTraversal ============");
             docList = (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
@@ -116,25 +116,18 @@ public class LivelinkTest extends TestCase {
         mgr.setBatchHint(1);    // we only want the first result...
         LivelinkDocumentList docList =
             (LivelinkDocumentList) mgr.startTraversal();
-        Iterator iter = docList.iterator();
-        if ( !iter.hasNext() )
-            return null;
+        if (docList != null)
+            return docList.nextDocument();
         else
-            return (Document) iter.next();
+            return null;
     }
 
 
-    private Document processResultSet(LivelinkDocumentList docList)
+    private void processResultSet(LivelinkDocumentList docList)
             throws RepositoryException {
-        // XXX: What's supposed to happen if the result set is empty?
-        if (docList == null)
-            return null;
-
         Document doc = null;
-        Iterator it = docList.iterator();
-        while (it.hasNext()) {
+        while ((doc = docList.nextDocument()) != null) {
             System.out.println();
-            doc = (Document) it.next();
             Iterator jt = doc.getPropertyNames().iterator();
             while (jt.hasNext()) {
                 String name = (String) jt.next();
@@ -158,10 +151,8 @@ public class LivelinkTest extends TestCase {
                 System.out.println(name + " = " + printableValue);
             }
         }
-        return doc;
     }
 
-    private int rowCount;
 
     /**
      * Tests that changing the batch size does not change the number
@@ -191,15 +182,14 @@ public class LivelinkTest extends TestCase {
             long before = System.currentTimeMillis();
             mgr.setBatchHint(batchHints[i]);
 
-            rowCount = 0;
+            int rowCount = 0;
             LivelinkDocumentList docList =
                 (LivelinkDocumentList) mgr.startTraversal();
-            Document lastNode = countResultSet(docList);
-            while (lastNode != null) {
+            while (docList != null) {
+                rowCount += countResultSet(docList);
                 String checkpoint = docList.checkpoint();
                 docList =
                     (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
-                lastNode = countResultSet(docList);
             }
             long after = System.currentTimeMillis();
             System.out.println("TIME: " + (after - before));
@@ -258,11 +248,10 @@ public class LivelinkTest extends TestCase {
         // Look for any results that are too old
         LivelinkDocumentList results =
             (LivelinkDocumentList) tmSD.startTraversal();
-        Document lastNode = assertNoResultsOlderThan(results, startDate);
-        while (lastNode != null) {
+        while (results != null) {
+            assertNoResultsOlderThan(results, startDate);
             String checkpoint = results.checkpoint();
             results = (LivelinkDocumentList) tmSD.resumeTraversal(checkpoint);
-            lastNode = assertNoResultsOlderThan(results, startDate);
         }
     }
 
@@ -271,12 +260,10 @@ public class LivelinkTest extends TestCase {
      * Process a resultset and check for any results older than the
      * given date.
      */
-    private Document assertNoResultsOlderThan(LivelinkDocumentList docList,
+    private void assertNoResultsOlderThan(LivelinkDocumentList docList,
         Date date) throws RepositoryException {
         Document doc = null;
-        Iterator it = docList.iterator();
-        while (it.hasNext()) {
-            doc = (Document) it.next();
+        while ((doc = docList.nextDocument()) != null) {
             String docId = doc.findProperty("ID").nextValue().toString();
             String dateStr =
                 doc.findProperty("ModifyDate").nextValue().toString();
@@ -303,21 +290,14 @@ public class LivelinkTest extends TestCase {
                 fail("Unable to parse document modified date: " + dateStr);
             }
         }
-        return doc;
     }
 
 
-    private Document countResultSet(LivelinkDocumentList docList)
+    private int countResultSet(LivelinkDocumentList docList)
             throws RepositoryException {
-        Document doc = null;
-        if (docList != null) {
-            Iterator it = docList.iterator();
-            while (it.hasNext()) {
-                rowCount++;
-                doc = (Document) it.next();
-            }
-        }
-        return doc;
+        int i;
+        for (i = 0; docList.nextDocument() != null; i++) ;
+        return i;
     }
 
     public void testDuplicates() throws RepositoryException {
@@ -328,26 +308,20 @@ public class LivelinkTest extends TestCase {
         HashSet nodes = new HashSet();
         LivelinkDocumentList docList =
             (LivelinkDocumentList) mgr.startTraversal();
-        Document lastNode = processResultSet(docList, nodes);
-        while (lastNode != null) {
+        while (docList != null) {
+            assertNoDuplicates(docList, nodes);
             String checkpoint = docList.checkpoint();
             docList = (LivelinkDocumentList) mgr.resumeTraversal(checkpoint);
-            lastNode = processResultSet(docList, nodes);
         }
     }
 
-    private Document processResultSet(LivelinkDocumentList docList, Set nodes)
+    private void assertNoDuplicates(LivelinkDocumentList docList, Set nodes)
             throws RepositoryException {
         Document doc = null;
-        if (docList != null) {
-            Iterator it = docList.iterator();
-            while (it.hasNext()) {
-                doc = (Document) it.next();
-                Property prop = doc.findProperty(SpiConstants.PROPNAME_DOCID);
-                String value = prop.nextValue().toString();
-                assertTrue(value, nodes.add(value));
-            }
+        while ((doc = docList.nextDocument()) != null) {
+            Property prop = doc.findProperty(SpiConstants.PROPNAME_DOCID);
+            String value = prop.nextValue().toString();
+            assertTrue(value, nodes.add(value));
         }
-        return doc;
     }
 }
