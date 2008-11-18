@@ -18,9 +18,6 @@ import java.io.File;
 import java.io.OutputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;

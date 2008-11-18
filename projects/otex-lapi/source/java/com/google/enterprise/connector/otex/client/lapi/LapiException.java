@@ -14,7 +14,6 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.text.MessageFormat;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.otex.LivelinkException;

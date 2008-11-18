@@ -14,16 +14,12 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Map;
 import java.util.StringTokenizer;
 
-import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
@@ -267,7 +263,7 @@ class LivelinkTraversalManager
      * nodes.
      *
      * The list of traversal starting locations is derived
-     * either from an explict list of start nodes
+     * either from an explicit list of start nodes
      * (<em>includedLocationNodes</em>) or an implicit
      * list of all non-excluded Volumes.
      *
@@ -328,7 +324,7 @@ class LivelinkTraversalManager
 
     static String getAncestorNodes(String startNodes) {
         // Projects, Discussions, Channels, and TaskLists have a rather
-        // strange behaviour.  Their contents have a VolumeID that is the
+        // strange behavior.  Their contents have a VolumeID that is the
         // same as the container's ObjectID, and an AncestorID that is the
         // negation the container's ObjectID.  To catch that, I am going
         // to create a superset list that adds the negation of everything
@@ -470,7 +466,7 @@ class LivelinkTraversalManager
                 checkpoint + ".");
 
         // If we were handed an old-style checkpoint, that means the
-        // user upgraded the connector, but has not reindexed.  Update
+        // user upgraded the connector, but has not re-indexed.  Update
         // the checkpoint to the newer style.
         if (deleteSupported && Checkpoint.isOldStyle(checkpoint)) {
             checkpoint = Checkpoint.upgrade(checkpoint);
@@ -796,7 +792,7 @@ class LivelinkTraversalManager
      * I try limit the list of delete candidates to those
      * recently deleted (via a checkpoint) and items only of
      * SubTypes we would have indexed in the first place.
-     * Unfortunately, Livelink loses an items ancestral histroy
+     * Unfortunately, Livelink loses an items ancestral history
      * when recording the delete event in the audit logs, so
      * I cannot determine if the deleted item came from
      * an explicitly included location, or an explicitly
@@ -850,8 +846,8 @@ class LivelinkTraversalManager
     /*
      * I try limit the list of delete candidates to those
      * recently deleted (via a checkpoint) and items only of
-     * SubTypes we would have indexed in the firstplace.
-     * Unfortunately, Livelink loses an items ancestral histroy
+     * SubTypes we would have indexed in the first place.
+     * Unfortunately, Livelink loses an items ancestral history
      * when recording the delete event in the audit logs, so
      * I cannot determine if the deleted item came from
      * an explicitly included location, or an explicitly

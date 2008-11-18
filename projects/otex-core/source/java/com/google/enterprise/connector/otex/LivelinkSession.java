@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -27,9 +22,6 @@ import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 class LivelinkSession implements Session {
-    /** The logger for this class. */
-    private static final Logger LOGGER =
-        Logger.getLogger(LivelinkSession.class.getName());
 
     /** The connector instance. */
     private final LivelinkConnector connector;
@@ -48,7 +40,7 @@ class LivelinkSession implements Session {
      * @throws RepositoryException not thrown
      */
     public LivelinkSession(LivelinkConnector connector,
-            ClientFactory clientFactory, 
+            ClientFactory clientFactory,
             AuthenticationManager authenticationManager)
             throws RepositoryException {
         this.connector = connector;
@@ -58,17 +50,17 @@ class LivelinkSession implements Session {
 
     /**
      * Gets a TraversalManager to implement query-based traversal
-     * 
+     *
      * @return a TraversalManager
      * @throws RepositoryException
      */
     public TraversalManager getTraversalManager() throws RepositoryException {
         return new LivelinkTraversalManager(connector, clientFactory);
     }
-  
+
     /**
      * Gets an AuthenticationManager to implement per-user authentication.
-     * 
+     *
      * @return an AuthenticationManager
      * @throws RepositoryException
      */
@@ -80,9 +72,9 @@ class LivelinkSession implements Session {
 
     /**
      * Gets an AuthorizationManager to implement per-user authorization.
-     * 
-     * NOTE: LivelinkDocumentList gets access to the AuthorizationManager 
-     * via the Connector's ClientFactory.  It should really get it from 
+     *
+     * NOTE: LivelinkDocumentList gets access to the AuthorizationManager
+     * via the Connector's ClientFactory.  It should really get it from
      * the Session, but at that point it doesn't know what session it
      * belongs to.
      *

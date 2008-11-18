@@ -44,8 +44,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
-
+        
         assertTrue(excluded, excluded.indexOf("SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
     }    
@@ -60,8 +59,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
-
+        
         assertNull(excluded);
     }    
 
@@ -75,8 +73,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
-
+        
         assertNull(excluded);
     }    
 
@@ -91,8 +88,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
-
+        
         assertTrue(excluded, excluded.indexOf("SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
     }    

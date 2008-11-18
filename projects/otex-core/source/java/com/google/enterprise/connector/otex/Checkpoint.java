@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.Date;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -208,7 +207,7 @@ class Checkpoint {
     /**
      * Checks to see if this checkpoint is the older style.
      * @param checkpoint a checkpoint string
-     * @returns true if checkpoint string is oldstyle
+     * @returns true if checkpoint string is old style
      */
     public static boolean isOldStyle(String checkpoint) {
         return (checkpoint == null) ||

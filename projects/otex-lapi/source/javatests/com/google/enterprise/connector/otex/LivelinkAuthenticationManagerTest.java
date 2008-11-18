@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -147,9 +146,9 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
             authenticate("foo", "foo"));
 
         // FIXME: llnobody only exists on Livelink 9.5 on
-        //swift. Also, we don't look at the enterprise workspace
-        //any more?  assertTrue("No Enterprise workspace access",
-        //authenticate("llnobody", "Gibson", true));
+        // swift. Also, we don't look at the enterprise workspace
+        // any more?  assertTrue("No Enterprise workspace access",
+        // authenticate("llnobody", "Gibson", true));
     }
 
 

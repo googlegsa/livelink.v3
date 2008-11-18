@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,10 +28,8 @@ import junit.framework.TestCase;
 
 import com.google.enterprise.connector.otex.LivelinkDocumentList;
 
-import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.Document;
-import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
@@ -82,7 +80,7 @@ public class LivelinkTest extends TestCase {
     }
 
     public void testLogin() throws RepositoryException {
-        Session sess = conn.login();
+        conn.login();
     }
 
 

@@ -23,7 +23,6 @@ import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
@@ -1131,7 +1130,7 @@ public class LivelinkConnectorType implements ConnectorType {
             setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg);
             Method setReadTimeout = c.getMethod("setReadTimeout",
                 new Class[] { int.class });
-            setReadTimeout.invoke(conn, readTimeoutArg);
+            setReadTimeout.invoke(conn, (Object[]) readTimeoutArg);
         } catch (NoSuchMethodException m) {
             // Ignore; we're probably on Java 1.4.
             LOGGER.log(Level.FINEST,

@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.common.StringUtils;
 import com.google.enterprise.connector.pusher.FeedConnection;
 import com.google.enterprise.connector.pusher.FeedData;
 import com.google.enterprise.connector.pusher.GsaFeedData;

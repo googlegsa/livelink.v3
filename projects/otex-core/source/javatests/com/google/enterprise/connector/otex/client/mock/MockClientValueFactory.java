@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,9 +13,6 @@
 // limitations under the License.
 
 package com.google.enterprise.connector.otex.client.mock;
-
-import java.util.List;
-import java.util.Map;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -34,7 +31,7 @@ public final class MockClientValueFactory implements ClientValueFactory {
             return new MockClientValue(null, null);
         } catch (Exception e) {
             throw new IllegalArgumentException();
-        } 
+        }
     }
 
     /**
@@ -45,7 +42,7 @@ public final class MockClientValueFactory implements ClientValueFactory {
             return new MockClientValue(new String[0], new Object[0]);
         } catch (Exception e) {
             throw new IllegalArgumentException();
-        } 
+        }
     }
 
     /**
@@ -56,7 +53,6 @@ public final class MockClientValueFactory implements ClientValueFactory {
             return new MockClientValue(new Object[0]);
         } catch (Exception e) {
             throw new IllegalArgumentException();
-        } 
+        }
     }
 }
-

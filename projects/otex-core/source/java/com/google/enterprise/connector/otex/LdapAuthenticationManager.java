@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,9 @@ import java.text.MessageFormat;
 import java.util.Hashtable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.LogRecord;
 import javax.naming.Context;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.DirContext;
-import javax.naming.directory.Attributes;
 import javax.naming.NamingException;
 
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
@@ -30,9 +28,6 @@ import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * Implements an AuthenticationManager that authenticates against
@@ -74,11 +69,11 @@ class LdapAuthenticationManager implements AuthenticationManager {
     /** The security principal string; the identity username will
      * be substituted using MessageFormat.
      */
-    private String securityPrincipalPattern; 
+    private String securityPrincipalPattern;
 
 
     /**
-     * Default constructor for bean instantiation. 
+     * Default constructor for bean instantiation.
      */
     LdapAuthenticationManager() {
         super();
@@ -100,7 +95,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
      * authentication. This should contain a MessageFormat
      * placeholder for the username.
      *
-     * @param securityPrincipalPattern the LDAP security principal string 
+     * @param securityPrincipalPattern the LDAP security principal string
      * @throws IllegalArgumentException if the pattern can't be
      * used with MessageFormat
      */
@@ -116,7 +111,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
     /** {@inheritDoc} */
     /* With Java 1.4.2 and up, you can use SSL by specifying the
      * URL using the "ldaps" protocol instead of "ldap". No code
-     * changes are needed. 
+     * changes are needed.
      *
      * TODO: accept a map of environment properties for greater
      * configurability.
@@ -127,17 +122,17 @@ class LdapAuthenticationManager implements AuthenticationManager {
             LOGGER.fine("AUTHENTICATE (LDAP): " + identity.getUsername());
 
         Hashtable env = new Hashtable();
-        env.put(Context.INITIAL_CONTEXT_FACTORY, 
+        env.put(Context.INITIAL_CONTEXT_FACTORY,
             "com.sun.jndi.ldap.LdapCtxFactory");
-        env.put(Context.PROVIDER_URL, providerUrl); 
+        env.put(Context.PROVIDER_URL, providerUrl);
         env.put(Context.SECURITY_AUTHENTICATION, "simple");
 
-        String dn = MessageFormat.format(securityPrincipalPattern, 
-            new Object[] { escapeUsername(identity.getUsername()) }); 
+        String dn = MessageFormat.format(securityPrincipalPattern,
+            new Object[] { escapeUsername(identity.getUsername()) });
         if (LOGGER.isLoggable(Level.FINER))
             LOGGER.finer("DN: " + dn);
-        env.put(Context.SECURITY_PRINCIPAL, dn); 
-        env.put(Context.SECURITY_CREDENTIALS, identity.getPassword()); 
+        env.put(Context.SECURITY_PRINCIPAL, dn);
+        env.put(Context.SECURITY_CREDENTIALS, identity.getPassword());
 
         try {
 
@@ -147,13 +142,13 @@ class LdapAuthenticationManager implements AuthenticationManager {
             // contacted. JNDI allows lazy initialization of
             // contexts, so we have to use it, not just create
             // it.
-            ctx.getAttributes(""); 
+            ctx.getAttributes("");
             return new AuthenticationResponse(true, null);
         }
         catch (NamingException e)
         {
             LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.toString()); 
+                identity.getUsername() + "; " + e.toString());
             return new AuthenticationResponse(false, null);
         }
     }
@@ -168,9 +163,9 @@ class LdapAuthenticationManager implements AuthenticationManager {
     String escapeUsername(String username) {
 
         StringBuffer buffer = new StringBuffer();
-        int start = 0; 
+        int start = 0;
         if (username.startsWith(" ")) {
-            buffer.append("\\ "); 
+            buffer.append("\\ ");
             ++start;
         }
         if (username.startsWith("#")) {
@@ -178,7 +173,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
             ++start;
         }
         for (int i = start; i < username.length(); i++) {
-            char c = username.charAt(i); 
+            char c = username.charAt(i);
             switch (c) {
             case '"': buffer.append("\\\""); break;
             case '\\': buffer.append("\\\\"); break;
@@ -191,7 +186,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
             }
         }
         if (username.endsWith(" "))
-            buffer.insert(buffer.length() - 1, "\\"); 
-        return buffer.toString(); 
+            buffer.insert(buffer.length() - 1, "\\");
+        return buffer.toString();
     }
 }

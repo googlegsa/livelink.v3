@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -74,4 +72,3 @@ public final class LapiClientValueFactory implements ClientValueFactory {
     }
 
 }
-

@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package com.google.enterprise.connector.otex;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.LogRecord;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
@@ -29,7 +28,7 @@ import com.google.enterprise.connector.spi.RepositoryLoginException;
  * Wraps a list of AuthenticationManager instances and tries each
  * in turn to implement AuthenticationManager.authenticate.
  */
-class AuthenticationManagerChain implements AuthenticationManager, 
+class AuthenticationManagerChain implements AuthenticationManager,
         ConnectorAware {
 
     /** The logger for this class. */
@@ -40,10 +39,10 @@ class AuthenticationManagerChain implements AuthenticationManager,
     private List authenticationManagers;
 
     /**
-     * Constructor. 
+     * Constructor.
      */
     AuthenticationManagerChain() {
-        super(); 
+        super();
     }
 
     /**
@@ -53,9 +52,9 @@ class AuthenticationManagerChain implements AuthenticationManager,
      * managers; may not be null or empty
      */
     public void setAuthenticationManagers(List authenticationManagers) {
-        if (authenticationManagers == null || 
+        if (authenticationManagers == null ||
                 authenticationManagers.size() == 0) {
-            throw new IllegalArgumentException(); 
+            throw new IllegalArgumentException();
         }
         this.authenticationManagers = authenticationManagers;
     }
@@ -67,9 +66,9 @@ class AuthenticationManagerChain implements AuthenticationManager,
      */
     public void setConnector(Connector connector) {
         for (int i = 0; i < authenticationManagers.size(); i++) {
-            Object o = authenticationManagers.get(i); 
+            Object o = authenticationManagers.get(i);
             if (o instanceof ConnectorAware)
-                ((ConnectorAware) o).setConnector(connector); 
+                ((ConnectorAware) o).setConnector(connector);
         }
     }
 
@@ -80,23 +79,23 @@ class AuthenticationManagerChain implements AuthenticationManager,
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
 
-        AuthenticationResponse response = null; 
+        AuthenticationResponse response = null;
         for (int i = 0; i < authenticationManagers.size(); i++) {
             try {
                 AuthenticationManager a = (AuthenticationManager)
                     authenticationManagers.get(i);
                 if (LOGGER.isLoggable(Level.FINER))
-                    LOGGER.finer("Trying authentication manager " + a); 
-                response = a.authenticate(identity); 
+                    LOGGER.finer("Trying authentication manager " + a);
+                response = a.authenticate(identity);
                 if (response.isValid())
                     break;
             }
             catch (RepositoryException e) {
                 LOGGER.warning("Authentication failed for " +
-                    identity.getUsername() + "; " + e.getMessage()); 
+                    identity.getUsername() + "; " + e.getMessage());
                 response = new AuthenticationResponse(false, null);
             }
         }
         return response;
-    }    
+    }
 }

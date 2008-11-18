@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package com.google.enterprise.connector.otex;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.LogRecord;
 
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
@@ -31,7 +30,7 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 /**
  * Implements an AuthenticationManager for the Livelink connector.
  */
-class LivelinkAuthenticationManager 
+class LivelinkAuthenticationManager
         implements AuthenticationManager, ConnectorAware  {
 
     /** The logger for this class. */
@@ -56,8 +55,8 @@ class LivelinkAuthenticationManager
      * @param connector the current LivelinkConnector
      */
     public void setConnector(Connector connector) {
-        this.clientFactory = 
-            ((LivelinkConnector) connector).getAuthenticationClientFactory(); 
+        this.clientFactory =
+            ((LivelinkConnector) connector).getAuthenticationClientFactory();
     }
 
 
@@ -69,7 +68,7 @@ class LivelinkAuthenticationManager
      * @param password the user's password
      * @returns true if the user can be authenticated
      * @throws RepositoryLoginException not currently thrown
-     * @throws RepositoryException if an exception occured during
+     * @throws RepositoryException if an exception occurred during
      * authentication
      */
     public AuthenticationResponse authenticate(AuthenticationIdentity identity)
@@ -81,9 +80,9 @@ class LivelinkAuthenticationManager
         // happen because we control it in LivelinkConnector?
         if (clientFactory == null) {
             LOGGER.severe("Misconfigured connector; unable to authenticate");
-            throw new RepositoryException("Missing Livelink client factory"); 
+            throw new RepositoryException("Missing Livelink client factory");
         }
-            
+
         try {
             // XXX: Pass the identity to the ClientFactory?
             Client client = clientFactory.createClient(
@@ -98,7 +97,7 @@ class LivelinkAuthenticationManager
             return new AuthenticationResponse(serverInfo.hasValue(), null);
         } catch (RepositoryException e) {
             LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.getMessage()); 
+                identity.getUsername() + "; " + e.getMessage());
             throw e;
         }
     }

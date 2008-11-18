@@ -14,9 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.JarURLConnection;
 import java.util.Enumeration;
 import java.util.logging.Logger;
 import java.util.Map;
@@ -26,16 +23,14 @@ import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.ConnectorFactory;
-import com.google.enterprise.connector.spi.ConnectorType;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 
 /**
- * Instatiates a <code>LivelinkConnector</code> using Spring together
+ * Instantiates a <code>LivelinkConnector</code> using Spring together
  * with the connectorInstance.xml in the classpath and the system
  * properties with a given name prefix.
  */

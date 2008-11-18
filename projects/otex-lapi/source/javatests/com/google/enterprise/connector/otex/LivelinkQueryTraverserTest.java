@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,6 @@ import com.google.enterprise.connector.instantiator.MockInstantiator;
 import com.google.enterprise.connector.persist.ConnectorNotFoundException;
 import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.DocPusher;
-import com.google.enterprise.connector.pusher.MockPusher;
-import com.google.enterprise.connector.pusher.MockFeedConnection;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
@@ -33,7 +31,6 @@ import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.traversal.QueryTraverser;
 import com.google.enterprise.connector.traversal.Traverser;
 
-import junit.framework.Assert;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
@@ -41,9 +38,6 @@ import junit.textui.TestRunner;
 /**
  * This is a copy of the QueryTraverserTest class with modifications
  * to use the Livelink connector rather than the mock JCR connector.
- *
- * @author ziff@google.com (Your Name Here)
- * @author johnl@vizdom.com (John Lacey)
  */
 public class LivelinkQueryTraverserTest extends TestCase {
     public final static void main(String[] args) {
@@ -123,7 +117,8 @@ public class LivelinkQueryTraverserTest extends TestCase {
             batchNumber++;
         } while (docsProcessed > 0);
 
-        //        Assert.assertEquals(378, totalDocsProcessed);
-        Assert.assertEquals(691, totalDocsProcessed);	// [bmj] Additional testdata in LL?
+        // TODO: There should be some way to parameterize the
+        // expected number of documents.
+        assertEquals(691, totalDocsProcessed);
     }
 }

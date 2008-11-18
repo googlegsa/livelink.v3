@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,11 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.Set;
 
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
-import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.RepositoryLoginException;
 import junit.framework.TestCase;
 
 public class NoOpAuthenticationManagerTest extends TestCase {

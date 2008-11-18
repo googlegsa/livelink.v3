@@ -24,10 +24,8 @@ import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
-import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.SpiConstants;
@@ -179,7 +177,7 @@ class LivelinkDocumentList implements DocumentList {
                 // I will consider this a transient Exception (server down,
                 // network error, etc).  In that case, throw a
                 // RepositoryException up to the Connector Manager,
-                // signalling the end of this batch.  The CM will retry later.
+                // signaling the end of this batch.  The CM will retry later.
                 try {
                     client.GetCurrentUserID(); 	// ping()
                 } catch (RepositoryException e) {
@@ -1040,7 +1038,7 @@ class LivelinkDocumentList implements DocumentList {
                     return;
                 }
 
-                // If the cache was full, flush it.  Not sophisicated MRU, but
+                // If the cache was full, flush it. Not sophisticated MRU, but
                 // good enough for our needs.
                 if (userNameCache.size() > 100)
                     userNameCache.clear();

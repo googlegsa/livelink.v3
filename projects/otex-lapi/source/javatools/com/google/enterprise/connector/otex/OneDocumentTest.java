@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,27 +16,20 @@ package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
 import java.io.IOException;
-import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 
 import junit.framework.TestCase;
 
-import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Session;
-import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spiimpl.BinaryValue;
 
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
-import com.google.enterprise.connector.otex.LivelinkTraversalManager;
 
 /**
  * Pushes a single document (DocID) to the GSA
@@ -49,9 +42,9 @@ public class OneDocumentTest extends TestCase {
     public void setUp() throws RepositoryException {
         conn = LivelinkConnectorFactory.getConnector("connector.");
         sess = (LivelinkSession) conn.login();
-        client = sess.getFactory().createClient(); 
+        client = sess.getFactory().createClient();
     }
-    
+
     public void testTraversal() throws RepositoryException {
         int objectId = getId();
 
@@ -82,12 +75,11 @@ public class OneDocumentTest extends TestCase {
 
     private void processResultSet(DocumentList docList)
             throws RepositoryException {
-        // XXX: What's supposed to happen if the result set is empty?
         if (docList == null) {
             System.out.println("No results.");
             return;
         }
-        
+
         Document doc;
         while ((doc = docList.nextDocument()) != null) {
             System.out.println();

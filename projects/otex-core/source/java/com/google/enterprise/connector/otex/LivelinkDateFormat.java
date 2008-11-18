@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2008 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import java.text.SimpleDateFormat;
 import java.text.ParsePosition;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.TimeZone;
 
@@ -49,7 +48,7 @@ class LivelinkDateFormat {
     private final SimpleDateFormat rfc822 =
         new SimpleDateFormat("EEE', 'dd' 'MMM' 'yyyy' 'HH:mm:ss z");
 
-    /** The Singleton LivelinkDateFormatter */ 
+    /** The Singleton LivelinkDateFormatter */
     private static final LivelinkDateFormat singleton =
         new LivelinkDateFormat();
 
@@ -59,7 +58,7 @@ class LivelinkDateFormat {
         rfc822.setCalendar(gmtCalendar);
         rfc822.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
-       
+
     /** Return the singleton instance of the Livelink Date Formatter.
      *
      * @returns the LivelinkDateFormat instance.
@@ -91,7 +90,7 @@ class LivelinkDateFormat {
      * unlikely that <code>DocumentList</code> instances or their
      * children will be called from multiple threads, but there's no
      * need to cut corners here.
-     * 
+     *
      * TODO: LAPI converts the database local time to UTC using the
      * default Java time zone, so if the database time zone is different
      * from the Java time zone, we need to adjust the given Date
@@ -122,7 +121,7 @@ class LivelinkDateFormat {
      * Converts a local time date to an RFC 822 format time string.
      *
      * @param value a timestamp where local time is database local time
-     * @return an RFC 822 string 
+     * @return an RFC 822 string
      * @see #toIso8601String
      */
     public synchronized String toRfc822String(Date value) {
@@ -150,7 +149,7 @@ class LivelinkDateFormat {
                 date = rfc822.parse(dateStr, ppos);
         }
 
-        if (date == null) 
+        if (date == null)
             LOGGER.warning("Unable to parse date: " + dateStr);
 
         return date;

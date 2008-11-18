@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex.client.lapi;
 
 import java.io.File;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
