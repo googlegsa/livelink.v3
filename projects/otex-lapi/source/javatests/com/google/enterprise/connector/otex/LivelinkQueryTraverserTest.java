@@ -96,7 +96,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
         MockInstantiator instantiator = new MockInstantiator();
 
         Traverser traverser = new QueryTraverser(pusher, qtm,
-            instantiator, connectorName);
+            instantiator.getTraversalStateStore(connectorName), connectorName);
 
         instantiator.setupTraverser(connectorName, traverser);
 
