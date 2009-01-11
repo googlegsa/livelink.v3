@@ -67,9 +67,6 @@ public class LdapAuthenticationManagerTest extends TestCase {
             AuthenticationIdentity identity = new AuthenticationIdentity() {
                     public String getUsername() { return username; }
                     public String getPassword() { return password; }
-                    public String getCookie(String c) { return null; }
-                    public String setCookie(String c, String v) { return null; }
-                    public Set getCookieNames() { return null; }
                 };
             return manager.authenticate(identity).isValid();
         }

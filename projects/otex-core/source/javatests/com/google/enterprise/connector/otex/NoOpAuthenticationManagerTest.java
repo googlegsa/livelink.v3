@@ -25,9 +25,6 @@ public class NoOpAuthenticationManagerTest extends TestCase {
     private static class SimpleIdentity implements AuthenticationIdentity {
         public String getUsername() { return "nobody"; }
         public String getPassword() { return "goodPassword"; }
-        public String getCookie(String c) { return null; }
-        public String setCookie(String c, String v) { return null; }
-        public Set getCookieNames() { return null; }
     }
 
     private NoOpAuthenticationManager manager;
