@@ -83,11 +83,11 @@ class LivelinkTraversalManager
                            SpiConstants.PROPNAME_LASTMODIFIED));
         list.add(new Field("MimeType", "MimeType",
                            SpiConstants.PROPNAME_MIMETYPE));
+        list.add(new Field("Name", "Name", SpiConstants.PROPNAME_TITLE));
 
         list.add(new Field("DComment", "Comment"));
         list.add(new Field("CreateDate", "CreateDate"));
         list.add(new Field("OwnerName", "CreatedBy"));
-        list.add(new Field("Name", "Name"));
         list.add(new Field("SubType", "SubType"));
         list.add(new Field("OwnerID", "VolumeID"));
         list.add(new Field("UserID", "UserID"));

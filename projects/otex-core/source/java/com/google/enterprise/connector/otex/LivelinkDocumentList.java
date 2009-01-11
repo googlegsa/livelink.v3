@@ -45,10 +45,6 @@ class LivelinkDocumentList implements DocumentList {
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkDocumentList.class.getName());
 
-    /** An immutable string value of "text/html". */
-    private static final Value VALUE_TEXT_HTML =
-        Value.getStringValue("text/html");
-
     /** An immutable false value. */
     private static final Value VALUE_FALSE = Value.getBooleanValue(false);
 
@@ -554,21 +550,8 @@ class LivelinkDocumentList implements DocumentList {
             props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
                 isPublic ? VALUE_TRUE : VALUE_FALSE);
 
-            // Fetch the content.  Returns null if no content.
-            Value contentValue = collectContentProperty();
-
-            // FIXME: Until the GSA pays attention to the Name property...
-            // The default name of a document for the GSA is the quite
-            // uninformative URL.  Since we know the name of this item,
-            // even though it has no content, push a Title tag so that
-            // the GSA can at least display a meaningful name.
-            if (contentValue == null) {
-                String name = recArray.toString(insRow, "Name");
-                props.addProperty(SpiConstants.PROPNAME_MIMETYPE,
-                    VALUE_TEXT_HTML);
-                props.addProperty(SpiConstants.PROPNAME_CONTENT,
-                    Value.getStringValue("<title>" + name + "</title>\n"));
-            }
+            // Fetch the content.
+            collectContentProperty();
 
             // Add the ExtendedData as MetaData properties.
             collectExtendedDataProperties();
@@ -593,8 +576,7 @@ class LivelinkDocumentList implements DocumentList {
          *
          * @returns content Value object, null if no content
          */
-        private Value collectContentProperty()
-                throws RepositoryException {
+        private void collectContentProperty() throws RepositoryException {
             if (LOGGER.isLoggable(Level.FINER))
                 LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
 
@@ -606,7 +588,7 @@ class LivelinkDocumentList implements DocumentList {
             // is non-null then there should be a blob.
             ClientValue mimeType = recArray.toValue(insRow, "MimeType");
             if (!mimeType.isDefined())
-                return null;
+                return;
 
             // XXX: This value might be wrong. There are
             // data size callbacks which can change this
@@ -617,25 +599,25 @@ class LivelinkDocumentList implements DocumentList {
             if (LOGGER.isLoggable(Level.FINER))
                 LOGGER.finer("CONTENT DATASIZE = " + size);
             if (size <= 0)
-                return null;
+                return;
 
             // The TraversalContext Interface provides additional
             // screening based upon content size and mimetype.
             if (traversalContext != null) {
                 // Is the content too large?
                 if (((long) size) > traversalContext.maxDocumentSize())
-                    return null;
+                    return;
 
                 // Is this MimeType supported?
                 String mt = mimeType.toString2();
                 if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
-                    return null;
+                    return;
             } else {
                 // If there is no traversal context, we'll enforce a
                 // limit of 30 MB. This limit is hard-coded in the GSA
                 // anyway.
                 if (size > 30 * 1024 * 1024)
-                    return null;
+                    return;
             }
 
             // If we pass the gauntlet, create a content stream property
@@ -644,7 +626,6 @@ class LivelinkDocumentList implements DocumentList {
                 contentHandler.getInputStream(volumeId, objectId, 0, size);
             Value contentValue = Value.getBinaryValue(is);
             props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
-            return contentValue;
         }
 
         /**
