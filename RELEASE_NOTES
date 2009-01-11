@@ -1,7 +1,6 @@
 
-       Google Enterprise Connector for Open Text Livelink
-                         Release Notes
-
+          Google Enterprise Connector for Open Text Livelink
+                            Release Notes
 
 This document contains the release notes for Google Enterprise Connector
 for Open Text Livelink ECM.  The following sections describe the release
@@ -10,6 +9,62 @@ See the Issues Tab on the Code Web Site for the current list of known issues
 and workarounds.
 
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
+
+
+Release 1.3.0, Jan 10, 2009
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. Users of previous
+releases are encouraged to upgrade. See the product website for a
+complete description.
+
+Summary of Changes
+------------------
+  * Updated to match and take advantage of changes in the connector
+    manager SPI. For details see Connector Manager issues 59, 62, 72,
+    and 80.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.0 through 1.1.1 may be
+used with this version. This version works with Connector Manager
+version 1.3.0. Earlier versions of the Connector Manager will not work
+correctly with this version of the connector. This product is designed
+to function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
+Release 1.1.1, Oct 20, 2008
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.1.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fixed issue 31 to avoid potential infinite loops during traversal.
+
+Version Compatibility
+---------------------
+Connectors created using versions 1.0.0 through 1.1.0 may be used with
+this version. This version works with Connector Manager versions 1.0.2
+through 1.1.0. Version 1.1.0 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
 
 
 Release 1.1.0, Jul 2, 2008
@@ -45,7 +100,7 @@ Enterprise Support for assistance.
 
 
 Release 1.0.3, Apr 7, 2008
-===========================
+==========================
 
 Introduction
 ------------
