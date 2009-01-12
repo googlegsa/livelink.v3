@@ -90,6 +90,7 @@
 
                 <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING -->
                 <property name="authenticationManager" ref="authenticationManager"/>
+                <property name="tryLowercaseUsernames" value="false"/>
                 <property name="contentHandler"
                         value="com.google.enterprise.connector.otex.FileContentHandler"/>
                 <property name="servtype" value=""/>

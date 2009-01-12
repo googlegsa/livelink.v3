@@ -243,6 +243,9 @@ public class LivelinkConnector implements Connector {
     /** The authentication manager to use. */
     private AuthenticationManager authenticationManager;
 
+    /** Lowercase usernames hack. */
+    private boolean tryLowercaseUsernames;
+
     /** A list of PropertyValidator instances. */
     private List propertyValidators = new ArrayList(); 
 
@@ -499,7 +502,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the domain name
      */
-    public String getDomainName() {
+    String getDomainName() {
         return domainName;
     }
 
@@ -1124,7 +1127,7 @@ public class LivelinkConnector implements Connector {
      *
      * @return the array of ObjectInfo assoc attribute keys to index.
      */
-    public String[] getObjectInfoKeys() {
+    String[] getObjectInfoKeys() {
         return this.objectInfoKeys;
     }
 
@@ -1508,6 +1511,31 @@ public class LivelinkConnector implements Connector {
         if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("AUTHENTICATION MANAGER: " + authenticationManager);
         this.authenticationManager = authenticationManager;
+    }
+
+    /**
+     * Sets whether or not to try using lowercase usernames.
+     *
+     * @param tryLowercaseUsernames <code>true</code> to try using a
+     * lowercase version of the usernames for authentication and
+     * authorization, and <code>false</code> to not modify the given
+     * usernames
+     */
+    public void setTryLowercaseUsernames(boolean tryLowercaseUsernames) {
+        if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("LOWERCASE USERNAME HACK: " + tryLowercaseUsernames);
+        this.tryLowercaseUsernames = tryLowercaseUsernames;
+    }
+
+    /**
+     * Gets whether or not to try using lowercase usernames.
+     *
+     * @return <code>true</code> to try using a lowercase version of
+     * the usernames for authentication and authorization, and
+     * <code>false</code> to not modify the given usernames
+     */
+    boolean isTryLowercaseUsernames() {
+        return tryLowercaseUsernames;
     }
 
     /**

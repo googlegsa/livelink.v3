@@ -70,6 +70,9 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
      */
     private final boolean showHiddenItems;
 
+    /** Lowercase usernames hack. */
+    private boolean tryLowercaseUsernames;
+
     /**
      * Constructor - caches client factory, connector, and for
      * additional kinds of items that should be excluded from search
@@ -94,6 +97,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         } else
             workflowVolumeId = 0;
         this.showHiddenItems = connector.getShowHiddenItems().contains("all");
+        this.tryLowercaseUsernames = connector.isTryLowercaseUsernames();
     }
 
 
@@ -149,7 +153,17 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         }
 
         AuthzDocList authorized = new AuthzDocList(docids.size());
-        addAuthorizedDocids(docids.iterator(), username, authorized);
+        if (tryLowercaseUsernames) {
+            try {
+                // Hack: try lower case version of username first.
+                addAuthorizedDocids(docids.iterator(), username.toLowerCase(),
+                    authorized);
+            } catch (RepositoryException e) {
+                LOGGER.finest("LOWERCASE USERNAME FAILED: " + e.getMessage());
+                addAuthorizedDocids(docids.iterator(), username, authorized);
+            }
+        } else
+            addAuthorizedDocids(docids.iterator(), username, authorized);
         authorized.trimToSize();
 
         if (LOGGER.isLoggable(Level.FINEST)) {

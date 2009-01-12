@@ -412,9 +412,9 @@
 
   <tr>
     <td>authenticationManager</td>
-    <td>The name of the <code>AuthenticationManager</code> class
+    <td>The <code>AuthenticationManager</code> instance
         to use when authenticating before providing access to content.</td>
-    <td>Possible values are
+    <td>Possible implementation classes are:
         <dl>
           <dt><code>com.google.enterprise.connector.otex.LivelinkAuthenticationManager</code>
           <dd>This implementation authenticates by using the
@@ -441,9 +441,22 @@
                     <pre>uid={0},ou=people,dc=example,dc=com</pre>
               </dl>
         </dl>
-        <p>The default value is
+        <p>The parameter value is a reference to a separately defined
+        "authenticationManager" bean. The default implementation class
+        for the bean is
         "com.google.enterprise.connector.otex.LivelinkAuthenticationManager". </p>
     </td>
+  </tr>
+
+  <tr>
+    <td>tryLowercaseUsernames</td>
+    <td>A hack to try using a lowercase version of the supplied
+    username for authorizations. If <code>true</code>, the lowercase
+    form of the username will be tried first, and if authorization
+    fails, the original form of the username will be tried.
+    If <code>false</code>, only the original form of the username will
+    be tried.</td>
+    <td>The default value is false.</td>
   </tr>
 
   <tr>
