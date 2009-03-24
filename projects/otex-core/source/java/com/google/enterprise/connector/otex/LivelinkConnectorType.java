@@ -14,12 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.lang.reflect.Method;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+import java.security.GeneralSecurityException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,11 +26,6 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorFactory;
@@ -47,36 +37,15 @@ import org.springframework.beans.PropertyBatchUpdateException;
  * Supports the configuration properties used by the Livelink Connector.
  */
 public class LivelinkConnectorType implements ConnectorType {
-
-    /** The connector properties version property name. */
-    public static final String VERSION_PROPERTY =
-        "LivelinkConnectorPropertyVersion";
-    public static final String VERSION_NUMBER = "1";
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnectorType.class.getName());
 
-    /** An all-trusting TrustManager for SSL URL validation. */
-    private static final TrustManager[] trustAllCerts =
-        new TrustManager[] {
-            new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() {
-                    return null;
-                }
-                public void checkServerTrusted(
-                    X509Certificate[] certs, String authType)
-                    throws CertificateException {
-                    return;
-                }
-                public void checkClientTrusted(
-                    X509Certificate[] certs,
-                    String authType)
-                    throws CertificateException {
-                    return;
-                }
-            }
-        };
+    /** The connector properties version property name. */
+    public static final String VERSION_PROPERTY =
+        "LivelinkConnectorPropertyVersion";
+
+    public static final String VERSION_NUMBER = "1";
 
     /**
      * Holds information (name, label, default value) about a
@@ -375,7 +344,7 @@ public class LivelinkConnectorType implements ConnectorType {
                 value = defaultValue;
 
             for (int i = 0; i < buttonNames.length; i++) {
-                if (i > 0)	// arrange radio buttons vertically
+                if (i > 0)  // arrange radio buttons vertically
                     buffer.append("<br>");
                 String buttonName = buttonNames[i];
                 buffer.append("<input ");
@@ -985,159 +954,30 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /**
-     * Attempts to validate a URL. In this case, we're mostly
-     * trying to catch typos, so "valid" means
-     *
-     * <ol>
-     * <li>The URL syntax is valid.
-     * <li>If the URL uses HTTP or HTTPS:
-     *   <ol>
-     *   <li>A connection can be made and the response read.
-     *   <li>The response code was not 404,
-     *   or any of the following related but less common errors:
-     *   400, 405, 410, or 414.
-     *   </ol>
-     * </ol>
-     *
-     * The 405 (Method Not Allowed) is related because the Sun Java
-     * System Web Server, and possibly Apache, return this code rather
-     * than a 404 if you attempt to access a CGI program in an unknown
-     * directory.
-     *
-     * When testing an HTTPS URL, we override server certificate
-     * validation to skip trying to verify the server's
-     * certificate. In this case, all we care about is that the
-     * configured URL can be reached; it's up to the connector
-     * administrator to enter the right URL.
+     * Attempts to validate a URL.
      *
      * @param urlString the URL to test
+     * @see UrlValidator#validate
      */
-    /* Java 1.4 doesn't support setting a timeout on the
-     * URLConnection. Java 1.5 does support timeouts, so we're
-     * using reflection to set timeouts if available. Another
-     * possibility would be to use Jakarta Commons HttpClient.
-     *
-     * The read and connect timeouts are set to one minute. This
-     * isn't currently configurable, but if it fails the
-     * connector admin can set the flag to ignore validation
-     * errors and avoid the timeout problem.
-     *
-     * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4912484
-     * The above Sun bug report documents that openConnection
-     * doesn't try to connect.
-     *
+    /*
      * This method has package access and returns the HTTP response
      * code so that it can be unit tested. A return value of 0 is
      * arbitrary and unused by the tests.
      */
     int validateUrl(String urlString, ResourceBundle bundle)
             throws UrlConfigurationException {
-        if (urlString == null || urlString.trim().length() == 0)
-            return 0;
-
         try {
-            URL url = new URL(urlString);
-            URLConnection conn = url.openConnection();
-
-            if (!(conn instanceof HttpURLConnection)) {
-                // If the URL is not an HTTP or HTTPS URL, which is
-                // incredibly unlikely, we don't check anything beyond
-                // the URL syntax.
-                return 0;
-            }
-
-            HttpURLConnection httpConn = (HttpURLConnection) conn;
-            if (httpConn instanceof HttpsURLConnection)
-                setTrustingTrustManager((HttpsURLConnection) httpConn);
-            setTimeouts(conn);
-            httpConn.setRequestMethod("HEAD");
-            httpConn.setInstanceFollowRedirects(false);
-
-            httpConn.connect();
-            try {
-                int responseCode = httpConn.getResponseCode();
-                String responseMessage = httpConn.getResponseMessage();
-
-                switch (responseCode) {
-                case HttpURLConnection.HTTP_BAD_REQUEST:
-                case HttpURLConnection.HTTP_NOT_FOUND:
-                case HttpURLConnection.HTTP_BAD_METHOD:
-                case HttpURLConnection.HTTP_GONE:
-                case HttpURLConnection.HTTP_REQ_TOO_LONG:
-                    if (LOGGER.isLoggable(Level.SEVERE)) {
-                        LOGGER.severe("DISPLAY URL HTTP RESPONSE: " +
-                            responseCode + " " + responseMessage);
-                    }
-                    throw new UrlConfigurationException(
-                        httpNotFound(bundle, urlString, responseCode,
-                            responseMessage));
-
-                default:
-                    if (LOGGER.isLoggable(Level.CONFIG)) {
-                        LOGGER.config("DISPLAY URL HTTP RESPONSE: " +
-                            responseCode + " " + responseMessage);
-                    }
-                    break;
-                }
-                return responseCode;
-            } finally {
-                httpConn.disconnect();
-            }
+          return new UrlValidator().validate(urlString);
+        } catch (UrlValidatorException e) {
+          throw new UrlConfigurationException(
+              httpNotFound(bundle, urlString, e.getStatusCode(),
+                  e.getMessage()));
         } catch (UrlConfigurationException u) {
             throw u;
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in Livelink URL validation", t);
             String text = getExceptionMessages(urlString, t);
             throw new UrlConfigurationException(text, t);
-        }
-    }
-
-    /**
-     * Replaces the default TrustManager for this connection with
-     * one which trusts all certificates.
-     *
-     * @param conn the current connection
-     * @throws Exception if an error occurs setting the properties
-     */
-    private void setTrustingTrustManager(HttpsURLConnection conn)
-            throws Exception {
-        SSLContext sc = SSLContext.getInstance("SSL");
-        LOGGER.log(Level.FINEST, "SSLContext: " + sc);
-        sc.init(null, trustAllCerts, null);
-        SSLSocketFactory factory = sc.getSocketFactory();
-        LOGGER.log(Level.FINEST, "SSLSocketFactory: " + factory);
-        conn.setSSLSocketFactory(factory);
-        LOGGER.log(Level.FINEST, "Using socket factory: " +
-            conn.getSSLSocketFactory());
-    }
-
-    /**
-     * Sets the connect and read timeouts of the given URLConnection.
-     * This is only possible with Java SE 5.0 or later. With earlier
-     * versions, we don't do anything.
-     */
-    private void setTimeouts(URLConnection conn) throws Exception {
-        // If we're using Java 1.5 or later, URLConnection
-        // has timeout methods.
-        try {
-            final Integer[] connectTimeoutArg = new Integer[] {
-                new Integer(5 * 1000) };
-            final Integer[] readTimeoutArg = new Integer[] {
-                new Integer(60 * 1000) };
-            Class c = conn.getClass();
-            Method setConnectTimeout = c.getMethod("setConnectTimeout",
-                new Class[] { int.class });
-            setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg);
-            Method setReadTimeout = c.getMethod("setReadTimeout",
-                new Class[] { int.class });
-            setReadTimeout.invoke(conn, (Object[]) readTimeoutArg);
-        } catch (NoSuchMethodException m) {
-            // Ignore; we're probably on Java 1.4.
-            LOGGER.log(Level.FINEST,
-                "No timeout methods; we're probably on Java 1.4.");
-        } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Error setting connection timeout",
-                t);
         }
     }
 
