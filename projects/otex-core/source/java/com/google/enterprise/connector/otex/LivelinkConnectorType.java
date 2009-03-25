@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -849,7 +849,6 @@ public class LivelinkConnectorType implements ConnectorType {
 
             // Return the OK configuration.
             return getResponse(null, null, config, null);
-
         } catch (Throwable t) {
             // One last catch to be sure we return a message.
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
@@ -972,8 +971,6 @@ public class LivelinkConnectorType implements ConnectorType {
           throw new UrlConfigurationException(
               httpNotFound(bundle, urlString, e.getStatusCode(),
                   e.getMessage()));
-        } catch (UrlConfigurationException u) {
-            throw u;
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in Livelink URL validation", t);
             String text = getExceptionMessages(urlString, t);
