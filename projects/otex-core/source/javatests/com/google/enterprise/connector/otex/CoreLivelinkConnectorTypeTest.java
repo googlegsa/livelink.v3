@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
@@ -28,6 +29,12 @@ import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
 import javax.swing.text.MutableAttributeSet;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.xml.sax.SAXException;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.SAXParseException;
+
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import junit.framework.TestCase;
 
@@ -45,7 +52,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
      * available for tests.
      */
     static class FormElementsCallback extends HTMLEditorKit.ParserCallback {
-
         // Use a list if we care about the element order on the form.
         HashMap properties = new HashMap();
 
@@ -93,7 +99,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
                 cache.put(attr.toString(), attrs.getAttribute(attr));
             }
         }
-
 
         /* Only handles the tags we support on the form. */
         void doTag(HTML.Tag tag, MutableAttributeSet attrs) {
@@ -185,16 +190,60 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     protected static final Properties emptyProperties =
         LivelinkConnectorFactory.emptyProperties;
 
+    /**
+     * A simple <code>ErrorHandler</code> implementation that always
+     * throws the <code>SAXParseException</code>.
+     */
+    public static class ThrowingErrorHandler implements ErrorHandler {
+        public void error(SAXParseException exception) throws SAXException {
+            throw exception;
+        }
+
+        public void fatalError(SAXParseException exception)
+                throws SAXException {
+            throw exception;
+        }
+
+        public void warning(SAXParseException exception) throws SAXException {
+            throw exception;
+        }
+    }
+
+    private static final String HTML_PREFIX =
+        "<!DOCTYPE html PUBLIC "
+        + "\"-//W3C//DTD XHTML 1.0 Strict//EN\" "
+        + "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">"
+        + "<html xmlns=\"http://www.w3.org/1999/xhtml\">"
+        + "<head><title/></head><body><table>";
+
+    private static final String HTML_SUFFIX = "</table></body></html>";
+
+    /**
+     * Parses the form snippet using the XHTML Strict DTD, the
+     * appropriate HTML context, and a validating parser.
+     *
+     * @param formSnippet the form snippet
+     * @throws Exception if an unexpected error occrs
+     */
+    private void validateXhtml(String formSnippet) throws Exception {
+        DocumentBuilderFactory factory =
+            DocumentBuilderFactory.newInstance();
+        factory.setValidating(true);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        builder.setErrorHandler(new ThrowingErrorHandler());
+
+        String html = HTML_PREFIX + formSnippet + HTML_SUFFIX;
+        builder.parse(new ByteArrayInputStream(html.getBytes("UTF-8")));
+    }
+
     protected LivelinkConnectorType connectorType;
 
     protected void setUp() {
         connectorType = new LivelinkConnectorType();
     }
 
-
     /** The default locale for use in creating config forms. */
     protected static final Locale defaultLocale = Locale.getDefault();
-
 
     /**
      * Tests the default empty config form.
@@ -207,7 +256,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         assertBooleanIsFalse(form, "useSeparateAuthentication");
         assertIsHidden(form, "authenticationServer");
     }
-
 
     /**
      * Tests that the config form labels are responsive to the
@@ -278,6 +326,33 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         assertNull(testProperties.getProperty("traversalUsername"));
     }
 
+    /* Tests a empty config form for valid XHTML. */
+    public void testXhtmlConfigForm() throws Exception {
+        ConfigureResponse response = connectorType.getConfigForm(defaultLocale);
+
+        HashMap form = getForm(response);
+        assertIsHidden(form, "livelinkCgi");
+        assertIsHidden(form, "authenticationServer");
+
+        String formSnippet = response.getFormSnippet();
+        validateXhtml(formSnippet);
+    }
+
+    /* Tests an expanded empty config form for valid XHTML. */
+    public void testXhtmlPopulatedConfigForm() throws Exception {
+        HashMap data = new HashMap();
+        data.put("useHttpTunneling", "true");
+        data.put("useSeparateAuthentication", "true");
+        ConfigureResponse response =
+            connectorType.getPopulatedConfigForm(data, defaultLocale);
+
+        HashMap form = getForm(response);
+        assertIsNotHidden(form, "livelinkCgi");
+        assertIsNotHidden(form, "authenticationServer");
+
+        String formSnippet = response.getFormSnippet();
+        validateXhtml(formSnippet);
+    }
 
     /**
      * Tests prepopulating a config form.
@@ -481,7 +556,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         } catch (UrlConfigurationException e) {
         }
     }
-
 
     /** Helper method to get valid direct connection properties. */
     protected Properties getValidProperties() {

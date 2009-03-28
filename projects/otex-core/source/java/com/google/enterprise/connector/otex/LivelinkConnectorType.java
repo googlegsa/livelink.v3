@@ -53,6 +53,13 @@ public class LivelinkConnectorType implements ConnectorType {
      * in the format used by the GSA.
      */
     private static abstract class FormProperty {
+        /* Property for space betwen sections. */
+        protected static final String PADDING = "padding-top: 3ex; ";
+
+        /* Style attribute for space betwen sections. */
+        protected static final String PADDING_STYLE =
+            " style='" + PADDING + '\'';
+
         /**
          * Gets the display label for the given name.
          *
@@ -108,15 +115,22 @@ public class LivelinkConnectorType implements ConnectorType {
                 String labelSuffix, String value, ResourceBundle labels) {
             String label = getLabel(name, labels);
 
-            // TODO: Use CSS here. Better handling of section labels.
-            if (FormBuilder.START_TAG.equals(labelPrefix))
-                buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
-            buffer.append("<tr valign='top'>\r\n").
-                append("<td style='white-space: nowrap'>");
+            // TODO: Better handling of section labels.
+            String padding;
+            String style;
+            if (FormBuilder.START_TAG.equals(labelPrefix)) {
+              padding = PADDING;
+              style = PADDING_STYLE;
+            } else {
+              padding = "";
+              style = "";
+            }
+            buffer.append("<tr valign='top'>\r\n").append("<td style='").
+                append(padding).append("white-space: nowrap'>");
             if (required)
                 buffer.append("<div style='float: left;'>");
             buffer.append(labelPrefix);
-            appendLabel(buffer, name, label);
+            appendTextLabel(buffer, name, label);
             buffer.append(labelSuffix);
             if (required) {
                 buffer.append("</div><div style='text-align: right; ").
@@ -124,7 +138,7 @@ public class LivelinkConnectorType implements ConnectorType {
                     append("margin-right: 0.3em;\'>*</div>");
             }
             buffer.append("</td>\r\n").
-                append("<td>");
+                append("<td").append(style).append(">");
             addFormControl(buffer, value, labels);
             buffer.append("</td>\r\n</tr>\r\n");
         }
@@ -168,7 +182,7 @@ public class LivelinkConnectorType implements ConnectorType {
             }
         }
 
-        protected void appendLabel(StringBuffer buffer, String element,
+        protected void appendControlLabel(StringBuffer buffer, String element,
                 String label) {
             buffer.append("<label ");
             appendAttribute(buffer, "for", element);
@@ -176,10 +190,34 @@ public class LivelinkConnectorType implements ConnectorType {
             buffer.append(label);
             buffer.append("</label>");
         }
+
+        protected void appendTextLabel(StringBuffer buffer, String element,
+                String label) {
+            appendControlLabel(buffer, element, label);
+        }
+    }
+
+    /**
+     * Holder for a header property that does not use the HTML label
+     * element on the label text.
+     */
+    private static abstract class HeaderProperty extends FormProperty {
+        HeaderProperty(String name) {
+            super(name);
+        }
+
+        HeaderProperty(String name, String defaultValue) {
+            super(name, false, defaultValue);
+        }
+
+        protected void appendTextLabel(StringBuffer buffer, String element,
+                String label) {
+            buffer.append(label);
+        }
     }
 
     /** A form label with no associated form control. */
-    private static class LabelProperty extends FormProperty {
+    private static class LabelProperty extends HeaderProperty {
         LabelProperty(String name) {
             super(name);
         }
@@ -191,14 +229,11 @@ public class LivelinkConnectorType implements ConnectorType {
 
             // TODO: Handle duplication between this and
             // FormProperty.addToBuffer.
-            // XXX: Should we just assume that we know that
-            // labelPrefix = START_TAG and labelSuffix = END_TAG here?
-            if (FormBuilder.START_TAG.equals(labelPrefix))
-                buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
-            buffer.append("<tr valign='top'>\r\n").
-                append("<td style='white-space: nowrap' colspan='2'>");
+            // We know that labelPrefix = START_TAG here.
+            buffer.append("<tr valign='top'>\r\n").append("<td style='").
+                append(PADDING).append("white-space: nowrap' colspan='2'>");
             buffer.append(labelPrefix);
-            appendLabel(buffer, name, label);
+            appendTextLabel(buffer, name, label);
             buffer.append(labelSuffix);
             buffer.append("</td>\r\n</tr>\r\n");
         }
@@ -248,6 +283,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
             buffer.append("<input ");
             appendAttribute(buffer, "type", type);
+            appendAttribute(buffer, "id", name);
             appendAttribute(buffer, "name", name);
 
             // TODO: What size should this be? I made it larger to
@@ -329,7 +365,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * Holder for a property which should be rendered as a set of
      * radio buttons.
      */
-    private static class RadioSelectProperty extends FormProperty {
+    private static class RadioSelectProperty extends HeaderProperty {
         private final String[] buttonNames;
 
         RadioSelectProperty(String name, String[] buttonNames,
@@ -345,7 +381,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
             for (int i = 0; i < buttonNames.length; i++) {
                 if (i > 0)  // arrange radio buttons vertically
-                    buffer.append("<br>");
+                    buffer.append("<br />");
                 String buttonName = buttonNames[i];
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "radio");
@@ -353,10 +389,10 @@ public class LivelinkConnectorType implements ConnectorType {
                 appendAttribute(buffer, "id", name + buttonName);
                 appendAttribute(buffer, "value", buttonName);
                 if (buttonName.equalsIgnoreCase(value))
-                    buffer.append("checked");
-                buffer.append("> ");
-                appendLabel(buffer, name + buttonName,
-                            getLabel(buttonName, labels));
+                    appendAttribute(buffer, "checked", "checked");
+                buffer.append(" /> ");
+                appendControlLabel(buffer, name + buttonName,
+                    getLabel(buttonName, labels));
             }
         }
     }
@@ -368,6 +404,7 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class BooleanSelectProperty extends RadioSelectProperty {
         static final String[] boolstr = { "true", "false" };
+
         BooleanSelectProperty(String name, String defaultValue) {
             super(name, boolstr, defaultValue);
         }
@@ -380,7 +417,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * Selecting an Enabler property usually results in a redisplay
      * that exposes additional properties.
      */
-    private static class EnablerProperty extends FormProperty {
+    private static class EnablerProperty extends HeaderProperty {
         EnablerProperty(String name, String defaultValue) {
             super(name, defaultValue);
         }
@@ -393,12 +430,12 @@ public class LivelinkConnectorType implements ConnectorType {
             buffer.append("<input ");
             appendAttribute(buffer, "type", "checkbox");
             appendAttribute(buffer, "name", name);
-            appendAttribute(buffer, "id", name + "true");
+            appendAttribute(buffer, "id", name);
             appendAttribute(buffer, "value", "true");
             if ("true".equalsIgnoreCase(value))
-                buffer.append("checked");
-            buffer.append("> ");
-            appendLabel(buffer, name + "true", getLabel("enable", labels));
+                appendAttribute(buffer, "checked", "checked");
+            buffer.append(" /> ");
+            appendControlLabel(buffer, name, getLabel("enable", labels));
         }
     }
 
