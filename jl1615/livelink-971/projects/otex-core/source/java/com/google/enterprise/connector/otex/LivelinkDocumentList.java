@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -487,7 +488,7 @@ class LivelinkDocumentList implements DocumentList {
                     //     "    EventID " +
                     //     delArray.toValue(delRow, "EventID").toString2());
                     props = new LivelinkDocument(objectId, 3);
-                    collectDeletedObjectAttributes();
+                    collectDeletedObjectAttributes(delDate);
                 } finally {
                     // Establish the checkpoint for this row.
                     checkpoint.setDeleteCheckpoint(delDate,
@@ -507,16 +508,18 @@ class LivelinkDocumentList implements DocumentList {
 
         /**
          * For items to be deleted from the index, we need only supply
-         * the GSA the DocId, lastModified date,  and a Delete action
+         * the GSA the DocId, lastModified date, and a Delete action
          * properties.
          */
-        private void collectDeletedObjectAttributes()
+        private void collectDeletedObjectAttributes(Date deleteDate)
             throws RepositoryException
         {
             props.addProperty(SpiConstants.PROPNAME_DOCID,
                               Value.getLongValue(objectId));
+            Calendar c = Calendar.getInstance();
+            c.setTime(deleteDate); // sic; we have milliseconds here.
             props.addProperty(SpiConstants.PROPNAME_LASTMODIFIED,
-                              delArray.toValue(delRow, "AuditDate"));
+                              Value.getDateValue(c));
             props.addProperty(SpiConstants.PROPNAME_ACTION,
                               Value.getStringValue(
                               SpiConstants.ActionType.DELETE.toString()));
