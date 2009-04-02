@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import junit.framework.TestCase;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
-
+import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 
 /**
  * Tests the LivelinkAuthenticationManager.
@@ -156,13 +156,11 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
         return authenticate(username, password, false);
     }
 
-    private boolean authenticate(final String username, final String password,
+    private boolean authenticate(String username, String password,
             boolean log) {
         try {
-            AuthenticationIdentity identity = new AuthenticationIdentity() {
-                    public String getUsername() { return username; }
-                    public String getPassword() { return password; }
-                };
+            AuthenticationIdentity identity =
+                new SimpleAuthenticationIdentity(username, password);
             return authManager.authenticate(identity).isValid();
         }
         catch (RepositoryException e) {
