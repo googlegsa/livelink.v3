@@ -1,4 +1,4 @@
-// Copyright (C) 2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -155,11 +155,18 @@ class Checkpoint {
         switch (eventId.type()) {
 
         case ClientValue.INTEGER:
+            // Oracle, Livelink 9.7 and earlier.
             deleteEventId = eventId.toInteger();
             break;
 
         case ClientValue.DOUBLE:
+            // SQL Server, Livelink 9.7 and earlier.
             deleteEventId = (long) eventId.toDouble();
+            break;
+
+        case ClientValue.LONG:
+            // SQL Server, Livelink 9.7.1.
+            deleteEventId = eventId.toLong();
             break;
 
         default:
@@ -261,7 +268,7 @@ class Checkpoint {
         // The Deleted items checkpoint is optional.
         if (deleteDate != null) {
             buffer.append(',');
-            buffer.append(dateFmt.toSqlString(deleteDate));
+            buffer.append(dateFmt.toSqlMillisString(deleteDate));
             buffer.append(',');
             buffer.append(deleteEventId);
         }

@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,6 +55,10 @@ class LivelinkDocumentList implements DocumentList {
     private static final String[] USER_FIELD_NAMES = {
         "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
         "LockedBy", "Owner" };
+
+    /** Date formatter used to construct checkpoint dates */
+    private final LivelinkDateFormat dateFormat =
+        LivelinkDateFormat.getInstance();
 
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
@@ -436,7 +440,8 @@ class LivelinkDocumentList implements DocumentList {
             // ... and the next item to delete.
             if (delRow < delSize) {
                 try {
-                    delDate = delArray.toDate(delRow, "AuditDate");
+                    delDate = dateFormat.parse(delArray.toString(delRow,
+                        "AuditDate"));
                 } catch (RepositoryException e1) {
                     delRow++;
                     throw e1;

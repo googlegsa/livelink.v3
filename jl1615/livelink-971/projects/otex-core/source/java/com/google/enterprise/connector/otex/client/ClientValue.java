@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,9 @@ public interface ClientValue {
 
     /** Integer value. */
     int INTEGER = 2;
+
+    /** Long value. */
+    int LONG = -8;
 
     /** Array of values. */
     int LIST = -2;
@@ -334,6 +337,14 @@ public interface ClientValue {
      * @return an integer field value
      */
     int toInteger() throws RepositoryException;
+
+    /**
+     * Gets the value as a long value.
+     *
+     * @return a long field value
+     * @since 1.3.1
+     */
+    long toLong() throws RepositoryException;
 
     /**
      * Gets the value as a string value.

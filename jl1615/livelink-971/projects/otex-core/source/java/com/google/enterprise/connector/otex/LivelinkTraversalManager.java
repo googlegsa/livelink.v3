@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,6 +105,9 @@ class LivelinkTraversalManager
         deleteSupported = isDeleteSupported();
     }
 
+    /** Select list column for AuditDate with milliseconds. */
+    /* FIXME: Does Oracle make us leave out the "as"? */
+    String AUDIT_DATE = "CONVERT(VARCHAR(23), AuditDate, 121) as AuditDate";
 
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
@@ -231,13 +234,13 @@ class LivelinkTraversalManager
             try {
                 String query =
                     "EventID in (select max(EventID) from DAuditNew)";
-                String[] columns = { "EventID", "AuditDate" };
+                String[] columns = { "EventID", AUDIT_DATE };
                 String view = "DAuditNew";
                 ClientValue results =
                     sysadminClient.ListNodes(query, view, columns);
                 if (results.size() > 0) {
                     checkpoint.setDeleteCheckpoint(
-                        results.toDate(0, "AuditDate"),
+                        dateFormat.parse(results.toString(0, "AuditDate")),
                         results.toValue(0, "EventID"));
                 }
             } catch (Exception e) {
@@ -806,11 +809,13 @@ class LivelinkTraversalManager
         }
 
         StringBuffer buffer = new StringBuffer();
-        // This is the same as "(AuditStr = 'Delete'".
+        // This is the same as "(AuditStr = 'Delete'", except that as
+        // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
+        // would run afoul of the ListNodesQueryBlackList.
         buffer.append("(AuditID = 2");
 
         // Only include delete events after the checkpoint.
-        String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
+        String deleteDate = dateFormat.toSqlMillisString(checkpoint.deleteDate);
         buffer.append(" and (AuditDate > '");
         buffer.append(deleteDate);
         buffer.append("' or (AuditDate = '");
@@ -833,7 +838,7 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DAuditNew";
         String[] columns = {
-            "top " + batchsz + " AuditDate", "EventID", "DataID" };
+            "top " + batchsz + " " + AUDIT_DATE, "EventID", "DataID" };
 
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
