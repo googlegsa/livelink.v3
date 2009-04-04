@@ -105,9 +105,13 @@ class LivelinkTraversalManager
         deleteSupported = isDeleteSupported();
     }
 
-    /** Select list column for AuditDate with milliseconds. */
-    /* FIXME: Does Oracle make us leave out the "as"? */
-    String AUDIT_DATE = "CONVERT(VARCHAR(23), AuditDate, 121) as AuditDate";
+    /** Select list column for AuditDate; Oracle still lacks milliseconds. */
+    String AUDIT_DATE_ORACLE =
+        "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as AuditDate";
+
+    /** Select list column for AuditDate with milliseconds for SQL Server. */
+    String AUDIT_DATE_SQL_SERVER =
+        "CONVERT(VARCHAR(23), AuditDate, 121) as AuditDate";
 
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
@@ -232,9 +236,15 @@ class LivelinkTraversalManager
         // checkpoint from the last event in the audit log.
         if (deleteSupported) {
             try {
+                String auditDate;
+                if (isSqlServer)
+                    auditDate = AUDIT_DATE_SQL_SERVER;
+                else
+                    auditDate = AUDIT_DATE_ORACLE;
+
                 String query =
                     "EventID in (select max(EventID) from DAuditNew)";
-                String[] columns = { "EventID", AUDIT_DATE };
+                String[] columns = { auditDate, "EventID" };
                 String view = "DAuditNew";
                 ClientValue results =
                     sysadminClient.ListNodes(query, view, columns);
@@ -731,7 +741,6 @@ class LivelinkTraversalManager
             buffer.append(checkpoint.insertDataId);
             buffer.append("))");
         }
-
         buffer.append(ORDER_BY);
 
         String query = buffer.toString();
@@ -759,7 +768,6 @@ class LivelinkTraversalManager
     private ClientValue getCandidatesOracle(Checkpoint checkpoint, int batchsz)
             throws RepositoryException {
         StringBuffer buffer = new StringBuffer();
-        buffer.append("(select ModifyDate, DataID from DTree");
         if ((checkpoint != null) && (checkpoint.insertDate != null)) {
             /* The TIMESTAMP literal, part of the SQL standard, was first
              * supported by Oracle 9i, and not at all by SQL Server. SQL
@@ -768,23 +776,23 @@ class LivelinkTraversalManager
              * 8i, and therefore with Livelink 9.0 or later.
              */
             String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
-            buffer.append(" where (ModifyDate > TO_DATE('");
+            buffer.append("(ModifyDate > TO_DATE('");
             buffer.append(modifyDate);
             buffer.append(
                 "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('");
             buffer.append(modifyDate);
             buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and DataID > ");
             buffer.append(checkpoint.insertDataId);
-            buffer.append("))");
+            buffer.append(")) and ");
         }
-        buffer.append(ORDER_BY);
-        buffer.append(')');
+        buffer.append("rownum <= ");
+        buffer.append(batchsz);
 
-        String query = "rownum <= " + batchsz;
-        String view = buffer.toString();
-        String[] columns = new String[] { "*" };
+        String query = buffer.toString();
+        String view = "(select * from DTree" + ORDER_BY + ")";
+        String[] columns = new String[] { "ModifyDate", "DataID" };
         if (LOGGER.isLoggable(Level.FINEST))
-            LOGGER.finest("CANDIDATES VIEW: " + view);
+            LOGGER.finest("CANDIDATES QUERY: " + query);
 
         return sysadminClient.ListNodes(query, view, columns);
     }
@@ -838,8 +846,8 @@ class LivelinkTraversalManager
         String query = buffer.toString();
         String view = "DAuditNew";
         String[] columns = {
-            "top " + batchsz + " " + AUDIT_DATE, "EventID", "DataID" };
-
+            "top " + batchsz + " " + AUDIT_DATE_SQL_SERVER, "EventID",
+            "DataID" };
         if (LOGGER.isLoggable(Level.FINEST))
             LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
 
@@ -866,9 +874,10 @@ class LivelinkTraversalManager
         }
 
         StringBuffer buffer = new StringBuffer();
-        buffer.append("(select AuditDate, EventID, DataID from DAuditNew");
-        // This is the same as "(AuditStr = 'Delete'".
-        buffer.append(" where (AuditID = 2");
+        // This is the same as "(AuditStr = 'Delete'", except that as
+        // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
+        // would run afoul of the ListNodesQueryBlackList.
+        buffer.append("AuditID = 2");
 
         // Only include delete events after the checkpoint.
         String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
@@ -878,26 +887,25 @@ class LivelinkTraversalManager
         buffer.append(deleteDate);
         buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and EventID > ");
         buffer.append(checkpoint.deleteEventId);
-        buffer.append("))");
+        buffer.append(")) ");
 
         // Exclude items with a SubType we know we excluded when indexing.
         String excludedNodeTypes = connector.getExcludedNodeTypes();
         if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
-            buffer.append(" and SubType not in (");
+            buffer.append("and SubType not in (");
             buffer.append(excludedNodeTypes);
-            buffer.append(')');
+            buffer.append(") ");
         }
 
-        buffer.append(')');
-        buffer.append(DELETE_ORDER_BY);
-        buffer.append(')');
+        buffer.append("and rownum <= ");
+        buffer.append(batchsz);
 
-        String query = "rownum <= " + batchsz;
-        String view = buffer.toString();
-        String[] columns = new String[] { "*" };
-
+        String query = buffer.toString();
+        String view = "(select * from DAuditNew" + DELETE_ORDER_BY + ")";
+        String[] columns = new String[] {
+            AUDIT_DATE_ORACLE, "EventID", "DataID" };
         if (LOGGER.isLoggable(Level.FINEST))
-            LOGGER.finest("DELETE CANDIDATES VIEW: " + view);
+            LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
 
         return sysadminClient.ListNodes(query, view, columns);
     }

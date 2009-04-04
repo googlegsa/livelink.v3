@@ -165,7 +165,7 @@ class Checkpoint {
             break;
 
         case ClientValue.LONG:
-            // SQL Server, Livelink 9.7.1.
+            // Oracle and SQL Server, Livelink 9.7.1.
             deleteEventId = eventId.toLong();
             break;
 

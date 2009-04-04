@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,7 +119,8 @@ final class MockClient implements Client {
             fields = new String[] { "DataID" };
             values = new Object[][] {
                 new Object[] { new Integer(4104) } };
-        } else if (columns.length == 1 && columns[0].equals("minModifyDate")) {
+        } else if (columns.length == 1 &&
+                columns[0].endsWith("minModifyDate")) {
             // This is the check for missing entries in the
             // DTreeAncestors table, and the optimized startDate. The
             // returned value doesn't matter.
