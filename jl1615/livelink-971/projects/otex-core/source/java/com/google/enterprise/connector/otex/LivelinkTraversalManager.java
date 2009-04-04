@@ -820,7 +820,7 @@ class LivelinkTraversalManager
         // This is the same as "(AuditStr = 'Delete'", except that as
         // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
         // would run afoul of the ListNodesQueryBlackList.
-        buffer.append("(AuditID = 2");
+        buffer.append("AuditID = 2");
 
         // Only include delete events after the checkpoint.
         String deleteDate = dateFormat.toSqlMillisString(checkpoint.deleteDate);
@@ -840,7 +840,6 @@ class LivelinkTraversalManager
             buffer.append(')');
         }
 
-        buffer.append(')');
         buffer.append(DELETE_ORDER_BY);
 
         String query = buffer.toString();
@@ -887,17 +886,17 @@ class LivelinkTraversalManager
         buffer.append(deleteDate);
         buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and EventID > ");
         buffer.append(checkpoint.deleteEventId);
-        buffer.append(")) ");
+        buffer.append("))");
 
         // Exclude items with a SubType we know we excluded when indexing.
         String excludedNodeTypes = connector.getExcludedNodeTypes();
         if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
-            buffer.append("and SubType not in (");
+            buffer.append(" and SubType not in (");
             buffer.append(excludedNodeTypes);
-            buffer.append(") ");
+            buffer.append(')');
         }
 
-        buffer.append("and rownum <= ");
+        buffer.append(" and rownum <= ");
         buffer.append(batchsz);
 
         String query = buffer.toString();
