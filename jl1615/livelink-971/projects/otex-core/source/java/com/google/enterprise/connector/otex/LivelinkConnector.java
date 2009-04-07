@@ -353,8 +353,7 @@ public class LivelinkConnector implements Connector {
      * @param password the password
      */
     public void setPassword(String password) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("PASSWORD: [...]");
+        LOGGER.config("PASSWORD: [...]");
         clientFactory.setPassword(password);
     }
 
@@ -1741,8 +1740,7 @@ public class LivelinkConnector implements Connector {
     /** {@inheritDoc} */
     public Session login()
             throws RepositoryLoginException, RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("LOGIN");
+        LOGGER.fine("LOGIN");
 
         init(); 
 
@@ -1805,9 +1803,20 @@ public class LivelinkConnector implements Connector {
                 authenticationClientFactory.setEncoding("UTF-8");
         }
 
-        // Get the database type and check the DTreeAncestors table
-        // (in that order, because we need the database type for the
+        // Check that our user has System Administration rights, get
+        // the database type, and check the DTreeAncestors table (in
+        // that order, because we need SA rights for the database type
+        // queries, and we need the database type for the
         // DTreeAncestors queries).
+        ClientValue userInfo = client.GetUserInfo(username);
+        int privs = userInfo.toInteger("UserPrivileges");
+        if ((privs & Client.PRIV_PERM_BYPASS) != Client.PRIV_PERM_BYPASS) {
+            LOGGER.info("USER PRIVILEGES: " + privs);
+            throw new ConfigurationException("User " + username +
+                " does not have Livelink System Administration rights.",
+                "missingSaRights", new String[] { username });
+        }
+
         autoDetectServtype(client);
 
         // Check first to see if we are going to need the

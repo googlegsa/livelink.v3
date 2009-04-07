@@ -82,6 +82,19 @@ final class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    public ClientValue GetUserInfo(String username)
+            throws RepositoryException {
+        int privileges;
+        if (username.equals("Admin"))
+            privileges = PRIV_PERM_BYPASS;
+        else
+            privileges = 0;
+        return new MockClientValue(
+            new String[] { "UserPrivileges" },
+            new Integer[] { new Integer(privileges) });
+    }
+
+    /** {@inheritDoc} */
     public ClientValue AccessEnterpriseWS() throws RepositoryException {
         return new MockClientValue(new String[] { "ID", "VolumeID" },
             new Integer[] { new Integer(2000), new Integer(-2000) });
