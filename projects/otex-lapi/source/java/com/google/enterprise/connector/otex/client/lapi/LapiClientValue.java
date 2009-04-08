@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,8 @@ public final class LapiClientValue implements ClientValue {
         assert DOUBLE == LLValue.LL_DOUBLE : LLValue.LL_DOUBLE;
         assert ERROR == LLValue.LL_ERROR : LLValue.LL_ERROR;
         assert INTEGER == LLValue.LL_INTEGER : LLValue.LL_INTEGER;
+        // Requires LAPI 9.7.1:
+        // assert LONG = LLValue.LL_LONG : LLValue.LL_LONG;
         assert LIST == LLValue.LL_LIST : LLValue.LL_LIST;
         assert NOTSET == LLValue.LL_NOTSET : LLValue.LL_NOTSET;
         assert RECORD == LLValue.LL_RECORD : LLValue.LL_RECORD;
@@ -469,6 +471,35 @@ public final class LapiClientValue implements ClientValue {
     public int toInteger() throws RepositoryException {
         try {
             return value.toInteger();
+        } catch (LLIllegalOperationException e) {
+            throw new IllegalArgumentException();
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** {@inheritDoc} */
+    /*
+     * LLValue.toLong is new in LAPI 9.7.1. Four choices are:
+     * 
+     * 1. use reflection
+     * 2. load a separately compiled class to handle toLong
+     * 3. compile against LAPI 9.7.1
+     * 4. parse the long values directly
+     *
+     * Reflection is slow. The danger with compiling against LAPI 9.7.1
+     * is that something else (like a new overload) could fail with
+     * earlier versions of LAPI.
+     * 
+     * The format is well-defined, "L-?[0-9]+", so we're opting for #4.
+     */
+    public long toLong() throws RepositoryException {
+        try {
+            String s = value.toString();
+            if (s.length() > 1 && s.charAt(0) == 'L')
+                return Long.parseLong(s.substring(1));
+            else
+                throw new IllegalArgumentException();
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException();
         } catch (RuntimeException e) {

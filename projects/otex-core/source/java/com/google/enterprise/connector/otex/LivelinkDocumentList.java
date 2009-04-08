@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -55,6 +56,10 @@ class LivelinkDocumentList implements DocumentList {
     private static final String[] USER_FIELD_NAMES = {
         "UserID", "GroupID", "AssignedTo", "CreatedBy", "ReservedBy",
         "LockedBy", "Owner" };
+
+    /** Date formatter used to construct checkpoint dates */
+    private final LivelinkDateFormat dateFormat =
+        LivelinkDateFormat.getInstance();
 
     /** The connector contains configuration information. */
     private final LivelinkConnector connector;
@@ -436,7 +441,8 @@ class LivelinkDocumentList implements DocumentList {
             // ... and the next item to delete.
             if (delRow < delSize) {
                 try {
-                    delDate = delArray.toDate(delRow, "AuditDate");
+                    delDate = dateFormat.parse(delArray.toString(delRow,
+                        "AuditDate"));
                 } catch (RepositoryException e1) {
                     delRow++;
                     throw e1;
@@ -482,7 +488,7 @@ class LivelinkDocumentList implements DocumentList {
                     //     "    EventID " +
                     //     delArray.toValue(delRow, "EventID").toString2());
                     props = new LivelinkDocument(objectId, 3);
-                    collectDeletedObjectAttributes();
+                    collectDeletedObjectAttributes(delDate);
                 } finally {
                     // Establish the checkpoint for this row.
                     checkpoint.setDeleteCheckpoint(delDate,
@@ -502,16 +508,18 @@ class LivelinkDocumentList implements DocumentList {
 
         /**
          * For items to be deleted from the index, we need only supply
-         * the GSA the DocId, lastModified date,  and a Delete action
+         * the GSA the DocId, lastModified date, and a Delete action
          * properties.
          */
-        private void collectDeletedObjectAttributes()
+        private void collectDeletedObjectAttributes(Date deleteDate)
             throws RepositoryException
         {
             props.addProperty(SpiConstants.PROPNAME_DOCID,
                               Value.getLongValue(objectId));
+            Calendar c = Calendar.getInstance();
+            c.setTime(deleteDate); // sic; we have milliseconds here.
             props.addProperty(SpiConstants.PROPNAME_LASTMODIFIED,
-                              delArray.toValue(delRow, "AuditDate"));
+                              Value.getDateValue(c));
             props.addProperty(SpiConstants.PROPNAME_ACTION,
                               Value.getStringValue(
                               SpiConstants.ActionType.DELETE.toString()));

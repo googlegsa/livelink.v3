@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ final class LapiClient implements Client {
         assert CHARACTER_ENCODING_UTF8 ==
             LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8 :
             LAPI_DOCUMENTS.CHARACTER_ENCODING_UTF8;
+        assert PRIV_PERM_BYPASS == LAPI_USERS.PRIV_PERM_BYPASS :
+            LAPI_USERS.PRIV_PERM_BYPASS;
         assert ATTR_DATAVALUES == LAPI_ATTRIBUTES.ATTR_DATAVALUES :
             LAPI_ATTRIBUTES.ATTR_DATAVALUES;
         assert ATTR_DEFAULTVALUES == LAPI_ATTRIBUTES.ATTR_DEFAULTVALUES :
@@ -180,6 +182,19 @@ final class LapiClient implements Client {
         return new LapiClientValue(userInfo);
     }
 
+    /** {@inheritDoc} */
+    public synchronized ClientValue GetUserInfo(String username)
+            throws RepositoryException {
+        LLValue userInfo = new LLValue();
+        try {
+            if (users.GetUserInfo(username, userInfo) != 0)
+                throw new LapiException(session, LOGGER);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+        return new LapiClientValue(userInfo);
+    }
+    
     /** {@inheritDoc} */
     public synchronized ClientValue AccessEnterpriseWS()
             throws RepositoryException {

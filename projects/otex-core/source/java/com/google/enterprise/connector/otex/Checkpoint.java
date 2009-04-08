@@ -156,11 +156,18 @@ class Checkpoint {
         switch (eventId.type()) {
 
         case ClientValue.INTEGER:
+            // Oracle, Livelink 9.7 and earlier.
             deleteEventId = eventId.toInteger();
             break;
 
         case ClientValue.DOUBLE:
+            // SQL Server, Livelink 9.7 and earlier.
             deleteEventId = (long) eventId.toDouble();
+            break;
+
+        case ClientValue.LONG:
+            // Oracle and SQL Server, Livelink 9.7.1.
+            deleteEventId = eventId.toLong();
             break;
 
         default:
@@ -262,7 +269,7 @@ class Checkpoint {
         // The Deleted items checkpoint is optional.
         if (deleteDate != null) {
             buffer.append(',');
-            buffer.append(dateFmt.toSqlString(deleteDate));
+            buffer.append(dateFmt.toSqlMillisString(deleteDate));
             buffer.append(',');
             buffer.append(deleteEventId);
         }

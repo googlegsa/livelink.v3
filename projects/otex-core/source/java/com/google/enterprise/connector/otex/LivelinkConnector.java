@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -353,8 +353,7 @@ public class LivelinkConnector implements Connector {
      * @param password the password
      */
     public void setPassword(String password) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("PASSWORD: [...]");
+        LOGGER.config("PASSWORD: [...]");
         clientFactory.setPassword(password);
     }
 
@@ -1648,26 +1647,16 @@ public class LivelinkConnector implements Connector {
         // If the user specified "Items to index", fetch the earliest
         // modification time for any of those items.  We can forge 
         // a start checkpoint that skips over any ancient history in
-        // the LL database.  This executes a SQL query of the form:
-        //   select min(ModifyDate) from DTreeAncestors join DTree
-        //   on DTreeAncestors.DataID = DTree.DataID
-        //   where AncestorID in (items to index)
-        //   or DataID in (items to index)
-        // [Note the actual query is slightly more cryptic to avoid a
-        // SQL error caused by the range variable inserted into the
-        // query by ListNodes, and by range variables introduced here
-        // to make it easier to test the query in SQL Server
-        // Enterprise Manager or Query Analyzer.]
+        // the LL database.
         if (includedLocationNodes != null &&
                 includedLocationNodes.length() > 0) {
             String ancestorNodes = LivelinkTraversalManager.getAncestorNodes(
                 includedLocationNodes);
-            String query = "1=1";
-            String[] columns = { "minModifyDate" };
-            String view = "(select min(ModifyDate) as minModifyDate from " +
-                "DTreeAncestors Anc join DTree T on Anc.DataID = " +
-                "T.DataID where AncestorID in (" + ancestorNodes + ") " +
-                "or T.DataID in (" + includedLocationNodes + "))";
+            String query = "DataID in (select DataID from DTreeAncestors " +
+                "where AncestorID in (" + ancestorNodes + ")) " +
+                "or DataID in (" + includedLocationNodes + ")";
+            String view = "DTree";
+            String[] columns = { "min(ModifyDate) as minModifyDate" };
             ClientValue results = client.ListNodes(query, view, columns);
 
             if (results.size() > 0 &&
@@ -1751,8 +1740,7 @@ public class LivelinkConnector implements Connector {
     /** {@inheritDoc} */
     public Session login()
             throws RepositoryLoginException, RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("LOGIN");
+        LOGGER.fine("LOGIN");
 
         init(); 
 
@@ -1815,9 +1803,20 @@ public class LivelinkConnector implements Connector {
                 authenticationClientFactory.setEncoding("UTF-8");
         }
 
-        // Get the database type and check the DTreeAncestors table
-        // (in that order, because we need the database type for the
+        // Check that our user has System Administration rights, get
+        // the database type, and check the DTreeAncestors table (in
+        // that order, because we need SA rights for the database type
+        // queries, and we need the database type for the
         // DTreeAncestors queries).
+        ClientValue userInfo = client.GetUserInfo(username);
+        int privs = userInfo.toInteger("UserPrivileges");
+        if ((privs & Client.PRIV_PERM_BYPASS) != Client.PRIV_PERM_BYPASS) {
+            LOGGER.info("USER PRIVILEGES: " + privs);
+            throw new ConfigurationException("User " + username +
+                " does not have Livelink System Administration rights.",
+                "missingSaRights", new String[] { username });
+        }
+
         autoDetectServtype(client);
 
         // Check first to see if we are going to need the

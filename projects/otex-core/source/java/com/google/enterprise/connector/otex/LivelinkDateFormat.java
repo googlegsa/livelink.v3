@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,6 +43,10 @@ class LivelinkDateFormat {
     /** The ISO SQL date format used in database queries. */
     private final SimpleDateFormat sql =
         new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
+
+    /** The ISO SQL date format used in database queries, with milliseconds. */
+    private final SimpleDateFormat sqlMillis =
+        new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss.SSS");
 
     /** The RFC 822 date format for the SPI */
     private final SimpleDateFormat rfc822 =
@@ -116,6 +120,19 @@ class LivelinkDateFormat {
         return sql.format(value);
     }
 
+    /**
+     * Converts a local time date to an ISO SQL local time string,
+     * with milliseconds.
+     *
+     * @param value a timestamp where local time is database local time
+     * @return an ISO SQL string using the pattern
+     * "yyyy-MM-dd' 'HH:mm:ss.SSS"
+     * @see #toSqlString
+     * @since 1.3.1
+     */
+    public synchronized String toSqlMillisString(Date value) {
+        return sqlMillis.format(value);
+    }
 
     /**
      * Converts a local time date to an RFC 822 format time string.
@@ -141,9 +158,12 @@ class LivelinkDateFormat {
         Date date = null;
         if (dateStr.length() > 10) {
             char c = dateStr.charAt(10);
-            if (c == ' ')
-                date = sql.parse(dateStr, ppos);
-            else if (c == 'T')
+            if (c == ' ') {
+                if (dateStr.length() > 19)
+                    date = sqlMillis.parse(dateStr, ppos);
+                else
+                    date = sql.parse(dateStr, ppos);
+            } else if (c == 'T')
                 date = iso8601.parse(dateStr, ppos);
             else
                 date = rfc822.parse(dateStr, ppos);
@@ -154,13 +174,4 @@ class LivelinkDateFormat {
 
         return date;
     }
-
 }
-
-
-
-
-
-
-
-

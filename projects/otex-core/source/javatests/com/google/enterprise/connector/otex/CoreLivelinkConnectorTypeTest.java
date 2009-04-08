@@ -391,11 +391,9 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     }
 
     /**
-     * Tests the validateConfig method with input which fails
-     * during Spring instantiation.
-     */
-    /* The port value is empty so bean instantiation fails
-     * because it can't be converted to a number.
+     * Tests the validateConfig method with input which fails during
+     * Spring instantiation. The server value is empty so validation
+     * fails.
      */
     public void testValidateConfigBadInput() throws Exception {
         ConfigureResponse response =
@@ -418,7 +416,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
         HashMap props = new HashMap(emptyProperties);
         props.put("server", "myhost");
         props.put("port", "123");
-        props.put("username", "me");
+        props.put("username", "Admin");
         props.put("password", "pw");
         ConfigureResponse response =
             connectorType.validateConfig(props, defaultLocale,
