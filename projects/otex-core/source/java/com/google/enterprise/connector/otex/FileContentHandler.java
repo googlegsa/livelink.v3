@@ -62,14 +62,14 @@ class FileContentHandler implements ContentHandler {
             final File temporaryFile =
                 File.createTempFile("gsa-otex-", null);
             if (LOGGER.isLoggable(Level.FINER))
-                LOGGER.finer("TEMP FILE: " + temporaryFile);
+                LOGGER.finer("CREATE TEMP FILE: " + temporaryFile);
             try {
                 client.FetchVersion(volumeId, objectId, versionNumber,
                     temporaryFile);
             } catch (RepositoryException e) {
                 try {
                     if (LOGGER.isLoggable(Level.FINER))
-                        LOGGER.finer("DELETE: " + temporaryFile);
+                        LOGGER.finer("DELETE TEMP FILE: " + temporaryFile);
                     temporaryFile.delete();
                 } finally {
                     throw e;
@@ -86,8 +86,10 @@ class FileContentHandler implements ContentHandler {
                             // finalizer can't be running while another
                             // thread is using this object.
                             if (temporaryFile.exists()) {
-                                if (LOGGER.isLoggable(Level.FINER))
-                                    LOGGER.finer("DELETE: " + temporaryFile);
+                                if (LOGGER.isLoggable(Level.FINER)) {
+                                    LOGGER.finer("DELETE TEMP FILE: " +
+                                        temporaryFile);
+                                }
                                 temporaryFile.delete();
                             }
                         }
