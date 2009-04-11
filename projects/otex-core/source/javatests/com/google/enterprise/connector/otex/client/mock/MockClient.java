@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,6 +82,19 @@ final class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    public ClientValue GetUserInfo(String username)
+            throws RepositoryException {
+        int privileges;
+        if (username.equals("Admin"))
+            privileges = PRIV_PERM_BYPASS;
+        else
+            privileges = 0;
+        return new MockClientValue(
+            new String[] { "UserPrivileges" },
+            new Integer[] { new Integer(privileges) });
+    }
+
+    /** {@inheritDoc} */
     public ClientValue AccessEnterpriseWS() throws RepositoryException {
         return new MockClientValue(new String[] { "ID", "VolumeID" },
             new Integer[] { new Integer(2000), new Integer(-2000) });
@@ -119,7 +132,8 @@ final class MockClient implements Client {
             fields = new String[] { "DataID" };
             values = new Object[][] {
                 new Object[] { new Integer(4104) } };
-        } else if (columns.length == 1 && columns[0].equals("minModifyDate")) {
+        } else if (columns.length == 1 &&
+                columns[0].endsWith("minModifyDate")) {
             // This is the check for missing entries in the
             // DTreeAncestors table, and the optimized startDate. The
             // returned value doesn't matter.

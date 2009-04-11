@@ -11,6 +11,38 @@ and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 1.3.2, Apr 11, 2009
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.3.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fixed issue 36 to accept Livelink URLs for sites using
+    certificates with a mismatching host name.
+  * Fixed issue 37 to add support for Livelink 9.7.1 and the January
+    2009 monthly patch.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.0 through 1.3.0 may be
+used with this version. This version works with Connector Manager
+version 1.3.2. Earlier versions of the Connector Manager will not work
+correctly with this version of the connector. This product is designed
+to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
+9.7.1
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
 Release 1.3.0, Jan 10, 2009
 ===========================
 

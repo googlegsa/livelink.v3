@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.Set;
 
 import junit.framework.TestCase;
 
-import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Document;
@@ -30,6 +29,7 @@ import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
@@ -74,13 +74,10 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
      * @param docids a list of document IDs
      * @param username the username to authorize
      */
-    private Collection authorizeDocids(List docids, final String username)
+    private Collection authorizeDocids(List docids, String username)
             throws RepositoryException {
-        AuthenticationIdentity identity = new AuthenticationIdentity() {
-                public String getUsername() { return username; }
-                public String getPassword() { return null; }
-            };
-        return authManager.authorizeDocids(docids, identity);
+        return authManager.authorizeDocids(docids,
+            new SimpleAuthenticationIdentity(username));
     }
 
     /**

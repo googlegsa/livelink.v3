@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -201,7 +201,7 @@ public class LivelinkConnectorTest extends TestCase {
         connector.setEnableNtlm(true);
         try {
             connector.login();
-            fail("Exception an exception");
+            fail("Expected an exception");
         } catch (ConfigurationException e) {
         }
     }
@@ -213,5 +213,18 @@ public class LivelinkConnectorTest extends TestCase {
         connector.setUseHttpTunneling(false);
         connector.setEnableNtlm(true);
         connector.login();
+    }
+
+    /**
+     * Tests the check for System Administration rights.
+     */
+    public void testNoAdminRights() throws RepositoryException {
+        // This value can be anything other than "Admin".
+        connector.setUsername("llglobal");
+        try {
+            connector.login();
+            fail("Expected an exception");
+        } catch (ConfigurationException e) {
+        }
     }
 }

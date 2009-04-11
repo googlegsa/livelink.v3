@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,21 +19,18 @@ import java.util.Set;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
+
 import junit.framework.TestCase;
 
 public class NoOpAuthenticationManagerTest extends TestCase {
-    private static class SimpleIdentity implements AuthenticationIdentity {
-        public String getUsername() { return "nobody"; }
-        public String getPassword() { return "goodPassword"; }
-    }
-
     private NoOpAuthenticationManager manager;
 
     private AuthenticationIdentity identity;
 
     public void setUp() {
         manager = new NoOpAuthenticationManager();
-        identity = new SimpleIdentity();
+        identity = new SimpleAuthenticationIdentity("nobody", "goodPassword");
     }
 
     public void testNoPassword() throws RepositoryException {

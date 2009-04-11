@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.lang.reflect.Method;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+import java.security.GeneralSecurityException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,11 +26,6 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorFactory;
@@ -47,36 +37,15 @@ import org.springframework.beans.PropertyBatchUpdateException;
  * Supports the configuration properties used by the Livelink Connector.
  */
 public class LivelinkConnectorType implements ConnectorType {
-
-    /** The connector properties version property name. */
-    public static final String VERSION_PROPERTY =
-        "LivelinkConnectorPropertyVersion";
-    public static final String VERSION_NUMBER = "1";
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkConnectorType.class.getName());
 
-    /** An all-trusting TrustManager for SSL URL validation. */
-    private static final TrustManager[] trustAllCerts =
-        new TrustManager[] {
-            new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() {
-                    return null;
-                }
-                public void checkServerTrusted(
-                    X509Certificate[] certs, String authType)
-                    throws CertificateException {
-                    return;
-                }
-                public void checkClientTrusted(
-                    X509Certificate[] certs,
-                    String authType)
-                    throws CertificateException {
-                    return;
-                }
-            }
-        };
+    /** The connector properties version property name. */
+    public static final String VERSION_PROPERTY =
+        "LivelinkConnectorPropertyVersion";
+
+    public static final String VERSION_NUMBER = "1";
 
     /**
      * Holds information (name, label, default value) about a
@@ -84,6 +53,13 @@ public class LivelinkConnectorType implements ConnectorType {
      * in the format used by the GSA.
      */
     private static abstract class FormProperty {
+        /* Property for space betwen sections. */
+        protected static final String PADDING = "padding-top: 3ex; ";
+
+        /* Style attribute for space betwen sections. */
+        protected static final String PADDING_STYLE =
+            " style='" + PADDING + '\'';
+
         /**
          * Gets the display label for the given name.
          *
@@ -139,15 +115,22 @@ public class LivelinkConnectorType implements ConnectorType {
                 String labelSuffix, String value, ResourceBundle labels) {
             String label = getLabel(name, labels);
 
-            // TODO: Use CSS here. Better handling of section labels.
-            if (FormBuilder.START_TAG.equals(labelPrefix))
-                buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
-            buffer.append("<tr valign='top'>\r\n").
-                append("<td style='white-space: nowrap'>");
+            // TODO: Better handling of section labels.
+            String padding;
+            String style;
+            if (FormBuilder.START_TAG.equals(labelPrefix)) {
+              padding = PADDING;
+              style = PADDING_STYLE;
+            } else {
+              padding = "";
+              style = "";
+            }
+            buffer.append("<tr valign='top'>\r\n").append("<td style='").
+                append(padding).append("white-space: nowrap'>");
             if (required)
                 buffer.append("<div style='float: left;'>");
             buffer.append(labelPrefix);
-            appendLabel(buffer, name, label);
+            appendTextLabel(buffer, name, label);
             buffer.append(labelSuffix);
             if (required) {
                 buffer.append("</div><div style='text-align: right; ").
@@ -155,7 +138,7 @@ public class LivelinkConnectorType implements ConnectorType {
                     append("margin-right: 0.3em;\'>*</div>");
             }
             buffer.append("</td>\r\n").
-                append("<td>");
+                append("<td").append(style).append(">");
             addFormControl(buffer, value, labels);
             buffer.append("</td>\r\n</tr>\r\n");
         }
@@ -199,7 +182,7 @@ public class LivelinkConnectorType implements ConnectorType {
             }
         }
 
-        protected void appendLabel(StringBuffer buffer, String element,
+        protected void appendControlLabel(StringBuffer buffer, String element,
                 String label) {
             buffer.append("<label ");
             appendAttribute(buffer, "for", element);
@@ -207,10 +190,34 @@ public class LivelinkConnectorType implements ConnectorType {
             buffer.append(label);
             buffer.append("</label>");
         }
+
+        protected void appendTextLabel(StringBuffer buffer, String element,
+                String label) {
+            appendControlLabel(buffer, element, label);
+        }
+    }
+
+    /**
+     * Holder for a header property that does not use the HTML label
+     * element on the label text.
+     */
+    private static abstract class HeaderProperty extends FormProperty {
+        HeaderProperty(String name) {
+            super(name);
+        }
+
+        HeaderProperty(String name, String defaultValue) {
+            super(name, false, defaultValue);
+        }
+
+        protected void appendTextLabel(StringBuffer buffer, String element,
+                String label) {
+            buffer.append(label);
+        }
     }
 
     /** A form label with no associated form control. */
-    private static class LabelProperty extends FormProperty {
+    private static class LabelProperty extends HeaderProperty {
         LabelProperty(String name) {
             super(name);
         }
@@ -222,14 +229,11 @@ public class LivelinkConnectorType implements ConnectorType {
 
             // TODO: Handle duplication between this and
             // FormProperty.addToBuffer.
-            // XXX: Should we just assume that we know that
-            // labelPrefix = START_TAG and labelSuffix = END_TAG here?
-            if (FormBuilder.START_TAG.equals(labelPrefix))
-                buffer.append("<tr><td>&nbsp;</td><td>&nbsp;</td></tr>\r\n");
-            buffer.append("<tr valign='top'>\r\n").
-                append("<td style='white-space: nowrap' colspan='2'>");
+            // We know that labelPrefix = START_TAG here.
+            buffer.append("<tr valign='top'>\r\n").append("<td style='").
+                append(PADDING).append("white-space: nowrap' colspan='2'>");
             buffer.append(labelPrefix);
-            appendLabel(buffer, name, label);
+            appendTextLabel(buffer, name, label);
             buffer.append(labelSuffix);
             buffer.append("</td>\r\n</tr>\r\n");
         }
@@ -279,6 +283,7 @@ public class LivelinkConnectorType implements ConnectorType {
 
             buffer.append("<input ");
             appendAttribute(buffer, "type", type);
+            appendAttribute(buffer, "id", name);
             appendAttribute(buffer, "name", name);
 
             // TODO: What size should this be? I made it larger to
@@ -360,7 +365,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * Holder for a property which should be rendered as a set of
      * radio buttons.
      */
-    private static class RadioSelectProperty extends FormProperty {
+    private static class RadioSelectProperty extends HeaderProperty {
         private final String[] buttonNames;
 
         RadioSelectProperty(String name, String[] buttonNames,
@@ -375,8 +380,8 @@ public class LivelinkConnectorType implements ConnectorType {
                 value = defaultValue;
 
             for (int i = 0; i < buttonNames.length; i++) {
-                if (i > 0)	// arrange radio buttons vertically
-                    buffer.append("<br>");
+                if (i > 0)  // arrange radio buttons vertically
+                    buffer.append("<br />");
                 String buttonName = buttonNames[i];
                 buffer.append("<input ");
                 appendAttribute(buffer, "type", "radio");
@@ -384,10 +389,10 @@ public class LivelinkConnectorType implements ConnectorType {
                 appendAttribute(buffer, "id", name + buttonName);
                 appendAttribute(buffer, "value", buttonName);
                 if (buttonName.equalsIgnoreCase(value))
-                    buffer.append("checked");
-                buffer.append("> ");
-                appendLabel(buffer, name + buttonName,
-                            getLabel(buttonName, labels));
+                    appendAttribute(buffer, "checked", "checked");
+                buffer.append(" /> ");
+                appendControlLabel(buffer, name + buttonName,
+                    getLabel(buttonName, labels));
             }
         }
     }
@@ -399,6 +404,7 @@ public class LivelinkConnectorType implements ConnectorType {
      */
     private static class BooleanSelectProperty extends RadioSelectProperty {
         static final String[] boolstr = { "true", "false" };
+
         BooleanSelectProperty(String name, String defaultValue) {
             super(name, boolstr, defaultValue);
         }
@@ -411,7 +417,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * Selecting an Enabler property usually results in a redisplay
      * that exposes additional properties.
      */
-    private static class EnablerProperty extends FormProperty {
+    private static class EnablerProperty extends HeaderProperty {
         EnablerProperty(String name, String defaultValue) {
             super(name, defaultValue);
         }
@@ -424,12 +430,12 @@ public class LivelinkConnectorType implements ConnectorType {
             buffer.append("<input ");
             appendAttribute(buffer, "type", "checkbox");
             appendAttribute(buffer, "name", name);
-            appendAttribute(buffer, "id", name + "true");
+            appendAttribute(buffer, "id", name);
             appendAttribute(buffer, "value", "true");
             if ("true".equalsIgnoreCase(value))
-                buffer.append("checked");
-            buffer.append("> ");
-            appendLabel(buffer, name + "true", getLabel("enable", labels));
+                appendAttribute(buffer, "checked", "checked");
+            buffer.append(" /> ");
+            appendControlLabel(buffer, name, getLabel("enable", labels));
         }
     }
 
@@ -880,7 +886,6 @@ public class LivelinkConnectorType implements ConnectorType {
 
             // Return the OK configuration.
             return getResponse(null, null, config, null);
-
         } catch (Throwable t) {
             // One last catch to be sure we return a message.
             LOGGER.log(Level.SEVERE, "Failed to create config form", t);
@@ -985,159 +990,28 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /**
-     * Attempts to validate a URL. In this case, we're mostly
-     * trying to catch typos, so "valid" means
-     *
-     * <ol>
-     * <li>The URL syntax is valid.
-     * <li>If the URL uses HTTP or HTTPS:
-     *   <ol>
-     *   <li>A connection can be made and the response read.
-     *   <li>The response code was not 404,
-     *   or any of the following related but less common errors:
-     *   400, 405, 410, or 414.
-     *   </ol>
-     * </ol>
-     *
-     * The 405 (Method Not Allowed) is related because the Sun Java
-     * System Web Server, and possibly Apache, return this code rather
-     * than a 404 if you attempt to access a CGI program in an unknown
-     * directory.
-     *
-     * When testing an HTTPS URL, we override server certificate
-     * validation to skip trying to verify the server's
-     * certificate. In this case, all we care about is that the
-     * configured URL can be reached; it's up to the connector
-     * administrator to enter the right URL.
+     * Attempts to validate a URL.
      *
      * @param urlString the URL to test
+     * @see UrlValidator#validate
      */
-    /* Java 1.4 doesn't support setting a timeout on the
-     * URLConnection. Java 1.5 does support timeouts, so we're
-     * using reflection to set timeouts if available. Another
-     * possibility would be to use Jakarta Commons HttpClient.
-     *
-     * The read and connect timeouts are set to one minute. This
-     * isn't currently configurable, but if it fails the
-     * connector admin can set the flag to ignore validation
-     * errors and avoid the timeout problem.
-     *
-     * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4912484
-     * The above Sun bug report documents that openConnection
-     * doesn't try to connect.
-     *
+    /*
      * This method has package access and returns the HTTP response
      * code so that it can be unit tested. A return value of 0 is
      * arbitrary and unused by the tests.
      */
     int validateUrl(String urlString, ResourceBundle bundle)
             throws UrlConfigurationException {
-        if (urlString == null || urlString.trim().length() == 0)
-            return 0;
-
         try {
-            URL url = new URL(urlString);
-            URLConnection conn = url.openConnection();
-
-            if (!(conn instanceof HttpURLConnection)) {
-                // If the URL is not an HTTP or HTTPS URL, which is
-                // incredibly unlikely, we don't check anything beyond
-                // the URL syntax.
-                return 0;
-            }
-
-            HttpURLConnection httpConn = (HttpURLConnection) conn;
-            if (httpConn instanceof HttpsURLConnection)
-                setTrustingTrustManager((HttpsURLConnection) httpConn);
-            setTimeouts(conn);
-            httpConn.setRequestMethod("HEAD");
-            httpConn.setInstanceFollowRedirects(false);
-
-            httpConn.connect();
-            try {
-                int responseCode = httpConn.getResponseCode();
-                String responseMessage = httpConn.getResponseMessage();
-
-                switch (responseCode) {
-                case HttpURLConnection.HTTP_BAD_REQUEST:
-                case HttpURLConnection.HTTP_NOT_FOUND:
-                case HttpURLConnection.HTTP_BAD_METHOD:
-                case HttpURLConnection.HTTP_GONE:
-                case HttpURLConnection.HTTP_REQ_TOO_LONG:
-                    if (LOGGER.isLoggable(Level.SEVERE)) {
-                        LOGGER.severe("DISPLAY URL HTTP RESPONSE: " +
-                            responseCode + " " + responseMessage);
-                    }
-                    throw new UrlConfigurationException(
-                        httpNotFound(bundle, urlString, responseCode,
-                            responseMessage));
-
-                default:
-                    if (LOGGER.isLoggable(Level.CONFIG)) {
-                        LOGGER.config("DISPLAY URL HTTP RESPONSE: " +
-                            responseCode + " " + responseMessage);
-                    }
-                    break;
-                }
-                return responseCode;
-            } finally {
-                httpConn.disconnect();
-            }
-        } catch (UrlConfigurationException u) {
-            throw u;
+          return new UrlValidator().validate(urlString);
+        } catch (UrlValidatorException e) {
+          throw new UrlConfigurationException(
+              httpNotFound(bundle, urlString, e.getStatusCode(),
+                  e.getMessage()));
         } catch (Throwable t) {
             LOGGER.log(Level.WARNING, "Error in Livelink URL validation", t);
             String text = getExceptionMessages(urlString, t);
             throw new UrlConfigurationException(text, t);
-        }
-    }
-
-    /**
-     * Replaces the default TrustManager for this connection with
-     * one which trusts all certificates.
-     *
-     * @param conn the current connection
-     * @throws Exception if an error occurs setting the properties
-     */
-    private void setTrustingTrustManager(HttpsURLConnection conn)
-            throws Exception {
-        SSLContext sc = SSLContext.getInstance("SSL");
-        LOGGER.log(Level.FINEST, "SSLContext: " + sc);
-        sc.init(null, trustAllCerts, null);
-        SSLSocketFactory factory = sc.getSocketFactory();
-        LOGGER.log(Level.FINEST, "SSLSocketFactory: " + factory);
-        conn.setSSLSocketFactory(factory);
-        LOGGER.log(Level.FINEST, "Using socket factory: " +
-            conn.getSSLSocketFactory());
-    }
-
-    /**
-     * Sets the connect and read timeouts of the given URLConnection.
-     * This is only possible with Java SE 5.0 or later. With earlier
-     * versions, we don't do anything.
-     */
-    private void setTimeouts(URLConnection conn) throws Exception {
-        // If we're using Java 1.5 or later, URLConnection
-        // has timeout methods.
-        try {
-            final Integer[] connectTimeoutArg = new Integer[] {
-                new Integer(5 * 1000) };
-            final Integer[] readTimeoutArg = new Integer[] {
-                new Integer(60 * 1000) };
-            Class c = conn.getClass();
-            Method setConnectTimeout = c.getMethod("setConnectTimeout",
-                new Class[] { int.class });
-            setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg);
-            Method setReadTimeout = c.getMethod("setReadTimeout",
-                new Class[] { int.class });
-            setReadTimeout.invoke(conn, (Object[]) readTimeoutArg);
-        } catch (NoSuchMethodException m) {
-            // Ignore; we're probably on Java 1.4.
-            LOGGER.log(Level.FINEST,
-                "No timeout methods; we're probably on Java 1.4.");
-        } catch (Throwable t) {
-            LOGGER.log(Level.WARNING, "Error setting connection timeout",
-                t);
         }
     }
 

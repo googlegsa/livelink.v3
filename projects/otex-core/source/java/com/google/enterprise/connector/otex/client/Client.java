@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,10 @@ public interface Client
 
     /** UTF-8 character encoding. */
     int CHARACTER_ENCODING_UTF8 = 1;
-    
+
+    /** Database permission bypass privilege. */
+    int PRIV_PERM_BYPASS = 256;
+
     /** Constants corresponding to LAPI_ATTRIBUTES.* */
     int ATTR_DATAVALUES = 0;
     int ATTR_DEFAULTVALUES = 1;
@@ -120,6 +123,15 @@ public interface Client
      * @throws RepositoryException if an error occurs
      */
     ClientValue GetUserOrGroupByIDNoThrow(int id) throws RepositoryException;
+
+    /**
+     * Gets information about the given user.
+     * 
+     * @param username the name of a user or group.
+     * @returns a Record containing information about the user
+     * @throws RepositoryException if an error occurs
+     */
+    ClientValue GetUserInfo(String username) throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_DOCUMENTS.AccessEnterpriseWS</code> method.
