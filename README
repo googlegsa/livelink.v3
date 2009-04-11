@@ -21,15 +21,15 @@ is not included in this distribution.
 
 Documentation Links
 
-    * Developer Introduction to the Google Enterprise Connector Framework
-      http://code.google.com/apis/searchappliance/documentation/46/connector_dev/connector-framework.html
+    * Documentation for the Google Enterprise Connectors
+      http://code.google.com/apis/searchappliance/documentation/connectors/index.html
 
     * Google Enterprise Connector for Open Text Livelink
       http://code.google.com/p/google-enterprise-connector-otex/
-      http://code.google.com/apis/searchappliance/documentation/50/connector_admin/livelink_connector.html
+      http://code.google.com/apis/searchappliance/documentation/connectors/110/connector_admin/livelink_connector.html
 
     * Google Search Appliance
-      http://code.google.com/apis/searchappliance/documentation/50/index.html
+      http://code.google.com/apis/searchappliance/documentation/52/index.html
 
     * Open Text Livelink SDK and LAPI
       Livelink SDK and Livelink API information is available on
