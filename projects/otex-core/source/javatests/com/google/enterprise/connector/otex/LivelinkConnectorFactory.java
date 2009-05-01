@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -133,8 +135,19 @@ class LivelinkConnectorFactory implements ConnectorFactory {
         props.putAll(config);
 
         try {
-            Resource res = new ClassPathResource("config/connectorInstance.xml");
-            XmlBeanFactory factory = new XmlBeanFactory(res);
+            DefaultListableBeanFactory factory = new DefaultListableBeanFactory();
+            XmlBeanDefinitionReader beanReader = new XmlBeanDefinitionReader(factory);
+
+            Resource prototype = new ClassPathResource("config/connectorInstance.xml");
+            beanReader.loadBeanDefinitions(prototype);
+
+            // Seems non-intuitive to load these in this order, but we want newer
+            // versions of the connectors to override any default bean definitions
+            // specified in old-style monolithic connectorInstance.xml files.
+            Resource defaults = new ClassPathResource("config/connectorDefaults.xml");
+            if (defaults != null) {
+                beanReader.loadBeanDefinitions(defaults);
+            }
 
             PropertyPlaceholderConfigurer cfg =
                 new PropertyPlaceholderConfigurer();
