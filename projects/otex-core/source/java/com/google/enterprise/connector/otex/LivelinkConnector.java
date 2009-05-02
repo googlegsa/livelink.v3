@@ -37,6 +37,7 @@ import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -221,6 +222,9 @@ public class LivelinkConnector implements Connector {
 
     /** The earliest modification date that should be indexed. */
     private Date startDate = null;
+
+    /** Whether to track deleted items, sending delete notification to GSA */
+    private boolean trackDeletedItems = true;
 
     /** The Livelink traverser client username. */
     private String username;
@@ -1294,6 +1298,27 @@ public class LivelinkConnector implements Connector {
         return hiddenItemsSubtypes;
     }
 
+    /**
+     * Set whether this connector instance will track deleted items.
+     * If true, then track delete events in the Livelink Audit Log,
+     * and send a delete notification to the GSA, so it may purge
+     * the deleted item from its index.
+     *
+     * @param trackDeletedItems
+     */
+    public void setTrackDeletedItems(boolean trackDeletedItems) {
+        this.trackDeletedItems = trackDeletedItems;
+    }
+
+    /**
+     * Return true if this connector instance will track deleted
+     * items and send delete requests to the GSA, false otherwise.
+     *
+     * @return true if track deleted items, false otherwise.
+     */
+    public boolean getTrackDeletedItems() {
+        return this.trackDeletedItems;
+    }
 
     /**
      * Creates an empty client factory instance for use with
@@ -1569,7 +1594,18 @@ public class LivelinkConnector implements Connector {
      * init-method, because that leads to Spring instantiation
      * failures that are not properly handled.
      */
-    private void init() {
+    private void init() throws RepositoryException {
+        // Make sure we are at least CM v 1.3 (google:title property
+        // first appears in 1.3).
+        try {
+            if (SpiConstants.PROPNAME_TITLE != null);
+        } catch (java.lang.NoClassDefFoundError e) {
+            LOGGER.severe("This connector requires a newer version of the " +
+                          "Connector Manager");
+            throw new ConfigurationException("This connector requires a newer" +
+                          " version of the version of the Connector Manager");
+        }
+
         for (int i = 0; i < propertyValidators.size(); i++) {
             ((PropertyValidator) propertyValidators.get(i)).validate(); 
         }

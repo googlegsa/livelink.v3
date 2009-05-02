@@ -153,8 +153,13 @@ class Checkpoint {
 
         // Set the new delete checkpoint.
         deleteDate = date;
-        switch (eventId.type()) {
 
+        if (eventId == null) {
+            deleteEventId = 0;
+            return;
+        }
+        
+        switch (eventId.type()) {
         case ClientValue.INTEGER:
             // Oracle, Livelink 9.7 and earlier.
             deleteEventId = eventId.toInteger();
@@ -224,17 +229,14 @@ class Checkpoint {
 
 
     /**
-     * Update a checkpoint string from old-style to new-style.
-     * @param oldCheckpoint an old style checkpoint.
-     * @return a new style checkpoint, with reasonable defaults.
+     * Returns true if some component of the checkpoint has changed.
+     * (In other words, restore() would result in a different checkpoint.)
      */
-    public static String upgrade(String oldCheckpoint) {
-        if (!isOldStyle(oldCheckpoint))
-            return oldCheckpoint;
-
-        // Set an initial delete checkpoint at the first release of the
-        // Livelink connector.  (Earliest indexing date for any item.)
-        return oldCheckpoint + ",2007-10-08 00:00:00,0";
+    public boolean hasChanged() {
+        return (insertDate != oldInsertDate ||
+                insertDataId != oldInsertDataId ||
+                deleteDate != oldDeleteDate ||
+                deleteEventId != oldDeleteEventId);
     }
 
 

@@ -67,10 +67,10 @@ class LivelinkTraversalManager
     private static final String[] SELECT_LIST;
 
     /**
-     * True if the Connector Manager handles Delete Actions, false
-     * otherwise.  FIXME: Remove this check after CM 1.0.5 is released.
+     * True if this connector instance will track deleted items and
+     * submit delete actions to the GSA.
      */
-    private static final boolean deleteSupported;
+    private static boolean deleteSupported;
 
     static {
         // ListNodes requires the DataID and PermID columns to be
@@ -100,9 +100,6 @@ class LivelinkTraversalManager
         SELECT_LIST = new String[FIELDS.length];
         for (int i = 0; i < FIELDS.length; i++)
             SELECT_LIST[i] = FIELDS[i].fieldName;
-
-        // Check to see if the Connector Manager supports Deleted Documents.
-        deleteSupported = isDeleteSupported();
     }
 
     /** Select list column for AuditDate; Oracle still lacks milliseconds. */
@@ -189,23 +186,10 @@ class LivelinkTraversalManager
 
         this.isSqlServer = connector.isSqlServer();
         this.contentHandler = getContentHandler();
-    }
 
-
-    /**
-     * Determines if the controlling Connector Manager supports the
-     * Delete Action, which purges deleted documents from the index.
-     *
-     * @return <code>true</code> if the Connector Manager handles
-     * Delete Actions, <code>false</code> otherwise.
-     */
-    private static boolean isDeleteSupported() {
-        try {
-            return SpiConstants.ActionType.DELETE.toString() != null;
-        } catch (java.lang.NoClassDefFoundError e) {
-            return false;
+        // Check to see if we will track Deleted Documents.
+        this.deleteSupported = connector.getTrackDeletedItems();
         }
-    }
 
 
     /**
@@ -232,42 +216,48 @@ class LivelinkTraversalManager
             checkpoint.setInsertCheckpoint(startDate, 0);
 
         // We don't care about any existing Delete events in the audit
-        // logs, since we're just starting the traversal, so forge a
-        // checkpoint from the last event in the audit log.
-        if (deleteSupported) {
-            try {
-                String auditDate;
-                if (isSqlServer)
-                    auditDate = AUDIT_DATE_SQL_SERVER;
-                else
-                    auditDate = AUDIT_DATE_ORACLE;
-
-                String query =
-                    "EventID in (select max(EventID) from DAuditNew)";
-                String[] columns = { auditDate, "EventID" };
-                String view = "DAuditNew";
-                ClientValue results =
-                    sysadminClient.ListNodes(query, view, columns);
-                if (results.size() > 0) {
-                    checkpoint.setDeleteCheckpoint(
-                        dateFormat.parse(results.toString(0, "AuditDate")),
-                        results.toValue(0, "EventID"));
-                }
-            } catch (Exception e) {
-                // If there is no audit trail, then no initial Delete
-                // Checkpoint.
-                if (LOGGER.isLoggable(Level.WARNING)) {
-                    LOGGER.warning(
-                        "Error establishing initial Deleted Items " +
-                        "Checkpoint: " + e.getMessage());
-                }
-            }
-        }
+        // logs, since we're just starting the traversal.
+        forgeInitialDeleteCheckpoint(checkpoint);
 
         String startCheckpoint = checkpoint.toString();
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("START CHECKPOINT: " + startCheckpoint);
         return startCheckpoint;
+    }
+
+    /**
+     *  Forge a delete checkpoint from the last event in the audit log.
+     */
+    private void forgeInitialDeleteCheckpoint(Checkpoint checkpoint) {
+        try {
+            String auditDate;
+            if (isSqlServer)
+                auditDate = AUDIT_DATE_SQL_SERVER;
+            else
+                auditDate = AUDIT_DATE_ORACLE;
+
+            String query = "EventID in (select max(EventID) from DAuditNew)";
+            String[] columns = { auditDate, "EventID" };
+            String view = "DAuditNew";
+            ClientValue results =
+                sysadminClient.ListNodes(query, view, columns);
+            if (results.size() > 0) {
+                checkpoint.setDeleteCheckpoint(
+                    dateFormat.parse(results.toString(0, "AuditDate")),
+                    results.toValue(0, "EventID"));
+            } else {
+                checkpoint.setDeleteCheckpoint(new Date(), null);
+            }
+        } catch (Exception e) {
+            LOGGER.warning( "Error establishing initial Deleted Items " +
+                            "Checkpoint: " + e.getMessage());
+            try {
+                checkpoint.setDeleteCheckpoint(new Date(), null);
+            } catch (RepositoryException ignored) {
+                // Shouldn't get here with null Value parameter.
+                throw new java.lang.AssertionError();
+            }
+        }
     }
 
     /**
@@ -478,15 +468,6 @@ class LivelinkTraversalManager
             LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
                 checkpoint + ".");
 
-        // If we were handed an old-style checkpoint, that means the
-        // user upgraded the connector, but has not re-indexed.  Update
-        // the checkpoint to the newer style.
-        if (deleteSupported && Checkpoint.isOldStyle(checkpoint)) {
-            checkpoint = Checkpoint.upgrade(checkpoint);
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.fine("UPGRADED OLD-STYLE CHECKPOINT: " + checkpoint);
-        }
-
         // Ping the Livelink Server.  If I can't talk to the server,
         // I will consider this a transient Exception (server down,
         // network error, etc).  In that case, return null, signalling
@@ -584,6 +565,12 @@ class LivelinkTraversalManager
         Checkpoint checkpoint = new Checkpoint(checkpointStr);
         int batchsz = batchSize;
 
+        // If we have an old style checkpoint, or one that is missing a
+        // delete stamp, and we are doing deletes, forge a delete checkpoint.
+        if (deleteSupported && checkpoint.deleteDate == null) {
+            forgeInitialDeleteCheckpoint(checkpoint);
+        }
+
         // If our available content appears to be sparsely distributed
         // across the repository, we want to give ourself a chance to
         // accelerate through the sparse regions, grabbing larger sets
@@ -591,11 +578,9 @@ class LivelinkTraversalManager
         // we cannot do this indefinitely or we will run afoul of the
         // Connector Manager's thread timeout.
         long startTime = System.currentTimeMillis();
-        long maxTimeSlice = 1000L * 60 * 2;
+        long maxTimeSlice = 1000L * 60 * 4;
 
-        for (long loopCount = 0;
-             (System.currentTimeMillis() - startTime < maxTimeSlice);
-             loopCount++) {
+        while (System.currentTimeMillis() - startTime < maxTimeSlice) {
 
             ClientValue candidates, deletes, results = null;
             if (isSqlServer) {
@@ -610,11 +595,11 @@ class LivelinkTraversalManager
             int numDeletes = (deletes == null) ? 0 : deletes.size();
 
             if ((numInserts + numDeletes) == 0) {
-                if (loopCount == 0) {
+                if (checkpoint.hasChanged()) {
+                    break;			// Force a new checkpoint.
+                } else {
                     LOGGER.fine("RESULTSET: no rows.");
                     return null;	// No new documents available.
-                } else {
-                    break;			// Force a new checkpoint.
                 }
             }
 
@@ -811,8 +796,7 @@ class LivelinkTraversalManager
      */
     private ClientValue getDeletesSqlServer(Checkpoint checkpoint, int batchsz)
             throws RepositoryException {
-        if (deleteSupported == false ||
-                checkpoint == null || checkpoint.deleteDate == null) {
+        if (deleteSupported == false) {
             return null;
         }
 
@@ -867,8 +851,7 @@ class LivelinkTraversalManager
      */
     private ClientValue getDeletesOracle(Checkpoint checkpoint, int batchsz)
             throws RepositoryException {
-        if (deleteSupported == false ||
-                checkpoint == null || checkpoint.deleteDate == null) {
+        if (deleteSupported == false) {
             return null;
         }
 

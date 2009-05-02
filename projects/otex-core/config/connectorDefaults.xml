@@ -47,6 +47,7 @@
         <property name="includedCategories" value="all,searchable" />
         <property name="excludedCategories" value="" />
         <property name="showHiddenItems" value="true" />
+        <property name="trackDeletedItems" value="true" />
 
         <property name="displayPatterns">
             <map>

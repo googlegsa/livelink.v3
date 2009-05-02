@@ -328,6 +328,27 @@
   </tr>
 
   <tr>
+    <td>trackDeletedItems</td>
+    <td>Specifies whether to track items that have been deleted from
+    the Livelink repository, so that those items may also be deleted
+    from the Google search index.
+    <p>For optimal performance tracking deleted items, the Livelink
+    system administrator should add a database index for the AuditID
+    field of the DAuditNew table of the Livelink backend database.
+    </p></td>
+    <td>One of the following values:
+    <dl>
+    <dt><code>false</code>
+    <dd>Do not track deleted items.
+    <dt><code>true</code>
+    <dd>Track deleted items, sending delete notifications to the
+    Google Search Appliance.
+    </dl>
+    <p>The default value is "true".</p>
+    </td>
+  </tr>
+
+  <tr>
     <td>displayPatterns</td>
     <td>A map of the relative display URLs used in search results.
     Each subtype can have a different relative URL. This URL suffix is
