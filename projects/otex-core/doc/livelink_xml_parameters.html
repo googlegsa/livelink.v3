@@ -334,7 +334,11 @@
     from the Google search index.
     <p>For optimal performance tracking deleted items, the Livelink
     system administrator should add a database index for the AuditID
-    field of the DAuditNew table of the Livelink backend database.
+    field of the DAuditNew table of the Livelink backend database.</p>
+    <p>If multiple connector instances index the same Livelink repository,
+    only one should track deleted items.  For complex deployments, you
+    might consider having a connector instance dedicated to handling
+    deletes.
     </p></td>
     <td>One of the following values:
     <dl>
