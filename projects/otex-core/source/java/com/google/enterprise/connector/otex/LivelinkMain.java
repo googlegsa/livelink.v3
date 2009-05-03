@@ -14,10 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
-
 
 /**
  * Dump the Version info from the Manifest for the Connector's JAR file.
@@ -26,38 +24,18 @@ import java.net.URL;
  * (including version and build info) simply by running the command:
  *   java -jar /path/to/connector-otex.jar
  */
-
 public class LivelinkMain {
-
-    public static void main(String[] args) throws Exception
-    {
-        // From our class, traipse through the class loader,
-        // the URL to this class file, the URL to the jar
-        // file containing this class, and make our way to
-        // the Manifest file located in that jar file.
+    public static void main(String[] args) throws Exception {
+        // From our class, get the jar file URL to this class file, and
+        // make our way to the the Manifest located in that jar file.
         Class thisClass = LivelinkMain.class;
-        ClassLoader loader = thisClass.getClassLoader();
-        String jarPath = thisClass.getName().replace('.', '/') + ".class";
-        URL bootstrapJarUrl = loader.getSystemResource(jarPath);
+        String resName = "/" + thisClass.getName().replace('.', '/') + ".class";
 
-        // We're always in a jar file.
-        JarURLConnection connection =
-            (JarURLConnection) bootstrapJarUrl.openConnection();
-        URL jarFileUrl = connection.getJarFileURL();
-        String configFilePath = jarFileUrl.toString() +
-            "!/META-INF/MANIFEST.MF";
+        // Locate the Jar file containing our class.
+        URL url = thisClass.getResource(resName);
+        JarURLConnection connection = (JarURLConnection) url.openConnection();
 
-        // I don't know for sure that getJarFileURL always
-        // returns "file" rather than "jar".
-        if ("file".equalsIgnoreCase(jarFileUrl.getProtocol()))
-            configFilePath = "jar:" + configFilePath;
-        URL resource = new URL(configFilePath);
-        
-        // Read the Manifest file and write it to stdout.
-        InputStream is = resource.openStream();
-        byte[] buffer = new byte[4096];
-        int bytes;
-        while ((bytes = is.read(buffer)) > 0)
-            System.out.write(buffer, 0, bytes);
+        // Get the Manifest for our Jar and dump it to stdout.
+        connection.getManifest().write(System.out);
     }
 }
