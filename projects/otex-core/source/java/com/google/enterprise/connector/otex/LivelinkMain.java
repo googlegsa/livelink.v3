@@ -16,6 +16,8 @@ package com.google.enterprise.connector.otex;
 
 import java.net.JarURLConnection;
 import java.net.URL;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 /**
  * Dump the Version info from the Manifest for the Connector's JAR file.
@@ -35,7 +37,16 @@ public class LivelinkMain {
         URL url = thisClass.getResource(resName);
         JarURLConnection connection = (JarURLConnection) url.openConnection();
 
-        // Get the Manifest for our Jar and dump it to stdout.
-        connection.getManifest().write(System.out);
+        // Get the Manifest for our Jar and extract the Implementation-Title
+        // and Implementation-Version.
+        Manifest manifest = connection.getManifest();
+        Attributes attrs = manifest.getMainAttributes();
+        String name = attrs.getValue("Implementation-Title");
+        if (name != null) {
+            name = name.replaceAll("[ \t\r\n][ \t\r\n]+", " ");
+        }
+        String version = attrs.getValue("Implementation-Version");
+
+        System.out.println(name + " v" + version);
     }
 }
