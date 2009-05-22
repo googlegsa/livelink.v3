@@ -16,7 +16,6 @@ package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
 import java.io.IOException;
-import java.util.Iterator;
 
 import junit.framework.TestCase;
 
@@ -35,80 +34,78 @@ import com.google.enterprise.connector.otex.client.ClientValue;
  * Pushes a single document (DocID) to the GSA
  */
 public class OneDocumentTest extends TestCase {
-    private LivelinkConnector conn;
-    private LivelinkSession sess;
-    private Client client;
+  private LivelinkConnector conn;
+  private LivelinkSession sess;
+  private Client client;
 
-    public void setUp() throws RepositoryException {
-        conn = LivelinkConnectorFactory.getConnector("connector.");
-        sess = (LivelinkSession) conn.login();
-        client = sess.getFactory().createClient();
+  public void setUp() throws RepositoryException {
+    conn = LivelinkConnectorFactory.getConnector("connector.");
+    sess = (LivelinkSession) conn.login();
+    client = sess.getFactory().createClient();
+  }
+
+  public void testTraversal() throws RepositoryException {
+    int objectId = getId();
+
+    // Extract the LastModifiedDate of the DocID from Livelink
+    // to forge a checkpoint.
+    ClientValue docInfo = client.GetObjectInfo(0, objectId);
+    Checkpoint checkpoint = new Checkpoint();
+    checkpoint.setInsertCheckpoint(docInfo.toDate("ModifyDate"),
+        objectId - 1);
+
+    // Now push that one document
+    TraversalManager mgr = sess.getTraversalManager();
+    mgr.setBatchHint(1);
+    DocumentList rs = mgr.resumeTraversal(checkpoint.toString() + ',');
+    processResultSet(rs);
+  }
+
+  private int getId() throws RepositoryException {
+    try {
+      String obj = System.getProperty("test.docid");
+      if (obj == null)
+        obj = "BAD";
+      return Integer.parseInt(obj);
+    } catch (NumberFormatException e) {
+      throw new RepositoryException("Please specify an integer test.docid property: -Dtest.docid=12345");
+    }
+  }
+
+  private void processResultSet(DocumentList docList)
+      throws RepositoryException {
+    if (docList == null) {
+      System.out.println("No results.");
+      return;
     }
 
-    public void testTraversal() throws RepositoryException {
-        int objectId = getId();
-
-        // Extract the LastModifiedDate of the DocID from Livelink
-        // to forge a checkpoint.
-        ClientValue docInfo = client.GetObjectInfo(0, objectId);
-        Checkpoint checkpoint = new Checkpoint();
-        checkpoint.setInsertCheckpoint(docInfo.toDate("ModifyDate"),
-                                       objectId - 1);
-
-        // Now push that one document
-        TraversalManager mgr = sess.getTraversalManager();
-        mgr.setBatchHint(1);
-        DocumentList rs = mgr.resumeTraversal(checkpoint.toString() + ',');
-        processResultSet(rs);
-    }
-
-    private int getId() throws RepositoryException {
-        try {
-            String obj = System.getProperty("test.docid");
-            if (obj == null)
-                obj = "BAD";
-            return Integer.parseInt(obj);
-        } catch (NumberFormatException e) {
-            throw new RepositoryException("Please specify an integer test.docid property: -Dtest.docid=12345");
-        }
-    }
-
-    private void processResultSet(DocumentList docList)
-            throws RepositoryException {
-        if (docList == null) {
-            System.out.println("No results.");
-            return;
-        }
-
-        Document doc;
-        while ((doc = docList.nextDocument()) != null) {
-            System.out.println();
-            Iterator jt = doc.getPropertyNames().iterator();
-            while (jt.hasNext()) {
-                String name = (String) jt.next();
-                Property prop = doc.findProperty(name);
-                Value value;
-                while ((value = prop.nextValue()) != null) {
-                    String printableValue;
-                    if (value instanceof BinaryValue) {
-                        try {
-                            InputStream in =
-                                ((BinaryValue) value).getInputStream();
-                            byte[] buffer = new byte[32000];
-                            int count = in.read(buffer);
-                            in.close();
-                            if (count == -1)
-                                printableValue = "";
-                            else
-                                printableValue = new String(buffer, 0, count);
-                        } catch (IOException e) {
-                            printableValue = e.toString();
-                        }
-                    } else
-                        printableValue = value.toString();
-                    System.out.println(name + " = " + printableValue);
-                }
+    Document doc;
+    while ((doc = docList.nextDocument()) != null) {
+      System.out.println();
+      for (String name: doc.getPropertyNames()) {
+        Property prop = doc.findProperty(name);
+        Value value;
+        while ((value = prop.nextValue()) != null) {
+          String printableValue;
+          if (value instanceof BinaryValue) {
+            try {
+              InputStream in =
+                  ((BinaryValue) value).getInputStream();
+              byte[] buffer = new byte[32000];
+              int count = in.read(buffer);
+              in.close();
+              if (count == -1)
+                printableValue = "";
+              else
+                printableValue = new String(buffer, 0, count);
+            } catch (IOException e) {
+              printableValue = e.toString();
             }
+          } else
+            printableValue = value.toString();
+          System.out.println(name + " = " + printableValue);
         }
+      }
     }
+  }
 }

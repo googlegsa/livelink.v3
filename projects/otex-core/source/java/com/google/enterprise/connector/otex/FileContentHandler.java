@@ -33,70 +33,72 @@ import com.google.enterprise.connector.otex.client.Client;
  * @see ContentHandler
  */
 class FileContentHandler implements ContentHandler {
-    /** The logger for this class. */
-    private static final Logger LOGGER =
-        Logger.getLogger(FileContentHandler.class.getName());
+  /** The logger for this class. */
+  private static final Logger LOGGER =
+      Logger.getLogger(FileContentHandler.class.getName());
 
-    /** The connector contains configuration information. */
-    private LivelinkConnector connector;
+  /** The connector contains configuration information. */
+  private LivelinkConnector connector;
 
-    /** The client provides access to the server. */
-    private Client client;
+  /** The client provides access to the server. */
+  private Client client;
 
-    FileContentHandler() {
-    }
+  FileContentHandler() {
+  }
 
-    /** {@inheritDoc} */
-    public void initialize(LivelinkConnector connector, Client client)
-            throws RepositoryException {
-        this.connector = connector;
-        this.client = client;
-    }
+  /** {@inheritDoc} */
+  public void initialize(LivelinkConnector connector, Client client)
+      throws RepositoryException {
+    this.connector = connector;
+    this.client = client;
+  }
     
-    /** {@inheritDoc} */
-    public InputStream getInputStream(int volumeId, int objectId,
-            int versionNumber, int size) throws RepositoryException {
+  /** {@inheritDoc} */
+  public InputStream getInputStream(int volumeId, int objectId,
+      int versionNumber, int size) throws RepositoryException {
+    try {
+      // TODO: Does the new delete before throwing clear up debris?
+      // TODO: Use connector working dir here?
+      final File temporaryFile =
+          File.createTempFile("gsa-otex-", null);
+      if (LOGGER.isLoggable(Level.FINER))
+        LOGGER.finer("CREATE TEMP FILE: " + temporaryFile);
+      try {
+        client.FetchVersion(volumeId, objectId, versionNumber,
+            temporaryFile);
+      } catch (RepositoryException e) {
         try {
-            // TODO: Does the new delete before throwing clear up debris?
-            // TODO: Use connector working dir here?
-            final File temporaryFile =
-                File.createTempFile("gsa-otex-", null);
-            if (LOGGER.isLoggable(Level.FINER))
-                LOGGER.finer("CREATE TEMP FILE: " + temporaryFile);
-            try {
-                client.FetchVersion(volumeId, objectId, versionNumber,
-                    temporaryFile);
-            } catch (RepositoryException e) {
-                try {
-                    if (LOGGER.isLoggable(Level.FINER))
-                        LOGGER.finer("DELETE TEMP FILE: " + temporaryFile);
-                    temporaryFile.delete();
-                } finally {
-                    throw e;
-                }
-            }
-            return new FileInputStream(temporaryFile) {
-                    public void close() throws IOException {
-                        try {
-                            super.close();
-                        } finally {
-                            // close is called again from the finalizer,
-                            // so check whether the file still exists.
-                            // No synchronization is needed, because the
-                            // finalizer can't be running while another
-                            // thread is using this object.
-                            if (temporaryFile.exists()) {
-                                if (LOGGER.isLoggable(Level.FINER)) {
-                                    LOGGER.finer("DELETE TEMP FILE: " +
-                                        temporaryFile);
-                                }
-                                temporaryFile.delete();
-                            }
-                        }
-                    }
-                };
-        } catch (IOException e) {
-            throw new LivelinkException(e, LOGGER);
+          if (LOGGER.isLoggable(Level.FINER))
+            LOGGER.finer("DELETE TEMP FILE: " + temporaryFile);
+          temporaryFile.delete();
+        } catch (Throwable t) {
+          LOGGER.log(Level.FINEST,
+              "Ignored exception deleting temp file", t);
         }
+        throw e;
+      }
+      return new FileInputStream(temporaryFile) {
+        public void close() throws IOException {
+          try {
+            super.close();
+          } finally {
+            // close is called again from the finalizer,
+            // so check whether the file still exists.
+            // No synchronization is needed, because the
+            // finalizer can't be running while another
+            // thread is using this object.
+            if (temporaryFile.exists()) {
+              if (LOGGER.isLoggable(Level.FINER)) {
+                LOGGER.finer("DELETE TEMP FILE: " +
+                    temporaryFile);
+              }
+              temporaryFile.delete();
+            }
+          }
+        }
+      };
+    } catch (IOException e) {
+      throw new LivelinkException(e, LOGGER);
     }
+  }
 }

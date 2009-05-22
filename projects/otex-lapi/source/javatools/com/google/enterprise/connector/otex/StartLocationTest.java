@@ -16,7 +16,6 @@ package com.google.enterprise.connector.otex;
 
 import java.io.InputStream;
 import java.io.IOException;
-import java.util.Iterator;
 
 import junit.framework.TestCase;
 
@@ -30,72 +29,70 @@ import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spiimpl.BinaryValue;
 
 public class StartLocationTest extends TestCase {
-    private LivelinkConnector conn;
+  private LivelinkConnector conn;
 
-    public void setUp() throws RepositoryException {
-        conn = LivelinkConnectorFactory.getConnector("connector.");
+  public void setUp() throws RepositoryException {
+    conn = LivelinkConnectorFactory.getConnector("connector.");
+  }
+
+  public void testTraversal() throws RepositoryException {
+    Session sess = conn.login();
+
+    conn.setIncludedLocationNodes(getStartNodes());
+
+    TraversalManager mgr = sess.getTraversalManager();
+    mgr.setBatchHint(3000);
+
+    DocumentList rs = mgr.startTraversal();
+    processResultSet(rs);
+  }
+
+  private String getStartNodes() throws RepositoryException {
+    try {
+      String obj = System.getProperty("test.docids",
+          System.getProperty("test.docid", "BAD"));
+      return LivelinkConnector.sanitizeListOfIntegers(obj);
+    } catch (Exception e) {
+      throw new RepositoryException("Please specify a list of start " +
+          "nodes using the test.docids property: " +
+          "-Dtest.docids=\"12345,12346\"");
+    }
+  }
+
+  private void processResultSet(DocumentList docList)
+      throws RepositoryException {
+    if (docList == null) {
+      System.out.println("No results.");
+      return;
     }
 
-    public void testTraversal() throws RepositoryException {
-        Session sess = conn.login();
-
-        conn.setIncludedLocationNodes(getStartNodes());
-
-        TraversalManager mgr = sess.getTraversalManager();
-        mgr.setBatchHint(3000);
-
-        DocumentList rs = mgr.startTraversal();
-        processResultSet(rs);
-    }
-
-    private String getStartNodes() throws RepositoryException {
-        try {
-            String obj = System.getProperty("test.docids",
-                         System.getProperty("test.docid", "BAD"));
-            return LivelinkConnector.sanitizeListOfIntegers(obj);
-        } catch (Exception e) {
-            throw new RepositoryException("Please specify a list of start " +
-                      "nodes using the test.docids property: " +
-                      "-Dtest.docids=\"12345,12346\"");
-        }
-    }
-
-    private void processResultSet(DocumentList docList)
-            throws RepositoryException {
-        if (docList == null) {
-            System.out.println("No results.");
-            return;
-        }
-
-        Document doc;
-        while ((doc = docList.nextDocument()) != null) {
-            System.out.println();
-            Iterator jt = doc.getPropertyNames().iterator();
-            while (jt.hasNext()) {
-                String name = (String) jt.next();
-                Property prop = doc.findProperty(name);
-                Value value;
-                while ((value = prop.nextValue()) != null) {
-                    String printableValue;
-                    if (value instanceof BinaryValue) {
-                        try {
-                            InputStream in =
-                                ((BinaryValue) value).getInputStream();
-                            byte[] buffer = new byte[32];
-                            int count = in.read(buffer);
-                            in.close();
-                            if (count == -1)
-                                printableValue = "";
-                            else
-                                printableValue = new String(buffer, 0, count);
-                        } catch (IOException e) {
-                            printableValue = e.toString();
-                        }
-                    } else
-                        printableValue = value.toString();
-                    System.out.println(name + " = " + printableValue);
-                }
+    Document doc;
+    while ((doc = docList.nextDocument()) != null) {
+      System.out.println();
+      for (String name : doc.getPropertyNames()) {
+        Property prop = doc.findProperty(name);
+        Value value;
+        while ((value = prop.nextValue()) != null) {
+          String printableValue;
+          if (value instanceof BinaryValue) {
+            try {
+              InputStream in =
+                  ((BinaryValue) value).getInputStream();
+              byte[] buffer = new byte[32];
+              int count = in.read(buffer);
+              in.close();
+              if (count == -1)
+                printableValue = "";
+              else
+                printableValue = new String(buffer, 0, count);
+            } catch (IOException e) {
+              printableValue = e.toString();
             }
+          } else
+            printableValue = value.toString();
+          System.out.println(name + " = " + printableValue);
         }
+      }
     }
+  }
 }

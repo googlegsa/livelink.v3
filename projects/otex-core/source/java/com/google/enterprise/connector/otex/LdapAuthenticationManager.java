@@ -58,135 +58,129 @@ import com.google.enterprise.connector.spi.RepositoryLoginException;
  * supported features and extensioons.
  */
 class LdapAuthenticationManager implements AuthenticationManager {
+  /** The logger for this class. */
+  private static final Logger LOGGER =
+      Logger.getLogger(LdapAuthenticationManager.class.getName());
 
-    /** The logger for this class. */
-    private static final Logger LOGGER =
-        Logger.getLogger(LdapAuthenticationManager.class.getName());
+  /** The LDAP provider URL. */
+  private String providerUrl;
 
-    /** The LDAP provider URL. */
-    private String providerUrl;
-
-    /** The security principal string; the identity username will
-     * be substituted using MessageFormat.
-     */
-    private String securityPrincipalPattern;
+  /** The security principal string; the identity username will
+   * be substituted using MessageFormat.
+   */
+  private String securityPrincipalPattern;
 
 
-    /**
-     * Default constructor for bean instantiation.
-     */
-    LdapAuthenticationManager() {
-        super();
+  /**
+   * Default constructor for bean instantiation.
+   */
+  LdapAuthenticationManager() {
+    super();
+  }
+
+  /**
+   * The LDAP provider URL.
+   *
+   * @param providerUrl the provider URL
+   */
+  public void setProviderUrl(String providerUrl) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("PROVIDER URL: " + providerUrl);
+    this.providerUrl = providerUrl;
+  }
+
+  /**
+   * The LDAP security principal string for
+   * authentication. This should contain a MessageFormat
+   * placeholder for the username.
+   *
+   * @param securityPrincipalPattern the LDAP security principal string
+   * @throws IllegalArgumentException if the pattern can't be
+   * used with MessageFormat
+   */
+  public void setSecurityPrincipalPattern(String securityPrincipalPattern) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("SECURITY PRINCIPAL PATTERN: " + securityPrincipalPattern);
+    // Test the format string.
+    MessageFormat.format(securityPrincipalPattern, new Object[] { "foo" });
+    this.securityPrincipalPattern = securityPrincipalPattern;
+  }
+
+  /** {@inheritDoc} */
+  /* With Java 1.4.2 and up, you can use SSL by specifying the
+   * URL using the "ldaps" protocol instead of "ldap". No code
+   * changes are needed.
+   *
+   * TODO: accept a map of environment properties for greater
+   * configurability.
+   */
+  public AuthenticationResponse authenticate(AuthenticationIdentity identity)
+      throws RepositoryLoginException, RepositoryException {
+    if (LOGGER.isLoggable(Level.FINE))
+      LOGGER.fine("AUTHENTICATE (LDAP): " + identity.getUsername());
+
+    Hashtable<Object, Object> env = new Hashtable<Object, Object>();
+    env.put(Context.INITIAL_CONTEXT_FACTORY,
+        "com.sun.jndi.ldap.LdapCtxFactory");
+    env.put(Context.PROVIDER_URL, providerUrl);
+    env.put(Context.SECURITY_AUTHENTICATION, "simple");
+
+    String dn = MessageFormat.format(securityPrincipalPattern,
+        new Object[] { escapeUsername(identity.getUsername()) });
+    if (LOGGER.isLoggable(Level.FINER))
+      LOGGER.finer("DN: " + dn);
+    env.put(Context.SECURITY_PRINCIPAL, dn);
+    env.put(Context.SECURITY_CREDENTIALS, identity.getPassword());
+
+    try {
+      // Create the initial directory context
+      DirContext ctx = new InitialDirContext(env);
+      // Ask for attributes to ensure that the server is
+      // contacted. JNDI allows lazy initialization of
+      // contexts, so we have to use it, not just create
+      // it.
+      ctx.getAttributes("");
+      return new AuthenticationResponse(true, null);
+    } catch (NamingException e) {
+      LOGGER.warning("Authentication failed for " +
+          identity.getUsername() + "; " + e.toString());
+      return new AuthenticationResponse(false, null);
     }
+  }
 
-    /**
-     * The LDAP provider URL.
-     *
-     * @param providerUrl the provider URL
-     */
-    public void setProviderUrl(String providerUrl) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("PROVIDER URL: " + providerUrl);
-        this.providerUrl = providerUrl;
+  /**
+   * Escapes the username before putting it into the LDAP URL.
+   *
+   * @param username the username
+   * @return the escaped username; see RFC 4514
+   */
+  /* Package access for testing. */
+  String escapeUsername(String username) {
+    StringBuilder buffer = new StringBuilder();
+    int start = 0;
+    if (username.startsWith(" ")) {
+      buffer.append("\\ ");
+      ++start;
     }
-
-    /**
-     * The LDAP security principal string for
-     * authentication. This should contain a MessageFormat
-     * placeholder for the username.
-     *
-     * @param securityPrincipalPattern the LDAP security principal string
-     * @throws IllegalArgumentException if the pattern can't be
-     * used with MessageFormat
-     */
-    public void setSecurityPrincipalPattern(String securityPrincipalPattern) {
-        if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("SECURITY PRINCIPAL PATTERN: " + securityPrincipalPattern);
-        // Test the format string.
-        MessageFormat.format(securityPrincipalPattern, new Object[] { "foo" });
-        this.securityPrincipalPattern = securityPrincipalPattern;
+    if (username.startsWith("#")) {
+      buffer.append("\\#");
+      ++start;
     }
-
-
-    /** {@inheritDoc} */
-    /* With Java 1.4.2 and up, you can use SSL by specifying the
-     * URL using the "ldaps" protocol instead of "ldap". No code
-     * changes are needed.
-     *
-     * TODO: accept a map of environment properties for greater
-     * configurability.
-     */
-    public AuthenticationResponse authenticate(AuthenticationIdentity identity)
-            throws RepositoryLoginException, RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHENTICATE (LDAP): " + identity.getUsername());
-
-        Hashtable env = new Hashtable();
-        env.put(Context.INITIAL_CONTEXT_FACTORY,
-            "com.sun.jndi.ldap.LdapCtxFactory");
-        env.put(Context.PROVIDER_URL, providerUrl);
-        env.put(Context.SECURITY_AUTHENTICATION, "simple");
-
-        String dn = MessageFormat.format(securityPrincipalPattern,
-            new Object[] { escapeUsername(identity.getUsername()) });
-        if (LOGGER.isLoggable(Level.FINER))
-            LOGGER.finer("DN: " + dn);
-        env.put(Context.SECURITY_PRINCIPAL, dn);
-        env.put(Context.SECURITY_CREDENTIALS, identity.getPassword());
-
-        try {
-
-            // Create the initial directory context
-            DirContext ctx = new InitialDirContext(env);
-            // Ask for attributes to ensure that the server is
-            // contacted. JNDI allows lazy initialization of
-            // contexts, so we have to use it, not just create
-            // it.
-            ctx.getAttributes("");
-            return new AuthenticationResponse(true, null);
-        }
-        catch (NamingException e)
-        {
-            LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.toString());
-            return new AuthenticationResponse(false, null);
-        }
+    for (int i = start; i < username.length(); i++) {
+      char c = username.charAt(i);
+      switch (c) {
+        case '"': buffer.append("\\\""); break;
+        case '\\': buffer.append("\\\\"); break;
+        case '+': buffer.append("\\+"); break;
+        case ',': buffer.append("\\,"); break;
+        case ';': buffer.append("\\;"); break;
+        case '<': buffer.append("\\<"); break;
+        case '>': buffer.append("\\>"); break;
+        default: buffer.append(c); break;
+      }
     }
-
-    /**
-     * Escapes the username before putting it into the LDAP URL.
-     *
-     * @param username the username
-     * @return the escaped username; see RFC 4514
-     */
-    /* Package access for testing. */
-    String escapeUsername(String username) {
-
-        StringBuffer buffer = new StringBuffer();
-        int start = 0;
-        if (username.startsWith(" ")) {
-            buffer.append("\\ ");
-            ++start;
-        }
-        if (username.startsWith("#")) {
-            buffer.append("\\#");
-            ++start;
-        }
-        for (int i = start; i < username.length(); i++) {
-            char c = username.charAt(i);
-            switch (c) {
-            case '"': buffer.append("\\\""); break;
-            case '\\': buffer.append("\\\\"); break;
-            case '+': buffer.append("\\+"); break;
-            case ',': buffer.append("\\,"); break;
-            case ';': buffer.append("\\;"); break;
-            case '<': buffer.append("\\<"); break;
-            case '>': buffer.append("\\>"); break;
-            default: buffer.append(c); break;
-            }
-        }
-        if (username.endsWith(" "))
-            buffer.insert(buffer.length() - 1, "\\");
-        return buffer.toString();
-    }
+    if (username.endsWith(" "))
+      buffer.insert(buffer.length() - 1, "\\");
+    return buffer.toString();
+  }
 }

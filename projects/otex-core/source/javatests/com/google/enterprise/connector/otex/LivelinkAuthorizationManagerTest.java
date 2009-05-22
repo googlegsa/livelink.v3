@@ -33,54 +33,54 @@ import junit.framework.TestCase;
  * need.
  */
 public class LivelinkAuthorizationManagerTest extends TestCase {
-    private LivelinkConnector conn;
+  private LivelinkConnector conn;
     
-    public void setUp() throws RepositoryException {
-        conn = LivelinkConnectorFactory.getConnector("connector.");
-    }
+  public void setUp() throws RepositoryException {
+    conn = LivelinkConnectorFactory.getConnector("connector.");
+  }
 
-    /**
-     * Tests that showing hidden items doesn't include a query restriction.
-     *
-     * @throws RepositoryException if an unexpected error occurs
-     */
-    public void testShowHiddenItems() throws RepositoryException {
-        // This just needs to be a non-empty array of strings.
-        List docids = Arrays.asList(new String[] { "42" });
+  /**
+   * Tests that showing hidden items doesn't include a query restriction.
+   *
+   * @throws RepositoryException if an unexpected error occurs
+   */
+  public void testShowHiddenItems() throws RepositoryException {
+    // This just needs to be a non-empty array of strings.
+    List<String> docids = Arrays.asList(new String[] { "42" });
 
-        Session sess = conn.login();
-        LivelinkAuthorizationManager lam =
-            (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-        String query = lam.getDocidQuery(docids.iterator());
+    Session sess = conn.login();
+    LivelinkAuthorizationManager lam =
+        (LivelinkAuthorizationManager) sess.getAuthorizationManager();
+    String query = lam.getDocidQuery(docids.iterator());
 
-        assertTrue(query, query.indexOf("Catalog") == -1);
-    }
+    assertTrue(query, query.indexOf("Catalog") == -1);
+  }
 
-    /**
-     * Tests that subtype numbers in the showHiddenItems property are
-     * ignored.
-     *
-     * @throws RepositoryException if an unexpected error occurs
-     */
-    public void testHiddenItemSubtypes() throws RepositoryException {
-        // This just needs to be a non-empty array of strings.
-        List docids = Arrays.asList(new String[] { "42" });
+  /**
+   * Tests that subtype numbers in the showHiddenItems property are
+   * ignored.
+   *
+   * @throws RepositoryException if an unexpected error occurs
+   */
+  public void testHiddenItemSubtypes() throws RepositoryException {
+    // This just needs to be a non-empty array of strings.
+    List<String> docids = Arrays.asList(new String[] { "42" });
 
-        conn.setShowHiddenItems("false");
+    conn.setShowHiddenItems("false");
 
-        Session sess = conn.login();
-        LivelinkAuthorizationManager lam =
-            (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-        String query = lam.getDocidQuery(docids.iterator());
+    Session sess = conn.login();
+    LivelinkAuthorizationManager lam =
+        (LivelinkAuthorizationManager) sess.getAuthorizationManager();
+    String query = lam.getDocidQuery(docids.iterator());
 
-        assertTrue(query, query.indexOf("Catalog = 2") != -1);
+    assertTrue(query, query.indexOf("Catalog = 2") != -1);
         
-        conn.setShowHiddenItems("{ 1234 }");
+    conn.setShowHiddenItems("{ 1234 }");
 
-        sess = conn.login();
-        lam = (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-        String query2 = lam.getDocidQuery(docids.iterator());
+    sess = conn.login();
+    lam = (LivelinkAuthorizationManager) sess.getAuthorizationManager();
+    String query2 = lam.getDocidQuery(docids.iterator());
 
-        assertEquals((Object) query, query2);
-    }
+    assertEquals((Object) query, query2);
+  }
 }
