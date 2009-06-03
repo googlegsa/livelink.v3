@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.net.URL;
+import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -798,6 +800,9 @@ public class LivelinkConnectorType implements ConnectorType {
       HashMap<String, String> config = new HashMap<String, String>(configData);
       config.put(VERSION_PROPERTY, VERSION_NUMBER);
 
+      // If the user supplied a URL as the server, pull out the host name.
+      smartConfig(config);
+
       // Update the properties to copy the enabler properties to
       // the uses.
       Boolean changeHttp = changeFormDisplay(config,
@@ -885,6 +890,37 @@ public class LivelinkConnectorType implements ConnectorType {
       return getErrorResponse(getExceptionMessages(null, t));
     }
   }
+
+  /**
+   * Try to be a bit intelligent with the configuration.
+   * Try to handle common user errors.  Even devine some
+   * missing properties based upon others that are supplied.
+   */
+  private void smartConfig(Map<String, String> config) {
+    URL url;
+
+    // If user tried to specify a URL for the host name,
+    // try to extract the host name and port from the URL.
+    String server = config.get("server");
+    if (server != null && server.indexOf("://") > 0) {
+      try {
+        url = new URL(server);
+        config.put("server", url.getHost());
+        if (url.getPort() != -1) {
+          String port = config.get("port");
+          if (port == null || port.trim().length() == 0) {
+            config.put("port", Integer.toString(url.getPort()));
+          }
+        }
+      } catch (MalformedURLException e) {
+        // Try to be accomodating ... up to a point.
+        LOGGER.warning("Invalid host name supplied: " + server);
+      }
+    }
+
+    // TODO: Story 2888
+  }
+
 
   /**
    * @param key key name to test
@@ -1003,7 +1039,9 @@ public class LivelinkConnectorType implements ConnectorType {
   int validateUrl(String urlString, ResourceBundle bundle)
       throws UrlConfigurationException {
     try {
-      return new UrlValidator().validate(urlString);
+      UrlValidator validator = new UrlValidator();
+      validator.setRequireFullyQualifiedHostNames(true);
+      return validator.validate(urlString);
     } catch (UrlValidatorException e) {
       throw new UrlConfigurationException(
           httpNotFound(bundle, urlString, e.getStatusCode(),

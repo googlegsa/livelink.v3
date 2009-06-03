@@ -72,7 +72,7 @@ class UrlValidator {
 
   /** The connect timeout; only used in Java SE 5.0 or later. */
   private volatile int connectTimeout = 60 * 1000;
-  
+
   /** The read timeout; only used in Java SE 5.0 or later. */
   private volatile int readTimeout = 60 * 1000;
 
@@ -81,6 +81,9 @@ class UrlValidator {
 
   /** Whether redirects should be followed or returned as the response. */
   private volatile boolean followRedirects = false;
+
+  /** Whether fully qualified host names must be specified. */
+  private volatile boolean requireFullyQualifiedHostNames = false;
 
   /** Constructs an instance using the default parameter values. */
   public UrlValidator() {
@@ -111,6 +114,20 @@ class UrlValidator {
   }
 
   /**
+   * Sets whether fully qualified host names are required in the URL.
+   * IP addresses are still OK, but host names must be fully qualified.
+   * The default is <code>false</code>, which allows non-fully qualified
+   * host names, even thought the GSA requires one in most cases.
+   *
+   * @param requireFullyQualifiedHostNames <code>true</code> if host
+   *        names must be fully qualified, <code>false</code> if not.
+   */
+  public void setRequireFullyQualifiedHostNames(
+      boolean requireFullyQualifiedHostNames) {
+    this.requireFullyQualifiedHostNames = requireFullyQualifiedHostNames;
+  }
+
+  /**
    * Sets the connect timeout. The default value is 60000 milliseconds.
    *
    * @param connectTimeout the connect timeout in milliseconds
@@ -136,6 +153,8 @@ class UrlValidator {
    *
    * <ol>
    * <li>The URL syntax is valid.
+   * <li>If fully qualified host names are required, check that the
+   *     host name looks fully qualified (contains a '.').
    * <li>If the URL uses HTTP or HTTPS:
    *   <ol>
    *   <li>A connection can be made and the response read.
@@ -178,6 +197,20 @@ class UrlValidator {
       return 0;
 
     URL url = new URL(urlString);
+
+    if (requireFullyQualifiedHostNames) {
+      // The GSA requires fully qualified host names for most hosts.
+      // This non-rigorous test simply looks for '.' in hostname.
+      // Conveniently, IPv4 addresses also pass this test (but not
+      // IPv6 addresses).
+      String host = url.getHost();
+      if ((host.charAt(0) != '[') && (host.indexOf('.') < 0)) {
+        LOGGER.severe("Fully qualified host name is required: " + host);
+        throw new UrlValidatorException(HttpURLConnection.HTTP_PRECON_FAILED,
+            "Fully qualified host name is required: " + host);
+      }
+    }
+
     URLConnection conn = url.openConnection();
 
     if (!(conn instanceof HttpURLConnection)) {

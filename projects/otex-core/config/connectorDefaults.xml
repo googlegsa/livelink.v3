@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
-    <!-- 
+    <!--
          CUSTOMERS SHOULD NOT EDIT THIS FILE.
          Override these properties by copying them to the
          Livelink_Enterprise_Server bean in connectorInstance.xml
@@ -54,6 +54,8 @@
                 <entry key="141" value="?func=llworkspace" />
                 <entry key="142"
                        value="?func=ll&amp;objtype=142&amp;objAction=browse" />
+                <entry key="144"
+                       value="/{0}/{4}?func=doc.Fetch&amp;nodeid={0}&amp;viewType=1" />
                 <entry key="default"
                        value="?func=ll&amp;objId={0}&amp;objAction={3}" />
             </map>
@@ -120,16 +122,16 @@
         @constructor-arg@
     </bean>
 
-    <bean id="propertyPlaceholderConfigurer" 
-          class="com.google.enterprise.connector.instantiator.EncryptedPropertyPlaceholderConfigurer"> 
-        <property name="properties"> 
-            <props> 
+    <bean id="propertyPlaceholderConfigurer"
+          class="com.google.enterprise.connector.instantiator.EncryptedPropertyPlaceholderConfigurer">
+        <property name="properties">
+            <props>
                 <prop key="httpUsername"></prop>
                 <prop key="httpPassword"></prop>
                 <prop key="enableNtlm">false</prop>
                 <prop key="authenticationEnableNtlm">false</prop>
-                <prop key="traversalUsername"></prop> 
-            </props> 
-        </property> 
+                <prop key="traversalUsername"></prop>
+            </props>
+        </property>
     </bean>
 </beans>

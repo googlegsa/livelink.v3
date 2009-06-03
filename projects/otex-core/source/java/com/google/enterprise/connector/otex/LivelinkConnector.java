@@ -185,7 +185,7 @@ public class LivelinkConnector implements Connector {
 
   /** The domain used to impersonate users. */
   private String domainName;
-  
+
   /** The node types that you want to exclude from traversal. */
   private String excludedNodeTypes;
 
@@ -236,7 +236,7 @@ public class LivelinkConnector implements Connector {
   private String httpUsername;
 
   /** The httpPassword. */
-  private String httpPassword;  
+  private String httpPassword;
 
   /** The Livelink Public Content client username. */
   private String publicContentUsername;
@@ -252,7 +252,7 @@ public class LivelinkConnector implements Connector {
 
   /** A list of PropertyValidator instances. */
   private List<PropertyValidator> propertyValidators =
-      new ArrayList<PropertyValidator>(); 
+      new ArrayList<PropertyValidator>();
 
   /**
    * Constructs a connector instance for a specific Livelink
@@ -295,11 +295,11 @@ public class LivelinkConnector implements Connector {
         void validate() {
           if (server == null || server.trim().length() == 0) {
             throw new ConfigurationException(
-                "A host name or IP address is required.", 
+                "A host name or IP address is required.",
                 "missingHost", null);
           }
         }
-      }); 
+      });
   }
 
   /**
@@ -316,7 +316,7 @@ public class LivelinkConnector implements Connector {
         void validate() {
           clientFactory.setPort(Integer.parseInt(port));
         }
-      }); 
+      });
   }
 
   /**
@@ -425,17 +425,17 @@ public class LivelinkConnector implements Connector {
           if (!useHttpTunneling)
             return;
           if (enableNtlm &&
-              ((httpUsername == null || 
+              ((httpUsername == null ||
                   httpUsername.trim().length() == 0) ||
-                  (httpPassword == null || 
+                  (httpPassword == null ||
                       httpPassword.trim().length() == 0))) {
             throw new ConfigurationException(
                 "An HTTP username and HTTP password are required " +
                 "when NTLM authentication is enabled.",
-                "missingNtlmCredentials", null); 
+                "missingNtlmCredentials", null);
           }
         }
-      }); 
+      });
   }
 
   /**
@@ -656,8 +656,10 @@ public class LivelinkConnector implements Connector {
    * @param subType the subtype, used to select a pattern and an action
    * @param volumeId the volume ID of the object
    * @param objectId the object ID of the object
+   * @param fileName of the object version (may be null)
    */
-  String getDisplayUrl(String url, int subType, int objectId, int volumeId) {
+  String getDisplayUrl(String url, int subType, int objectId, int volumeId,
+                       String fileName) {
     Integer subTypeInteger = new Integer(subType);
     MessageFormat mf = (MessageFormat) displayPatterns.get(subTypeInteger);
     if (mf == null)
@@ -666,14 +668,11 @@ public class LivelinkConnector implements Connector {
     if (action == null)
       action = displayActions.get(null);
 
-    // TODO: supply the download filename as an additional
-    // parameter, for doc.Fetch URLs. This should match the
-    // Livelink value as closely as is reasonable, although simply
-    // using the version file name is a possibility.
     StringBuffer buffer = new StringBuffer();
     buffer.append(url);
     Object[] args = { new Integer(objectId), new Integer(volumeId),
-                      subTypeInteger, action };
+                      subTypeInteger, action,
+                      (fileName == null) ? new Integer(objectId) : fileName };
     synchronized (displayPatterns) {
       mf.format(args, buffer, null);
     }
@@ -732,7 +731,7 @@ public class LivelinkConnector implements Connector {
           if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("SERVTYPE: " + servtype);
         }
-      }); 
+      });
   }
 
   /**
@@ -787,7 +786,6 @@ public class LivelinkConnector implements Connector {
     return this.isSqlServer;
   }
 
-    
   /**
    * Sets the startDate property.
    *
@@ -798,7 +796,7 @@ public class LivelinkConnector implements Connector {
         void validate() {
           validateStartDate(property);
         }
-      }); 
+      });
   }
 
   private void validateStartDate(final String property) {
@@ -810,14 +808,14 @@ public class LivelinkConnector implements Connector {
         LOGGER.config("STARTDATE: " + property);
       return;
     }
-    Date parsedDate = null; 
+    Date parsedDate = null;
     try {
-      SimpleDateFormat dateTime = 
-          new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss"); 
+      SimpleDateFormat dateTime =
+          new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
       parsedDate = dateTime.parse(property);
     } catch (ParseException p1) {
       try {
-        SimpleDateFormat date = new SimpleDateFormat("yyyy-MM-dd"); 
+        SimpleDateFormat date = new SimpleDateFormat("yyyy-MM-dd");
         parsedDate = date.parse(property);
       } catch (ParseException p2) {
         if (LOGGER.isLoggable(Level.WARNING)) {
@@ -830,7 +828,7 @@ public class LivelinkConnector implements Connector {
     }
     startDate = parsedDate;
     if (LOGGER.isLoggable(Level.CONFIG))
-      LOGGER.config("STARTDATE: " + property); 
+      LOGGER.config("STARTDATE: " + property);
   }
 
   /**
@@ -917,14 +915,14 @@ public class LivelinkConnector implements Connector {
   public void setExcludedNodeTypes(final String excludedNodeTypesParam) {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
-          excludedNodeTypes = 
+          excludedNodeTypes =
               sanitizeListOfIntegers(excludedNodeTypesParam);
           if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("EXCLUDED NODE TYPES: " + 
+            LOGGER.config("EXCLUDED NODE TYPES: " +
                 excludedNodeTypes);
           }
         }
-      }); 
+      });
   }
 
   /**
@@ -944,14 +942,14 @@ public class LivelinkConnector implements Connector {
   public void setExcludedVolumeTypes(final String excludedVolumeTypesParam) {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
-          excludedVolumeTypes = 
+          excludedVolumeTypes =
               sanitizeListOfIntegers(excludedVolumeTypesParam);
           if (LOGGER.isLoggable(Level.CONFIG)) {
             LOGGER.config("EXCLUDED VOLUME TYPES: " +
                 excludedVolumeTypes);
           }
         }
-      }); 
+      });
   }
 
   /**
@@ -975,10 +973,10 @@ public class LivelinkConnector implements Connector {
           excludedLocationNodes =
               sanitizeListOfIntegers(excludedLocationNodesParam);
           if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("EXCLUDED NODE IDS: " + 
+            LOGGER.config("EXCLUDED NODE IDS: " +
                 excludedLocationNodes);
         }
-      }); 
+      });
   }
 
   /**
@@ -1002,7 +1000,7 @@ public class LivelinkConnector implements Connector {
           includedLocationNodes =
               sanitizeListOfIntegers(includedLocationNodesParam);
           if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("INCLUDED NODE IDS: " + 
+            LOGGER.config("INCLUDED NODE IDS: " +
                 includedLocationNodes);
           }
         }
@@ -1068,15 +1066,15 @@ public class LivelinkConnector implements Connector {
    * in the ObjectInfo assoc to include in the index.
    */
   public void setIncludedObjectInfo(final String objectInfoKeysParam) {
-    if (LOGGER.isLoggable(Level.CONFIG)) 
+    if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("INCLUDED OBJECTINFO: " + objectInfoKeysParam);
 
     if (objectInfoKeysParam != null) {
       propertyValidators.add(new PropertyValidator() {
           void validate() {
-            validateIncludedObjectInfo(objectInfoKeysParam); 
+            validateIncludedObjectInfo(objectInfoKeysParam);
           }
-        }); 
+        });
     }
   }
 
@@ -1086,10 +1084,10 @@ public class LivelinkConnector implements Connector {
       ArrayList<String> keys = new ArrayList<String>(
           Arrays.asList(sanikeys.split(",")));
       Field[] fields = LivelinkTraversalManager.FIELDS;
-                        
+
       for (int i = 0; i < keys.size(); i++) {
         String key = keys.get(i);
-                            
+
         // If the client asks to index all ExtendedData, then
         // don't bother with the selective ExendedData by
         // subtype map.
@@ -1108,12 +1106,12 @@ public class LivelinkConnector implements Connector {
           if ((fields[j].propertyNames.length > 0) &&
               (fields[j].propertyNames[0].equalsIgnoreCase(key))) {
             keys.remove(i);
-            i--; 	// ArrayList.remove shuffles everything down.
+            i--;  // ArrayList.remove shuffles everything down.
             break;
           }
         }
       }
-                        
+
       // Remember anything left after pruning duplicates.
       if (!keys.isEmpty()) {
         objectInfoKeys = keys.toArray(new String[keys.size()]);
@@ -1138,7 +1136,7 @@ public class LivelinkConnector implements Connector {
    * in the VersionInfo assoc to include in the index.
    */
   public void setIncludedVersionInfo(final String versionInfoKeysParam) {
-    if (LOGGER.isLoggable(Level.CONFIG)) 
+    if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("INCLUDED VERSIONINFO: " + versionInfoKeysParam);
     propertyValidators.add(new PropertyValidator() {
         void validate() {
@@ -1148,7 +1146,7 @@ public class LivelinkConnector implements Connector {
               versionInfoKeys = keys.split(",");
           }
         }
-      }); 
+      });
   }
 
   /**
@@ -1254,7 +1252,7 @@ public class LivelinkConnector implements Connector {
         void validate() {
           hiddenItemsSubtypes = new HashSet<Object>();
           String s = sanitizeListOfStrings(hidden);
-                
+
           // An empty set here indicates that no hidden
           // content should be indexed.
           if ((s == null) || (s.length() == 0) ||
@@ -1271,7 +1269,7 @@ public class LivelinkConnector implements Connector {
               String word = ids[i].toLowerCase();
               // "All" in the set means all hidden
               // content will get indexed.
-              if ("true".equals(word) || "all".equals(word) || 
+              if ("true".equals(word) || "all".equals(word) ||
                   "'all'".equals(word)) {
                 hiddenItemsSubtypes.add("all");
               }
@@ -1280,7 +1278,7 @@ public class LivelinkConnector implements Connector {
             }
           }
         }
-      }); 
+      });
   }
 
   /**
@@ -1362,7 +1360,7 @@ public class LivelinkConnector implements Connector {
     createAuthenticationClientFactory();
     authenticationClientFactory.setWindowsDomain(domain);
   }
-    
+
   /**
    * Sets the host name or IP address for authentication. See {@link
    * #setServer}.
@@ -1389,7 +1387,7 @@ public class LivelinkConnector implements Connector {
         void validate() {
           authenticationClientFactory.setPort(Integer.parseInt(port));
         }
-      }); 
+      });
   }
 
   /**
@@ -1603,7 +1601,7 @@ public class LivelinkConnector implements Connector {
     }
 
     for (int i = 0; i < propertyValidators.size(); i++) {
-      ((PropertyValidator) propertyValidators.get(i)).validate(); 
+      ((PropertyValidator) propertyValidators.get(i)).validate();
     }
 
     if (!useHttpTunneling) {
@@ -1611,15 +1609,15 @@ public class LivelinkConnector implements Connector {
       clientFactory.setLivelinkCgi("");
       clientFactory.setUseUsernamePasswordWithWebServer(false);
     }
-    if (publicContentDisplayUrl == null || 
+    if (publicContentDisplayUrl == null ||
         publicContentDisplayUrl.length() == 0) {
       publicContentDisplayUrl = displayUrl;
     }
-        
+
     // Must be the last thing in this method so that the
     // connector is fully configured when used here.
     if (authenticationManager instanceof ConnectorAware)
-      ((ConnectorAware) authenticationManager).setConnector(this); 
+      ((ConnectorAware) authenticationManager).setConnector(this);
   }
 
   /**
@@ -1655,7 +1653,7 @@ public class LivelinkConnector implements Connector {
           LOGGER, "emptyAncestors", null);
     }
   }
-    
+
   /**
    * Validates the DTreeAncestors table in the Livelink database,
    * which must be populated for the connector to work. This is a
@@ -1677,7 +1675,7 @@ public class LivelinkConnector implements Connector {
   private void validateIncludedLocationStartDate(Client client)
       throws RepositoryException {
     // If the user specified "Items to index", fetch the earliest
-    // modification time for any of those items.  We can forge 
+    // modification time for any of those items.  We can forge
     // a start checkpoint that skips over any ancient history in
     // the LL database.
     if (includedLocationNodes != null &&
@@ -1711,7 +1709,7 @@ public class LivelinkConnector implements Connector {
       }
     }
   }
-    
+
   /**
    * Validates the DTreeAncestors table in the Livelink database,
    * which must be populated for the connector to work. This is a
@@ -1738,7 +1736,7 @@ public class LivelinkConnector implements Connector {
     ClientValue info = client.AccessEnterpriseWS();
     String id = info.toString("ID");
     String volumeId = info.toString("VolumeID");
-        
+
     // For the correlated subquery to work, we have to refer to
     // DTree using the "a" range variable that LAPI adds behind
     // the scenes. This query is designed to be very fast and
@@ -1768,13 +1766,13 @@ public class LivelinkConnector implements Connector {
           id + ").");
     }
   }
-    
+
   /** {@inheritDoc} */
   public Session login()
       throws RepositoryLoginException, RepositoryException {
     LOGGER.fine("LOGIN");
 
-    init(); 
+    init();
 
     // Several birds with one stone. Getting the server info
     // verifies connectivity with the server, and we use the
@@ -1805,7 +1803,7 @@ public class LivelinkConnector implements Connector {
     // The connector requires Livelink 9.5 or later.
     if ((majorVersion < 9) || (majorVersion == 9 && minorVersion < 5)) {
       throw new LivelinkException(
-          "Livelink 9.5 or later is required.", LOGGER, 
+          "Livelink 9.5 or later is required.", LOGGER,
           "unsupportedVersion", new String[] { "9.5" });
     }
 
@@ -1862,7 +1860,7 @@ public class LivelinkConnector implements Connector {
       validateIncludedLocationStartDate(client);
       validateEnterpriseWorkspaceAncestors(client);
     }
-        
+
     return new LivelinkSession(this, clientFactory, authenticationManager);
   }
 }

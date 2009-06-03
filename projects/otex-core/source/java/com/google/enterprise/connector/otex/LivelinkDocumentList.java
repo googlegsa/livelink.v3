@@ -178,7 +178,7 @@ class LivelinkDocumentList implements DocumentList {
         // RepositoryException up to the Connector Manager,
         // signaling the end of this batch.  The CM will retry later.
         try {
-          client.GetCurrentUserID(); 	// ping()
+          client.GetCurrentUserID();  // ping()
         } catch (RepositoryException e) {
           // The failure seems to be systemic, rather than a problem
           // with this particular document.  Restore the previous
@@ -326,6 +326,9 @@ class LivelinkDocumentList implements DocumentList {
     /** The ObjectInfo of the current row, [fetch delayed until needed] */
     private ClientValue objectInfo;
 
+    /** The VersionInfo of the current row, [fetch delayed until needed] */
+    private ClientValue versionInfo;
+
     /** The Document Properties associated with the current row. */
     private LivelinkDocument props;
 
@@ -396,6 +399,7 @@ class LivelinkDocumentList implements DocumentList {
       Date insDate = null, delDate = null;
       int dateComp = 0;
       objectInfo = null;
+      versionInfo = null;
 
       // Peek at the next item to insert,
       if (insRow < insSize) {
@@ -525,15 +529,77 @@ class LivelinkDocumentList implements DocumentList {
 
       // Add the ExtendedData as MetaData properties.
       collectExtendedDataProperties();
-      
+
       // DISPLAYURL
       String displayUrl = isPublic ?
           connector.getPublicContentDisplayUrl() :
           connector.getDisplayUrl();
       String url = connector.getDisplayUrl(displayUrl,
-          subType, objectId, volumeId);
+          subType, objectId, volumeId, getDownloadFileName());
       props.addProperty(SpiConstants.PROPNAME_DISPLAYURL,
           Value.getStringValue(url));
+    }
+
+    /**
+     * Construct a download filename based upon the object name,
+     * its mimetype, and the filename of its version.  The download
+     * name is URL safe, containing no whitespaces or special characters.
+     *
+     * @return download filename, may be null.
+     */
+    private String getDownloadFileName() {
+      String fileName = null;
+
+      // If we have content, try to include a filename in the displayUrl.
+      try {
+        // We're guessing here that if MimeType is
+        // non-null then there should be a content.
+        if (!recArray.isDefined(insRow, "MimeType"))
+          return null;
+        if (recArray.isDefined(insRow, "Name"))
+          fileName = recArray.toString(insRow, "Name");
+      } catch (RepositoryException e) {
+        return null;
+      }
+
+      // If the name has no extension, pull the filename extension off
+      // of the VersionInfo FileName.
+      // TODO: The Livelink code uses a mimetype-to-extension map to do this.
+      if (fileName != null && fileName.lastIndexOf('.') <= 0) {
+        try {
+          if (versionInfo == null)
+            versionInfo = client.GetVersionInfo(volumeId, objectId, 0);
+          if (versionInfo != null && versionInfo.hasValue()
+              && versionInfo.isDefined("FileName")) {
+            String fn = versionInfo.toString("FileName");
+            int ext;
+            if (fileName.trim().length() == 0)
+              fileName = fn;
+            else if ((ext = fn.lastIndexOf('.')) > 0)
+              fileName += fn.substring(ext);
+          }
+        } catch (RepositoryException re) {
+          // Object does not have VersionInfo or FileName property.
+        }
+      }
+
+      // Now make the filename URL safe, repacing 'bad chars' with either
+      // underscores or URL encoded escapes.
+      if (fileName != null) {
+        if (fileName.trim().length() > 0) {
+          // Mangle filename like Livelink does.
+          fileName = fileName.replaceAll("[\\s\\|\\?/\\\\<>;\\*%'\"]", "_");
+          try {
+            fileName = java.net.URLEncoder.encode(fileName, "UTF-8");
+          } catch (java.io.UnsupportedEncodingException e) {
+            // Shouldn't happen with UTF-8, but if it does, forget the filename.
+            fileName = null;
+          }
+        } else {
+          fileName = null;
+        }
+      }
+      return fileName;
     }
 
     /**
@@ -544,7 +610,7 @@ class LivelinkDocumentList implements DocumentList {
      * content is generated.  The content property's value is
      * inserted into the property map, but is also returned.
      *
-     * @returns content Value object, null if no content
+     * @return content Value object, null if no content
      */
     private void collectContentProperty() throws RepositoryException {
       if (LOGGER.isLoggable(Level.FINER))
@@ -697,8 +763,8 @@ class LivelinkDocumentList implements DocumentList {
       if (!dataSize.isDefined())
         return;
 
-      ClientValue versionInfo;
-      versionInfo = client.GetVersionInfo(volumeId, objectId, 0);
+      if (versionInfo == null)
+        versionInfo = client.GetVersionInfo(volumeId, objectId, 0);
       if (versionInfo == null || !versionInfo.hasValue())
         return;
 
@@ -954,7 +1020,7 @@ class LivelinkDocumentList implements DocumentList {
      * Add a UserID or GroupID property value as the name of the user or
      * group, rather than the integral ID.
      *
-     * @param propertyName	the property key to use when adding the value
+     * @param propertyName  the property key to use when adding the value
      * to the map.
      * @param idValue ClientValue containing  the UserID or GroupID to
      * resolve to a name.
@@ -999,7 +1065,7 @@ class LivelinkDocumentList implements DocumentList {
      *
      * @param fieldName the name of the field in the ObjectInfo or
      * VersionInfo assoc.
-     * @returns true if the field contains a UserID or a GroupID value.
+     * @return true if the field contains a UserID or a GroupID value.
      */
     private boolean isUserIdOrGroupId(String fieldName) {
       for (int i = 0; i < USER_FIELD_NAMES.length; i++) {
