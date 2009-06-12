@@ -16,7 +16,6 @@ package com.google.enterprise.connector.otex;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import com.google.enterprise.connector.spi.ConfigureResponse;
 
 /**

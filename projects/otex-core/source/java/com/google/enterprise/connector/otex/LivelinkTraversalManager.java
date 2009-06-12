@@ -187,7 +187,7 @@ class LivelinkTraversalManager
     this.contentHandler = getContentHandler();
 
     // Check to see if we will track Deleted Documents.
-    this.deleteSupported = connector.getTrackDeletedItems();
+    deleteSupported = connector.getTrackDeletedItems();
   }
 
   /**
