@@ -5,7 +5,7 @@
     <bean id="Livelink_Enterprise_Server"
           class="com.google.enterprise.connector.otex.LivelinkConnector"
           parent="Livelink_Enterprise_Server_Defaults" 
-          singleton="false">
+          dependency-check="all" singleton="false">
 
         <!-- SET CUSTOM PROPERTY VALUES HERE -->
 
