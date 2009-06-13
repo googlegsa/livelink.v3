@@ -233,6 +233,7 @@
       <fileset dir="${classes}"/>
       <fileset dir="${build}" includes="config/*.*" 
         excludes="**/logging.properties" />
+      <zipfileset file="${build}/config/logging.properties" prefix="" />
       <manifest>
         <!-- Manifest files are limited to 72 byte line lengths, but our
              "official" Title exceeds that by 2 bytes.  The ant Manifest

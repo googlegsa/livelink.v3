@@ -166,6 +166,7 @@
       <fileset dir="${tests.classes}" includes="**/mock/*" />
       <fileset dir="${build}" includes="config/*.*" 
         excludes="**/logging.properties" />
+      <zipfileset file="${build}/config/logging.properties" prefix="" />
       <manifest>
         <attribute name="Implementation-Title" value="Mock Livelink Connector"/>
         <attribute name="Implementation-Version" value="${version} ${TODAY}"/>
