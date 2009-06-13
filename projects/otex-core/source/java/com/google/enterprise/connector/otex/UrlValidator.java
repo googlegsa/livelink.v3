@@ -203,6 +203,10 @@ class UrlValidator {
       // IPv6 addresses).
       String host = url.getHost();
       if ((host.charAt(0) != '[') && (host.indexOf('.') < 0)) {
+        // FIXME: This string should be translated, either locally,
+        // which might be troubling, or by throwing a more specific
+        // exception so that the connector can provide a localized
+        // message.
         LOGGER.severe("Fully qualified host name is required: " + host);
         throw new UrlValidatorException(HttpURLConnection.HTTP_PRECON_FAILED,
             "Fully qualified host name is required: " + host);

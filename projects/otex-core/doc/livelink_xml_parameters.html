@@ -333,12 +333,14 @@
     the Livelink repository, so that those items may also be deleted
     from the Google search index.
     <p>For optimal performance tracking deleted items, the Livelink
-    system administrator should add a database index for the AuditID
-    field of the DAuditNew table of the Livelink backend database.</p>
-    <p>If multiple connector instances index the same Livelink repository,
-    only one should track deleted items.  For complex deployments, you
-    might consider having a connector instance dedicated to handling
-    deletes.
+    system administrator should add a database index for the AuditID,
+    AuditDate, and EventID columns of the DAuditNew table of the
+    Livelink backend database.</p>
+    <p>Deleting documents from a connector instance that only indexes
+    a small portion of the repository is inefficient. To reasonably
+    manage GSA licensing limits, you might consider disabling GSA
+    deletes for those instances, while leaving them enabled for a
+    connector instance that indexes the entire repository.
     </p></td>
     <td>One of the following values:
     <dl>
@@ -372,6 +374,10 @@
     <dt> 3
     <dd> The display action, which varies by subtype and is configured
     by the displayActions property.
+    <dt> 4
+    <dd> The filename with extension, based on the name of the item
+    and the version filename extension. Intended for use
+    with <code>doc.Fetch</code> URLs (see the example below).
     </dl>
     The default value is a map with the following entries:
     <dl>
@@ -383,11 +389,15 @@
       <dd>?func=ll&amp;objId={0}&amp;objAction={3}
     </dl>
     <p>To fetch documents directly from the search results, instead of
-    linking to the Overview or Properties page, add the following
-    entry to the map:</p>
+    linking to the Overview or Properties page, add one of the following
+    entries to the map:</p>
     <dl>
       <dt>144
-      <dd>/open/{0}
+      <dd>
+        <ul>
+          <li>/open/{0}</li>
+          <li>/{0}/{4}?func=doc.Fetch&amp;nodeid={0}&amp;viewType=1</li>
+        </ul>
     </dl>
     </td>
   </tr>

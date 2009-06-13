@@ -1043,6 +1043,10 @@ public class LivelinkConnectorType implements ConnectorType {
       validator.setRequireFullyQualifiedHostNames(true);
       return validator.validate(urlString);
     } catch (UrlValidatorException e) {
+      // FIXME: The Not found message is confusing with an error about
+      // fully-qualified host names. I think the validator should
+      // throw a different exception in that case, and we should
+      // provide a different message.
       throw new UrlConfigurationException(
           httpNotFound(bundle, urlString, e.getStatusCode(),
               e.getMessage()));

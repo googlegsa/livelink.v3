@@ -54,8 +54,6 @@
                 <entry key="141" value="?func=llworkspace" />
                 <entry key="142"
                        value="?func=ll&amp;objtype=142&amp;objAction=browse" />
-                <entry key="144"
-                       value="/{0}/{4}?func=doc.Fetch&amp;nodeid={0}&amp;viewType=1" />
                 <entry key="default"
                        value="?func=ll&amp;objId={0}&amp;objAction={3}" />
             </map>
