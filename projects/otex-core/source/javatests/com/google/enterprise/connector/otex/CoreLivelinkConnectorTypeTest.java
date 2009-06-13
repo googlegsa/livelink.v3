@@ -18,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -32,8 +33,10 @@ import javax.swing.text.html.parser.ParserDelegator;
 import javax.swing.text.MutableAttributeSet;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import org.xml.sax.SAXException;
+import org.xml.sax.EntityResolver;
 import org.xml.sax.ErrorHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
 import com.google.enterprise.connector.spi.ConfigureResponse;
@@ -211,6 +214,65 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     }
   }
 
+  // These fields and the LocalEntityResolver are copied from the
+  // connector manager's ServletUtil class. The only change is to use
+  // the XHTML-1.0-Strict DTD rather than the XHTML-1.0-Transitional
+  // DTD.
+  private static final String XHTML_DTD_URL =
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd";
+  private static final String XHTML_DTD_FILE = "/xhtml1-strict.dtd";
+  private static final String HTML_LAT1_URL =
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml-lat1.ent";
+  private static final String HTML_LAT1_FILE = "/xhtml-lat1.ent";
+  private static final String HTML_SYMBOL_URL =
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml-symbol.ent";
+  private static final String HTML_SYMBOL_FILE = "/xhtml-symbol.ent";
+  private static final String HTML_SPECIAL_URL =
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml-special.ent";
+  private static final String HTML_SPECIAL_FILE = "/xhtml-special.ent";
+
+  private static class LocalEntityResolver implements EntityResolver {
+    public InputSource resolveEntity(String publicId, String systemId) {
+      URL url;
+      if (XHTML_DTD_URL.equals(systemId)) {
+        LOGGER.fine("publicId=" + publicId + "; systemId=" + systemId);
+        url = getClass().getResource(XHTML_DTD_FILE);
+        if (url != null) {
+          // Go with local resource.
+          LOGGER.fine("Resolving " + XHTML_DTD_URL + " to local entity");
+          return new InputSource(url.toString());
+        } else {
+          // Go with the HTTP URL.
+          LOGGER.fine("Unable to resolve " + XHTML_DTD_URL + " to local entity");
+          return null;
+        }
+      } else if (HTML_LAT1_URL.equals(systemId)) {
+        url = getClass().getResource(HTML_LAT1_FILE);
+        if (url != null) {
+          return new InputSource(url.toString());
+        } else {
+          return null;
+        }
+      } else if (HTML_SYMBOL_URL.equals(systemId)) {
+        url = getClass().getResource(HTML_SYMBOL_FILE);
+        if (url != null) {
+          return new InputSource(url.toString());
+        } else {
+          return null;
+        }
+      } else if (HTML_SPECIAL_URL.equals(systemId)) {
+        url = getClass().getResource(HTML_SPECIAL_FILE);
+        if (url != null) {
+          return new InputSource(url.toString());
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
+  }
+
   private static final String HTML_PREFIX =
       "<!DOCTYPE html PUBLIC "
       + "\"-//W3C//DTD XHTML 1.0 Strict//EN\" "
@@ -232,6 +294,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     factory.setValidating(true);
     DocumentBuilder builder = factory.newDocumentBuilder();
     builder.setErrorHandler(new ThrowingErrorHandler());
+    builder.setEntityResolver(new LocalEntityResolver());
 
     String html = HTML_PREFIX + formSnippet + HTML_SUFFIX;
     builder.parse(new ByteArrayInputStream(html.getBytes("UTF-8")));
@@ -553,6 +616,15 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
           displayUrl.replaceFirst("http", "xyzzy"), bundle);
       fail();
     } catch (UrlConfigurationException e) {
+    }
+
+    // Test 7: Host not fully-qualified
+    try {
+      String url = displayUrl.replaceFirst("//.*([:/])", "//localhost$1");
+      code = connectorType.validateUrl(url, bundle);
+      fail(url);
+    } catch (UrlConfigurationException e) {
+      assertTrue(e.toString(), e.getMessage().indexOf("412") != -1);
     }
   }
 

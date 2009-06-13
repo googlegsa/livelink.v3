@@ -100,6 +100,7 @@
           overwrite="yes">
       <fileset dir="${tests.src}">
           <include name="**/OtexConnectorResources_test.properties" />
+          <include name="xhtml*" />
       </fileset>
     </copy>
   </target>
