@@ -14,20 +14,24 @@
 
 package com.google.enterprise.connector.otex;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.File;
-import java.io.PrintStream;
+import java.io.OutputStream;
 
 import com.google.enterprise.connector.manager.Context;
 import com.google.enterprise.connector.instantiator.MockInstantiator;
+import com.google.enterprise.connector.instantiator.ThreadPool;
 import com.google.enterprise.connector.persist.ConnectorNotFoundException;
-import com.google.enterprise.connector.pusher.Pusher;
-import com.google.enterprise.connector.pusher.DocPusher;
+import com.google.enterprise.connector.pusher.DocPusherFactory;
+import com.google.enterprise.connector.pusher.PusherFactory;
+import com.google.enterprise.connector.pusher.MockFeedConnection;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
+import com.google.enterprise.connector.traversal.BatchResult;
+import com.google.enterprise.connector.traversal.BatchSize;
 import com.google.enterprise.connector.traversal.QueryTraverser;
 import com.google.enterprise.connector.traversal.Traverser;
 
@@ -78,7 +82,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
     }
 
 
-    private void runTestBatches(int batchSize) throws IOException,
+    private void runTestBatches(int batchHint) throws IOException,
             RepositoryLoginException, RepositoryException,
             InterruptedException, ConnectorNotFoundException {
 
@@ -86,28 +90,32 @@ public class LivelinkQueryTraverserTest extends TestCase {
         TraversalManager qtm = sess.getTraversalManager();
 
         String connectorName = "livelink";
-        PrintStream out =
-            //System.out;
-            new PrintStream(new FileOutputStream("traverser-test.log"));
-        Pusher pusher =
-            //new MockPusher(System.out);
-            //new DocPusher(new MockFeedConnection());
-            new DocPusher(new MockFileFeedConnection(out));
-        MockInstantiator instantiator = new MockInstantiator();
 
-        Traverser traverser = new QueryTraverser(pusher, qtm,
-            instantiator.getTraversalStateStore(connectorName), connectorName);
+        OutputStream out =
+            new FileOutputStream("traverser-test.log");
+
+        PusherFactory pusherFactory =
+            new DocPusherFactory(new MockFileFeedConnection(out));
+
+        MockInstantiator instantiator =
+            new MockInstantiator(ThreadPool.newThreadPool(300));
+
+        Traverser traverser = new QueryTraverser(pusherFactory, qtm,
+            instantiator.getTraversalStateStore(connectorName),
+            connectorName, null);
 
         instantiator.setupTraverser(connectorName, traverser);
 
         System.out.println();
-        System.out.println("Running batch test batchsize " + batchSize);
+        System.out.println("Running batch test batchsize " + batchHint);
 
         int docsProcessed = 0;
         int totalDocsProcessed = 0;
         int batchNumber = 0;
+        BatchSize batchSize = new BatchSize(batchHint, batchHint);
         do {
-            docsProcessed = traverser.runBatch(batchSize);
+            BatchResult result = traverser.runBatch(batchSize);
+            docsProcessed = result.getCountProcessed();
             if (docsProcessed > 0) {
                 totalDocsProcessed += docsProcessed;
             }

@@ -49,7 +49,8 @@ public class PushOneDocumentTest extends TestCase {
         conn = LivelinkConnectorFactory.getConnector("connector.");
         sess = (LivelinkSession) conn.login();
         client = sess.getFactory().createClient();
-        pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort));
+        pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort),
+                               "livelink");
 
         // Iinitialize the Context for DocPusher.take.
         // FIXME: This code is duplicated in LivelinkQueryTraverserTest..
@@ -97,7 +98,7 @@ public class PushOneDocumentTest extends TestCase {
 
         while ((doc = docList.nextDocument()) != null) {
             // TODO: make the feed name a property, along with the feed server and port
-            pusher.take(doc, "livelink");
+            pusher.take(doc);
         }
     }
 }
