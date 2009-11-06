@@ -467,7 +467,7 @@ class LivelinkTraversalManager
     // network error, etc).  In that case, return null, signalling
     // no new documents available at this time.
     try {
-      client.GetCurrentUserID(); 	// ping()
+      client.GetCurrentUserID();  // ping()
     } catch (RepositoryException e) {
       return null;
     }
@@ -572,7 +572,8 @@ class LivelinkTraversalManager
     // we cannot do this indefinitely or we will run afoul of the
     // Connector Manager's thread timeout.
     long startTime = System.currentTimeMillis();
-    long maxTimeSlice = 1000L * 60 * 4;
+    long maxTimeSlice = 1000L * ((traversalContext != null) ?
+        traversalContext.traversalTimeLimitSeconds() / 2 : 60 * 4);
 
     while (System.currentTimeMillis() - startTime < maxTimeSlice) {
 
@@ -590,10 +591,10 @@ class LivelinkTraversalManager
 
       if ((numInserts + numDeletes) == 0) {
         if (checkpoint.hasChanged()) {
-          break;			// Force a new checkpoint.
+          break;      // Force a new checkpoint.
         } else {
           LOGGER.fine("RESULTSET: no rows.");
-          return null;	// No new documents available.
+          return null;  // No new documents available.
         }
       }
 
