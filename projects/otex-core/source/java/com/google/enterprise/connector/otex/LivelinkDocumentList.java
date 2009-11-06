@@ -28,6 +28,7 @@ import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
+import com.google.enterprise.connector.spi.SkippedDocumentException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.SpiConstants.ActionType;
 import com.google.enterprise.connector.spi.TraversalContext;
@@ -633,27 +634,37 @@ class LivelinkDocumentList implements DocumentList {
       int size = recArray.toInteger(insRow, "DataSize");
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT DATASIZE = " + size);
-      if (size <= 0)
-        return;
 
       // The TraversalContext Interface provides additional
       // screening based upon content size and mimetype.
       if (traversalContext != null) {
+        String mt = mimeType.toString2();
+        if (LOGGER.isLoggable(Level.FINER))
+          LOGGER.finer("CONTENT TYPE = " + mt);
+
+        // Is this MimeType supported?  If not, don't feed content.
+        int supportLevel = traversalContext.mimeTypeSupportLevel(mt);
+        if (supportLevel == 0)
+          return;
+
+        // Is this MimeType excluded?  If so, skip the whole document.
+        if (supportLevel < 0)
+          throw new SkippedDocumentException("Excluded by content type: " + mt);
+
         // Is the content too large?
         if (((long) size) > traversalContext.maxDocumentSize())
           return;
 
-        // Is this MimeType supported?
-        String mt = mimeType.toString2();
-        if (traversalContext.mimeTypeSupportLevel(mt) <= 0)
-          return;
       } else {
-        // If there is no traversal context, we'll enforce a
-        // limit of 30 MB. This limit is hard-coded in the GSA
-        // anyway.
+        // If there is no traversal context, we'll enforce a size
+        // limit of 30 MB. This limit is hard-coded in the GSA anyway.
         if (size > 30 * 1024 * 1024)
           return;
       }
+
+      // If there is no actual data, don't feed empty content.
+      if (size <= 0)
+        return;
 
       // If we pass the gauntlet, create a content stream property
       // and add it to the property map.
