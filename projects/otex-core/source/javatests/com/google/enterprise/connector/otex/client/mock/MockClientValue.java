@@ -161,7 +161,11 @@ public final class MockClientValue implements ClientValue {
     }
 
     public int toInteger(int row, String field) {
-        throw new IllegalArgumentException();
+      Object v = getValue(row, field);
+        if (v instanceof Integer)
+            return ((Integer) v).intValue();
+        else
+            return Integer.parseInt(v.toString());
     }
 
     public String toString(int row, String field) {

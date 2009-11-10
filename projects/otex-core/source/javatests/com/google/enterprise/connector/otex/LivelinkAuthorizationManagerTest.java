@@ -17,6 +17,9 @@ package com.google.enterprise.connector.otex;
 import java.util.Arrays;
 import java.util.List;
 
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 
@@ -34,9 +37,22 @@ import junit.framework.TestCase;
  */
 public class LivelinkAuthorizationManagerTest extends TestCase {
   private LivelinkConnector conn;
-    
+
+  LivelinkAuthorizationManager lam;
+
+  Client client;
+
   public void setUp() throws RepositoryException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
+  }
+
+
+  /** Continue the setup after initializing the connector. */
+  protected void afterInit() throws RepositoryException {
+    Session sess = conn.login();
+    lam = (LivelinkAuthorizationManager) sess.getAuthorizationManager();
+    ClientFactory clientFactory = MockClientFactory.getInstance();
+    client = clientFactory.createClient();
   }
 
   /**
@@ -74,7 +90,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     String query = lam.getDocidQuery(docids.iterator());
 
     assertTrue(query, query.indexOf("Catalog = 2") != -1);
-        
+
     conn.setShowHiddenItems("{ 1234 }");
 
     sess = conn.login();
@@ -82,5 +98,79 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     String query2 = lam.getDocidQuery(docids.iterator());
 
     assertEquals((Object) query, query2);
+  }
+
+  /** Tests the default excluded volumes. */
+  public void testExcludedVolumes1() throws RepositoryException {
+    afterInit();
+
+    assertEquals(0, lam.getExcludedVolumeId(402, null, client));
+    assertEquals(9999, lam.getExcludedVolumeId(161, null, client));
+  }
+
+  /**
+   * Tests the reverse of default excluded volumes, with the Undelete
+   * volume but not the Workflow volume.
+   */
+  public void testExcludedVolumes2() throws RepositoryException {
+    conn.setExcludedVolumeTypes("162,402,109");
+
+    afterInit();
+
+    assertEquals(9999, lam.getExcludedVolumeId(402, null, client));
+    assertEquals(0, lam.getExcludedVolumeId(161, null, client));
+  }
+
+  /**
+   * Tests a match against excludedLocationNodes.
+   */
+  public void testExcludedVolumes3() throws RepositoryException {
+    conn.setExcludedVolumeTypes("162,402,109");
+    conn.setExcludedLocationNodes("1729,13832");
+
+    afterInit();
+
+    assertEquals(9999, lam.getExcludedVolumeId(500, null, client));
+  }
+
+  /**
+   * Tests no match against either excludedVolumeTypes or
+   * excludedLocationNodes.
+   */
+  public void testExcludedVolumes4() throws RepositoryException {
+    conn.setExcludedVolumeTypes("162,402,109");
+    conn.setExcludedLocationNodes("2001,4104");
+
+    afterInit();
+
+    assertEquals(0, lam.getExcludedVolumeId(500, null, client));
+  }
+
+  /**
+   * Tests an excluded volume type that does not exist.
+   */
+  public void testExcludedVolumes5() throws RepositoryException {
+    conn.setExcludedVolumeTypes("162,402,666");
+
+    afterInit();
+
+    assertEquals(0, lam.getExcludedVolumeId(666, null, client));
+
+    // But another subtype does exist...
+    assertEquals(9999, lam.getExcludedVolumeId(402, null, client));
+  }
+
+  /**
+   * Tests a volume excluded by ID that does not exist.
+   */
+  public void testExcludedVolumes6() throws RepositoryException {
+    conn.setExcludedLocationNodes("1729,13832");
+
+    afterInit();
+
+    assertEquals(0, lam.getExcludedVolumeId(666, null, client));
+
+    // But another subtype does exist...
+    assertEquals(9999, lam.getExcludedVolumeId(667, null, client));
   }
 }

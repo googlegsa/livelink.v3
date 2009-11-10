@@ -47,7 +47,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
    * also remove documents from search results that were deleted
    * after they were indexed.
    */
-  private final boolean purgeDeletedDocs;
+  private final int undeleteVolumeId;
 
   /**
    * FIXME: Temporary patch to remove workflow attachments from the
@@ -81,19 +81,9 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       ClientFactory clientFactory) throws RepositoryException {
     this.clientFactory = clientFactory;
     this.connector = connector;
-    this.purgeDeletedDocs = isExcludedVolume(402);
-    if (isExcludedVolume(161)) {
-      // There isn't an AccessWorkflowWS function.
-      Client client = clientFactory.createClient();
-      ClientValue results = client.ListNodes("SubType = 161", "DTree",
-          new String[] { "DataID", "PermId" });
-      if (results.size() > 0) {
-        workflowVolumeId = results.toInteger(0, "DataID");
-        LOGGER.finest("EXCLUDING WORKFLOW VOLUME: " + workflowVolumeId);
-      } else
-        workflowVolumeId = 0;
-    } else
-      workflowVolumeId = 0;
+    Client client = clientFactory.createClient();
+    this.undeleteVolumeId = getExcludedVolumeId(402, "UNDELETE", client);
+    this.workflowVolumeId = getExcludedVolumeId(161, "WORKFLOW", client);
     this.showHiddenItems = connector.getShowHiddenItems().contains("all");
     this.tryLowercaseUsernames = connector.isTryLowercaseUsernames();
   }
@@ -289,12 +279,10 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       query.append(iterator.next()).append(',');
     query.setCharAt(query.length() - 1, ')');
 
-    if (purgeDeletedDocs) {
-      String docids = query.substring(query.indexOf("("));
-      query.append(" and DataID not in (select NodeID from");
-      query.append(" DeletedDocs where NodeID in ");
-      query.append(docids);
-      query.append(')');
+    if (undeleteVolumeId != 0) {
+      // Open Text uses ParentID in the Undelete OScript code, so we
+      // will, too.
+      query.append(" and ParentID <> " + undeleteVolumeId);
     }
 
     if (workflowVolumeId != 0)
@@ -335,25 +323,29 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
 
 
   /**
-   * Returns a boolean representing whether the given volume
-   * is excluded from indexing.  
+   * Gets the volume ID of an excluded volume type.  
    *
    * The connector can be configured to exclude volumes either by
    * specifying the volume's SubType in the excludedVolumeTypes, or
    * by specifying the NodeID of the volume in the
    * excludedLocationNodes.
    *
-   * @return true if the volume is excluded from indexing,
-   * false otherwise.
+   * @param subtype the volume subtype to check for
+   * @param label the descriptive string to log for this volume subtype
+   * @param client the client to use if one is needed
+   * @return the volume ID if the volume is excluded from indexing,
+   * zero otherwise.
    */
-  private boolean isExcludedVolume(int subtype) throws RepositoryException {
+  /* This method has package access so that it can be unit tested. */
+  int getExcludedVolumeId(int subtype, String label, Client client)
+      throws RepositoryException {
     // First look for volume subtype in the excludedVolumeTypes.
     String exclVolTypes = connector.getExcludedVolumeTypes();
     if ((exclVolTypes != null) && (exclVolTypes.length() > 0)) {
       String[] subtypes = exclVolTypes.split(",");
       for (int i = 0; i < subtypes.length; i++) {
         if (String.valueOf(subtype).equals(subtypes[i]))
-          return true;
+          return getNodeId("SubType = " + subtype, label, client);
       }
     }
 
@@ -364,13 +356,22 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       String query =
           "SubType = " + subtype + " and DataID in (" + exclNodes + ")";
       LOGGER.finest(query);
-      Client client = clientFactory.createClient();
-      ClientValue results = client.ListNodes(query, "DTree",
-          new String[] { "DataID", "PermId" });
-      if (results.size() > 0) 
-        return true;
+      return getNodeId(query, label, client);
     }
 
-    return false;
+    return 0;
+  }
+
+  private int getNodeId(String query, String label, Client client)
+      throws RepositoryException {
+    ClientValue results = client.ListNodes(query, "DTree",
+        new String[] { "DataID", "PermId" });
+    if (results.size() > 0) {
+      int volumeId = results.toInteger(0, "DataID");
+      if (LOGGER.isLoggable(Level.FINEST))
+        LOGGER.finest("EXCLUDING " + label + " VOLUME: " + volumeId);
+      return volumeId;
+    } else
+      return 0;
   }
 }

@@ -110,19 +110,18 @@ final class MockClient implements Client {
 
         String[] fields;
         Object[][] values;
-        if (query.startsWith("SubType in (") && view.equals("DTree")) {
-            // This is the excluded volume types query.
-
+        if (query.startsWith("SubType =") && view.equals("DTree")) {
+            // This is the authZ excluded volume types query.
             fields = new String[] { "DataID", "PermID" };
 
-            // One of the tests asks for invalid volume types, namely
-            // 2001 and 4104. That query needs to return no values.
-            // Other than that, any non-empty results are OK.
-            // TODO: Get the actual list of requested types and use >
-            // 2000 to check for invalid types.
-            if (query.indexOf("2001,4104") != -1)
+            // Some of the tests ask for invalid subtypes, namely 666,
+            // or invalid volume types, namely 2001 and 4104. Those
+            // queries needs to return no values. Other than that,
+            // 9999 should be returned.
+            if (query.indexOf("2001,4104") != -1
+                    || query.indexOf("666") != -1) {
                 values = new Object[0][0];
-            else {
+            } else {
                 values = new Object[][] {
                     new Object[] { new Integer(9999), new Integer(0) } };
             }
