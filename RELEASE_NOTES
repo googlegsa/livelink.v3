@@ -11,6 +11,34 @@ Site for the current list of known issues and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 2.4.4, Feb 06, 2010
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. Users of previous releases are encouraged to
+upgrade. See the product website for a complete description.
+
+Summary of Changes
+------------------
+
+For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.4
+
+  * Fixed issue 51, logging the actual error in three cases, instead of
+    ignoring the error or logging a masking error.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.3 through 2.4.0 may be
+used with this version. This version works with Connector Manager
+version 2.4.0 through 2.4.4. Earlier versions of the Connector Manager
+will not work correctly with this version of the connector. This
+product is designed to function with Open Text Livelink versions 
+9.5 SP1, 9.6, 9.7, and 9.7.1
+
+
 Release 2.4.0, Nov 16, 2009
 ===========================
 
