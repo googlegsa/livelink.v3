@@ -77,6 +77,9 @@ class Checkpoint {
     Checkpoint(String checkpoint) throws RepositoryException {
         if ((checkpoint != null) && (checkpoint.trim().length() > 0)) {
             try {
+                // Push entries beyond the first four into a fifth
+                // array element, which we ignore. This is to avoid
+                // failing completely on newer checkpoint strings.
                 String [] points = checkpoint.trim().split(",", 5);
                 if (points.length < 2)
                     throw new Exception();
@@ -106,10 +109,8 @@ class Checkpoint {
                     }
                 }
             } catch (Exception e) {
-                LivelinkException le = new LivelinkException(
-                    "Invalid checkpoint: " + checkpoint, LOGGER);
-                le.initCause(e);
-                throw le;
+                throw new LivelinkException(
+                    "Invalid checkpoint: " + checkpoint, e, LOGGER);
             }
         }
     }
