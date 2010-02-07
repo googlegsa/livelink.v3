@@ -98,7 +98,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
             new DocPusherFactory(new MockFileFeedConnection(out));
 
         MockInstantiator instantiator =
-            new MockInstantiator(ThreadPool.newThreadPool(300));
+            new MockInstantiator(new ThreadPool(300));
 
         Traverser traverser = new QueryTraverser(pusherFactory, qtm,
             instantiator.getTraversalStateStore(connectorName),

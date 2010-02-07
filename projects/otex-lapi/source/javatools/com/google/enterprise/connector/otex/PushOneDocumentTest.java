@@ -28,6 +28,7 @@ import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.pusher.PushException;
 import com.google.enterprise.connector.pusher.DocPusher;
 import com.google.enterprise.connector.pusher.GsaFeedConnection;
+import com.google.enterprise.connector.traversal.FileSizeLimitInfo;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
@@ -50,7 +51,7 @@ public class PushOneDocumentTest extends TestCase {
         sess = (LivelinkSession) conn.login();
         client = sess.getFactory().createClient();
         pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort),
-                               "livelink");
+            "livelink", new FileSizeLimitInfo());
 
         // Iinitialize the Context for DocPusher.take.
         // FIXME: This code is duplicated in LivelinkQueryTraverserTest..
