@@ -757,6 +757,7 @@ public class LivelinkConnector implements Connector {
 
       // Then check an Oracle-specific query.
       // We use ListNodesNoThrow() to avoid logging our expected error.
+      LOGGER.finest("Testing an Oracle-specific SQL query...");
       results = client.ListNodesNoThrow(query, "dual", columns);
       isSqlServer = (results == null);
 

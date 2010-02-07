@@ -62,7 +62,7 @@ public class LivelinkException extends RepositoryException
     }
 
     /**
-     * Constructs an instance with the given message
+     * Constructs an instance with the given message.
      * 
      * @param message an error message
      * @param logger a logger instance to log the exception against
@@ -73,7 +73,20 @@ public class LivelinkException extends RepositoryException
     }
 
     /**
-     * Constructs an instance with the given message
+     * Constructs an instance with the given message that wraps
+     * another exception.
+     * 
+     * @param message an error message
+     * @param e the cause
+     * @param logger a logger instance to log the exception against
+     */
+    public LivelinkException(String message, Exception e, Logger logger) {
+        super(message, e);
+        logMessage(logger);
+    }
+
+    /**
+     * Constructs an instance with the given message.
      * 
      * @param message an error message
      * @param logger a logger instance to log the exception against

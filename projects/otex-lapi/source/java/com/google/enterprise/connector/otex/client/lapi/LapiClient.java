@@ -24,10 +24,12 @@ import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
+import com.opentext.api.GoogleThunk;
 import com.opentext.api.LAPI_ATTRIBUTES;
 import com.opentext.api.LAPI_DOCUMENTS;
 import com.opentext.api.LAPI_USERS;
 import com.opentext.api.LLSession;
+import com.opentext.api.LLUnknownFieldException;
 import com.opentext.api.LLValue;
 
 /**
@@ -211,26 +213,55 @@ final class LapiClient implements Client {
     /** {@inheritDoc} */
     public synchronized ClientValue ListNodes(String query, String view,
             String[] columns) throws RepositoryException {
-
-        ClientValue recArray = ListNodesNoThrow(query, view, columns);
+        ClientValue recArray = listNodesHelper(query, view, columns);
         if (recArray == null)
             throw new LapiException(session, LOGGER);
         return recArray;
     }
 
     /** {@inheritDoc} */
+    /*
+     * This ListNodesNoThrow version returns null rather than throwing
+     * an exception on SQL query errors.
+     * LivelinkTraversalManager tries to determine the back-end
+     * repository DB by running an Oracle-specific query that succeeds
+     * on Oracle, but throws an exception for SQL-Server.  The test
+     * probe caught the expected exception, but it was still getting
+     * logged to the error log (to which users objected).  See Issues 4 and 51:
+     * http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=4
+     * http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=51
+     */
     public synchronized ClientValue ListNodesNoThrow(String query, String view,
             String[] columns) throws RepositoryException {
+        ClientValue recArray = listNodesHelper(query, view, columns);
+        if (recArray == null) {
+            // Only log an unexpected error. At FINEST, log the actual
+            // error so that we don't miss something.
+            if (session.getStatus() != 106601)
+                LOGGER.warning(LapiException.buildMessage(session));
+            else if (LOGGER.isLoggable(Level.FINEST))
+                LOGGER.finest(LapiException.buildMessage(session));
+        }
+        return recArray;
+    }
 
-        /* This ListNodesNoThrow version returns null rather than throwing
-         * an exception on SQL query errors.
-         * LivelinkTraversalManager tries to determine the back-end
-         * repository DB by running an Oracle-specific query that succeeds
-         * on Oracle, but throws an exception for SQL-Server.  The test
-         * probe caught the expected exception, but it was still getting 
-         * logged to the error log (to which users objected).  See Issue 4:
-         * http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=4
-         */
+    /**
+     * Wraps the <code>LAPI_DOCUMENTS.ListNodes</code> method.
+     * Not all of the arguments of that method are exposed here.
+     * <p>
+     * The LAPI <code>ListNodes</code> implementation requires the
+     * DataID and PermID columns to be included in the selected
+     * columns.
+     *
+     * @param query a SQL condition, used in the WHERE clause
+     * @param view a SQL table expression, used in the FROM clause
+     * @param columns a SQL select list, used in the SELECT clause
+     * @return <code>null</code> if the call to <code>ListNodes</code>
+     * returns a non-zero value, or the recarray if the call succeeeds
+     * @throws RepositoryException if a runtime error occurs
+     */
+    private ClientValue listNodesHelper(String query, String view,
+            String[] columns) throws RepositoryException {
         LLValue recArray = new LLValue();
         LLValue args = (new LLValue()).setList();
         LLValue columnsList = (new LLValue()).setList();
@@ -378,6 +409,21 @@ final class LapiClient implements Client {
                     path.getPath()) != 0) {
                 throw new LapiException(session, LOGGER);
             }
+        } catch (LLUnknownFieldException e) {
+            // Workaround Open Text bug LPO-109. In some (or perhaps
+            // all) cases when FetchVersion returns an error, the
+            // unmarshalling fails with the following
+            // LLUnknownFieldException:
+            //
+            //     LLValue unknown field name: FileAttributes
+            //
+            // The status and error messages fields are not available
+            // in the LLSession object when this exception is thrown.
+            // If, however, we catch the LLUnknownFieldException and
+            // call LLSession.unMarshall, then we can extract the
+            // error from the session.
+            unMarshall();
+            throw new LapiException(session, LOGGER);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
@@ -391,6 +437,24 @@ final class LapiClient implements Client {
                     versionNumber, out) != 0) { 
                 throw new LapiException(session, LOGGER);
             }
+        } catch (LLUnknownFieldException e) {
+            // Workaround Open Text bug LPO-109. See the other
+            // FetchVersion overload for details.
+            unMarshall();
+            throw new LapiException(session, LOGGER);
+        } catch (RuntimeException e) {
+            throw new LapiException(e, LOGGER);
+        }
+    }
+
+    /** Wraps the <code>LLSession.unMarshall</code> method. */
+    private void unMarshall() throws RepositoryException {
+        try {
+            // The unMarshall method has default access, so we need
+            // this thunk in the com.opentext.api package in order to
+            // call it. We could use reflection, but that would fail
+            // in the presence of a security manager.
+            GoogleThunk.unMarshall(session);
         } catch (RuntimeException e) {
             throw new LapiException(e, LOGGER);
         }
