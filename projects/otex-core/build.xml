@@ -83,7 +83,8 @@
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
-      <compilerarg line="-Xlint -Xlint:-serial"/>
+      <!-- CM JAR Class-Path references are not available. -->
+      <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">

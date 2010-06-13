@@ -95,7 +95,7 @@ class LivelinkTraversalManager
     list.add(new Field("DataSize"));
     list.add(new Field("PermID"));
 
-    FIELDS = (Field[]) list.toArray(new Field[0]);
+    FIELDS = list.toArray(new Field[0]);
 
     SELECT_LIST = new String[FIELDS.length];
     for (int i = 0; i < FIELDS.length; i++)

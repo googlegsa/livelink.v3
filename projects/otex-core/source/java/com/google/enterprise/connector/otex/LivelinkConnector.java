@@ -1593,7 +1593,8 @@ public class LivelinkConnector implements Connector {
     // Make sure we are at least CM v 1.3 (google:title property
     // first appears in 1.3).
     try {
-      if (SpiConstants.PROPNAME_TITLE != null);
+      if (SpiConstants.PROPNAME_TITLE != null) {
+      }
     } catch (java.lang.NoClassDefFoundError e) {
       LOGGER.severe("This connector requires a newer version of the " +
           "Connector Manager");
@@ -1602,7 +1603,7 @@ public class LivelinkConnector implements Connector {
     }
 
     for (int i = 0; i < propertyValidators.size(); i++) {
-      ((PropertyValidator) propertyValidators.get(i)).validate();
+      propertyValidators.get(i).validate();
     }
 
     if (!useHttpTunneling) {

@@ -92,7 +92,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     ArrayList<String> docids = new ArrayList<String>();
     for (int i = 0; i < data.size(); i++)
-      docids.add(((IdAuth) data.get(i)).id);
+      docids.add(data.get(i).id);
     Collection<AuthorizationResponse> authzList =
         authorizeDocids(docids, "llglobal");
     mCheckForUser("llglobal", data, authzList);

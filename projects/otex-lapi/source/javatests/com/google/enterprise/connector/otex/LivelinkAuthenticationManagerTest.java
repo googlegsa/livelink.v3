@@ -166,8 +166,7 @@ public class LivelinkAuthenticationManagerTest extends TestCase {
    */
   private void finishSetup() throws RepositoryException {
     session = (LivelinkSession) conn.login();
-    authManager = (AuthenticationManager) session.
-        getAuthenticationManager();
+    authManager = session.getAuthenticationManager();
   }
 
   /**

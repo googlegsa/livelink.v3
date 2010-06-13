@@ -68,10 +68,10 @@ class UrlValidator {
         }
       };
 
-  /** The connect timeout; only used in Java SE 5.0 or later. */
+  /** The connect timeout. */
   private volatile int connectTimeout = 60 * 1000;
 
-  /** The read timeout; only used in Java SE 5.0 or later. */
+  /** The read timeout. */
   private volatile int readTimeout = 60 * 1000;
 
   /** The HTTP request method. */
@@ -281,36 +281,12 @@ class UrlValidator {
 
   /**
    * Sets the connect and read timeouts of the given
-   * <code>URLConnection</code>. This is only possible with Java SE
-   * 5.0 or later. With earlier versions, this method does nothing.
+   * <code>URLConnection</code>.
    *
    * @param conn the URL connection
    */
-  /*
-   * Java 1.4 doesn't support setting a timeout on the
-   * URLConnection. Java 1.5 does support timeouts, so we're
-   * using reflection to set timeouts if available.
-   */
    private void setTimeouts(URLConnection conn) {
-    try {
-      Class c = URLConnection.class;
-      Method setConnectTimeout = c.getMethod("setConnectTimeout",
-          new Class[] { int.class });
-      Method setReadTimeout = c.getMethod("setReadTimeout",
-          new Class[] { int.class });
-
-      final Integer[] connectTimeoutArg = { new Integer(connectTimeout) };
-      setConnectTimeout.invoke(conn, (Object[]) connectTimeoutArg);
-
-      final Integer[] readTimeoutArg = { new Integer(readTimeout) };
-      setReadTimeout.invoke(conn, (Object[]) readTimeoutArg);
-    } catch (NoSuchMethodException m) {
-      // Ignore; we're probably on Java 1.4.
-      LOGGER.log(Level.FINEST,
-          "No timeout methods; we're probably on Java 1.4.");
-    } catch (Throwable t) {
-      LOGGER.log(Level.WARNING, "Error setting connection timeout",
-          t);
-    }
+     conn.setConnectTimeout(connectTimeout);
+     conn.setReadTimeout(readTimeout);
   }
 }
