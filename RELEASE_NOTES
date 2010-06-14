@@ -11,6 +11,31 @@ Site for the current list of known issues and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 2.6.0, Jun 14, 2010
+===========================
+
+Introduction
+------------
+This is a maintenance release with no significant changes. Users of
+previous releases are encouraged to review the changes in the
+Connector Manager version 2.6.0 and other connectors. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+
+  * Updated the tests to work with Connector Manager version 2.6.0.
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 2.4.4 may be
+used with this version. This version works with Connector Manager
+versions 2.4.0 through 2.6.0. Earlier versions of the Connector
+Manager will not work correctly with this version of the connector.
+This product is designed to function with Open Text Livelink versions
+9.5 SP1, 9.6, 9.7, and 9.7.1
+
+
 Release 2.4.4, Feb 06, 2010
 ===========================
 
