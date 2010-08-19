@@ -94,6 +94,9 @@ class LivelinkAuthenticationManager
             // return the client data. Until then, GetServerInfo is
             // faster.
             ClientValue serverInfo = client.GetServerInfo();
+            if (LOGGER.isLoggable(Level.FINE))
+              LOGGER.fine("AUTHENTICATED: " + identity.getUsername() + ": " +
+                serverInfo.hasValue());
             return new AuthenticationResponse(serverInfo.hasValue(), null);
         } catch (RepositoryException e) {
             LOGGER.warning("Authentication failed for " +
