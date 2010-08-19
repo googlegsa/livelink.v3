@@ -31,6 +31,8 @@ import java.util.logging.Logger;
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorFactory;
 import com.google.enterprise.connector.spi.ConnectorType;
+import com.google.enterprise.connector.util.UrlValidator;
+import com.google.enterprise.connector.util.UrlValidatorException;
 import org.springframework.beans.PropertyAccessException;
 import org.springframework.beans.PropertyBatchUpdateException;
 
