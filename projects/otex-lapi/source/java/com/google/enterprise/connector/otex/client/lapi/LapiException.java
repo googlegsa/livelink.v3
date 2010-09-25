@@ -25,47 +25,70 @@ import com.opentext.api.LLSession;
  * error messages from the Livelink server.
  */
 class LapiException extends LivelinkException {
-    /**
-     * Builds a message from the various pieces of information
-     * provided by the Livelink server.
-     *
-     * @param session the Livelink session on which the error occurred
-     */
-    static String buildMessage(LLSession session) {
-        int status = session.getStatus();
-        if (status != 0) {
-            String message = session.getStatusMessage();
+  /**
+   * Builds a message from the various pieces of information
+   * provided by the Livelink server.
+   *
+   * @param session the Livelink session on which the error occurred
+   */
+  static String buildMessage(LLSession session) {
+    int status = session.getStatus();
+    if (status != 0) {
+      String message = session.getStatusMessage();
 
-            String apiError = session.getApiError();
-            if (apiError == null || apiError.equals("")) {
-                return message + " (" + status + ')';
-            } else {
-                String errorMessage = session.getErrMsg();
-                return message + " (" + status + ") " + errorMessage +
-                    " (" + apiError + ')';
-            }
-        } else
-            return null;
-    }
-    
-    /**
-     * Constructs an instance that wraps another exception.
-     * 
-     * @param e a Livelink-specific runtime exception
-     * @param logger a logger instance to log the exception against
-     */
-    LapiException(Exception e, Logger logger) {
-        super(e, logger);
-    }
+      String apiError = session.getApiError();
+      if (apiError == null || apiError.equals("")) {
+        return message + " (" + status + ')';
+      } else {
+        String errorMessage = session.getErrMsg();
+        return message + " (" + status + ") " + errorMessage +
+            " (" + apiError + ')';
+      }
+    } else
+      return null;
+  }
 
-    /**
-     * Constructs an instance from a Livelink session that has
-     * returned an error.
-     * 
-     * @param session the Livelink session on which the error occurred
-     * @param logger a logger instance to log the exception against
-     */
-    LapiException(LLSession session, Logger logger) {
-        super(buildMessage(session), logger);
-    }
+  /**
+   * Constructs an instance that wraps another exception.
+   *
+   * @param e a Livelink-specific runtime exception
+   * @param logger a logger instance to log the exception against
+   */
+  LapiException(Exception e, Logger logger) {
+    super(e, logger);
+  }
+
+  /**
+   * Constructs an instance that wraps another exception.
+   *
+   * @param message an error message
+   * @param e a Livelink-specific runtime exception
+   * @param logger a logger instance to log the exception against
+   */
+  LapiException(String message, Exception e, Logger logger) {
+    super(message, e, logger);
+  }
+
+  /**
+   * Constructs an instance from a Livelink session that has
+   * returned an error.
+   *
+   * @param session the Livelink session on which the error occurred
+   * @param logger a logger instance to log the exception against
+   */
+  LapiException(LLSession session, Logger logger) {
+    super(buildMessage(session), logger);
+  }
+
+  /**
+   * Constructs an instance from a Livelink session that has
+   * returned an error.
+   *
+   * @param session the Livelink session on which the error occurred
+   * @param e a Livelink-specific runtime exception
+   * @param logger a logger instance to log the exception against
+   */
+  LapiException(LLSession session, Exception e, Logger logger) {
+    super(buildMessage(session), e, logger);
+  }
 }
