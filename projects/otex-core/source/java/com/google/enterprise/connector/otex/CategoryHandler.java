@@ -62,6 +62,15 @@ class CategoryHandler {
   private final boolean includeCategoryNames;
 
   /**
+   * Cache of category object IDs that have a category version with an
+   * AttrInfo that does not have a "Search" field. We cannot check
+   * whether this attributes are searchable, so we assume that they
+   * should be indexed.
+   */
+  /* @VisibleForTesting */
+  HashSet<Integer> searchableCache = null;
+
+  /**
    * Constructs a category handler. This object is specific a
    * Connector instance, but not to a Document or DocumentList.
    */
@@ -172,11 +181,12 @@ class CategoryHandler {
         ClientValue attrInfo =
             client.AttrGetInfo(categoryVersion, attrName, null);
         int attrType = attrInfo.toInteger("Type");
-        if (Client.ATTR_TYPE_SET == attrType)
-          getAttributeSetValues(nameHandler, props, categoryVersion, attrName);
-        else {
-          getAttributeValue(nameHandler, props, categoryVersion, attrName,
-              attrType, null, attrInfo);
+        if (Client.ATTR_TYPE_SET == attrType) {
+          getAttributeSetValues(nameHandler, props, id, categoryVersion,
+              attrName);
+        } else {
+          getAttributeValue(nameHandler, props, id, categoryVersion,
+              attrName, attrType, null, attrInfo);
         }
       }
     }
@@ -187,12 +197,13 @@ class CategoryHandler {
    *
    * @param nameHandler a handler that maps user IDs to user names
    * @param props the collection of all document properties to add the
+   * @param id the category object ID for use as a cache index
    * @param categoryVersion the category being read
    * @param attributeName the name of the attribute set
    * @throws RepositoryException if an error occurs
    */
   private void getAttributeSetValues(UserNameHandler nameHandler,
-      LivelinkDocument props, ClientValue categoryVersion,
+      LivelinkDocument props, Integer id, ClientValue categoryVersion,
       String attrName) throws RepositoryException {
     // The "path" indicates the set attribute name to look
     // inside of in other methods like AttrListNames.
@@ -231,7 +242,7 @@ class CategoryHandler {
           continue;
         }
         //System.out.println("      " + attrSetNames.toString(j));
-        getAttributeValue(nameHandler, props, categoryVersion,
+        getAttributeValue(nameHandler, props, id, categoryVersion,
             attrSetNames.toString(j), type, attrSetPath, attrInfo[j]);
       }
     }
@@ -242,6 +253,7 @@ class CategoryHandler {
    *
    * @param nameHandler a handler that maps user IDs to user names
    * @param props the collection of all document properties to add the
+   * @param id the category object ID for use as a cache index
    * @param categoryVersion the category version in which the
    *     values are stored
    * @param attributeName the name of the attribute whose
@@ -254,17 +266,40 @@ class CategoryHandler {
    *     null
    * throws RepositoryException if an error occurs
    */
-  private void getAttributeValue(UserNameHandler nameHandler,
-      LivelinkDocument props, ClientValue categoryVersion,
+  /* @VisibleForTesting */
+  void getAttributeValue(UserNameHandler nameHandler,
+      LivelinkDocument props, Integer id, ClientValue categoryVersion,
       String attrName, int attrType, ClientValue attrSetPath,
       ClientValue attrInfo) throws RepositoryException {
-
     if (Client.ATTR_TYPE_SET == attrType)
       throw new IllegalArgumentException("attrType = SET");
 
-    // Maybe skip those attributes not marked as searchable.
-    if ((includeSearchable) && !attrInfo.toBoolean("Search"))
-      return;
+    // Skip attributes that are marked as not searchable.
+    if (includeSearchable) {
+      if (searchableCache != null && searchableCache.contains(id)) {
+        if (LOGGER.isLoggable(Level.FINEST)) {
+          LOGGER.finest("Including " + attrName + " from category ID " + id);
+        }
+      } else {
+        try {
+          if (!attrInfo.toBoolean("Search")) {
+            return;
+          }
+        } catch (RepositoryException e) {
+          // Categories created under old versions of Livelink do not
+          // have a Search attribute. Cache the category ID and log an
+          // explanation.
+          if (searchableCache == null)
+            searchableCache = new HashSet<Integer>();
+          searchableCache.add(id);
+
+          if (LOGGER.isLoggable(Level.WARNING)) {
+            LOGGER.warning("Marking category ID " + id +
+                " as searchable after " + e.getMessage());
+          }
+        }
+      }
+    }
 
     //System.out.println("getAttributeValue: attrName = " + attrName);
 

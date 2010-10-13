@@ -69,7 +69,14 @@ class LivelinkDocumentList implements DocumentList {
   /** A concrete strategy for retrieving the content from the server. */
   private final ContentHandler contentHandler;
 
-  /** A handler for retrieving category attributes. */
+  /**
+   * A handler for retrieving category attributes. The scope of this
+   * object matters because it contains a cache of searchable category
+   * IDs. We do not want to cache categories too long, so that we can
+   * react to changes to the category in Livelink. For now, we'll keep
+   * the cache for the DocumentList, rather than push it up to the
+   * TraversalManager.
+   */
   private final CategoryHandler categoryHandler;
 
   /** A handler for mapping user IDs to user names. */

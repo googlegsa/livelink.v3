@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,361 +14,386 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
-import java.util.Date;
-import java.util.Enumeration;
-
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.RepositoryException;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Enumeration;
 
 /**
  * A partial mock implementation of a <code>ClientValue</code>. Most of
  * the methods throw an <code>IllegalArgumentException</code>. The
  * <code>size</code>, <code>toString(int,String)</code>,
  * <code>toInteger(String)</code>, and<code>toString(String)</code>
- * methods are implemented.
+ * methods are implemented. For an Assoc with boolean values,
+ * <code>toBoolean(String)</code> and <code>add(String, boolean)</code>
+ * are implemented.
  */
 public final class MockClientValue implements ClientValue {
-    private final String[] fieldNames;
-    private final Object[][] tableValues;
+  private final List<String> fieldNames;
+  private final Object[][] tableValues;
 
-    /** If fieldNames is null, assocValues is a List. */
-    private final Object[] assocValues;
+  /** If fieldNames is null, assocValues is a List. */
+  private final List<Object> assocValues;
 
-    /** Constructs a Recarray. */
-    MockClientValue(String[] fieldNames, Object[][] values) {
-        if (fieldNames == null || values == null ||
-                values.length > 0 && (fieldNames.length != values[0].length)) {
-            throw new IllegalArgumentException();
-        }
-        this.fieldNames = fieldNames;
-        this.tableValues = values;
-        this.assocValues = null;
+  /** Constructs a Recarray. */
+  MockClientValue(String[] fieldNames, Object[][] values) {
+    if (fieldNames == null || values == null ||
+        values.length > 0 && (fieldNames.length != values[0].length)) {
+      throw new IllegalArgumentException();
     }
+    this.fieldNames = new ArrayList<String>(Arrays.asList(fieldNames));
+    this.tableValues = values;
+    this.assocValues = null;
+  }
 
-    /** Constructs an Assoc. */
-    MockClientValue(String[] fieldNames, Object[] values) {
-        if (fieldNames == null || values == null ||
-                fieldNames.length != values.length) {
-            throw new IllegalArgumentException();
-        }
-        this.fieldNames = fieldNames;
-        this.tableValues = null;
-        this.assocValues = values;
+  /** Constructs an Assoc. */
+  MockClientValue(String[] fieldNames, Object[] values) {
+    if (fieldNames == null || values == null ||
+        fieldNames.length != values.length) {
+      throw new IllegalArgumentException();
     }
+    this.fieldNames = new ArrayList<String>(Arrays.asList(fieldNames));
+    this.tableValues = null;
+    this.assocValues = new ArrayList<Object>(Arrays.asList(values));
+  }
 
-    /** Constructs a List. */
-    MockClientValue(Object[] values) {
-        if (values == null)
-            throw new IllegalArgumentException();
-        this.fieldNames = null;
-        this.tableValues = null;
-        this.assocValues = values;
-    }
+  /** Constructs a List. */
+  MockClientValue(Object[] values) {
+    if (values == null)
+      throw new IllegalArgumentException();
+    this.fieldNames = null;
+    this.tableValues = null;
+    this.assocValues = new ArrayList<Object>(Arrays.asList(values));
+  }
 
-    private Object getField(Object[] values, String field) {
-        for (int i = 0; i < fieldNames.length; i++) {
-            if (fieldNames[i].equals(field))
-                return values[i];
-        }
-        throw new IllegalArgumentException(field);
+  private Object getField(List<Object> values, String field)
+      throws RepositoryException {
+    for (int i = 0; i < fieldNames.size(); i++) {
+      if (fieldNames.get(i).equals(field))
+        return values.get(i);
     }
+    throw new RepositoryException("LLValue unknown field name: " + field);
+  }
 
-    private Object getValue(int row, String field) {
-        if (tableValues == null)
-            throw new IllegalArgumentException("ClientValue is not a table.");
-        if (row < 0 || row > tableValues.length)
-            throw new IllegalArgumentException(String.valueOf(row));
-        return getField(tableValues[row], field);
-    }
-    
-    private Object getValue(String field) {
-        if (assocValues == null)
-            throw new IllegalArgumentException("ClientValue is not an assoc.");
-        return getField(assocValues, field);
-    }
-    
-    private Object getValue(int index) {
-        if (assocValues == null) 
-            throw new IllegalArgumentException("ClientValue is not a list.");
-        return assocValues[index];
-    }
-    
-    public int size() {
-        if (tableValues != null)
-            return tableValues.length;
-        else
-            return assocValues.length;
-    }
+  private Object getValue(int row, String field)
+      throws RepositoryException {
+    if (tableValues == null)
+      throw new IllegalArgumentException("ClientValue is not a table.");
+    if (row < 0 || row > tableValues.length)
+      throw new IllegalArgumentException(String.valueOf(row));
+    return getField(Arrays.asList(tableValues[row]), field);
+  }
 
-    public void setSize(int size) {
-        throw new IllegalArgumentException();
-    }
+  private Object getValue(String field)
+      throws RepositoryException {
+    if (assocValues == null)
+      throw new IllegalArgumentException("ClientValue is not an assoc.");
+    return getField(assocValues, field);
+  }
 
-    /** {@inheritDoc} */
-    public void setInteger(int index, int value) {
-        throw new IllegalArgumentException();
-    }
+  private Object getValue(int index) {
+    if (assocValues == null)
+      throw new IllegalArgumentException("ClientValue is not a list.");
+    return assocValues.get(index);
+  }
 
-    public int type() {
-        if (tableValues != null)
-            return TABLE;
-        else
-            return ASSOC;
-    }
-        
-    public Enumeration enumerateNames() {
-        return new Enumeration() {
-                private int i = 0;
-                public boolean hasMoreElements() {
-                    return i < fieldNames.length;
-                }
-                public Object nextElement() {
-                    return fieldNames[i++];
-                }
-            };
-    }
+  public int size() {
+    if (tableValues != null)
+      return tableValues.length;
+    else
+      return assocValues.size();
+  }
 
-    public ClientValue stringToValue() {
-        return this;
-    }
+  public void setSize(int size) {
+    throw new IllegalArgumentException();
+  }
 
-    public boolean isDefined(int row, String field) {
-        return getValue(row, field) != null;
-    }
-    
-    public boolean hasValue() {
-        return ((tableValues != null) || (assocValues != null));
-    }
-    
-    
-    public ClientValue toValue(int row, String field) {
-        throw new IllegalArgumentException();
-    }
-    
-    public boolean toBoolean(int row, String field) {
-        throw new IllegalArgumentException();
-    }
+  /** {@inheritDoc} */
+  public void setInteger(int index, int value) {
+    throw new IllegalArgumentException();
+  }
 
-    public Date toDate(int row, String field) {
-        Object v = getValue(row, field);
-        if (v instanceof Date)
-            return (Date) v;
-        else
-            throw new IllegalArgumentException();
-    }
+  public int type() {
+    if (tableValues != null)
+      return TABLE;
+    else
+      return ASSOC;
+  }
 
-    public double toDouble(int row, String field) {
-        throw new IllegalArgumentException();
-    }
+  public Enumeration enumerateNames() {
+    return new Enumeration() {
+      private int i = 0;
+      public boolean hasMoreElements() {
+        return i < fieldNames.size();
+      }
+      public Object nextElement() {
+        return fieldNames.get(i++);
+      }
+    };
+  }
 
-    public int toInteger(int row, String field) {
-      Object v = getValue(row, field);
-        if (v instanceof Integer)
-            return ((Integer) v).intValue();
-        else
-            return Integer.parseInt(v.toString());
-    }
+  public ClientValue stringToValue() {
+    return this;
+  }
 
-    public String toString(int row, String field) {
-        return getValue(row, field).toString();
-    }
-    
-    public boolean isDefined(String field) {
-        throw new IllegalArgumentException();
-    }
-    
-    public ClientValue toValue(String field) {
-        throw new IllegalArgumentException();
-    }
-    
-    public boolean toBoolean(String field) {
-        throw new IllegalArgumentException();
-    }
+  public boolean isDefined(int row, String field) throws RepositoryException {
+    return getValue(row, field) != null;
+  }
 
-    public Date toDate(String field) {
-        throw new IllegalArgumentException();
-    }
+  public boolean hasValue() {
+    return ((tableValues != null) || (assocValues != null));
+  }
 
-    public double toDouble(String field) {
-        throw new IllegalArgumentException();
-    }
+  public ClientValue toValue(int row, String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public int toInteger(String field) {
-        Object v = getValue(field);
-        if (v instanceof Integer)
-            return ((Integer) v).intValue();
-        else
-            return Integer.parseInt(v.toString());
-    }
+  public boolean toBoolean(int row, String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public String toString(String field) {
-        return getValue(field).toString();
-    }
-    
-    public boolean isDefined(int index) {
-        throw new IllegalArgumentException();
-    }
-    
-    public ClientValue toValue(int index) {
-        throw new IllegalArgumentException();
-    }
-    
-    public boolean toBoolean(int index) {
-        throw new IllegalArgumentException();
-    }
+  public Date toDate(int row, String field) throws RepositoryException {
+    Object v = getValue(row, field);
+    if (v instanceof Date)
+      return (Date) v;
+    else
+      throw new IllegalArgumentException();
+  }
 
-    public Date toDate(int index) {
-        throw new IllegalArgumentException();
-    }
+  public double toDouble(int row, String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public double toDouble(int index) {
-        throw new IllegalArgumentException();
-    }
+  public int toInteger(int row, String field) throws RepositoryException {
+    Object v = getValue(row, field);
+    if (v instanceof Integer)
+      return ((Integer) v).intValue();
+    else
+      return Integer.parseInt(v.toString());
+  }
 
-    public int toInteger(int index) {
-        throw new IllegalArgumentException();
-    }
+  public String toString(int row, String field) throws RepositoryException {
+    return getValue(row, field).toString();
+  }
 
-    public String toString(int index) {
-        throw new IllegalArgumentException();
-    }
-    
-    public boolean isDefined() {
-        throw new IllegalArgumentException();
-    }
-    
-    public boolean toBoolean() {
-        throw new IllegalArgumentException();
-    }
+  public boolean isDefined(String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public Date toDate() {
-        throw new IllegalArgumentException();
-    }
+  public ClientValue toValue(String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public double toDouble() {
-        throw new IllegalArgumentException();
-    }
+  public boolean toBoolean(String field) throws RepositoryException {
+    Object v = getValue(field);
+    if (v instanceof Boolean)
+      return ((Boolean) v).booleanValue();
+    else
+      return Boolean.parseBoolean(v.toString());
+  }
 
-    public int toInteger() {
-        throw new IllegalArgumentException();
-    }
+  public Date toDate(String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public long toLong() {
-        throw new IllegalArgumentException();
-    }
+  public double toDouble(String field) {
+    throw new IllegalArgumentException();
+  }
 
-    public String toString2() {
-        throw new IllegalArgumentException();
-    }
+  public int toInteger(String field) throws RepositoryException {
+    Object v = getValue(field);
+    if (v instanceof Integer)
+      return ((Integer) v).intValue();
+    else
+      return Integer.parseInt(v.toString());
+  }
 
-    public int add(String key, boolean obj) {
-        throw new IllegalArgumentException();
-    }
+  public String toString(String field) throws RepositoryException {
+    return getValue(field).toString();
+  }
 
-    public int add(String key, char obj) {
-        throw new IllegalArgumentException();
-    }
+  public boolean isDefined(int index) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, int obj) {
-        throw new IllegalArgumentException();
-    }
+  public ClientValue toValue(int index) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, long obj) {
-        throw new IllegalArgumentException();
+  public boolean toBoolean(int index) {
+    throw new IllegalArgumentException();
+  }
+
+  public Date toDate(int index) {
+    throw new IllegalArgumentException();
+  }
+
+  public double toDouble(int index) {
+    throw new IllegalArgumentException();
+  }
+
+  public int toInteger(int index) {
+    throw new IllegalArgumentException();
+  }
+
+  public String toString(int index) {
+    throw new IllegalArgumentException();
+  }
+
+  public boolean isDefined() {
+    throw new IllegalArgumentException();
+  }
+
+  public boolean toBoolean() {
+    throw new IllegalArgumentException();
+  }
+
+  public Date toDate() {
+    throw new IllegalArgumentException();
+  }
+
+  public double toDouble() {
+    throw new IllegalArgumentException();
+  }
+
+  public int toInteger() {
+    throw new IllegalArgumentException();
+  }
+
+  public long toLong() {
+    throw new IllegalArgumentException();
+  }
+
+  public String toString2() {
+    throw new IllegalArgumentException();
+  }
+
+  private int addField(String key, Object obj) {
+    for (int i = 0; i < fieldNames.size(); i++) {
+      if (fieldNames.get(i).equals(key)) {
+        assocValues.set(i, obj);
+        return assocValues.size();
+      }
     }
 
-    public int add(String key, float obj) {
-        throw new IllegalArgumentException();
-    }
+    fieldNames.add(key);
+    assocValues.add(obj);
+    return assocValues.size();
+  }
 
-    public int add(String key, double obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, boolean obj) {
+    return addField(key, Boolean.valueOf(obj));
+  }
 
-    public int add(String key, Object obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, char obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, Boolean obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, int obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, Double obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, long obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, Float obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, float obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, Integer obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, double obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, Long obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, Object obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, String obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, Boolean obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String key, java.util.Date obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, Double obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(Object obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, Float obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(boolean obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, Integer obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(char obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, Long obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(int obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, String obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(long obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(String key, java.util.Date obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(float obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(Object obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(double obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(boolean obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(Boolean obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(char obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(Double obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(int obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(Float obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(long obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(Integer obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(float obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(Long obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(double obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(String obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(Boolean obj) {
+    throw new IllegalArgumentException();
+  }
 
-    public int add(java.util.Date obj) {
-        throw new IllegalArgumentException();
-    }
+  public int add(Double obj) {
+    throw new IllegalArgumentException();
+  }
+
+  public int add(Float obj) {
+    throw new IllegalArgumentException();
+  }
+
+  public int add(Integer obj) {
+    throw new IllegalArgumentException();
+  }
+
+  public int add(Long obj) {
+    throw new IllegalArgumentException();
+  }
+
+  public int add(String obj) {
+    throw new IllegalArgumentException();
+  }
+
+  public int add(java.util.Date obj) {
+    throw new IllegalArgumentException();
+  }
 }
