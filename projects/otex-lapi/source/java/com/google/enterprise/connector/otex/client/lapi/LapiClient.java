@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,19 +19,35 @@ import java.io.OutputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.otex.LivelinkException;
+import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
-
+import com.google.enterprise.connector.spi.RepositoryException;
 import com.opentext.api.GoogleThunk;
 import com.opentext.api.LAPI_ATTRIBUTES;
 import com.opentext.api.LAPI_DOCUMENTS;
 import com.opentext.api.LAPI_USERS;
+import com.opentext.api.LLBadServerCertificateException;
+import com.opentext.api.LLCouldNotConnectException;
+import com.opentext.api.LLCouldNotConnectHTTPException;
+import com.opentext.api.LLHTTPAccessDeniedException;
+import com.opentext.api.LLHTTPCGINotFoundException;
+import com.opentext.api.LLHTTPClientException;
+import com.opentext.api.LLHTTPForbiddenException;
+import com.opentext.api.LLHTTPProxyAuthRequiredException;
+import com.opentext.api.LLHTTPRedirectionException;
+import com.opentext.api.LLHTTPServerException;
+import com.opentext.api.LLIOException;
 import com.opentext.api.LLIllegalOperationException;
+import com.opentext.api.LLSSLNotAvailableException;
+import com.opentext.api.LLSecurityProviderException;
 import com.opentext.api.LLSession;
 import com.opentext.api.LLUnknownFieldException;
+import com.opentext.api.LLUnsupportedAuthMethodException;
 import com.opentext.api.LLValue;
+import com.opentext.api.LLWebAuthInitException;
 
 /**
  * A direct LAPI client implementation.
@@ -101,6 +117,52 @@ final class LapiClient implements Client {
   }
 
   /**
+   * Maps a LAPI exception to a LivelinkException or a
+    * LivelinkIOException. A LivelinkIOException is explicitly treated
+    * as a transient error, rather than document-related error.
+    *
+    * <p>LAPI exceptions have no hierarchy; they all directly extend
+    * RuntimeException. All but one of the occurrences of
+    * LLIOException is an I/O-related exception. That one is the
+    * exception thrown when a version file length does not match the
+    * expected length, and that must not be thrown as a
+    * LivelinkIOException here. That happens on corrupt or missing
+    * version files, and is document-specific.
+    *
+    * @param e a LAPI exception
+    * @return a matching LivelinkException that wraps the LAPI exception
+   */
+  private static LivelinkException getLivelinkException(RuntimeException e) {
+    if (e instanceof LLIOException) {
+      // XXX: Hideous hack, but the LAPI error strings are hard-coded
+      // and in English, and I cannot think of another way to
+      // distinguish this error, which we must distinguish.
+      if ("Premature end-of-data on socket".equals(e.getMessage())) {
+        return new LivelinkException(e, LOGGER);
+      } else {
+        return new LivelinkIOException(e, LOGGER);
+      }
+    } else if (e instanceof LLBadServerCertificateException
+        || e instanceof LLCouldNotConnectException
+        || e instanceof LLCouldNotConnectHTTPException
+        || e instanceof LLHTTPAccessDeniedException
+        || e instanceof LLHTTPCGINotFoundException
+        || e instanceof LLHTTPClientException
+        || e instanceof LLHTTPForbiddenException
+        || e instanceof LLHTTPProxyAuthRequiredException
+        || e instanceof LLHTTPRedirectionException
+        || e instanceof LLHTTPServerException
+        || e instanceof LLSSLNotAvailableException
+        || e instanceof LLSecurityProviderException
+        || e instanceof LLUnsupportedAuthMethodException
+        || e instanceof LLWebAuthInitException) {
+      return new LivelinkIOException(e, LOGGER);
+    } else {
+      return new LivelinkException(e, LOGGER);
+    }
+  }
+
+  /**
    * The Livelink session. LLSession instances are not thread-safe,
    * so all of the methods that access this session, directly or
    * indirectly, must be synchronized.
@@ -139,7 +201,7 @@ final class LapiClient implements Client {
       if (documents.GetServerInfo(value) != 0)
         throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(value);
   }
@@ -151,7 +213,7 @@ final class LapiClient implements Client {
       if (users.GetCurrentUserID(id) != 0)
         throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return id.toInteger();
   }
@@ -164,7 +226,7 @@ final class LapiClient implements Client {
       if (users.GetCookieInfo(cookies) != 0)
         throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(cookies);
   }
@@ -180,7 +242,7 @@ final class LapiClient implements Client {
         return null;
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(userInfo);
   }
@@ -193,7 +255,7 @@ final class LapiClient implements Client {
       if (users.GetUserInfo(username, userInfo) != 0)
         throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(userInfo);
   }
@@ -206,7 +268,7 @@ final class LapiClient implements Client {
       if (documents.AccessEnterpriseWS(info) != 0)
         throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(info);
   }
@@ -286,7 +348,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, e, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(recArray);
   }
@@ -300,7 +362,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(objectInfo);
   }
@@ -318,7 +380,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(categoryVersion);
   }
@@ -340,7 +402,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(attrNames);
   }
@@ -363,7 +425,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(info);
   }
@@ -387,7 +449,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(attrValues);
   }
@@ -401,7 +463,7 @@ final class LapiClient implements Client {
       if (documents.ListObjectCategoryIDs(objIDa, categoryIds) != 0)
         throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(categoryIds);
   }
@@ -410,6 +472,10 @@ final class LapiClient implements Client {
   public synchronized void FetchVersion(int volumeId, int objectId,
       int versionNumber, File path) throws RepositoryException {
     try {
+      if (true)
+        throw new com.opentext.api.LLIOException(true
+            ? "Server did not accept open request"
+            : "Premature end-of-data on socket");
       if (documents.FetchVersion(volumeId, objectId, versionNumber,
               path.getPath()) != 0) {
         throw new LapiException(session, LOGGER);
@@ -430,7 +496,7 @@ final class LapiClient implements Client {
       unMarshall();
       throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
   }
 
@@ -448,7 +514,7 @@ final class LapiClient implements Client {
       unMarshall();
       throw new LapiException(session, LOGGER);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
   }
 
@@ -461,7 +527,7 @@ final class LapiClient implements Client {
       // in the presence of a security manager.
       GoogleThunk.unMarshall(session);
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
   }
 
@@ -475,7 +541,7 @@ final class LapiClient implements Client {
         throw new LapiException(session, LOGGER);
       }
     } catch (RuntimeException e) {
-      throw new LapiException(e, LOGGER);
+      throw getLivelinkException(e);
     }
     return new LapiClientValue(versionInfo);
   }

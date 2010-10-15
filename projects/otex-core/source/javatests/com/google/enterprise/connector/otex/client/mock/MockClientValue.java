@@ -20,34 +20,38 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.Vector;
 
 /**
- * A partial mock implementation of a <code>ClientValue</code>. Most of
- * the methods throw an <code>IllegalArgumentException</code>. The
- * <code>size</code>, <code>toString(int,String)</code>,
- * <code>toInteger(String)</code>, and<code>toString(String)</code>
- * methods are implemented. For an Assoc with boolean values,
- * <code>toBoolean(String)</code> and <code>add(String, boolean)</code>
- * are implemented.
+ * A partial mock implementation of a <code>ClientValue</code>. Many
+ * of the methods are not implemented and throw an
+ * <code>IllegalArgumentException</code>.
  */
 public final class MockClientValue implements ClientValue {
+  private final int type;
   private final List<String> fieldNames;
-  private final Object[][] tableValues;
-
-  /** If fieldNames is null, assocValues is a List. */
-  private final List<Object> assocValues;
+  private final Vector<List<Object>> tableValues;
+  private final Vector<Object> assocValues;
+  private final Vector<Object> listValues;
+  private final Object atomicValue;
 
   /** Constructs a Recarray. */
-  MockClientValue(String[] fieldNames, Object[][] values) {
+  public MockClientValue(String[] fieldNames, Object[][] values) {
     if (fieldNames == null || values == null ||
         values.length > 0 && (fieldNames.length != values[0].length)) {
       throw new IllegalArgumentException();
     }
+    this.type = TABLE;
     this.fieldNames = new ArrayList<String>(Arrays.asList(fieldNames));
-    this.tableValues = values;
+    this.tableValues = new Vector<List<Object>>(values.length);
+    for (int i = 0; i < values.length; i++) {
+      tableValues.add(Arrays.asList(values[i]));
+    }
     this.assocValues = null;
+    this.listValues = null;
+    this.atomicValue = null;
   }
 
   /** Constructs an Assoc. */
@@ -56,18 +60,47 @@ public final class MockClientValue implements ClientValue {
         fieldNames.length != values.length) {
       throw new IllegalArgumentException();
     }
+    this.type = ASSOC;
     this.fieldNames = new ArrayList<String>(Arrays.asList(fieldNames));
     this.tableValues = null;
-    this.assocValues = new ArrayList<Object>(Arrays.asList(values));
+    this.assocValues = new Vector<Object>(Arrays.asList(values));
+    this.listValues = null;
+    this.atomicValue = null;
   }
 
   /** Constructs a List. */
   MockClientValue(Object[] values) {
     if (values == null)
       throw new IllegalArgumentException();
+    this.type = LIST;
     this.fieldNames = null;
     this.tableValues = null;
-    this.assocValues = new ArrayList<Object>(Arrays.asList(values));
+    this.assocValues = null;
+    this.listValues = new Vector<Object>(Arrays.asList(values));
+    this.atomicValue = null;
+  }
+
+  /** Constructs an undefined value. */
+  public MockClientValue() {
+    this.type = UNDEFINED;
+    this.fieldNames = null;
+    this.tableValues = null;
+    this.assocValues = null;
+    this.listValues = null;
+    this.atomicValue = null;
+  }
+
+  /** Constructs an atomic value. */
+  public MockClientValue(Object value) {
+    if (value == null)
+      this.type = UNDEFINED;
+    else
+      this.type = STRING; // FIXME: Should be set to correct type.
+    this.fieldNames = null;
+    this.tableValues = null;
+    this.assocValues = null;
+    this.listValues = null;
+    this.atomicValue = value;
   }
 
   private Object getField(List<Object> values, String field)
@@ -81,35 +114,64 @@ public final class MockClientValue implements ClientValue {
 
   private Object getValue(int row, String field)
       throws RepositoryException {
-    if (tableValues == null)
+    if (type != TABLE)
       throw new IllegalArgumentException("ClientValue is not a table.");
-    if (row < 0 || row > tableValues.length)
+    if (row < 0 || row > tableValues.size())
       throw new IllegalArgumentException(String.valueOf(row));
-    return getField(Arrays.asList(tableValues[row]), field);
+    return getField(tableValues.get(row), field);
   }
 
   private Object getValue(String field)
       throws RepositoryException {
-    if (assocValues == null)
+    if (type != ASSOC)
       throw new IllegalArgumentException("ClientValue is not an assoc.");
     return getField(assocValues, field);
   }
 
   private Object getValue(int index) {
-    if (assocValues == null)
+    if (type != LIST)
       throw new IllegalArgumentException("ClientValue is not a list.");
-    return assocValues.get(index);
+    return listValues.get(index);
   }
 
   public int size() {
-    if (tableValues != null)
-      return tableValues.length;
-    else
-      return assocValues.size();
+    switch (type) {
+      case TABLE:
+        return tableValues.size();
+      case ASSOC:
+        return assocValues.size();
+      case LIST:
+        return listValues.size();
+      case STRING:
+        // FIXME: The value may not be a string.
+        if (atomicValue instanceof String)
+          return atomicValue.toString().length();
+        else
+          throw new IllegalArgumentException("ClientValue has no size");
+      default:
+        throw new IllegalArgumentException("ClientValue has no size");
+    }
   }
 
+  /** This implementation only works on empty values. */
   public void setSize(int size) {
-    throw new IllegalArgumentException();
+    switch (type) {
+      case TABLE:
+        int originalSize = tableValues.size();
+        tableValues.setSize(size);
+        for (int i = originalSize + 1; i < size; i++) {
+          tableValues.add(new ArrayList<Object>());
+        }
+        break;
+      case ASSOC:
+        assocValues.setSize(size);
+        break;
+      case LIST:
+        listValues.setSize(size);
+        break;
+      default:
+        throw new IllegalArgumentException("ClientValue has no size");
+    }
   }
 
   /** {@inheritDoc} */
@@ -118,10 +180,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   public int type() {
-    if (tableValues != null)
-      return TABLE;
-    else
-      return ASSOC;
+    return type;
   }
 
   public Enumeration enumerateNames() {
@@ -145,11 +204,11 @@ public final class MockClientValue implements ClientValue {
   }
 
   public boolean hasValue() {
-    return ((tableValues != null) || (assocValues != null));
+    return type != UNDEFINED;
   }
 
-  public ClientValue toValue(int row, String field) {
-    throw new IllegalArgumentException();
+  public ClientValue toValue(int row, String field) throws RepositoryException {
+    return new MockClientValue(getValue(row, field));
   }
 
   public boolean toBoolean(int row, String field) {
@@ -245,7 +304,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   public boolean isDefined() {
-    throw new IllegalArgumentException();
+    return type != UNDEFINED;
   }
 
   public boolean toBoolean() {
@@ -269,7 +328,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   public String toString2() {
-    throw new IllegalArgumentException();
+    return (type == UNDEFINED) ? "?" : atomicValue.toString();
   }
 
   private int addField(String key, Object obj) {
@@ -294,7 +353,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   public int add(String key, int obj) {
-    throw new IllegalArgumentException();
+    return addField(key, new Integer(obj));
   }
 
   public int add(String key, long obj) {
@@ -326,7 +385,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   public int add(String key, Integer obj) {
-    throw new IllegalArgumentException();
+    return addField(key, obj);
   }
 
   public int add(String key, Long obj) {
@@ -334,11 +393,11 @@ public final class MockClientValue implements ClientValue {
   }
 
   public int add(String key, String obj) {
-    throw new IllegalArgumentException();
+    return addField(key, obj);
   }
 
   public int add(String key, java.util.Date obj) {
-    throw new IllegalArgumentException();
+    return addField(key, obj);
   }
 
   public int add(Object obj) {

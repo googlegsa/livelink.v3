@@ -174,6 +174,9 @@ class LivelinkDocumentList implements DocumentList {
         Document doc = docIterator.nextDocument();
         docsReturned++;
         return doc;
+      } catch (LivelinkIOException e) {
+        checkpoint.restore();
+        throw e;
       } catch (Throwable t) {
         LOGGER.severe("Caught exception when fetching a document: " +
             t.getMessage());
