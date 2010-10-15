@@ -472,10 +472,6 @@ final class LapiClient implements Client {
   public synchronized void FetchVersion(int volumeId, int objectId,
       int versionNumber, File path) throws RepositoryException {
     try {
-      if (true)
-        throw new com.opentext.api.LLIOException(true
-            ? "Server did not accept open request"
-            : "Premature end-of-data on socket");
       if (documents.FetchVersion(volumeId, objectId, versionNumber,
               path.getPath()) != 0) {
         throw new LapiException(session, LOGGER);
