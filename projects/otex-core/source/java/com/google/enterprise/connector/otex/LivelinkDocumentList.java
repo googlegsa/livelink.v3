@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,7 +35,6 @@ import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
-import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
 /*
  * We use inner classes here to share the recarray and other fields in
@@ -71,8 +69,18 @@ class LivelinkDocumentList implements DocumentList {
   /** A concrete strategy for retrieving the content from the server. */
   private final ContentHandler contentHandler;
 
-  /** The concrete ClientValue implementation associated with this Client. */
-  private final ClientValueFactory valueFactory;
+  /**
+   * A handler for retrieving category attributes. The scope of this
+   * object matters because it contains a cache of searchable category
+   * IDs. We do not want to cache categories too long, so that we can
+   * react to changes to the category in Livelink. For now, we'll keep
+   * the cache for the DocumentList, rather than push it up to the
+   * TraversalManager.
+   */
+  private final CategoryHandler categoryHandler;
+
+  /** A handler for mapping user IDs to user names. */
+  private final UserNameHandler nameHandler;
 
   /** The table of Livelink data, one row per doc, one column per field. */
   private final ClientValue recArray;
@@ -103,10 +111,6 @@ class LivelinkDocumentList implements DocumentList {
   /** Count of documents returned in this batch. */
   private int docsReturned;
 
-  /** This is a small cache of UserID and GroupID name resolutions. */
-  private final HashMap<Integer, ClientValue> userNameCache =
-      new HashMap<Integer, ClientValue>(200);
-
   /**
    * Constructor for non-trivial document set.  Iterate over a
    * RecArray of items returned from Livelink.
@@ -118,8 +122,9 @@ class LivelinkDocumentList implements DocumentList {
       String currentUsername) throws RepositoryException {
     this.connector = connector;
     this.client = client;
-    this.valueFactory = client.getClientValueFactory();
     this.contentHandler = contentHandler;
+    this.categoryHandler = new CategoryHandler(connector, client);
+    this.nameHandler = new UserNameHandler(client);
     this.recArray = recArray;
     this.delArray = delArray;
     this.fields = fields;
@@ -142,8 +147,9 @@ class LivelinkDocumentList implements DocumentList {
     this.docIterator = null;
     this.connector = null;
     this.client = null;
-    this.valueFactory = null;
     this.contentHandler = null;
+    this.categoryHandler = null;
+    this.nameHandler = null;
     this.recArray = null;
     this.delArray = null;
     this.fields = null;
@@ -168,6 +174,13 @@ class LivelinkDocumentList implements DocumentList {
         Document doc = docIterator.nextDocument();
         docsReturned++;
         return doc;
+      } catch (LivelinkIOException e) {
+        checkpoint.restore();
+        if (docsReturned > 0) {
+          return null;
+        } else {
+          throw e;
+        }
       } catch (Throwable t) {
         LOGGER.severe("Caught exception when fetching a document: " +
             t.getMessage());
@@ -185,7 +198,11 @@ class LivelinkDocumentList implements DocumentList {
           // checkpoint, so that we may retry this document on the
           // next pass.
           checkpoint.restore();
-          throw e;
+          if (docsReturned > 0) {
+            return null;
+          } else {
+            throw e;
+          }
         }
 
         // It does not appear to be a transient failure.  Assume this
@@ -332,57 +349,12 @@ class LivelinkDocumentList implements DocumentList {
     /** The Document Properties associated with the current row. */
     private LivelinkDocument props;
 
-    /** The set of categories to include. */
-    private HashSet<Object> includedCategories;
-
-    /** The set of categories to exclude. */
-    private HashSet<Object> excludedCategories;
-
-    /** Whether to even bother with Category attributes? */
-    private final boolean doCategories;
-
-    /** Index only category attributes that are marked searchable? */
-    private final boolean includeSearchable;
-
-    /** Include category names as properties? */
-    private final boolean includeCategoryNames;
-
-    LivelinkDocumentListIterator() {
+    LivelinkDocumentListIterator() throws RepositoryException {
       this.delRow = 0;
       this.delSize = (delArray == null) ? 0 : delArray.size();
 
       this.insRow = 0;
       this.insSize = (recArray == null) ? 0 : recArray.size();
-
-      if (insSize > 0) {
-        // Fetch the set of categories to include and exclude.
-        this.includedCategories = connector.getIncludedCategories();
-        this.excludedCategories = connector.getExcludedCategories();
-
-        // Should we index any Category attributes at all?
-        this.doCategories = !(includedCategories.contains("none") ||
-            excludedCategories.contains("all"));
-
-        // Set qualifiers on the included category attributes.
-        this.includeSearchable = includedCategories.contains("searchable");
-        this.includeCategoryNames = includedCategories.contains("name");
-
-        // If we index all Categories, don't bother searching the set,
-        // as it will only slow us down.
-        if (includedCategories.contains("all"))
-          includedCategories = null;
-
-        // If we exclude no Categories, don't bother searching the set,
-        // as it will only slow us down.
-        if (excludedCategories.contains("none"))
-          excludedCategories = null;
-      } else {
-        this.doCategories = false;
-        this.includeSearchable = false;
-        this.includeCategoryNames = false;
-        this.includedCategories = null;
-        this.excludedCategories = null;
-      }
     }
 
     public boolean hasNext() {
@@ -507,7 +479,8 @@ class LivelinkDocumentList implements DocumentList {
           if (value.isDefined()) {
             if (isUserIdOrGroupId(fields[i].fieldName)) {
               // FIXME: hack knows that UserID has 1 propertyName
-              addUserByName(fields[i].propertyNames[0], value);
+              nameHandler.addUserByName(fields[i].propertyNames[0], value,
+                  props);
             } else
               props.addProperty(fields[i], value);
           }
@@ -749,7 +722,7 @@ class LivelinkDocumentList implements DocumentList {
           if ("ExtendedData".equalsIgnoreCase(fields[i]))
             collectValueProperties(fields[i], value);
           else if (isUserIdOrGroupId(fields[i]))
-            addUserByName(fields[i], value);
+            nameHandler.addUserByName(fields[i], value, props);
           else
             props.addProperty(fields[i], value);
         }
@@ -784,7 +757,7 @@ class LivelinkDocumentList implements DocumentList {
         ClientValue value = versionInfo.toValue(fields[i]);
         if (value != null && value.hasValue()) {
           if (isUserIdOrGroupId(fields[i]))
-            addUserByName(fields[i], value);
+            nameHandler.addUserByName(fields[i], value, props);
           else
             props.addProperty(fields[i], value);
         }
@@ -845,229 +818,7 @@ class LivelinkDocumentList implements DocumentList {
      * @throws RepositoryException if an error occurs
      */
     private void collectCategoryAttributes() throws RepositoryException {
-      if (doCategories == false)
-        return;
-
-      // List the categories. LAPI requires us to use this
-      // Assoc containing the id instead of just passing in
-      // the id. The Assoc may have two other values, Type,
-      // which specifies the kind of object being looked up
-      // (there's only one legal value currently) and
-      // Version, which specifies which version of the
-      // object to use (the default is the current
-      // version).
-      ClientValue objIdAssoc = valueFactory.createAssoc();
-      objIdAssoc.add("ID", objectId);
-      ClientValue categoryIds = client.ListObjectCategoryIDs(objIdAssoc);
-
-      // Loop over the categories.
-      int numCategories = categoryIds.size();
-      for (int i = 0; i < numCategories; i++) {
-        ClientValue categoryId = categoryIds.toValue(i);
-
-        // If this Category is not in the included list, or it is
-        // explicitly mentioned in the excluded list, then skip it.
-        Integer id = new Integer(categoryId.toInteger("ID"));
-        if (((includedCategories != null) &&
-                !includedCategories.contains(id)) ||
-            ((excludedCategories != null) &&
-                excludedCategories.contains(id)))
-          continue;
-
-        // Make sure we know what type of categoryId
-        // object we have. There are also Workflow
-        // category attributes which can't be read here.
-        int categoryType = categoryId.toInteger("Type");
-        if (Client.CATEGORY_TYPE_LIBRARY != categoryType) {
-          if (LOGGER.isLoggable(Level.FINER)) {
-            LOGGER.finer("Unknown category implementation type " +
-                categoryType + "; skipping");
-          }
-          continue;
-        }
-
-        if (includeCategoryNames) {
-          // XXX: This is the only property name that is
-          // hard-coded here like this. I think that's OK,
-          // because the recarray fields are just hard-coded
-          // someplace else. "Category" is an ObjectInfo
-          // attribute name that is unused in Livelink 9.0 or
-          // later.
-          ClientValue name = categoryId.toValue("DisplayName");
-          if (name.hasValue())
-            props.addProperty("Category", name);
-        }
-
-        ClientValue categoryVersion =
-            client.GetObjectAttributesEx(objIdAssoc, categoryId);
-        ClientValue attrNames =
-            client.AttrListNames(categoryVersion, null);
-
-        // Loop over the attributes for this category.
-        int numAttributes = attrNames.size();
-        for (int j = 0; j < numAttributes; j++) {
-          String attrName = attrNames.toString(j);
-          ClientValue attrInfo =
-              client.AttrGetInfo(categoryVersion, attrName, null);
-          int attrType = attrInfo.toInteger("Type");
-          if (Client.ATTR_TYPE_SET == attrType)
-            getAttributeSetValues(categoryVersion, attrName);
-          else {
-            getAttributeValue(categoryVersion, attrName,
-                attrType, null, attrInfo);
-          }
-        }
-      }
-    }
-
-    /**
-     * Gets the values for attributes contained in an attribute set.
-     *
-     * @param categoryVersion the category being read
-     * @param attributeName the name of the attribute set
-     * @throws RepositoryException if an error occurs
-     */
-    private void getAttributeSetValues(ClientValue categoryVersion,
-        String attrName) throws RepositoryException {
-      // The "path" indicates the set attribute name to look
-      // inside of in other methods like AttrListNames.
-      ClientValue attrSetPath = valueFactory.createList();
-      attrSetPath.add(attrName);
-
-      // Get a list of the names of the attributes in the
-      // set. Look up and store the types to avoid repeating
-      // the type lookup when there's more than one instance of
-      // the attribute set.
-      ClientValue attrSetNames =
-          client.AttrListNames(categoryVersion, attrSetPath);
-
-      ClientValue[] attrInfo = new ClientValue[attrSetNames.size()];
-      for (int i = 0; i < attrSetNames.size(); i++) {
-        String name = attrSetNames.toString(i);
-        attrInfo[i] = client.AttrGetInfo(categoryVersion, name, attrSetPath);
-      }
-
-      // List the values for the set attribute itself. There
-      // may be multiple instances of the set.
-      ClientValue setValues =
-          client.AttrGetValues(categoryVersion, attrName, null);
-
-      // Update the path to hold index of the set instance.
-      attrSetPath.setSize(2);
-      int numSets = setValues.size();
-      for (int i = 0; i < numSets; i++) {
-        attrSetPath.setInteger(1, i);
-        // For each instance (row) of the attribute set, loop
-        // over the attribute names.
-        for (int j = 0; j < attrSetNames.size(); j++) {
-          int type = attrInfo[j].toInteger("Type");
-          if (Client.ATTR_TYPE_SET == type) {
-            LOGGER.finer("Nested attributes sets are not supported.");
-            continue;
-          }
-          //System.out.println("      " + attrSetNames.toString(j));
-          getAttributeValue(categoryVersion, attrSetNames.toString(j),
-              type, attrSetPath, attrInfo[j]);
-        }
-      }
-    }
-
-    /**
-     * Gets the values for an attribute.
-     *
-     * @param categoryVersion the category version in which the
-     * values are stored
-     * @param attributeName the name of the attribute whose
-     * values are being read
-     * @param attributeType the type of the attribute data; may
-     * not be "SET"
-     * @param attributeSetPath if the attribute is contained
-     * within an attribute set, this is a list containing the set
-     * name and set instance index; otherwise, this should be
-     * null
-     * throws RepositoryException if an error occurs
-     */
-    private void getAttributeValue(ClientValue categoryVersion,
-        String attrName, int attrType, ClientValue attrSetPath,
-        ClientValue attrInfo) throws RepositoryException {
-
-      if (Client.ATTR_TYPE_SET == attrType)
-        throw new IllegalArgumentException("attrType = SET");
-
-      // Maybe skip those attributes not marked as searchable.
-      if ((includeSearchable) && !attrInfo.toBoolean("Search"))
-        return;
-
-      //System.out.println("getAttributeValue: attrName = " + attrName);
-
-      ClientValue attrValues =
-          client.AttrGetValues(categoryVersion, attrName, attrSetPath);
-
-      // Even a simple attribute type can have multiple values
-      // (displayed as rows in the Livelink UI).
-      int numValues = attrValues.size();
-      if (numValues == 0)
-        return;
-
-      // System.out.println("getAttributeValue: numValues = " +
-      // numValues);
-
-      for (int k = 0; k < numValues; k++) {
-        ClientValue value = attrValues.toValue(k);
-        // Avoid errors if the attribute hasn't been set.
-        if (!value.hasValue())
-          continue;
-        // System.out.println("getAttributeValue: k = " + k +
-        // " ; value = " + value.toString2());
-        if (Client.ATTR_TYPE_USER == attrType)
-          addUserByName(attrName, value);
-        else
-          props.addProperty(attrName, value);
-      }
-    }
-
-    /**
-     * Add a UserID or GroupID property value as the name of the user or
-     * group, rather than the integral ID.
-     *
-     * @param propertyName  the property key to use when adding the value
-     * to the map.
-     * @param idValue ClientValue containing  the UserID or GroupID to
-     * resolve to a name.
-     */
-    private void addUserByName(String propertyName, ClientValue idValue)
-        throws RepositoryException {
-      // If the UserID or GroupID is 0, then ignore it.
-      // For reason why, see ObjectInfo Reserved and ReservedBy fields.
-      int id = idValue.toInteger();
-      if (id == 0)
-        return;
-
-      // Check the userName cache (if we recently looked up this user).
-      ClientValue userName = userNameCache.get(new Integer(id));
-      if (userName == null) {
-        // User is not in the cache, get the name from the server.
-        ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(id);
-        if (userInfo != null)
-          userName = userInfo.toValue("Name");
-        if (userName == null || !userName.isDefined()) {
-          if (LOGGER.isLoggable(Level.WARNING)) {
-            LOGGER.warning("No user or group name found for ID " + id);
-          }
-          return;
-        }
-
-        // If the cache was full, flush it. Not sophisticated MRU, but
-        // good enough for our needs.
-        if (userNameCache.size() > 100)
-          userNameCache.clear();
-
-        // Cache this userId to userName mapping for later reference.
-        userNameCache.put(new Integer(id), userName);
-      }
-
-      // Finally, add the userName property to the map.
-      props.addProperty(propertyName, userName);
+      categoryHandler.collectCategoryAttributes(objectId, nameHandler, props);
     }
 
     /**

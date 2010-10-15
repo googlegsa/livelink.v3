@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
+import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
@@ -218,16 +219,24 @@ final class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-    
+
     /**
      * {@inheritDoc}
      * <p>
      * This implementation does nothing.
      */
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
-            File path) {
+            File path) throws RepositoryException {
         LOGGER.fine("Entering MockClient.FetchVersion");
         // TODO: Make sure that the file exists and is empty.
+
+        if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
+          throw new LivelinkException(new RuntimeException(
+                  "Simulated Premature end-of-data on socket"), LOGGER);
+        } else if (objectId == MockConstants.IO_OBJECT_ID) {
+          throw new LivelinkIOException(new RuntimeException(
+                  "Simulated Server did not accept open request"), LOGGER);
+        }
     }
 
     /**
