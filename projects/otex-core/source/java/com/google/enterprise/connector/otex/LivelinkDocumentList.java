@@ -176,7 +176,11 @@ class LivelinkDocumentList implements DocumentList {
         return doc;
       } catch (LivelinkIOException e) {
         checkpoint.restore();
-        throw e;
+        if (docsReturned > 0) {
+          return null;
+        } else {
+          throw e;
+        }
       } catch (Throwable t) {
         LOGGER.severe("Caught exception when fetching a document: " +
             t.getMessage());
@@ -194,7 +198,11 @@ class LivelinkDocumentList implements DocumentList {
           // checkpoint, so that we may retry this document on the
           // next pass.
           checkpoint.restore();
-          throw e;
+          if (docsReturned > 0) {
+            return null;
+          } else {
+            throw e;
+          }
         }
 
         // It does not appear to be a transient failure.  Assume this

@@ -37,7 +37,7 @@ public class LivelinkDocumentListTest extends TestCase {
    *     usually one of the values from MockConstants
    * @param dataSize the file size (DataSize) for the returned document
    */
-  private DocumentList getObjectUnderTest(int objectId, int dataSize)
+  private DocumentList getObjectUnderTest(int objectId, int... dataSize)
       throws RepositoryException {
     LivelinkConnector connector = new LivelinkConnector(
         "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
@@ -60,8 +60,11 @@ public class LivelinkDocumentListTest extends TestCase {
 
     final String[] FIELDS = {
       "ModifyDate", "DataID", "OwnerID", "Subtype", "MimeType", "DataSize" };
-    Object[][] values = new Object[][] { {
-        new Date(), objectId, 2000, 144, "text/plain", dataSize } };
+    Object[][] values = new Object[dataSize.length][];
+    for (int i = 0; i < dataSize.length; i++) {
+      values[i] = new Object[] {
+        new Date(), objectId, 2000, 144, "text/plain", dataSize[i] };
+    }
     ClientValue recArray = new MockClientValue(FIELDS, values);
 
     Field[] fields = new Field[FIELDS.length];
@@ -102,6 +105,25 @@ public class LivelinkDocumentListTest extends TestCase {
     } catch (LivelinkIOException e) {
       assertNull(list.checkpoint());
     }
+  }
+
+  /**
+   * Tests a document list where the first document is fine and for
+   * the second document, FetchVersion should throw an I/O exception.
+   * Since we've already processed one document, we just expect
+   * nextDocument to return null in this case, unlike the previous
+   * case where the LivelinkIOException was rethrown.
+   */
+  public void testNextDocument_partial() throws RepositoryException {
+    DocumentList list = getObjectUnderTest(MockConstants.IO_OBJECT_ID, 0, 1);
+
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    String checkpoint = list.checkpoint();
+    assertNotNull(checkpoint);
+
+    assertNull(list.nextDocument());
+    assertEquals(checkpoint, list.checkpoint());
   }
 
   /**
