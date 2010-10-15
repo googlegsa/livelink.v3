@@ -343,7 +343,7 @@ final class LapiClient implements Client {
       LOGGER.info("Trying unMarshall workaround...");
       unMarshall();
       if (session.getStatus() == 0) {
-        throw new LapiException("unMarshall workaround failed", e, LOGGER);
+        throw new LivelinkException("unMarshall workaround failed", e, LOGGER);
       } else {
         throw new LapiException(session, e, LOGGER);
       }

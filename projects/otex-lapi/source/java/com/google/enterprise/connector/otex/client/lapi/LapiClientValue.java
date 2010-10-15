@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import java.util.logging.Logger;
 import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLInputStream;
 import com.opentext.api.LLValue;
-
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
@@ -95,9 +95,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             value.setSize(size);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -107,9 +107,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             value.setInteger(index, val);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -155,9 +155,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toValue(row, field).isDefined();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -192,11 +192,9 @@ public final class LapiClientValue implements ClientValue {
             return new LapiClientValue(sv);
         } catch (UnsupportedEncodingException e) {
             // This can't happen.
-            RuntimeException re = new IllegalArgumentException();
-            re.initCause(e);
-            throw re;
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     
@@ -206,9 +204,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return new LapiClientValue(value.toValue(row, field));
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -218,9 +216,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toBoolean(row, field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -229,9 +227,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDate(row, field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -240,9 +238,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDouble(row, field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -251,9 +249,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toInteger(row, field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -262,9 +260,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toString(row, field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -274,9 +272,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toValue(field).isDefined();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -285,9 +283,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return new LapiClientValue(value.toValue(field));
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -296,9 +294,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toBoolean(field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -307,9 +305,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDate(field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -318,9 +316,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDouble(field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -329,9 +327,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toInteger(field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -340,9 +338,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toString(field);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -351,9 +349,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toValue(index).isDefined();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -362,9 +360,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return new LapiClientValue(value.toValue(index));
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -373,9 +371,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toBoolean(index);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -384,9 +382,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDate(index);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -395,9 +393,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDouble(index);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -406,9 +404,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toInteger(index);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -417,9 +415,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toString(index);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -428,9 +426,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.isDefined();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -439,9 +437,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toBoolean();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -450,9 +448,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDate();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -461,9 +459,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toDouble();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -472,9 +470,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toInteger();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -501,9 +499,9 @@ public final class LapiClientValue implements ClientValue {
             else
                 throw new IllegalArgumentException();
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -512,9 +510,9 @@ public final class LapiClientValue implements ClientValue {
         try {
             return value.toString(); // + " (type = " + typeByName(value.type()) + ")";
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -523,117 +521,117 @@ public final class LapiClientValue implements ClientValue {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, char obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, int obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, long obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, float obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, double obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, Boolean obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, Double obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, Float obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, Integer obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, Long obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, String obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String key, java.util.Date obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
@@ -643,117 +641,117 @@ public final class LapiClientValue implements ClientValue {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(char obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(int obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(long obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(float obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(double obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(Boolean obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(Double obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(Float obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(Integer obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(Long obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(String obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
     public int add(java.util.Date obj) throws RepositoryException {
         try {
             return this.value.add(obj);
         } catch (LLIllegalOperationException e) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
-            throw new LapiException(e, LOGGER);
+            throw new LivelinkException(e, LOGGER);
         }
     }
 
