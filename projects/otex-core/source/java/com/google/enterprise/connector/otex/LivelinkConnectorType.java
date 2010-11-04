@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -168,19 +168,78 @@ public class LivelinkConnectorType implements ConnectorType {
     protected void appendAttribute(StringBuilder buffer, String name,
         String value) {
       buffer.append(name).append("=\"");
-      escapeAndAppend(buffer, value);
+      escapeAndAppendAttributeValue(buffer, value);
       buffer.append("\" ");
     }
 
-    protected void escapeAndAppend(StringBuilder buffer, String data) {
+    /**
+     * Escapes the given attribute value and appends it.
+     *
+     * @see #escapeAndAppend
+     * @see <a href="http://www.w3.org/TR/REC-xml/#syntax"
+     * >http://www.w3.org/TR/REC-xml/#syntax</a>
+     */
+    /* TODO: Replace with XmlUtils or its successor. */
+    protected final void escapeAndAppendAttributeValue(StringBuilder buffer,
+        String data) {
       for (int i = 0; i < data.length(); i++) {
-        switch (data.charAt(i)) {
-          case '\'': buffer.append("&apos;"); break;
-          case '"': buffer.append("&quot;"); break;
-          case '&': buffer.append("&amp;"); break;
-          case '<': buffer.append("&lt;"); break;
-          case '>': buffer.append("&gt;"); break;
-          default: buffer.append(data.charAt(i));
+        char c = data.charAt(i);
+        switch (c) {
+          case '\'':
+            // Preferred over &apos; see http://www.w3.org/TR/xhtml1/#C_16
+            buffer.append("&#39;");
+            break;
+          case '"':
+            buffer.append("&quot;");
+            break;
+          case '&':
+            buffer.append("&amp;");
+            break;
+          case '<':
+            buffer.append("&lt;");
+            break;
+          case '\t':
+          case '\n':
+          case '\r':
+            buffer.append(c);
+            break;
+          default:
+            if (c >= 0x20 && c <= 0xFFFD) {
+              buffer.append(c);
+            }
+            break;
+        }
+      }
+    }
+
+    /**
+     * Escapes the given character data and appends it.
+     *
+     * @see #escapeAndAppendAttributeValue
+     * @see <a href="http://www.w3.org/TR/REC-xml/#syntax"
+     * >http://www.w3.org/TR/REC-xml/#syntax</a>
+     */
+    /* TODO: Replace with XmlUtils (new method) or its successor. */
+    protected final void escapeAndAppend(StringBuilder buffer, String data) {
+      for (int i = 0; i < data.length(); i++) {
+        char c = data.charAt(i);
+        switch (c) {
+          case '&':
+            buffer.append("&amp;");
+            break;
+          case '<':
+            buffer.append("&lt;");
+            break;
+          case '\t':
+          case '\n':
+          case '\r':
+            buffer.append(c);
+            break;
+          default:
+            if (c >= 0x20 && c <= 0xFFFD) {
+              buffer.append(c);
+            }
+            break;
         }
       }
     }
@@ -352,7 +411,6 @@ public class LivelinkConnectorType implements ConnectorType {
 
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
-
       buffer.append("<textarea ");
       appendAttribute(buffer, "rows", "5");
       appendAttribute(buffer, "cols", "40");
