@@ -59,16 +59,4 @@ class LapiException extends LivelinkException {
   LapiException(LLSession session, Logger logger) {
     super(buildMessage(session), logger);
   }
-
-  /**
-   * Constructs an instance from a Livelink session that has
-   * returned an error.
-   *
-   * @param session the Livelink session on which the error occurred
-   * @param e a Livelink-specific runtime exception
-   * @param logger a logger instance to log the exception against
-   */
-  LapiException(LLSession session, Exception e, Logger logger) {
-    super(buildMessage(session), e, logger);
-  }
 }
