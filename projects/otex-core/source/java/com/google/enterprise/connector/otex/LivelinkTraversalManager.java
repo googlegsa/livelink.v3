@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -268,7 +268,7 @@ class LivelinkTraversalManager
    * (<em>includedLocationNodes</em>) or an implicit
    * list of all non-excluded Volumes.
    *
-   * If explicit starting nodes are not provided, we return a SQL
+   * If explicit starting nodes are provided, we return a SQL
    * expression of the following form:
    *
    * <pre>
@@ -296,15 +296,7 @@ class LivelinkTraversalManager
     if (startNodes != null && startNodes.length() > 0) {
       // If we have an explict list of start locations, build a
       // query that includes only those and their descendants.
-      String ancestorNodes = getAncestorNodes(startNodes);
-      buffer.append("(DataID in (");
-      buffer.append(startNodes);
-      buffer.append(") or DataID in (select DataID from ");
-      buffer.append("DTreeAncestors where ");
-      buffer.append(candidatesPredicate);
-      buffer.append(" and AncestorID in (");
-      buffer.append(ancestorNodes);
-      buffer.append(")))");
+      buffer.append(getDescendants(startNodes, candidatesPredicate));
     } else {
       String excludedVolumes = connector.getExcludedVolumeTypes();
       if (excludedVolumes != null && excludedVolumes.length() > 0) {
@@ -387,18 +379,37 @@ class LivelinkTraversalManager
       if (buffer.length() > 0)
         buffer.append(" and ");
 
-      buffer.append("DataID not in (select DataID from ");
-      buffer.append("DTreeAncestors where ");
-      buffer.append(candidatesPredicate);
-      buffer.append(" and AncestorID in (");
-      buffer.append(excludedLocationNodes);
-      buffer.append("))");
+      buffer.append("not ");
+      buffer.append(
+          getDescendants(excludedLocationNodes, candidatesPredicate));
     }
 
     String excluded = (buffer.length() > 0) ? buffer.toString() : null;
     if (LOGGER.isLoggable(Level.FINER))
       LOGGER.finer("EXCLUDED: " + excluded);
     return excluded;
+  }
+
+  /**
+   * Gets a SQL condition that matches descendants of the starting nodes,
+   * including the starting nodes themselves, from among the candidates.
+   *
+   * @param startNodes a comma-separated string of object IDs
+   * @param candidatesPredicate a SQL condition matching the candidates
+   * @return a SQL conditional expression string
+   */
+  private String getDescendants(String startNodes,
+      String candidatesPredicate) {
+    StringBuilder buffer = new StringBuilder();
+    String ancestorNodes = getAncestorNodes(startNodes);
+    buffer.append("(DataID in (");
+    buffer.append(startNodes);
+    buffer.append(") or DataID in (select DataID from DTreeAncestors where ");
+    buffer.append(candidatesPredicate);
+    buffer.append(" and AncestorID in (");
+    buffer.append(ancestorNodes);
+    buffer.append(")))");
+    return buffer.toString();
   }
 
   /**

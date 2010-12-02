@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -122,9 +122,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
 
-        assertTrue(excluded, excluded.indexOf("DataID not in " +
-            "(select DataID from DTreeAncestors where " +
-            "null and AncestorID in (13832))") != -1);
+        assertTrue(excluded, excluded.indexOf("not (DataID in (13832) or " +
+            "DataID in (select DataID from DTreeAncestors where " +
+            "null and AncestorID in (13832,-13832)))") != -1);
 
         conn.setExcludedVolumeTypes("2001,4104");
         conn.setExcludedLocationNodes("13832");
@@ -168,9 +168,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         String excluded = lqtm.getExcluded(null);
         String included = lqtm.getIncluded(null);
 
-        assertTrue(excluded, excluded.indexOf("DataID not in " +
-            "(select DataID from DTreeAncestors where " +
-            "null and AncestorID in (13832))") != -1);
+        assertTrue(excluded, excluded.indexOf("not (DataID in (13832) or " +
+            "DataID in (select DataID from DTreeAncestors where " +
+            "null and AncestorID in (13832,-13832)))") != -1);
         assertTrue(included, included.indexOf("-OwnerID not in") != -1);
         assertTrue(included,
             included.indexOf("SubType in (148,162)") != -1);
@@ -192,8 +192,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         assertEquals("", included);
         assertTrue(excluded, excluded.indexOf("SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
-            "DataID not in (select DataID from " + 
-            "DTreeAncestors where null and AncestorID in (13832))") != -1);
+            "not (DataID in (13832) or DataID in (select DataID from " + 
+            "DTreeAncestors where null and " +
+            "AncestorID in (13832,-13832)))") != -1);
     }    
 
 
@@ -211,8 +212,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
         assertTrue(excluded, excluded.indexOf("SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
-            "DataID not in (select DataID from " + 
-            "DTreeAncestors where null and AncestorID in (13832))") != -1);
+            "not (DataID in (13832) or DataID in (select DataID from " + 
+            "DTreeAncestors where null and " +
+            "AncestorID in (13832,-13832)))") != -1);
         assertTrue(included, included.indexOf("-OwnerID not in") != -1);
         assertTrue(included,
             included.indexOf("SubType in (148,162)") != -1);
