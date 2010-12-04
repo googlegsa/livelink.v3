@@ -306,6 +306,31 @@ public class LivelinkConnectorType implements ConnectorType {
     }
   }
 
+  /** Holder for a property containing an optional message for each column. */
+  private static class MessageProperty extends LabelProperty {
+    private final String[] messages;
+
+    MessageProperty(String name, String left, String right) {
+      super(name);
+      this.messages = new String[] { left, right };
+    }
+
+    public void addToBuffer(StringBuilder buffer, String labelPrefix,
+        String labelSuffix, String value, ResourceBundle labels) {
+      buffer.append("<tr>\r\n");
+      for (String message : messages) {
+        if (message == null || message.length() == 0) {
+            buffer.append("<td></td>\r\n");
+        } else {
+          buffer.append("<td><span style='font-size:smaller'>");
+          buffer.append(getLabel(message, labels));
+          buffer.append("</span></td>\r\n");
+        }
+      }
+      buffer.append("</tr>\r\n");
+    }
+  }
+
   /**
    * Holder for a property which should be rendered as a text
    * input element.
@@ -645,6 +670,9 @@ public class LivelinkConnectorType implements ConnectorType {
 
         authenticationEntries = new ArrayList<FormProperty>();
         authenticationEntries.add(
+            new MessageProperty("authenticationMessage", null,
+                "deprecateSeparateAuthentication"));
+        authenticationEntries.add(
             new TextInputProperty("authenticationServer", true));
         authenticationEntries.add(
             new TextInputProperty("authenticationPort", true, "80"));
@@ -889,8 +917,7 @@ public class LivelinkConnectorType implements ConnectorType {
         conn = (LivelinkConnector)
             connectorFactory.makeConnector(config);
       } catch (Throwable t) {
-        //                LOGGER.log(Level.WARNING, "Failed to create connector", t);
-        LOGGER.log(Level.WARNING, "Failed to create connector: " + t.toString());
+        LOGGER.log(Level.WARNING, "Failed to create connector", t);
         t = t.getCause();
         while (t != null) {
           if (t instanceof PropertyBatchUpdateException) {
