@@ -1,39 +1,43 @@
 ## 
-# These properties are specific to the individual's development and test environment.
-# This properties file should be located in your home directory.
-# eg: ~/google-enterprise-connector-otex.properties
+# These properties are specific to the individual's development and
+# test environment. This properties file should be located in your
+# home directory, e.g.: ~/google-enterprise-connector-otex.properties
+#
+# To just compile and run the otex-core tests, you only need to set
+# build.connector.manager.home and ensure that
+# projects/connector-manager/dist/jarfile/connector-spi.jar exists
+# there.
 
 
 ## 
 # Build Properties
-# Locations of LAPI, Connector Manager, and LiveLink Connector source trees.
 
-# The root installation of an LAPI SDK installation.
+# The root installation of a LAPI installation from the Open Text SDK.
 build.lapi.home = ${user.home}/OpenText/LAPI
 
 # The root of the google-enterprise-connector-manager tree
 build.connector.manager.home = ${user.home}/gsa/google-enterprise-connector-manager
 
-# The root of the google-enterprise-connector-otex tree
-build.connector.otex.home = ${user.home}/gsa/google-enterprise-connector-otex
-
-# JDK 1.4 bootclasspath.
-build.bootclasspath = /System/Library/Frameworks/JavaVM.framework/Versions/1.4.2/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Versions/1.4.2/Classes/jsse.jar
+# JDK 1.5 bootclasspath.
+build.bootclasspath = /System/Library/Frameworks/JavaVM.framework/Versions/1.5.0/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Versions/1.5.0/Classes/jsse.jar
 
 
 ##
 # Test Framework Properties
+#
+# displayUrl should include a fully-qualified hostname, and it is
+# preferred, but not required, that it be a functional Livelink URL.
 
-#javatest.connector.hostname = swift
-#javatest.connector.port = 2950
+#javatest.connector.server = localhost
+#javatest.connector.port = 2099
 #javatest.connector.username = Admin
 #javatest.connector.Password = livelink
-#javatest.connector.displayUrl = http://swift:9510/Livelink95/livelink
+#javatest.connector.displayUrl = http://ll.example.com/Livelink/livelink.exe
 #javatest.connector.servtype = Oracle
 
-javatest.connector.hostname = voltaire32
-javatest.connector.port = 2959
+javatest.connector.server = localhost
+javatest.connector.port = 2099
 javatest.connector.username = Admin
 javatest.connector.Password = livelink
-javatest.connector.displayUrl = http://voltaire32:81/Livelink95sp1/livelink.exe
+javatest.connector.displayUrl = http://www.google.com
 javatest.connector.servtype = MSSQL

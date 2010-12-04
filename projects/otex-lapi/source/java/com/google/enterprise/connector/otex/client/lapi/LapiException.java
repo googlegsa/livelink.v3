@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@ import com.opentext.api.LLSession;
 
 /**
  * Extends <code>LivelinkException</code> to implement retrieving
- * error messages from the Livelink server.
+ * error messages from the Livelink server. This class is not used
+ * to wrap client-side LAPI exceptions.
  */
 class LapiException extends LivelinkException {
   /**
@@ -49,27 +50,6 @@ class LapiException extends LivelinkException {
   }
 
   /**
-   * Constructs an instance that wraps another exception.
-   *
-   * @param e a Livelink-specific runtime exception
-   * @param logger a logger instance to log the exception against
-   */
-  LapiException(Exception e, Logger logger) {
-    super(e, logger);
-  }
-
-  /**
-   * Constructs an instance that wraps another exception.
-   *
-   * @param message an error message
-   * @param e a Livelink-specific runtime exception
-   * @param logger a logger instance to log the exception against
-   */
-  LapiException(String message, Exception e, Logger logger) {
-    super(message, e, logger);
-  }
-
-  /**
    * Constructs an instance from a Livelink session that has
    * returned an error.
    *
@@ -78,17 +58,5 @@ class LapiException extends LivelinkException {
    */
   LapiException(LLSession session, Logger logger) {
     super(buildMessage(session), logger);
-  }
-
-  /**
-   * Constructs an instance from a Livelink session that has
-   * returned an error.
-   *
-   * @param session the Livelink session on which the error occurred
-   * @param e a Livelink-specific runtime exception
-   * @param logger a logger instance to log the exception against
-   */
-  LapiException(LLSession session, Exception e, Logger logger) {
-    super(buildMessage(session), e, logger);
   }
 }

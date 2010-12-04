@@ -18,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -565,64 +566,63 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
   public void testValidateUrl() throws Exception {
     ResourceBundle bundle = ResourceBundle.getBundle(
         "config.OtexConnectorResources", defaultLocale);
-    String displayUrl = System.getProperty("connector.displayUrl");
+    URI uri = new URI(System.getProperty("connector.displayUrl"));
 
     // Test 1: Configured URL (presumably correct)
-    int code = connectorType.validateUrl(displayUrl, bundle);
+    int code = connectorType.validateUrl(uri.toString(), bundle);
     assertTrue(code == 200 || code == 401);
 
     // Test 2: Invalid path
     try {
       // This should usually fail, but it won't if the entire
       // web server requires authorization.
-      code = connectorType.validateUrl(
-          displayUrl.replaceFirst("Livelink", "LivelinkXyzzy"), bundle);
+      URI testUri = new URI(uri.getScheme(), uri.getAuthority(), "/Xyggy",
+        uri.getQuery(), uri.getFragment());
+      code = connectorType.validateUrl(testUri.toString(), bundle);
       assertEquals(401, code);
     } catch (UrlConfigurationException e) {
     }
 
-    if (displayUrl.endsWith("livelink")) {
-      // Test 3: Invalid CGI
+    // Test 3: Invalid CGI
+    // Some web servers issue a different error for invalid CGI
+    // scripts in an existing CGI directory. This test requires an URL
+    // with a valid CGI directory, including an actual Livelink URL.
+    if (uri.getPath() != null && uri.getPath().lastIndexOf('/') > 0) {
       try {
         // This should usually fail, but it won't if the entire
         // web server requires authorization.
-        code = connectorType.validateUrl(displayUrl + ".exe", bundle);
-        assertEquals(401, code);
-      } catch (UrlConfigurationException e) {
-      }
-
-      // Test 4: Invalid CGI in unknown directory.
-      try {
-        // This should usually fail, but it won't if the entire
-        // web server requires authorization.
-        code = connectorType.validateUrl(
-            displayUrl.replaceFirst("Livelink", "LivelinkXyzzy") +
-            ".exe", bundle);
+        String path = uri.getPath().replaceFirst("[^/]+$", "xyggy.exe");
+        URI testUri = new URI(uri.getScheme(), uri.getAuthority(), path,
+          uri.getQuery(), uri.getFragment());
+        code = connectorType.validateUrl(testUri.toString(), bundle);
         assertEquals(401, code);
       } catch (UrlConfigurationException e) {
       }
     }
 
-    // Test 5: Invalid host
+    // Test 4: Invalid host
     try {
-      code = connectorType.validateUrl("http://xyzzy/", bundle);
-      fail();
-    } catch (UrlConfigurationException e) {
-    }
-
-    // Test 6: Invalid protocol
-    try {
-      code = connectorType.validateUrl(
-          displayUrl.replaceFirst("http", "xyzzy"), bundle);
-      fail();
-    } catch (UrlConfigurationException e) {
-    }
-
-    // Test 7: Host not fully-qualified
-    try {
-      String url = displayUrl.replaceFirst("//.*([:/])", "//localhost$1");
+      String url = "http://xyggy/";
       code = connectorType.validateUrl(url, bundle);
       fail(url);
+    } catch (UrlConfigurationException e) {
+    }
+
+    // Test 5: Invalid protocol
+    try {
+        URI testUri = new URI("xyggy", uri.getAuthority(), uri.getPath(),
+            uri.getQuery(), uri.getFragment());
+      code = connectorType.validateUrl(testUri.toString(), bundle);
+      fail(testUri.toString());
+    } catch (UrlConfigurationException e) {
+    }
+
+    // Test 6: Host not fully-qualified
+    try {
+      URI testUri = new URI(uri.getScheme(), uri.getUserInfo(), "localhost",
+            uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
+      code = connectorType.validateUrl(testUri.toString(), bundle);
+      fail(testUri.toString());
     } catch (UrlConfigurationException e) {
       assertTrue(e.toString(), e.getMessage().indexOf("412") != -1);
     }

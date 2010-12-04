@@ -118,6 +118,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
         // Hack: try lower case version of username first.
         addAuthorizedDocids(docids, username.toLowerCase(), authorized);
       } catch (RepositoryException e) {
+        // TODO: Only try this if the name was not lowercase to begin with.
         LOGGER.finest("LOWERCASE USERNAME FAILED: " + e.getMessage());
         addAuthorizedDocids(docids, username, authorized);
       }

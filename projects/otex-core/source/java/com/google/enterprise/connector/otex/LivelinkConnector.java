@@ -1648,7 +1648,9 @@ public class LivelinkConnector implements Connector {
       columns = new String[] { "DataID" };
     }
     ClientValue ancestors = client.ListNodes(query, view, columns);
-    if (ancestors.size() == 0) {
+    if (ancestors.size() > 0) {
+      LOGGER.finest("The Livelink DTreeAncestors table is not empty");
+    } else {
       throw new LivelinkException(
           "The Livelink DTreeAncestors table is empty. Please make " +
           "sure that the Livelink Recommender agent is enabled.",
@@ -1766,6 +1768,9 @@ public class LivelinkConnector implements Connector {
       LOGGER.warning("The Livelink DTreeAncestors table " +
           "may be missing entries from the Enterprise workspace (" +
           id + ").");
+    } else {
+      LOGGER.finest("The Livelink DTreeAncestors table " +
+          "passed the Enterprise workspace check.");
     }
   }
 

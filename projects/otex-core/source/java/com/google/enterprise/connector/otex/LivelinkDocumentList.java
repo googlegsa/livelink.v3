@@ -161,15 +161,13 @@ class LivelinkDocumentList implements DocumentList {
    */
   public Document nextDocument() throws RepositoryException {
     if (docIterator != null && docIterator.hasNext()) {
-      // The Connector Manager does not handle individual document
-      // failures very well.  If processing a document throws an
-      // exception, we will try to determine if the failure is
-      // transient (like server not responding), or permanent
-      // (like the document is corrupt and can never be fetched).
-      // In the case of transient errors, we want to provide a
-      // checkpoint that allows the failed document to be retried
-      // at a later time.  In the case of a permanent failure for
-      // a document, we want to simply skip it and go onto the next.
+      // If processing a document throws an exception, we will try to
+      // determine if the failure is transient (like server not
+      // responding), or permanent (like the document is corrupt and
+      // can never be fetched). In the case of transient errors, we
+      // rollback the checkpoint to allow the failed document to be
+      // retried later. In the case of a permanent failure for a
+      // document, we want to simply skip it and go onto the next.
       try {
         Document doc = docIterator.nextDocument();
         docsReturned++;
@@ -185,18 +183,18 @@ class LivelinkDocumentList implements DocumentList {
         LOGGER.severe("Caught exception when fetching a document: " +
             t.getMessage());
 
-        // Ping the Livelink Server.  If I can't talk to the server,
-        // I will consider this a transient Exception (server down,
-        // network error, etc).  In that case, throw a
-        // RepositoryException up to the Connector Manager,
-        // signaling the end of this batch.  The CM will retry later.
+        // Ping the Livelink Server to try to determine whether the
+        // error is systemic or related to this specific document.
+        // This is a guess, because it could be a transient error that
+        // will not repeat itself on the ping.
+        // TODO: Do a better job of distinguishing transient exceptions
+        // from document exceptions when throwing LivelinkException
+        // (including LivelinkIOException and LapiException).
         try {
-          client.GetCurrentUserID();  // ping()
+          client.GetCurrentUserID();
         } catch (RepositoryException e) {
           // The failure seems to be systemic, rather than a problem
-          // with this particular document.  Restore the previous
-          // checkpoint, so that we may retry this document on the
-          // next pass.
+          // with this particular document.
           checkpoint.restore();
           if (docsReturned > 0) {
             return null;

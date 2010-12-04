@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ import java.util.logging.Logger;
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import com.google.enterprise.connector.spi.ConnectorFactory;
 import com.google.enterprise.connector.spi.ConnectorType;
+import com.google.enterprise.connector.util.UrlValidator;
+import com.google.enterprise.connector.util.UrlValidatorException;
 import org.springframework.beans.PropertyAccessException;
 import org.springframework.beans.PropertyBatchUpdateException;
 
@@ -166,19 +168,78 @@ public class LivelinkConnectorType implements ConnectorType {
     protected void appendAttribute(StringBuilder buffer, String name,
         String value) {
       buffer.append(name).append("=\"");
-      escapeAndAppend(buffer, value);
+      escapeAndAppendAttributeValue(buffer, value);
       buffer.append("\" ");
     }
 
-    protected void escapeAndAppend(StringBuilder buffer, String data) {
+    /**
+     * Escapes the given attribute value and appends it.
+     *
+     * @see #escapeAndAppend
+     * @see <a href="http://www.w3.org/TR/REC-xml/#syntax"
+     * >http://www.w3.org/TR/REC-xml/#syntax</a>
+     */
+    /* TODO: Replace with XmlUtils or its successor. */
+    protected final void escapeAndAppendAttributeValue(StringBuilder buffer,
+        String data) {
       for (int i = 0; i < data.length(); i++) {
-        switch (data.charAt(i)) {
-          case '\'': buffer.append("&apos;"); break;
-          case '"': buffer.append("&quot;"); break;
-          case '&': buffer.append("&amp;"); break;
-          case '<': buffer.append("&lt;"); break;
-          case '>': buffer.append("&gt;"); break;
-          default: buffer.append(data.charAt(i));
+        char c = data.charAt(i);
+        switch (c) {
+          case '\'':
+            // Preferred over &apos; see http://www.w3.org/TR/xhtml1/#C_16
+            buffer.append("&#39;");
+            break;
+          case '"':
+            buffer.append("&quot;");
+            break;
+          case '&':
+            buffer.append("&amp;");
+            break;
+          case '<':
+            buffer.append("&lt;");
+            break;
+          case '\t':
+          case '\n':
+          case '\r':
+            buffer.append(c);
+            break;
+          default:
+            if (c >= 0x20 && c <= 0xFFFD) {
+              buffer.append(c);
+            }
+            break;
+        }
+      }
+    }
+
+    /**
+     * Escapes the given character data and appends it.
+     *
+     * @see #escapeAndAppendAttributeValue
+     * @see <a href="http://www.w3.org/TR/REC-xml/#syntax"
+     * >http://www.w3.org/TR/REC-xml/#syntax</a>
+     */
+    /* TODO: Replace with XmlUtils (new method) or its successor. */
+    protected final void escapeAndAppend(StringBuilder buffer, String data) {
+      for (int i = 0; i < data.length(); i++) {
+        char c = data.charAt(i);
+        switch (c) {
+          case '&':
+            buffer.append("&amp;");
+            break;
+          case '<':
+            buffer.append("&lt;");
+            break;
+          case '\t':
+          case '\n':
+          case '\r':
+            buffer.append(c);
+            break;
+          default:
+            if (c >= 0x20 && c <= 0xFFFD) {
+              buffer.append(c);
+            }
+            break;
         }
       }
     }
@@ -242,6 +303,31 @@ public class LivelinkConnectorType implements ConnectorType {
     /* This is never called, but it is abstract in our superclass. */
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
+    }
+  }
+
+  /** Holder for a property containing an optional message for each column. */
+  private static class MessageProperty extends LabelProperty {
+    private final String[] messages;
+
+    MessageProperty(String name, String left, String right) {
+      super(name);
+      this.messages = new String[] { left, right };
+    }
+
+    public void addToBuffer(StringBuilder buffer, String labelPrefix,
+        String labelSuffix, String value, ResourceBundle labels) {
+      buffer.append("<tr>\r\n");
+      for (String message : messages) {
+        if (message == null || message.length() == 0) {
+            buffer.append("<td></td>\r\n");
+        } else {
+          buffer.append("<td><span style='font-size:smaller'>");
+          buffer.append(getLabel(message, labels));
+          buffer.append("</span></td>\r\n");
+        }
+      }
+      buffer.append("</tr>\r\n");
     }
   }
 
@@ -350,7 +436,6 @@ public class LivelinkConnectorType implements ConnectorType {
 
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
-
       buffer.append("<textarea ");
       appendAttribute(buffer, "rows", "5");
       appendAttribute(buffer, "cols", "40");
@@ -584,6 +669,9 @@ public class LivelinkConnectorType implements ConnectorType {
             new EnablerProperty("enableSeparateAuthentication", "false");
 
         authenticationEntries = new ArrayList<FormProperty>();
+        authenticationEntries.add(
+            new MessageProperty("authenticationMessage", null,
+                "deprecateSeparateAuthentication"));
         authenticationEntries.add(
             new TextInputProperty("authenticationServer", true));
         authenticationEntries.add(
@@ -829,8 +917,7 @@ public class LivelinkConnectorType implements ConnectorType {
         conn = (LivelinkConnector)
             connectorFactory.makeConnector(config);
       } catch (Throwable t) {
-        //                LOGGER.log(Level.WARNING, "Failed to create connector", t);
-        LOGGER.log(Level.WARNING, "Failed to create connector: " + t.toString());
+        LOGGER.log(Level.WARNING, "Failed to create connector", t);
         t = t.getCause();
         while (t != null) {
           if (t instanceof PropertyBatchUpdateException) {

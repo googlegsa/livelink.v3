@@ -40,7 +40,6 @@ import com.opentext.api.LLHTTPProxyAuthRequiredException;
 import com.opentext.api.LLHTTPRedirectionException;
 import com.opentext.api.LLHTTPServerException;
 import com.opentext.api.LLIOException;
-import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLSSLNotAvailableException;
 import com.opentext.api.LLSecurityProviderException;
 import com.opentext.api.LLSession;
@@ -337,15 +336,6 @@ final class LapiClient implements Client {
               LAPI_DOCUMENTS.PERM_SEECONTENTS,
               LLValue.LL_FALSE, recArray) != 0) {
         return null;
-      }
-    } catch (LLIllegalOperationException e) {
-      // See FetchVersion.
-      LOGGER.info("Trying unMarshall workaround...");
-      unMarshall();
-      if (session.getStatus() == 0) {
-        throw new LapiException("unMarshall workaround failed", e, LOGGER);
-      } else {
-        throw new LapiException(session, e, LOGGER);
       }
     } catch (RuntimeException e) {
       throw getLivelinkException(e);
