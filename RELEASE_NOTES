@@ -11,6 +11,51 @@ Site for the current list of known issues and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 2.6.6, Dec 7, 2010
+==========================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. Users of previous releases are encouraged to
+upgrade. See the product website for a complete description.
+
+Summary of Changes
+------------------
+For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.6.6
+
+  * Fixed issue 56: Treat LAPI I/O exceptions as transient. In
+    previous releases, transient I/O-related exceptions, such as
+    "Server did not accept open request", might have been treated as
+    permanent document-related errors. This would lead to a skipped
+    document rather than a retry.
+  * Issue 58: Deprecated the Separate Authentication parameters on the
+    connector configuration form. The parameter will be removed from
+    the form in a future release. Use LDAP or a Universal Login
+    authentication mechanism instead. For details about other options,
+    see:
+
+    http://code.google.com/apis/searchappliance/documentation/68/secure_search/secure_search_crwlsrv.html#authentication
+
+  * Fixed issue 59: For category attributes created in older versions
+    of Livelink, the Show in Search attribute field "Search" may not
+    exist. The connector now assumes that the attribute should be
+    indexed if the "Search" attribute field does not exist.
+  * Fixed issue 61: The excludedLocationNodes advanced configuration
+    property only excluded children in the same parent volume as the
+    excluded items, and not the excluded items themselves or children
+    in the excluded item's volumes (such as projects).
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 2.6.0 may be
+used with this version. This version works with Connector Manager
+versions 2.6.6. Earlier versions of the Connector Manager will not
+work correctly with this version of the connector. This product is
+designed to function with Open Text Livelink versions 9.5 SP1, 9.6,
+9.7, and 9.7.1.
+
+
 Release 2.6.0, Jun 14, 2010
 ===========================
 
@@ -61,7 +106,7 @@ used with this version. This version works with Connector Manager
 version 2.4.0 through 2.4.4. Earlier versions of the Connector Manager
 will not work correctly with this version of the connector. This
 product is designed to function with Open Text Livelink versions 
-9.5 SP1, 9.6, 9.7, and 9.7.1
+9.5 SP1, 9.6, 9.7, and 9.7.1.
 
 
 Release 2.4.0, Nov 16, 2009
@@ -97,7 +142,7 @@ used with this version. This version works with Connector Manager
 version 2.4.0. Earlier versions of the Connector Manager will not work
 correctly with this version of the connector. This product is designed
 to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
-9.7.1
+9.7.1.
 
 Customers with custom connectorInstance.xml files created for version
 1.0.2 or earlier must update those files. Customers with custom
@@ -143,7 +188,7 @@ used with this version. This version works with Connector Manager
 version 2.0.0. Earlier versions of the Connector Manager will not work
 correctly with this version of the connector. This product is designed
 to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
-9.7.1
+9.7.1.
 
 Customers with custom connectorInstance.xml files created for version
 1.0.2 or earlier must update those files. Customers with custom
@@ -180,7 +225,7 @@ used with this version. This version works with Connector Manager
 version 1.3.2. Earlier versions of the Connector Manager will not work
 correctly with this version of the connector. This product is designed
 to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
-9.7.1
+9.7.1.
 
 Customers with custom connectorInstance.xml files created for version
 1.0.2 or earlier must update those files. Please contact Google
