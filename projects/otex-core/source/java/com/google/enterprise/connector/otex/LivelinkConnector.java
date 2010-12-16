@@ -1716,8 +1716,8 @@ public class LivelinkConnector implements Connector {
     // the LL database.
     if (includedLocationNodes != null &&
         includedLocationNodes.length() > 0) {
-      String ancestorNodes = LivelinkTraversalManager.getAncestorNodes(
-          includedLocationNodes);
+      String ancestorNodes =
+          Genealogist.getAncestorNodes(includedLocationNodes);
       String query = "DataID in (select DataID from DTreeAncestors " +
           "where AncestorID in (" + ancestorNodes + ")) " +
           "or DataID in (" + includedLocationNodes + ")";

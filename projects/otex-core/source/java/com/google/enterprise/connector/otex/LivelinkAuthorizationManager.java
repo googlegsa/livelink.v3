@@ -307,8 +307,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       // even if they are hidden.
       String startNodes = connector.getIncludedLocationNodes();
       if (startNodes != null && startNodes.length() > 0) {
-        String ancestorNodes =
-            LivelinkTraversalManager.getAncestorNodes(startNodes);
+        String ancestorNodes = Genealogist.getAncestorNodes(startNodes);
         query.append(" and Anc.AncestorID not in (");
         query.append(startNodes);
         query.append(") and Anc.AncestorID not in ");

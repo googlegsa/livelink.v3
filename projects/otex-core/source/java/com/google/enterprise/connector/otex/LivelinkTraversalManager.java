@@ -16,9 +16,6 @@ package com.google.enterprise.connector.otex;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -327,63 +324,6 @@ class LivelinkTraversalManager
   }
 
   /**
-   * Duplicates the entries to include their negations: (a) becomes (a,-a).
-   *
-   * @return a comma-separated string of the entries and their negations
-   * @see #getAncestorSet
-   */
-  static String getAncestorNodes(String startNodes) {
-    // Projects, Discussions, Channels, and TaskLists have a rather
-    // strange behavior.  Their contents have a VolumeID that is the
-    // same as the container's ObjectID, and an AncestorID that is the
-    // negation the container's ObjectID.  To catch that, I am going
-    // to create a superset list that adds the negation of everything
-    // in the specified list. We believe this is safe, as negative
-    // values of standard containers (folders, compound docs, etc)
-    // simply should not exist, so we shouldn't get any false
-    // positives.
-    StringBuilder buffer = new StringBuilder();
-    StringTokenizer tok =
-        new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
-    while (tok.hasMoreTokens()) {
-      String objId = tok.nextToken();
-      if (buffer.length() > 0)
-        buffer.append(',');
-      buffer.append(objId);
-      try {
-        int intId = Integer.parseInt(objId);
-        buffer.append(',');
-        buffer.append(-intId);
-      } catch (NumberFormatException e) {}
-    }
-    return buffer.toString();
-  }
-
-  /**
-   * Duplicates the entries to include their negations: (a) becomes (a,-a).
-   *
-   * @return a set of the entries and their negations
-   * @see #getAncestorNodes
-   */
-  static Set<Integer> getAncestorSet(String nodes) {
-    HashSet<Integer> set = new HashSet<Integer>();
-    if (nodes == null || nodes.length() == 0)
-      return set;
-
-    StringTokenizer tok = new StringTokenizer(nodes, ":;,. \t\n()[]\"\'");
-    while (tok.hasMoreTokens()) {
-      String objId = tok.nextToken();
-      try {
-        int intId = Integer.parseInt(objId);
-        set.add(intId);
-        set.add(-intId);
-      } catch (NumberFormatException e) {
-      }
-    }
-    return set;
-  }
-
-  /**
    * Gets a SQL conditional expression that excludes nodes that
    * should not be traversed. This returns a SQL expression of the
    * form
@@ -457,7 +397,7 @@ class LivelinkTraversalManager
   private String getDescendants(String startNodes,
       String candidatesPredicate) {
     StringBuilder buffer = new StringBuilder();
-    String ancestorNodes = getAncestorNodes(startNodes);
+    String ancestorNodes = Genealogist.getAncestorNodes(startNodes);
     buffer.append("(DataID in (");
     buffer.append(startNodes);
     buffer.append(") or DataID in (select DataID from DTreeAncestors where ");
@@ -754,8 +694,7 @@ class LivelinkTraversalManager
       // We're not using DTreeAncestors but we need the ancestors.
       ClientValue matching = getMatching(candidatesPredicate, false, "DTree",
           new String[] { "DataID" }, sysadminClient);
-      return getMatchingDescendants(matching, startNodes,
-          excludedNodes);
+      return getMatchingDescendants(matching, startNodes, excludedNodes);
     }
   }
 
@@ -809,118 +748,18 @@ class LivelinkTraversalManager
    */
   private ClientValue getMatchingDescendants(ClientValue matching,
       String startNodes, String excludedNodes) throws RepositoryException {
-    // TODO: These don't change, so they could be computed once.
-    Set<Integer> includedSet = getAncestorSet(startNodes);
-    Set<Integer> excludedSet = getAncestorSet(excludedNodes);
+    // We use sysadminClient here to match the behavior of using
+    // DTreeAncestors when the traversal user does not have
+    // permission for intermediate nodes. The cache size is arbitrary.
+    // TODO: We could keep this Genealogist instance between batches.
+    Genealogist matcher = new Genealogist(sysadminClient, startNodes,
+        excludedNodes, matching.size());
 
-    // If the included set is empty, then everything that hits the
-    // top-level (ParentID = -1) without being excluded should be
-    // included. If the included set is not empty, then everything
-    // that hits the top-level without being included should excluded.
-    (includedSet.isEmpty() ? includedSet : excludedSet).add(-1);
-
-    if (LOGGER.isLoggable(Level.FINEST)) {
-      LOGGER.finest("DESCENDANTS: includedSet = " + includedSet);
-      LOGGER.finest("DESCENDANTS: excludedSet = " + excludedSet);
-    }
-
-    // These cache sizes are arbitrary.
-    // TODO: We could keep the caches alive between batches, and either
-    // put them in a SoftReference or drop them when the traversal ends.
-    Cache<Integer> excludedCache = new Cache<Integer>(matching.size());
-    Cache<Integer> includedCache = new Cache<Integer>(matching.size());
-    int queries = 0;
-
-    StringBuilder descendants = new StringBuilder();
-    for (int i = 0; i < matching.size(); i++) {
-      ArrayList<Integer> cachePossibles = new ArrayList<Integer>();
-      final int matchingId = matching.toInteger(i, "DataID");
-      int parentId = matchingId;
-
-      // TODO: Check for an interrupted traversal in this loop?
-      while (true) {
-        // We add the cachePossibles to the appropriate cache when we
-        // determine an answer for matchingId. In the case of a cache
-        // hit, parentID is obviously already in the cache, but the
-        // other possibles are not.
-        if (excludedCache.contains(parentId)) {
-          if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.finest("DESCENDANTS: Excluding " + matchingId
-                + ", found in cache after " + cachePossibles);
-          }
-          excludedCache.addAll(cachePossibles);
-          break;
-        } else if (excludedSet.contains(parentId)) {
-          if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.finest("DESCENDANTS: Excluding " + matchingId
-                + ", found in set after " + cachePossibles);
-          }
-          excludedCache.addAll(cachePossibles);
-          break;
-        } else if (includedCache.contains(parentId)) {
-          if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.finest("DESCENDANTS: Including " + matchingId
-                + ", found in cache after " + cachePossibles);
-          }
-          includedCache.addAll(cachePossibles);
-          descendants.append(matchingId).append(',');
-          break;
-        } else if (includedSet.contains(parentId)) {
-          if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.finest("DESCENDANTS: Including " + matchingId +
-                ", found in set after " + cachePossibles);
-          }
-          includedCache.addAll(cachePossibles);
-          descendants.append(matchingId).append(',');
-          break;
-        }
-
-        // Excluding -1 and then adding it back again is not
-        // pointless. Without the exclusion, the query might return
-        // two results, but one of them would be -1 and is ignorable
-        // (the other result is the real parent). The exclusion means
-        // that we only get the real parent back, but it also means
-        // that the query won't return a -1 as the only result, so we
-        // have to add that back again.
-        //
-        // We use sysadminClient here to match the behavior of using
-        // DTreeAncestors when the traversal user does not have
-        // permission for intermediate nodes.
-        queries++;
-        ClientValue parent = sysadminClient.ListNodes(
-            "DataID in (" + parentId + "," + -parentId + ") and ParentID <> -1",
-            "DTree", new String[] { "ParentID" });
-        if (parent.size() == 0) {
-          parentId = -1;
-        } else {
-          parentId = parent.toInteger(0, "ParentID");
-        }
-
-        // Do this here, rather than at the top of the loop, to avoid
-        // caching the matches (which are probably mostly documents).
-        cachePossibles.add(parentId);
-      }
-    }
-
-    if (LOGGER.isLoggable(Level.FINEST)) {
-      LOGGER.finest("DESCENDANTS: Batch statistics: " + matching.size()
-          + " nodes, " + queries + " queries");
-      LOGGER.finest("DESCENDANTS: Excluded cache statistics: "
-          + excludedCache.statistics());
-      LOGGER.finest("DESCENDANTS: Included cache statistics: "
-          + includedCache.statistics());
-    }
-
-    if (descendants.length() > 0) {
-      descendants.deleteCharAt(descendants.length() - 1);
-      if (LOGGER.isLoggable(Level.FINER)) {
-        LOGGER.finer("DESCENDANTS: Retrieving matching descendants "
-            + descendants);
-      }
+    String descendants = matcher.getMatchingDescendants(matching);
+    if (descendants != null) {
       return traversalClient.ListNodes("DataID in (" + descendants + ")"
           + ORDER_BY, "WebNodes", SELECT_LIST);
     } else {
-      LOGGER.finer("DESCENDANTS: No matching descendants.");
       return null;
     }
   }
