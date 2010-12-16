@@ -16,9 +16,11 @@ package com.google.enterprise.connector.otex;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.StringTokenizer;
 
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -113,8 +115,11 @@ class LivelinkTraversalManager
   /** The connector contains configuration information. */
   private final LivelinkConnector connector;
 
-  /** The client provides access to the server. */
-  private final Client client;
+  /**
+   * The traversal client provides access to the server as the
+   * traversal user.
+   */
+  private final Client traversalClient;
 
   /**
    * The admin client provides access to the server for the
@@ -154,14 +159,14 @@ class LivelinkTraversalManager
   LivelinkTraversalManager(LivelinkConnector connector,
       ClientFactory clientFactory) throws RepositoryException {
     this.connector = connector;
-    this.client = clientFactory.createClient();
+    this.traversalClient = clientFactory.createClient();
 
     // Get the current username to compare to the configured
     // traversalUsername and publicContentUsername.
     String username = null;
     try {
-      int id = client.GetCurrentUserID();
-      ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(id);
+      int id = traversalClient.GetCurrentUserID();
+      ClientValue userInfo = traversalClient.GetUserOrGroupByIDNoThrow(id);
       if (userInfo != null)
         username = userInfo.toString("Name");
     } catch (LivelinkException e) {
@@ -175,11 +180,12 @@ class LivelinkTraversalManager
     // when building the list of documents to index.
     String traversalUsername = connector.getTraversalUsername();
     if (traversalUsername != null && !traversalUsername.equals(username)) {
-      client.ImpersonateUserEx(traversalUsername, connector.getDomainName());
-      this.sysadminClient  = clientFactory.createClient();
+      traversalClient.ImpersonateUserEx(traversalUsername,
+          connector.getDomainName());
+      this.sysadminClient = clientFactory.createClient();
       this.currentUsername = traversalUsername;
     } else {
-      this.sysadminClient = client;
+      this.sysadminClient = traversalClient;
       this.currentUsername = username;
     }
 
@@ -294,10 +300,15 @@ class LivelinkTraversalManager
 
     String startNodes = connector.getIncludedLocationNodes();
     if (startNodes != null && startNodes.length() > 0) {
-      // If we have an explict list of start locations, build a
-      // query that includes only those and their descendants.
-      buffer.append(getDescendants(startNodes, candidatesPredicate));
+      if (connector.getUseDTreeAncestors()) {
+        // If we have an explict list of start locations, build a
+        // query that includes only those and their descendants.
+        buffer.append(getDescendants(startNodes, candidatesPredicate));
+      }
     } else {
+      // FIXME: I think this else is wrong. The excludedVolumeTypes
+      // should always be applied. For example, you might exclude
+      // everything in projects.
       String excludedVolumes = connector.getExcludedVolumeTypes();
       if (excludedVolumes != null && excludedVolumes.length() > 0) {
         // If we don't have an explicit list of start points,
@@ -309,22 +320,28 @@ class LivelinkTraversalManager
       }
     }
 
-    String included = buffer.toString();
+    String included = (buffer.length() > 0) ? buffer.toString() : null;
     if (LOGGER.isLoggable(Level.FINER))
       LOGGER.finer("INCLUDED: " + included);
     return included;
   }
 
+  /**
+   * Duplicates the entries to include their negations: (a) becomes (a,-a).
+   *
+   * @return a comma-separated string of the entries and their negations
+   * @see #getAncestorSet
+   */
   static String getAncestorNodes(String startNodes) {
     // Projects, Discussions, Channels, and TaskLists have a rather
     // strange behavior.  Their contents have a VolumeID that is the
     // same as the container's ObjectID, and an AncestorID that is the
     // negation the container's ObjectID.  To catch that, I am going
     // to create a superset list that adds the negation of everything
-    // in the specified the specified list.  We believe this is safe,
-    // as negative values of standard containers (folders, compound
-    // docs, etc) simply should not exist, so we shouldn't get any
-    // false positives.
+    // in the specified list. We believe this is safe, as negative
+    // values of standard containers (folders, compound docs, etc)
+    // simply should not exist, so we shouldn't get any false
+    // positives.
     StringBuilder buffer = new StringBuilder();
     StringTokenizer tok =
         new StringTokenizer(startNodes, ":;,. \t\n()[]\"\'");
@@ -340,6 +357,30 @@ class LivelinkTraversalManager
       } catch (NumberFormatException e) {}
     }
     return buffer.toString();
+  }
+
+  /**
+   * Duplicates the entries to include their negations: (a) becomes (a,-a).
+   *
+   * @return a set of the entries and their negations
+   * @see #getAncestorNodes
+   */
+  static Set<Integer> getAncestorSet(String nodes) {
+    HashSet<Integer> set = new HashSet<Integer>();
+    if (nodes == null || nodes.length() == 0)
+      return set;
+
+    StringTokenizer tok = new StringTokenizer(nodes, ":;,. \t\n()[]\"\'");
+    while (tok.hasMoreTokens()) {
+      String objId = tok.nextToken();
+      try {
+        int intId = Integer.parseInt(objId);
+        set.add(intId);
+        set.add(-intId);
+      } catch (NumberFormatException e) {
+      }
+    }
+    return set;
   }
 
   /**
@@ -366,19 +407,19 @@ class LivelinkTraversalManager
     StringBuilder buffer = new StringBuilder();
 
     String excludedNodeTypes = connector.getExcludedNodeTypes();
-    if (excludedNodeTypes != null &&
-        excludedNodeTypes.length() > 0) {
+    if (excludedNodeTypes != null
+        && excludedNodeTypes.length() > 0) {
       buffer.append("SubType not in (");
       buffer.append(excludedNodeTypes);
       buffer.append(')');
     }
 
     String excludedLocationNodes = connector.getExcludedLocationNodes();
-    if (excludedLocationNodes != null &&
-        excludedLocationNodes.length() > 0) {
-      if (buffer.length() > 0)
+    if (connector.getUseDTreeAncestors() && excludedLocationNodes != null
+        && excludedLocationNodes.length() > 0) {
+      if (buffer.length() > 0) {
         buffer.append(" and ");
-
+      }
       buffer.append("not ");
       buffer.append(
           getDescendants(excludedLocationNodes, candidatesPredicate));
@@ -397,6 +438,21 @@ class LivelinkTraversalManager
    * @param startNodes a comma-separated string of object IDs
    * @param candidatesPredicate a SQL condition matching the candidates
    * @return a SQL conditional expression string
+   */
+  /*
+   * With Oracle 10, we could use a CONNECT BY query:
+   *
+   *   buffer.append("DataID in (select connect_by_root DataID DataID ");
+   *   buffer.append("from DTree where DataID in (");
+   *   buffer.append(ancestorNodes);
+   *   buffer.append(") start with ");
+   *   buffer.append(candidatesPredicate);
+   *   buffer.append("connect by DataID = prior ParentID)");
+   *
+   * This failed, however, at a customer site, for unknown reasons.
+   * The corresponding SQL Server query, a recursive CTE of the form
+   * "with ... as (select ...) select ...", is not possible due to the
+   * ListNodes "select {columns} from {view} a where {query}" format.
    */
   private String getDescendants(String startNodes,
       String candidatesPredicate) {
@@ -428,7 +484,7 @@ class LivelinkTraversalManager
     } catch (Exception e) {
       throw new LivelinkException(e, LOGGER);
     }
-    contentHandler.initialize(connector, client);
+    contentHandler.initialize(connector, traversalClient);
     return contentHandler;
   }
 
@@ -466,8 +522,9 @@ class LivelinkTraversalManager
   public DocumentList resumeTraversal(String checkpoint)
       throws RepositoryException {
     // Resume with no checkpoint is the same as Start.
-    if (checkpoint == null || checkpoint.length() == 0)
+    if (checkpoint == null || checkpoint.length() == 0) {
       return startTraversal();
+    }
 
     if (LOGGER.isLoggable(Level.FINE))
       LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
@@ -478,7 +535,7 @@ class LivelinkTraversalManager
     // network error, etc).  In that case, return null, signalling
     // no new documents available at this time.
     try {
-      client.GetCurrentUserID();  // ping()
+      traversalClient.GetCurrentUserID();  // ping()
     } catch (RepositoryException e) {
       return null;
     }
@@ -587,7 +644,6 @@ class LivelinkTraversalManager
         traversalContext.traversalTimeLimitSeconds() / 2 : 60 * 4);
 
     while (System.currentTimeMillis() - startTime < maxTimeSlice) {
-
       ClientValue candidates, deletes, results = null;
       if (isSqlServer) {
         candidates = getCandidatesSqlServer(checkpoint, batchsz);
@@ -637,7 +693,7 @@ class LivelinkTraversalManager
           LOGGER.fine("RESULTSET: " + numInserts + " rows.  " +
               "DELETESET: " + numDeletes + " rows.");
         }
-        return new LivelinkDocumentList(connector, client,
+        return new LivelinkDocumentList(connector, traversalClient,
             contentHandler, results, FIELDS, deletes,
             traversalContext, checkpoint, currentUsername);
       }
@@ -681,10 +737,44 @@ class LivelinkTraversalManager
    * Filters the candidates down and returns the main recarray needed
    * for the DocumentList.
    *
+   * @param candidatesPredicate a SQL condition matching the candidates
    * @return the main query results
-   * @throws RepositoryException
    */
   private ClientValue getResults(String candidatesPredicate)
+      throws RepositoryException {
+    String startNodes = connector.getIncludedLocationNodes();
+    String excludedNodes = connector.getExcludedLocationNodes();
+    if (connector.getUseDTreeAncestors()
+        || ((startNodes == null || startNodes.length() == 0)
+            && (excludedNodes == null || excludedNodes.length() == 0))) {
+      // We're either using DTreeAncestors, or we don't need it.
+      return getMatching(candidatesPredicate, true, "WebNodes", SELECT_LIST,
+          traversalClient);
+    } else {
+      // We're not using DTreeAncestors but we need the ancestors.
+      ClientValue matching = getMatching(candidatesPredicate, false, "DTree",
+          new String[] { "DataID" }, sysadminClient);
+      return getMatchingDescendants(matching, startNodes,
+          excludedNodes);
+    }
+  }
+
+  /**
+   * Filters the candidates. This method will apply hierarchical
+   * restrictions using DTreeAncestors, but not does not filter the
+   * results by hierarchy without DTreeAncestors.
+   *
+   * @param candidatesPredicate a SQL condition matching the candidates
+   * @param sortResults {@code true} to use an ORDER BY clause on the query,
+   *     or {@code false} to let the database use any order
+   * @param view the database view to select from
+   * @param columns the select list
+   * @param client the Livelink client to use to execute the query
+   * @return the matching results, which may be the main query results,
+   *     or which may need to have the hierarchical filtering applied
+   */
+  private ClientValue getMatching(String candidatesPredicate,
+      boolean sortResults, String view, String[] columns, Client client)
       throws RepositoryException {
     String included = getIncluded(candidatesPredicate);
     String excluded = getExcluded(candidatesPredicate);
@@ -698,15 +788,141 @@ class LivelinkTraversalManager
       buffer.append(" and ");
       buffer.append(excluded);
     }
-    buffer.append(ORDER_BY);
+    if (sortResults)
+      buffer.append(ORDER_BY);
 
     String query = buffer.toString();
-    String view = "WebNodes";
-    String[] columns = SELECT_LIST;
     if (LOGGER.isLoggable(Level.FINEST))
       LOGGER.finest("RESULTS QUERY: " + query);
 
     return client.ListNodes(query, view, columns);
+  }
+
+  /**
+   * Filters the matches according to their ancestors, but avoids the
+   * use of DTreeAncestors.
+   *
+   * @param matching the candidates matching the non-hierarchical filters
+   * @param startNodes the includedLocationNodes property value
+   * @param excludedNodes the excludedLocationNodes property value
+   * @return the main query results
+   */
+  private ClientValue getMatchingDescendants(ClientValue matching,
+      String startNodes, String excludedNodes) throws RepositoryException {
+    // TODO: These don't change, so they could be computed once.
+    Set<Integer> includedSet = getAncestorSet(startNodes);
+    Set<Integer> excludedSet = getAncestorSet(excludedNodes);
+
+    // If the included set is empty, then everything that hits the
+    // top-level (ParentID = -1) without being excluded should be
+    // included. If the included set is not empty, then everything
+    // that hits the top-level without being included should excluded.
+    (includedSet.isEmpty() ? includedSet : excludedSet).add(-1);
+
+    if (LOGGER.isLoggable(Level.FINEST)) {
+      LOGGER.finest("DESCENDANTS: includedSet = " + includedSet);
+      LOGGER.finest("DESCENDANTS: excludedSet = " + excludedSet);
+    }
+
+    // These cache sizes are arbitrary.
+    // TODO: We could keep the caches alive between batches, and either
+    // put them in a SoftReference or drop them when the traversal ends.
+    Cache<Integer> excludedCache = new Cache<Integer>(matching.size());
+    Cache<Integer> includedCache = new Cache<Integer>(matching.size());
+    int queries = 0;
+
+    StringBuilder descendants = new StringBuilder();
+    for (int i = 0; i < matching.size(); i++) {
+      ArrayList<Integer> cachePossibles = new ArrayList<Integer>();
+      final int matchingId = matching.toInteger(i, "DataID");
+      int parentId = matchingId;
+
+      // TODO: Check for an interrupted traversal in this loop?
+      while (true) {
+        // We add the cachePossibles to the appropriate cache when we
+        // determine an answer for matchingId. In the case of a cache
+        // hit, parentID is obviously already in the cache, but the
+        // other possibles are not.
+        if (excludedCache.contains(parentId)) {
+          if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.finest("DESCENDANTS: Excluding " + matchingId
+                + ", found in cache after " + cachePossibles);
+          }
+          excludedCache.addAll(cachePossibles);
+          break;
+        } else if (excludedSet.contains(parentId)) {
+          if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.finest("DESCENDANTS: Excluding " + matchingId
+                + ", found in set after " + cachePossibles);
+          }
+          excludedCache.addAll(cachePossibles);
+          break;
+        } else if (includedCache.contains(parentId)) {
+          if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.finest("DESCENDANTS: Including " + matchingId
+                + ", found in cache after " + cachePossibles);
+          }
+          includedCache.addAll(cachePossibles);
+          descendants.append(matchingId).append(',');
+          break;
+        } else if (includedSet.contains(parentId)) {
+          if (LOGGER.isLoggable(Level.FINEST)) {
+            LOGGER.finest("DESCENDANTS: Including " + matchingId +
+                ", found in set after " + cachePossibles);
+          }
+          includedCache.addAll(cachePossibles);
+          descendants.append(matchingId).append(',');
+          break;
+        }
+
+        // Excluding -1 and then adding it back again is not
+        // pointless. Without the exclusion, the query might return
+        // two results, but one of them would be -1 and is ignorable
+        // (the other result is the real parent). The exclusion means
+        // that we only get the real parent back, but it also means
+        // that the query won't return a -1 as the only result, so we
+        // have to add that back again.
+        //
+        // We use sysadminClient here to match the behavior of using
+        // DTreeAncestors when the traversal user does not have
+        // permission for intermediate nodes.
+        queries++;
+        ClientValue parent = sysadminClient.ListNodes(
+            "DataID in (" + parentId + "," + -parentId + ") and ParentID <> -1",
+            "DTree", new String[] { "ParentID" });
+        if (parent.size() == 0) {
+          parentId = -1;
+        } else {
+          parentId = parent.toInteger(0, "ParentID");
+        }
+
+        // Do this here, rather than at the top of the loop, to avoid
+        // caching the matches (which are probably mostly documents).
+        cachePossibles.add(parentId);
+      }
+    }
+
+    if (LOGGER.isLoggable(Level.FINEST)) {
+      LOGGER.finest("DESCENDANTS: Batch statistics: " + matching.size()
+          + " nodes, " + queries + " queries");
+      LOGGER.finest("DESCENDANTS: Excluded cache statistics: "
+          + excludedCache.statistics());
+      LOGGER.finest("DESCENDANTS: Included cache statistics: "
+          + includedCache.statistics());
+    }
+
+    if (descendants.length() > 0) {
+      descendants.deleteCharAt(descendants.length() - 1);
+      if (LOGGER.isLoggable(Level.FINER)) {
+        LOGGER.finer("DESCENDANTS: Retrieving matching descendants "
+            + descendants);
+      }
+      return traversalClient.ListNodes("DataID in (" + descendants + ")"
+          + ORDER_BY, "WebNodes", SELECT_LIST);
+    } else {
+      LOGGER.finer("DESCENDANTS: No matching descendants.");
+      return null;
+    }
   }
 
   /*
@@ -717,9 +933,9 @@ class LivelinkTraversalManager
   private ClientValue getCandidatesSqlServer(Checkpoint checkpoint,
       int batchsz) throws RepositoryException {
     StringBuilder buffer = new StringBuilder();
-    if ((checkpoint == null) || (checkpoint.insertDate == null))
+    if (checkpoint == null || checkpoint.insertDate == null) {
       buffer.append("1=1");
-    else {
+    } else {
       String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
       buffer.append("(ModifyDate > '");
       buffer.append(modifyDate);
@@ -755,7 +971,7 @@ class LivelinkTraversalManager
   private ClientValue getCandidatesOracle(Checkpoint checkpoint, int batchsz)
       throws RepositoryException {
     StringBuilder buffer = new StringBuilder();
-    if ((checkpoint != null) && (checkpoint.insertDate != null)) {
+    if (checkpoint != null && checkpoint.insertDate != null) {
       /* The TIMESTAMP literal, part of the SQL standard, was first
        * supported by Oracle 9i, and not at all by SQL Server. SQL
        * Server doesn't require a prefix on timestamp literals, and

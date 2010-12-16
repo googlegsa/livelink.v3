@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -303,6 +303,8 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
       query.append("and T.Catalog = ");
       query.append(hidden);
 
+      // Explicitly included items and their descendants are allowed
+      // even if they are hidden.
       String startNodes = connector.getIncludedLocationNodes();
       if (startNodes != null && startNodes.length() > 0) {
         String ancestorNodes =

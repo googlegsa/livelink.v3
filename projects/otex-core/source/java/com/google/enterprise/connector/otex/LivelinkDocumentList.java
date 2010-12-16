@@ -276,7 +276,7 @@ class LivelinkDocumentList implements DocumentList {
 
     public DocIdIterator() {
       this.row = 0;
-      this.size = recArray.size();
+      this.size = (recArray == null) ? 0 : recArray.size();
     }
 
     public boolean hasNext() {

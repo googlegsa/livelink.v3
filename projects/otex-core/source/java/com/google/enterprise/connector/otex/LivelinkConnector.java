@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -223,8 +223,11 @@ public class LivelinkConnector implements Connector {
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
 
-  /** Whether to track deleted items, sending delete notification to GSA */
+  /** Whether to track deleted items, sending delete notification to GSA. */
   private boolean trackDeletedItems = true;
+
+  /** Whether to use DTreeAncestors table instead of a slower method. */
+  private boolean useDTreeAncestors;
 
   /** The Livelink traverser client username. */
   private String username;
@@ -974,8 +977,7 @@ public class LivelinkConnector implements Connector {
           excludedLocationNodes =
               sanitizeListOfIntegers(excludedLocationNodesParam);
           if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("EXCLUDED NODE IDS: " +
-                excludedLocationNodes);
+            LOGGER.config("EXCLUDED NODE IDS: " + excludedLocationNodes);
         }
       });
   }
@@ -1171,6 +1173,8 @@ public class LivelinkConnector implements Connector {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
           includedCategoryIds = parseCategories(categories, "all,searchable");
+          if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("INCLUDED CATEGORIES: " + includedCategoryIds);
         }
       });
   }
@@ -1196,6 +1200,8 @@ public class LivelinkConnector implements Connector {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
           excludedCategoryIds = parseCategories(categories, "none");
+          if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("EXCLUDED CATEGORIES: " + excludedCategoryIds);
         }
       });
   }
@@ -1278,6 +1284,8 @@ public class LivelinkConnector implements Connector {
                 hiddenItemsSubtypes.add(word);
             }
           }
+          if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("HIDDEN ITEM SUBTYPES: " + hiddenItemsSubtypes);
         }
       });
   }
@@ -1302,6 +1310,8 @@ public class LivelinkConnector implements Connector {
    * @param trackDeletedItems
    */
   public void setTrackDeletedItems(boolean trackDeletedItems) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("TRACK DELETED ITEMS: " + trackDeletedItems);
     this.trackDeletedItems = trackDeletedItems;
   }
 
@@ -1313,6 +1323,28 @@ public class LivelinkConnector implements Connector {
    */
   public boolean getTrackDeletedItems() {
     return this.trackDeletedItems;
+  }
+
+  /**
+   * Sets whether or not to use the DTreeAncestors table for hierarchy data.
+   *
+   * @param useDTreeAncestors <code>true</code> to use the DTreeAncestors
+   * table when necessary, or <code>false</code> to use a slower method
+   */
+  public void setUseDTreeAncestors(boolean useDTreeAncestors) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("USE DTREEANCESTORS: " + useDTreeAncestors);
+    this.useDTreeAncestors = useDTreeAncestors;
+  }
+
+  /**
+   * Gets whether or not to use the DTreeAncestors table for hierarchy data.
+   *
+   * @return <code>true</code> to use the DTreeAncestors
+   * table when necessary, or <code>false</code> to use a slower method
+   */
+  public boolean getUseDTreeAncestors() {
+    return useDTreeAncestors;
   }
 
   /**
@@ -1858,11 +1890,12 @@ public class LivelinkConnector implements Connector {
 
     // Check first to see if we are going to need the
     // DTreeAncestors table.
-    if (!hiddenItemsSubtypes.contains("all") ||
-        (includedLocationNodes != null &&
-            includedLocationNodes.length() > 0) ||
-        (excludedLocationNodes != null &&
-            excludedLocationNodes.length() > 0)) {
+    if (useDTreeAncestors &&
+        (!hiddenItemsSubtypes.contains("all") ||
+            (includedLocationNodes != null &&
+                includedLocationNodes.length() > 0) ||
+            (excludedLocationNodes != null &&
+                excludedLocationNodes.length() > 0))) {
       validateDTreeAncestors(client);
       validateIncludedLocationStartDate(client);
       validateEnterpriseWorkspaceAncestors(client);
