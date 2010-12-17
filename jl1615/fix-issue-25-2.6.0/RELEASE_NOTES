@@ -1,0 +1,374 @@
+
+            Google Search Appliance Connector for Livelink
+                            Release Notes
+
+This document contains the release notes for Google Search Appliance
+Connector for Open Text Livelink ECM - Enterprise Server. The following
+sections describe the release in detail and provide information that
+supplements the main documentation. See the Issues Tab on the Code Web
+Site for the current list of known issues and workarounds.
+
+Web Site: http://code.google.com/p/google-enterprise-connector-otex/
+
+
+Release 2.6.0, Jun 14, 2010
+===========================
+
+Introduction
+------------
+This is a maintenance release with no significant changes. Users of
+previous releases are encouraged to review the changes in the
+Connector Manager version 2.6.0 and other connectors. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+
+  * Updated the tests to work with Connector Manager version 2.6.0.
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 2.4.4 may be
+used with this version. This version works with Connector Manager
+versions 2.4.0 through 2.6.0. Earlier versions of the Connector
+Manager will not work correctly with this version of the connector.
+This product is designed to function with Open Text Livelink versions
+9.5 SP1, 9.6, 9.7, and 9.7.1
+
+
+Release 2.4.4, Feb 06, 2010
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. Users of previous releases are encouraged to
+upgrade. See the product website for a complete description.
+
+Summary of Changes
+------------------
+
+For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.4
+
+  * Fixed issue 51, logging the actual error in three cases, instead of
+    ignoring the error or logging a masking error.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.3 through 2.4.0 may be
+used with this version. This version works with Connector Manager
+version 2.4.0 through 2.4.4. Earlier versions of the Connector Manager
+will not work correctly with this version of the connector. This
+product is designed to function with Open Text Livelink versions 
+9.5 SP1, 9.6, 9.7, and 9.7.1
+
+
+Release 2.4.0, Nov 16, 2009
+===========================
+
+Introduction
+------------
+This is an upgrade release with some enhancements. Users of previous
+releases are encouraged to upgrade. See the product website for a
+complete description.
+
+Summary of Changes
+------------------
+
+For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.0
+
+  * Fixed issue 42, allowing easier customization of
+    connectorInstance.xml for some properties.
+  * Fixed issue 44 to avoid authorization failures when excluding the
+    Undelete workspace with the July 2008 or later monthly patch of
+    Livelink 9.7.1.
+  * Fixed issue 45 to support excluding documents completely based on
+    the content type. Previously the only option was to skip the content
+    but index the metadata.
+  * Fixed issue 46 to take advantage of a new SPI method,
+    traversalTimeLimitSeconds, replacing a hard-coded timeout value.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.0 through 2.0.0 may be
+used with this version. This version works with Connector Manager
+version 2.4.0. Earlier versions of the Connector Manager will not work
+correctly with this version of the connector. This product is designed
+to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
+9.7.1
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Customers with custom
+connectorInstance.xml files created for version 1.3.2 or earlier
+should update those files for future compatibility. Please see issue
+40 for details, and contact Google Enterprise Support if you need
+assistance.
+
+http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=40
+
+
+Release 2.0.0, Jun 15, 2009
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. Users of previous
+releases are encouraged to upgrade. See the product website for a
+complete description.
+
+Summary of Changes
+------------------
+
+For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.0.0
+
+  * Fixed issue 13, with better support for doc.Fetch URLs.
+  * Fixed issue 35 by allowing URLs in the Host parameter on the
+    configuration form. This is not a preferred approach, it's just an
+    attempt to guess what the administrator meant.
+  * Fixed issue 39, requiring a fully-qualified hostname (FQHN) in the
+    Livelink URLs. The search appliance requires this, but it can be
+    overridden if necessary.
+  * Fixed issue 40, removing the default values from
+    connectorInstance.xml to make future changes easier.
+
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.0 through 1.3.2 may be
+used with this version. This version works with Connector Manager
+version 2.0.0. Earlier versions of the Connector Manager will not work
+correctly with this version of the connector. This product is designed
+to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
+9.7.1
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Customers with custom
+connectorInstance.xml files created for version 1.3.2 or earlier
+should update those files for future compatibility. Please see issue
+40 for details, and contact Google Enterprise Support if you need
+assistance.
+
+http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=40
+
+
+Release 1.3.2, Apr 11, 2009
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.3.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fixed issue 36 to accept Livelink URLs for sites using
+    certificates with a mismatching host name.
+  * Fixed issue 37 to add support for Livelink 9.7.1 and the January
+    2009 monthly patch.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.0 through 1.3.0 may be
+used with this version. This version works with Connector Manager
+version 1.3.2. Earlier versions of the Connector Manager will not work
+correctly with this version of the connector. This product is designed
+to function with Open Text Livelink versions 9.5 SP1, 9.6, 9.7, and
+9.7.1
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
+Release 1.3.0, Jan 10, 2009
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. Users of previous
+releases are encouraged to upgrade. See the product website for a
+complete description.
+
+Summary of Changes
+------------------
+  * Updated to match and take advantage of changes in the connector
+    manager SPI. For details see Connector Manager issues 59, 62, 72,
+    and 80.
+
+Version Compatibility
+---------------------
+
+Connector instances created using versions 1.0.0 through 1.1.1 may be
+used with this version. This version works with Connector Manager
+version 1.3.0. Earlier versions of the Connector Manager will not work
+correctly with this version of the connector. This product is designed
+to function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
+Release 1.1.1, Oct 20, 2008
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.1.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fixed issue 31 to avoid potential infinite loops during traversal.
+
+Version Compatibility
+---------------------
+Connectors created using versions 1.0.0 through 1.1.0 may be used with
+this version. This version works with Connector Manager versions 1.0.2
+through 1.1.0. Version 1.1.0 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
+Release 1.1.0, Jul 2, 2008
+===========================
+
+Introduction
+------------
+This is an upgrade release with some enhancements. Users of previous
+releases are encouraged to upgrade. See the product website for a
+complete description.
+
+Summary of Changes
+------------------
+  * Fixed issue 27 to avoid logging spurious exceptions validating URLs.
+  * Fixed issue 28 to detect missing entries in the DTreeAncestors table.
+  * Deleted documents are removed from the search appliance index, when
+    used with Connector Manager 1.1.0.
+  * Only metadata is indexed if the document file is larger than 30 MB.
+  * Items in the Workflow Volume are no longer indexed by default.
+  * Hidden items are indexed by default, matching Livelink.
+  * A full traversal no longer requires the DTreeAncestors table by default.
+
+Version Compatibility
+---------------------
+Connectors created using versions 1.0.0 through 1.0.3 may be used with
+this version. This version works with Connector Manager versions 1.0.2
+through 1.1.0. Version 1.1.0 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files created for version
+1.0.2 or earlier must update those files. Please contact Google
+Enterprise Support for assistance.
+
+
+Release 1.0.3, Apr 7, 2008
+==========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.0.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fix issue 17 to support NTLM authentication for search users.
+  * Fix issue 18 to correct several issues with indexing hidden items.
+  * Fix issue 19 to avoid a SQL error when the traverser user is defined.
+  * Fix issue 20 where traversal may stop prematurely.
+  * Fix issue 21 to avoid a potentially infinite loop during traversal.
+
+Version Compatibility
+---------------------
+Connectors created using versions 1.0.0 through 1.0.2 may be used with
+this version. This version works with Connector Manager versions 1.0.2
+and 1.0.3. Version 1.0.3 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+Customers with custom connectorInstance.xml files must update those
+files. Please contact Google Enterprise Support for assistance.
+
+
+Release 1.0.2, Mar 17, 2008
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.0.x releases should upgrade to this release. See the product
+website for a complete description.
+
+Summary of Changes
+------------------
+  * Fix issue 7 where indexing hidden items could throw exceptions.
+  * Fix issue 8 to avoid indexing children of hidden items.
+  * Fix issue 10 to improve performance when indexing only selected folders.
+  * Fix issue 11 where missing ExtendedData fields could throw exceptions.
+  * Fix issue 12 where looking up deleted users could throw exceptions.
+  * Fix issue 15 to support web authentication when using HTTP tunneling.
+  * Fix issue 16 to optionally include category names in the index.
+
+Version Compatibility
+---------------------
+Connectors created using version 1.0.0 or 1.0.1 may be used with this
+version. This version works with Connector Manager versions 1.0.2 and
+1.0.3. Version 1.0.3 is recommended. This product is designed to
+function with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+
+Release 1.0.1, Dec 18, 2007
+===========================
+
+Introduction
+------------
+This is a maintenance release that improves quality, reliability, and
+performance without adding any new functionality. All users of
+previous 1.0.x releases should upgrade to this release. See the
+product website for a complete description.
+
+Summary of Changes
+------------------
+  * Fix Issue 1 where traversal user must have system administration 
+    privileges.
+  * Fix Issue 4 to avoid logging an exception for a non-error condition.
+  * Fix Issue 5 use a separate log file.
+  * Fix Issue 6 to correctly authorize deleted documents.
+
+Version Compatibility
+---------------------
+Connectors created using version 1.0.0 may be used with this version.
+This version works with Connector Manager versions 1.0.2 and 1.0.3.
+Version 1.0.3 is recommended. This product is designed to function
+with Open Text Livelink versions 9.5 SP1, 9.6, and 9.7.
+
+
+Release 1.0.0, Oct 03, 2007
+===========================
+
+Introduction
+------------
+This is the first full release of this product. See the product
+website for a complete description.
+
+Version Compatibility
+---------------------
+This product requires Google Enterprise Connector Manager version 1.0.2.
+This product is designed to function with Open Text Livelink versions
+9.5 SP1, 9.6, and 9.7.
+

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<beans>
+    <!-- EDIT THIS BEAN DEFINTION WITH CUSTOM PROPERTY VALUES -->
+    <bean id="Livelink_Enterprise_Server"
+          class="com.google.enterprise.connector.otex.LivelinkConnector"
+          parent="Livelink_Enterprise_Server_Defaults" 
+          dependency-check="all" scope="prototype">
+
+        <!-- SET CUSTOM PROPERTY VALUES HERE -->
+
+    </bean>
+
+    <!-- EDIT THIS BEAN DEFINTION WITH CAUTION -->
+    <bean id="authenticationManager"
+          class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
+          scope="prototype"/>
+</beans>
