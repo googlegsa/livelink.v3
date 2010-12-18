@@ -752,7 +752,7 @@ class LivelinkTraversalManager
     // DTreeAncestors when the traversal user does not have
     // permission for intermediate nodes. The cache size is arbitrary.
     // TODO: We could keep this Genealogist instance between batches.
-    Genealogist matcher = new Genealogist(sysadminClient, startNodes,
+    Genealogist matcher = new HybridGenealogist(sysadminClient, startNodes,
         excludedNodes, matching.size());
 
     String descendants = matcher.getMatchingDescendants(matching);

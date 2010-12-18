@@ -20,13 +20,14 @@ import com.google.enterprise.connector.spi.RepositoryException;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** A class that knows about the node hierarchy in DTree. */
-final class Genealogist {
+class Genealogist {
   /** The logger for this class. */
   private static final Logger LOGGER =
       Logger.getLogger(Genealogist.class.getName());
@@ -132,13 +133,14 @@ final class Genealogist {
 
   /**
    * Finds the included nodes from among the matching candidates. This
-   * is the core algorithm behind {@link getMatchingDescendants}.
+   * is the core algorithm behind {@link getMatchingDescendants}. This
+   * implementation looks up each parent for each node individually.
    *
    * @param matching the matching nodes to check for inclusion
    * @param descendants a buffer to write a comma-separated list of
    * included node IDs to
    */
-  private void matchDescendants(ClientValue matching,
+  protected void matchDescendants(ClientValue matching,
       StringBuilder descendants) throws RepositoryException {
     for (int i = 0; i < matching.size(); i++) {
       // We do not cache the matches, which are probably mostly documents.
@@ -166,8 +168,8 @@ final class Genealogist {
    * or excluded, or {@code false} if nothing is known about
    * {@code parentId}
    */
-  private boolean matchParent(int matchingId, int parentId,
-      ArrayList<Integer> cachePossibles, StringBuilder descendants) {
+  protected final boolean matchParent(int matchingId, int parentId,
+      List<Integer> cachePossibles, StringBuilder descendants) {
     // We add the cachePossibles to the appropriate cache when we
     // determine an answer for matchingId. In the case of a cache
     // hit, parentID is obviously already in the cache, but the
@@ -208,12 +210,12 @@ final class Genealogist {
   }
 
   /**
-   * Gets the ParentID of the given node
+   * Gets the ParentID of the given node.
    *
    * @param objectID the object ID of the node
    * @return the parent ID of the node
    */
-  private int getParent(int objectId) throws RepositoryException {
+  protected final int getParent(int objectId) throws RepositoryException {
     // Excluding -1 and then adding it back again is not
     // pointless. Without the exclusion, the query might return
     // two results, but one of them would be -1 and is ignorable
@@ -234,7 +236,7 @@ final class Genealogist {
    * @param matching the matching nodes to check for inclusion
    * @return a comma-separated list of included node IDs to
    */
-  public String getMatchingDescendants(ClientValue matching)
+  public final String getMatchingDescendants(ClientValue matching)
       throws RepositoryException {
     StringBuilder descendants = new StringBuilder();
     matchDescendants(matching, descendants);
