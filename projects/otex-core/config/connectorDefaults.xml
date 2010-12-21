@@ -76,6 +76,8 @@
         <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING TO connectorInstance.xml -->
         <property name="authenticationManager" ref="authenticationManager"/>
         <property name="tryLowercaseUsernames" value="false"/>
+        <property name="genealogist"
+                  value="com.google.enterprise.connector.otex.BatchGenealogist" />
         <property name="contentHandler"
                   value="com.google.enterprise.connector.otex.FileContentHandler"/>
         <property name="servtype" value=""/>

@@ -217,7 +217,7 @@ public class LivelinkConnector implements Connector {
   /** The set of Subtypes for which we index hidden items. */
   private HashSet<Object> hiddenItemsSubtypes = null;
 
-  /** The <code>ContentHandler</code> implementation class. */
+  /** The <code>ContentHandler</code> implementation class name. */
   private String contentHandler;
 
   /** The earliest modification date that should be indexed. */
@@ -228,6 +228,9 @@ public class LivelinkConnector implements Connector {
 
   /** Whether to use DTreeAncestors table instead of a slower method. */
   private boolean useDTreeAncestors;
+
+  /** The <code>Genealogist</code> implementation class name. */
+  private String genealogist;
 
   /** The Livelink traverser client username. */
   private String username;
@@ -1348,6 +1351,29 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Sets the concrete implementation for the <code>Genealogist</code>
+   * interface.
+   *
+   * @param genealogist the fully-qualified name of the
+   * <code>Genealogist</code> implementation to use
+   */
+  public void setGenealogist(String genealogist) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("GENEALOGIST: " + genealogist);
+    this.genealogist = genealogist;
+  }
+
+  /**
+   * Gets the <code>Genealogist</code> implementation class name.
+   *
+   * @return the fully-qualified name of the <code>Genealogist</code>
+   * implementation to use
+   */
+  String getGenealogist() {
+    return genealogist;
+  }
+
+  /**
    * Creates an empty client factory instance for use with
    * authentication configuration parameters. This will use the
    * same implementation class as the default client factory.
@@ -1543,7 +1569,7 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
-   * Gets the <code>ContentHandler</code> implementation class.
+   * Gets the <code>ContentHandler</code> implementation class name.
    *
    * @return the fully-qualified name of the <code>ContentHandler</code>
    * implementation to use

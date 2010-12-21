@@ -89,25 +89,25 @@ class Genealogist {
   }
 
   /** The Livelink client to use to execute SQL queries. */
-  Client client;
+  protected final Client client;
 
   /** A set based on the includedLocationNodes property value. */
-  Set<Integer> includedSet;
+  private final Set<Integer> includedSet;
 
   /** A set based on the excludedLocationNodes property value. */
-  Set<Integer> excludedSet;
+  private final Set<Integer> excludedSet;
 
   /** A cache of items known to be included. */
-  Cache<Integer> includedCache;
+  private final Cache<Integer> includedCache;
 
   /** A cache of items known to be excluded. */
-  Cache<Integer> excludedCache;
+  private final Cache<Integer> excludedCache;
 
   /** For logging statistics, the number of nodes processed by this instance.*/
-  int nodeCount = 0;
+  protected int nodeCount = 0;
 
   /** For logging statistics, the number of queries run by this instance.*/
-  int queryCount = 0;
+  protected int queryCount = 0;
 
   public Genealogist(Client client, String startNodes, String excludedNodes,
       int cacheSize) {
@@ -168,7 +168,7 @@ class Genealogist {
    * or excluded, or {@code false} if nothing is known about
    * {@code parentId}
    */
-  protected final boolean matchParent(int matchingId, int parentId,
+  protected final boolean matchParent(Object matchingId, int parentId,
       List<Integer> cachePossibles, StringBuilder descendants) {
     // We add the cachePossibles to the appropriate cache when we
     // determine an answer for matchingId. In the case of a cache
@@ -215,7 +215,7 @@ class Genealogist {
    * @param objectID the object ID of the node
    * @return the parent ID of the node
    */
-  protected final int getParent(int objectId) throws RepositoryException {
+  protected int getParent(int objectId) throws RepositoryException {
     // Excluding -1 and then adding it back again is not
     // pointless. Without the exclusion, the query might return
     // two results, but one of them would be -1 and is ignorable

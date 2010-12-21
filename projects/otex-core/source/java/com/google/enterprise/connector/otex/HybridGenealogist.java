@@ -39,6 +39,7 @@ class HybridGenealogist extends Genealogist {
    * @param descendants a buffer to write a comma-separated list of
    * included node IDs to
    */
+  @Override
   protected void matchDescendants(ClientValue matching,
       StringBuilder descendants) throws RepositoryException {
     // First, check the matching nodes themselves.
@@ -80,7 +81,7 @@ class HybridGenealogist extends Genealogist {
    * @return a {@code Parents} object containing the IDs of the
    * objects and their parents.
    */
-  protected final Parents getParents(String objectIds)
+  protected Parents getParents(String objectIds)
       throws RepositoryException {
     // This uses a correlated subquery (using the implicit "a" range
     // variable added by LAPI) to handle the negated pairs created by
