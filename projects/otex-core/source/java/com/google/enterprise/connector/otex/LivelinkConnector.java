@@ -616,8 +616,7 @@ public class LivelinkConnector implements Connector {
           value = sanitizeListOfStrings((String) value).split(",");
           break;
         default:
-          throw new AssertionError("This can't happen (" +
-              valueType + ")");
+          throw new AssertionError("This can't happen (" + valueType + ")");
       }
 
       if ("default".equals(key))
@@ -1260,37 +1259,59 @@ public class LivelinkConnector implements Connector {
   public void setShowHiddenItems(final String hidden) {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
-          hiddenItemsSubtypes = new HashSet<Object>();
-          String s = sanitizeListOfStrings(hidden);
-
-          // An empty set here indicates that no hidden
-          // content should be indexed.
-          if ((s == null) || (s.length() == 0) ||
-              "false".equalsIgnoreCase(s)) {
-            return;
-          }
-          String ids[] = s.split(",");
-          for (int i = 0; i < ids.length; i++) {
-            try {
-              // If it is an integer, it represents a Subtype.
-              hiddenItemsSubtypes.add(Integer.valueOf(ids[i]));
-            } catch (NumberFormatException e) {
-              // Otherwise, it should be one of the special keywords.
-              String word = ids[i].toLowerCase();
-              // "All" in the set means all hidden
-              // content will get indexed.
-              if ("true".equals(word) || "all".equals(word) ||
-                  "'all'".equals(word)) {
-                hiddenItemsSubtypes.add("all");
-              }
-              else
-                hiddenItemsSubtypes.add(word);
-            }
-          }
+          hiddenItemsSubtypes = getHiddenItemsSubtypes(hidden);
           if (LOGGER.isLoggable(Level.CONFIG))
             LOGGER.config("HIDDEN ITEM SUBTYPES: " + hiddenItemsSubtypes);
+
+          // Excluding hidden items requires the DTreeAncestors table.
+          // See issue 62.
+          if (!hiddenItemsSubtypes.contains("all")
+              && useDTreeAncestors == false) {
+            throw new ConfigurationException("useDTreeAncestors = false "
+                + "is not supported with showHiddenItems = " + hidden,
+                "requiredAncestors", new String[] { hidden });
+          }
         }
       });
+  }
+
+  /**
+   * Transforms the {@code showHiddenItems} syntax to a set of subtypes.
+   *
+   * @param hidden comma-separated list of subtypes or special keywords.
+   * @see #setShowHiddenItems
+   */
+  /* @VisibleForTesting */
+  static HashSet<Object> getHiddenItemsSubtypes(String hidden) {
+    HashSet<Object> subtypes = new HashSet<Object>();
+    String s = sanitizeListOfStrings(hidden);
+
+    // An empty set here indicates that no hidden content should be indexed.
+    if (s.length() == 0 || "false".equalsIgnoreCase(s)) {
+      return subtypes;
+    }
+
+    String ids[] = s.split(",");
+    for (int i = 0; i < ids.length; i++) {
+      try {
+        // If it is an integer, it represents a Subtype.
+        subtypes.add(Integer.valueOf(ids[i]));
+      } catch (NumberFormatException e) {
+        // Otherwise, it should be one of the special keywords.
+        String word = ids[i].toLowerCase();
+        // "All" in the set means all hidden
+        // content will get indexed.
+        if ("true".equals(word) || "all".equals(word) ||
+            "'all'".equals(word)) {
+          subtypes.add("all");
+        }
+        else {
+          // FIXME: Why is this allowed?
+          subtypes.add(word);
+        }
+      }
+    }
+    return subtypes;
   }
 
   /**
