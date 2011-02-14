@@ -1667,12 +1667,13 @@ public class LivelinkConnector implements Connector {
    * Connector Manager, this method needs to not be a Spring
    * init-method, because that leads to Spring instantiation
    * failures that are not properly handled.
+   * TODO: Figure out if that is still true.
    */
   private void init() throws RepositoryException {
-    // Make sure we are at least CM v 1.3 (google:title property
-    // first appears in 1.3).
+    // Make sure we have at least CM v 2.6.6 (google:folder property
+    // first appears in 2.6.6).
     try {
-      if (SpiConstants.PROPNAME_TITLE != null) {
+      if (SpiConstants.PROPNAME_FOLDER != null) {
       }
     } catch (java.lang.NoClassDefFoundError e) {
       LOGGER.severe("This connector requires a newer version of the " +
