@@ -1673,9 +1673,8 @@ public class LivelinkConnector implements Connector {
     // Make sure we have at least CM v 2.6.6 (google:folder property
     // first appears in 2.6.6).
     try {
-      if (SpiConstants.PROPNAME_FOLDER != null) {
-      }
-    } catch (java.lang.NoClassDefFoundError e) {
+      SpiConstants.class.getDeclaredField("PROPNAME_FOLDER");
+    } catch (java.lang.NoSuchFieldException e) {
       LOGGER.severe("This connector requires a newer version of the " +
           "Connector Manager");
       throw new ConfigurationException("This connector requires a newer" +
