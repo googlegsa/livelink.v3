@@ -367,7 +367,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
   private int getNodeId(String query, String label, Client client)
       throws RepositoryException {
     ClientValue results = client.ListNodes(query, "DTree",
-        new String[] { "DataID", "PermId" });
+        new String[] { "DataID", "PermID" });
     if (results.size() > 0) {
       int volumeId = results.toInteger(0, "DataID");
       if (LOGGER.isLoggable(Level.FINEST))
