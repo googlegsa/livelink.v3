@@ -61,7 +61,7 @@
         </property>
         <property name="displayActions">
             <map>
-                <entry key="0,202,136" value="browse" />
+                <entry key="0,136,202,402" value="browse" />
                 <entry key="130,134,215" value="view" />
                 <entry key="144" value="overview" />
                 <entry key="204" value="BrowseTaskList" />
