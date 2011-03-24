@@ -152,6 +152,12 @@ class Genealogist {
       while (!matchParent(matchingId, parentId, cachePossibles, descendants)) {
         parentId = getParent(parentId);
         cachePossibles.add(parentId);
+
+        // FIXME: Leave this in, or wrap it in a config property?
+        if (LOGGER.isLoggable(Level.FINEST)) {
+          LOGGER.finest("DESCENDANTS: Checking " + matchingId + " parent: "
+              + parentId);
+        }
       }
     }
   }

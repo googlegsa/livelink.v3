@@ -25,9 +25,15 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** A class that knows about the node hierarchy in DTree. */
 class BatchGenealogist extends HybridGenealogist {
+  /** The logger for this class. */
+  private static final Logger LOGGER =
+      Logger.getLogger(BatchGenealogist.class.getName());
+
   public BatchGenealogist(Client client, String startNodes,
       String excludedNodes, int cacheSize) {
     // TODO: We may want to disable the cache for this implementation.
@@ -76,6 +82,10 @@ class BatchGenealogist extends HybridGenealogist {
 
       // TODO: Check for an interrupted traversal in this loop?
       while (true) {
+        // FIXME: Leave this in, or wrap it in a config property?
+        if (LOGGER.isLoggable(Level.FINEST))
+          LOGGER.finest("DESCENDANTS: Checking parents: " + tree.getParents());
+        
         // Check each parent entry in the current tree, removing nodes
         // that are found from the tree.
         Iterator<Map.Entry<Integer, Node>> it = tree.entrySet().iterator();
