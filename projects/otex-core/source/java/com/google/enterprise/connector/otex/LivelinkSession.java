@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 class LivelinkSession implements Session {
-
     /** The connector instance. */
     private final LivelinkConnector connector;
 
@@ -31,6 +30,9 @@ class LivelinkSession implements Session {
 
     /** The list of authentication managers. */
     private final AuthenticationManager authenticationManager;
+
+    /** The authorization manager. */
+    private final AuthorizationManager authorizationManager;
 
     /**
      *
@@ -41,11 +43,13 @@ class LivelinkSession implements Session {
      */
     public LivelinkSession(LivelinkConnector connector,
             ClientFactory clientFactory,
-            AuthenticationManager authenticationManager)
+            AuthenticationManager authenticationManager,
+            AuthorizationManager authorizationManager)
             throws RepositoryException {
         this.connector = connector;
         this.clientFactory = clientFactory;
         this.authenticationManager = authenticationManager;
+        this.authorizationManager = authorizationManager;
     }
 
     /**
@@ -73,18 +77,13 @@ class LivelinkSession implements Session {
     /**
      * Gets an AuthorizationManager to implement per-user authorization.
      *
-     * NOTE: LivelinkDocumentList gets access to the AuthorizationManager
-     * via the Connector's ClientFactory.  It should really get it from
-     * the Session, but at that point it doesn't know what session it
-     * belongs to.
-     *
      * @return an AuthorizationManager
      * @throws RepositoryException
      */
     public AuthorizationManager getAuthorizationManager()
         throws RepositoryException
     {
-        return new LivelinkAuthorizationManager(connector, clientFactory);
+        return authorizationManager;
     }
 
     /**

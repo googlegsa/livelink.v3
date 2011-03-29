@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import java.util.Set;
 
 import com.google.enterprise.connector.spi.AuthenticationManager;
+import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
@@ -244,14 +245,20 @@ public class LivelinkConnector implements Connector {
   /** The httpPassword. */
   private String httpPassword;
 
-  /** The Livelink Public Content client username. */
+  /** The Livelink public content client username. */
   private String publicContentUsername;
 
-  /** The Livelink Public Content client display URL. */
+  /** The Livelink public content client display URL. */
   private String publicContentDisplayUrl;
 
   /** The authentication manager to use. */
   private AuthenticationManager authenticationManager;
+
+  /** The authorization manager to use. */
+  private AuthorizationManager authorizationManager;
+
+  /** The Livelink public content authorization manager to use. */
+  private LivelinkAuthorizationManager publicContentAuthorizationManager;
 
   /** Lowercase usernames hack. */
   private boolean tryLowercaseUsernames;
@@ -1612,6 +1619,42 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Sets the AuthorizationManager implementation to use.
+   *
+   * @param authorizationManager an authorization manager
+   */
+  public void setAuthorizationManager(
+      AuthorizationManager authorizationManager) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("AUTHORIZATION MANAGER: " + authorizationManager);
+    this.authorizationManager = authorizationManager;
+  }
+
+  /**
+   * Sets the Livelink public content AuthorizationManager
+   * implementation to use.
+   *
+   * @param authorizationManager an authorization manager
+   */
+  public void setPublicContentAuthorizationManager(
+      LivelinkAuthorizationManager authorizationManager) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("PUBLIC CONTENT AUTHORIZATION MANAGER: "
+          + authorizationManager);
+    this.publicContentAuthorizationManager = authorizationManager;
+  }
+
+  /**
+   * Gets the Livelink public content AuthorizationManager
+   * implementation to use.
+   *
+   * return an initialized authorization manager
+   */
+  public LivelinkAuthorizationManager getPublicContentAuthorizationManager() {
+    return publicContentAuthorizationManager;
+  }
+
+  /**
    * Sets whether or not to try using lowercase usernames.
    *
    * @param tryLowercaseUsernames <code>true</code> to try using a
@@ -1699,6 +1742,10 @@ public class LivelinkConnector implements Connector {
     // connector is fully configured when used here.
     if (authenticationManager instanceof ConnectorAware)
       ((ConnectorAware) authenticationManager).setConnector(this);
+    if (authorizationManager instanceof ConnectorAware)
+      ((ConnectorAware) authorizationManager).setConnector(this);
+    if (publicContentAuthorizationManager != null)
+      publicContentAuthorizationManager.setConnector(this);
   }
 
   /**
@@ -1948,6 +1995,7 @@ public class LivelinkConnector implements Connector {
       validateEnterpriseWorkspaceAncestors(client);
     }
 
-    return new LivelinkSession(this, clientFactory, authenticationManager);
+    return new LivelinkSession(this, clientFactory, authenticationManager,
+        authorizationManager);
   }
 }

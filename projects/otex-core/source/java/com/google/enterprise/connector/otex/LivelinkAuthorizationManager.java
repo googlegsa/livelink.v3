@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
+import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
@@ -31,30 +32,31 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 /**
  * Implements an AuthorizationManager for the Livelink connector.
  */
-class LivelinkAuthorizationManager implements AuthorizationManager {
+public class LivelinkAuthorizationManager
+    implements AuthorizationManager, ConnectorAware {
   /** The logger for this class. */
   private static final Logger LOGGER =
       Logger.getLogger(LivelinkAuthorizationManager.class.getName());
 
   /** The connector contains configuration information. */
-  private final LivelinkConnector connector;
+  private LivelinkConnector connector;
 
   /** Client factory for obtaining client instances. */
-  private final ClientFactory clientFactory;
+  private ClientFactory clientFactory;
 
   /** 
    * If deleted documents are excluded from indexing, then we should
    * also remove documents from search results that were deleted
    * after they were indexed.
    */
-  private final int undeleteVolumeId;
+  private int undeleteVolumeId;
 
   /**
    * FIXME: Temporary patch to remove workflow attachments from the
    * search results if the workflow volume is excluded from
    * indexing.
    */
-  private final int workflowVolumeId;
+  private int workflowVolumeId;
 
   /**
    * If showHiddenItems is false, then we need to excluded hidden
@@ -67,25 +69,36 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
    * is a list of subtypes, then hidden items will not be
    * authorized.
    */
-  private final boolean showHiddenItems;
+  private boolean showHiddenItems;
 
   /** Lowercase usernames hack. */
   private boolean tryLowercaseUsernames;
 
+  /** Default constructor for bean instantiation. */
+  public LivelinkAuthorizationManager() {
+  }
+
   /**
-   * Constructor - caches client factory, connector, and for
-   * additional kinds of items that should be excluded from search
-   * results.
+   * Caches client factory, connector, and additional kinds of items
+   * that should be excluded from search results.
+   *
+   * @param connector the current LivelinkConnector
    */
-  LivelinkAuthorizationManager(LivelinkConnector connector,
-      ClientFactory clientFactory) throws RepositoryException {
-    this.clientFactory = clientFactory;
-    this.connector = connector;
+  /*
+   * This method will be called before any other methods in this
+   * class. The accessible methods in this class are synchronized
+   * because initialization (via this method) and other method calls
+   * happen in different threads, and we do not control the threads.
+   */
+  public synchronized void setConnector(Connector connector)
+      throws RepositoryException {
+    this.connector = (LivelinkConnector) connector;
+    this.clientFactory = this.connector.getClientFactory();
     Client client = clientFactory.createClient();
     this.undeleteVolumeId = getExcludedVolumeId(402, "UNDELETE", client);
     this.workflowVolumeId = getExcludedVolumeId(161, "WORKFLOW", client);
-    this.showHiddenItems = connector.getShowHiddenItems().contains("all");
-    this.tryLowercaseUsernames = connector.isTryLowercaseUsernames();
+    this.showHiddenItems = this.connector.getShowHiddenItems().contains("all");
+    this.tryLowercaseUsernames = this.connector.isTryLowercaseUsernames();
   }
 
 
@@ -96,7 +109,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
    * @param identity the user identity for which to check authorization
    * @throws RepositoryException if an error occurs
    */
-  public Collection<AuthorizationResponse> authorizeDocids(
+  public synchronized Collection<AuthorizationResponse> authorizeDocids(
       Collection<String> docids, AuthenticationIdentity identity)
       throws RepositoryException {
     String username = identity.getUsername();
@@ -161,8 +174,9 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
    * @param authorized the collection to add authorized doc IDs to
    * @throws RepositoryException if an error occurs
    */
-  void addAuthorizedDocids(Iterator<String> iterator, String username,
-      Collection<String> authorized) throws RepositoryException {
+  final synchronized void addAuthorizedDocids(Iterator<String> iterator,
+      String username, Collection<String> authorized)
+      throws RepositoryException {
     addAuthorizedDocids(iterator, username, authorized, new StringCreator());
   }
 
@@ -270,7 +284,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
    * @param docids the docids to include in the query
    * @return the SQL query string; null if no docids are provided
    */
-  /* This method has package access so that it can be unit tested. */
+  /* @VisibleForTesting */
   String getDocidQuery(Iterator<String> iterator) {
     if (!iterator.hasNext())
       return null; 
@@ -338,7 +352,7 @@ class LivelinkAuthorizationManager implements AuthorizationManager {
    * @return the volume ID if the volume is excluded from indexing,
    * zero otherwise.
    */
-  /* This method has package access so that it can be unit tested. */
+  /* @VisibleForTesting */
   int getExcludedVolumeId(int subtype, String label, Client client)
       throws RepositoryException {
     // First look for volume subtype in the excludedVolumeTypes.

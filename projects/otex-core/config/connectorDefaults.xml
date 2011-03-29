@@ -75,6 +75,12 @@
 
         <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING TO connectorInstance.xml -->
         <property name="authenticationManager" ref="authenticationManager"/>
+        <property name="authorizationManager">
+            <bean class="com.google.enterprise.connector.otex.LivelinkAuthorizationManager"/>
+        </property>
+        <property name="publicContentAuthorizationManager">
+            <bean class="com.google.enterprise.connector.otex.LivelinkAuthorizationManager"/>
+        </property>
         <property name="tryLowercaseUsernames" value="false"/>
         <property name="genealogist"
                   value="com.google.enterprise.connector.otex.BatchGenealogist" />

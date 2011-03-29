@@ -175,10 +175,12 @@ public class LivelinkConnectorTest extends TestCase {
    */
   public void testServer() throws RepositoryException {
     connector.login();
-    Map values = MockClientFactory.getInstance().getValues();
+    MockClientFactory clientFactory =
+        (MockClientFactory) connector.getClientFactory();
+    Map values = clientFactory.getValues();
     assertTrue(values.toString(), values.containsKey("setServer"));
-    assertEquals(values.get("setServer"),
-        System.getProperty("connector.server"));
+    assertEquals(System.getProperty("connector.server"),
+        values.get("setServer"));
   }
 
   /**

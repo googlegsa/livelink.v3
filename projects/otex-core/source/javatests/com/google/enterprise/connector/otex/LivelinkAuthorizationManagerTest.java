@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
   protected void afterInit() throws RepositoryException {
     Session sess = conn.login();
     lam = (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-    ClientFactory clientFactory = MockClientFactory.getInstance();
+    ClientFactory clientFactory = conn.getClientFactory();
     client = clientFactory.createClient();
   }
 

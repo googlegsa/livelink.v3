@@ -1,4 +1,4 @@
-// Copyright (C) 2007 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,20 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.spi.Connector;
+import com.google.enterprise.connector.spi.RepositoryException;
 
 /**
  * Provides an interface marking objects which should be passed a
  * connector instance.
  */
-interface ConnectorAware {
+public interface ConnectorAware {
     /**
-     * Sets a connector instance.
+     * Sets a connector instance. Generally, this method should be
+     * called during initialization, before the object it is called on
+     * is used.
      *
      * @param connector a fully-configured connector instance
+     * @throws RepositoryException if a repository error occurs
      */
-    void setConnector(Connector connector); 
+    void setConnector(Connector connector) throws RepositoryException;
 }

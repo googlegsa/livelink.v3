@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,8 @@ import com.google.enterprise.connector.spi.RepositoryLoginException;
  * Wraps a list of AuthenticationManager instances and tries each
  * in turn to implement AuthenticationManager.authenticate.
  */
-class AuthenticationManagerChain implements AuthenticationManager,
-        ConnectorAware {
-
+class AuthenticationManagerChain
+        implements AuthenticationManager, ConnectorAware {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(AuthenticationManagerChain.class.getName());
@@ -64,7 +63,7 @@ class AuthenticationManagerChain implements AuthenticationManager,
      * called after the bean initialization has called
      * setAuthenticationManagers.
      */
-    public void setConnector(Connector connector) {
+    public void setConnector(Connector connector) throws RepositoryException {
         for (int i = 0; i < authenticationManagers.size(); i++) {
             Object o = authenticationManagers.get(i);
             if (o instanceof ConnectorAware)
@@ -75,7 +74,6 @@ class AuthenticationManagerChain implements AuthenticationManager,
     /** {@inheritDoc} */
     public AuthenticationResponse authenticate(AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
-
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
 

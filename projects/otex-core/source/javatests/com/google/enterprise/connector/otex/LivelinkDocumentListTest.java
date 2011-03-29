@@ -52,8 +52,10 @@ public class LivelinkDocumentListTest extends TestCase {
 
     if (publicContentUsername != null) {
       connector.setPublicContentUsername(publicContentUsername);
+      connector.setPublicContentAuthorizationManager(
+          new LivelinkAuthorizationManager());
     }
-    
+
     connector.login();
     return connector;
   }

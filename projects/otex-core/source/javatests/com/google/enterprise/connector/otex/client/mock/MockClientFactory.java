@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,34 +24,13 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 
 /**
  * A mock factory for the facade interface that encapsulates the Livelink API.
- * This implementation ignores the configuration properties.
+ * This implementation caches the configuration properties in a map that can
+ * be retrieved by the tests.
  */
 public class MockClientFactory implements ClientFactory {
-  /** The instance constructed most recently. */
-  private static WeakReference<MockClientFactory> lastInstance;
-
-  /**
-   * Gets the most recently constructed instance. This is intended
-   * for use in single threaded tests. This only works because these
-   * tests don't currently any of the separate authentication
-   * properties. No exception is thrown if multiple instances exist,
-   * because it might not be an error for a previous instance to
-   * remain uncollected.
-   *
-   * @return the more recently constructed instance, or
-   * <code>null</code> if there are no uncollected instances
-   */
-  public static synchronized MockClientFactory getInstance() {
-    return lastInstance.get();
-  }
-
   private HashMap<String, Object> values;
     
   public MockClientFactory() {
-    synchronized (MockClientFactory.class) {
-      lastInstance = new WeakReference<MockClientFactory>(this);
-    }
-
     values = new HashMap<String, Object>();
   }
 

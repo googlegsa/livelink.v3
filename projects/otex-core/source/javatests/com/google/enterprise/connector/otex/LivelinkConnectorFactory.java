@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -148,6 +148,8 @@ class LivelinkConnectorFactory implements ConnectorFactory {
         beanReader.loadBeanDefinitions(defaults);
       }
 
+      // This code should be using setLocation rather than setProperties, but
+      // that requires the machinery of InstanceInfo.getPropertiesResource.
       PropertyPlaceholderConfigurer cfg = new PropertyPlaceholderConfigurer();
       Properties props = new Properties();
       props.putAll(config);

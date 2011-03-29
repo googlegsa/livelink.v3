@@ -235,11 +235,6 @@ class LivelinkDocumentList implements DocumentList {
    * we must subset the documents into those that are public and
    * those that are not.
    *
-   * XXX: This gets access to the AuthorizationManager via the
-   * Connector's ClientFactory.  It should really get it from the
-   * Session, but at this point we don't know what session we
-   * belong to.
-   *
    * @param currentUsername the currently logged in user; may be impersonated
    */
   private void findPublicContent(String currentUsername)
@@ -249,9 +244,8 @@ class LivelinkDocumentList implements DocumentList {
       isPublicContentUser = pcuser.equals(currentUsername);
       if (!isPublicContentUser) {
         // Get the subset of the DocIds that have public access.
-        ClientFactory clientFactory = connector.getClientFactory();
-        LivelinkAuthorizationManager authz;
-        authz = new LivelinkAuthorizationManager(connector, clientFactory);
+        LivelinkAuthorizationManager authz =
+            connector.getPublicContentAuthorizationManager();
         publicContentDocs = new HashSet<String>();
         authz.addAuthorizedDocids(new DocIdIterator(), pcuser,
             publicContentDocs);
