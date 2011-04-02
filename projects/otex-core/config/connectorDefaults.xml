@@ -74,7 +74,9 @@
         </property>
 
         <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING TO connectorInstance.xml -->
-        <property name="authenticationManager" ref="authenticationManager"/>
+        <property name="authenticationManager">
+	    <bean class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"/>
+        </property>
         <property name="authorizationManager">
             <bean class="com.google.enterprise.connector.otex.LivelinkAuthorizationManager"/>
         </property>
