@@ -689,8 +689,9 @@ class LivelinkTraversalManager
         || ((startNodes == null || startNodes.length() == 0)
             && (excludedNodes == null || excludedNodes.length() == 0))) {
       // We're either using DTreeAncestors, or we don't need it.
-      return getMatching(candidatesPredicate, true, "WebNodes", SELECT_LIST,
-          traversalClient);
+      // Patch for bug 4255719: DataSize >= 0 against WebNodes.
+      return getMatching(candidatesPredicate + " and DataSize >= 0", true,
+          "WebNodes", SELECT_LIST, traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
       ClientValue matching = getMatching(candidatesPredicate, false, "DTree",
@@ -758,8 +759,9 @@ class LivelinkTraversalManager
 
     String descendants = matcher.getMatchingDescendants(matching);
     if (descendants != null) {
-      return traversalClient.ListNodes("DataID in (" + descendants + ")"
-          + ORDER_BY, "WebNodes", SELECT_LIST);
+      // Patch for bug 4255719: DataSize >= 0 against WebNodes.
+      return traversalClient.ListNodes("DataID in (" + descendants
+          + ") and DataSize >= 0 " + ORDER_BY, "WebNodes", SELECT_LIST);
     } else {
       return null;
     }
