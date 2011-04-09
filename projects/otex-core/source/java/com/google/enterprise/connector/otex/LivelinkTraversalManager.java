@@ -92,14 +92,18 @@ class LivelinkTraversalManager
     list.add(new Field("OwnerID", "VolumeID"));
     list.add(new Field("UserID", "UserID"));
 
-    list.add(new Field("DataSize"));
+    // Workaround LAPI NumberFormatException/NullPointerException bug
+    // returning negative longs.
+    list.add(Field.fromExpression(
+        "case when DataSize < 0 then 0 else DataSize end DataSize",
+        "DataSize"));
     list.add(new Field("PermID"));
 
     FIELDS = list.toArray(new Field[0]);
 
     SELECT_LIST = new String[FIELDS.length];
     for (int i = 0; i < FIELDS.length; i++)
-      SELECT_LIST[i] = FIELDS[i].fieldName;
+      SELECT_LIST[i] = FIELDS[i].selectExpression;
   }
 
   /** Select list column for AuditDate; Oracle still lacks milliseconds. */
