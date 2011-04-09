@@ -20,9 +20,15 @@ import com.google.enterprise.connector.spi.RepositoryException;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** A class that knows about the node hierarchy in DTree. */
 class HybridGenealogist extends Genealogist {
+  /** The logger for this class. */
+  private static final Logger LOGGER =
+      Logger.getLogger(HybridGenealogist.class.getName());
+
   public HybridGenealogist(Client client, String startNodes,
       String excludedNodes, int cacheSize) {
     super(client, startNodes, excludedNodes, cacheSize);
@@ -133,8 +139,13 @@ class HybridGenealogist extends Genealogist {
      */
     public int getParentID(int i) throws RepositoryException {
       int parentId = parents.toInteger(i, "ParentID");
-      if (parentId == -1 && parents.isDefined(i, "StepParentID"))
+      if (parentId == -1 && parents.isDefined(i, "StepParentID")) {
         parentId = parents.toInteger(i, "StepParentID");
+        // FIXME: Leave this in, or wrap it in a config property?
+        if (LOGGER.isLoggable(Level.FINEST))
+          LOGGER.finest("DESCENDANTS: Substituting " + parentId
+              + " as stepparent for " + getDataID(i));
+      }
       return parentId;
     }
   }

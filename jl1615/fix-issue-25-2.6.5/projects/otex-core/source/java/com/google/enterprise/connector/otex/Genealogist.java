@@ -183,21 +183,21 @@ class Genealogist {
     if (excludedCache.contains(parentId)) {
       if (LOGGER.isLoggable(Level.FINEST)) {
         LOGGER.finest("DESCENDANTS: Excluding " + matchingId
-            + ", found in cache after " + cachePossibles);
+            + ", found " + parentId + " in cache after " + cachePossibles);
       }
       excludedCache.addAll(cachePossibles);
       return true;
     } else if (excludedSet.contains(parentId)) {
       if (LOGGER.isLoggable(Level.FINEST)) {
         LOGGER.finest("DESCENDANTS: Excluding " + matchingId
-            + ", found in set after " + cachePossibles);
+            + ", found " + parentId + " in set after " + cachePossibles);
       }
       excludedCache.addAll(cachePossibles);
       return true;
     } else if (includedCache.contains(parentId)) {
       if (LOGGER.isLoggable(Level.FINEST)) {
         LOGGER.finest("DESCENDANTS: Including " + matchingId
-            + ", found in cache after " + cachePossibles);
+            + ", found " + parentId + " in cache after " + cachePossibles);
       }
       includedCache.addAll(cachePossibles);
       descendants.append(matchingId).append(',');
@@ -205,12 +205,15 @@ class Genealogist {
     } else if (includedSet.contains(parentId)) {
       if (LOGGER.isLoggable(Level.FINEST)) {
         LOGGER.finest("DESCENDANTS: Including " + matchingId +
-            ", found in set after " + cachePossibles);
+            ", found " + parentId + " in set after " + cachePossibles);
       }
       includedCache.addAll(cachePossibles);
       descendants.append(matchingId).append(',');
       return true;
     } else {
+      // FIXME: Leave this in, or wrap it in a config property?
+      if (LOGGER.isLoggable(Level.FINEST))
+        LOGGER.finest("DESCENDANTS: No match for " + parentId);
       return false;
     }
   }

@@ -101,6 +101,10 @@ class BatchGenealogist extends HybridGenealogist {
         if (tree.isEmpty())
           break;
 
+        // FIXME: Leave this in, or wrap it in a config property?
+        if (LOGGER.isLoggable(Level.FINEST))
+          LOGGER.finest("DESCENDANTS: Remaining parents: " + tree.getParents());
+
         // Get the next level of parents. The merge moves the nodes up
         // one level in the tree.
         parents = getParents(tree.getParents());
@@ -209,6 +213,12 @@ class BatchGenealogist extends HybridGenealogist {
      * @param parentId the ID of the parent node to merge into
      */
     public void merge(int objectId, int parentId) {
+      // FIXME: Leave this in, or wrap it in a config property?
+      if (LOGGER.isLoggable(Level.FINEST)) {
+        LOGGER.finest("DESCENDANTS: Merging " + objectId + " into "
+            + parentId);
+      }
+
       Node old = map.get(objectId);
       assert old != null;
       Node n = map.get(parentId);
