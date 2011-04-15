@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import java.lang.ref.WeakReference;
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,10 +29,17 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
  * be retrieved by the tests.
  */
 public class MockClientFactory implements ClientFactory {
-  private HashMap<String, Object> values;
-    
+  private final HashMap<String, Object> values;
+
+  private final Connection jdbcConnection;
+
   public MockClientFactory() {
-    values = new HashMap<String, Object>();
+    this(null);
+  }
+
+  public MockClientFactory(Connection jdbcConnection) {
+    this.values = new HashMap<String, Object>();
+    this.jdbcConnection = jdbcConnection;
   }
 
   /**
@@ -43,7 +51,7 @@ public class MockClientFactory implements ClientFactory {
   public Map<String, Object> getValues() {
     return values;
   }
-    
+
   /** {@inheritDoc} */
   public void setServer(String value) {
     values.put("setServer", value);
@@ -126,11 +134,11 @@ public class MockClientFactory implements ClientFactory {
 
   /** {@inheritDoc} */
   public Client createClient() {
-    return new MockClient();
+    return new MockClient(jdbcConnection);
   }
 
   /** {@inheritDoc} */
   public Client createClient(String username, String password) {
-    return new MockClient();
+    return new MockClient(jdbcConnection);
   }
 }

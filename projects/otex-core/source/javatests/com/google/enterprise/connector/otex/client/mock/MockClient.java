@@ -17,6 +17,12 @@ package com.google.enterprise.connector.otex.client.mock;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Statement;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.logging.Logger;
 
@@ -35,7 +41,10 @@ final class MockClient implements Client {
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
 
-    MockClient() {
+    private final Connection jdbcConnection;
+
+    MockClient(Connection jdbcConnection) {
+      this.jdbcConnection = jdbcConnection;
     }
 
     /** {@inheritDoc} */
@@ -106,7 +115,8 @@ final class MockClient implements Client {
      * <p>
      * This implementation returns an empty <code>ClientValue</code>.
      */
-    public ClientValue ListNodes(String query, String view, String[] columns) {
+    public ClientValue ListNodes(String query, String view, String[] columns)
+            throws RepositoryException {
         LOGGER.fine("Entering MockClient.ListNodes");
 
         String[] fields;
@@ -140,6 +150,20 @@ final class MockClient implements Client {
             fields = new String[] { "minModifyDate" };
             values = new Object[][] {
                 new Object[] { new Date() } };
+        } else if (query.indexOf("ParentID <> -1") != -1 ||
+                (columns.length == 3 &&
+                    columns[2].indexOf("ParentID <> -1") != -1)) {
+            // This is a Genealogist query. Use the database.
+            try {
+                Statement stmt = jdbcConnection.createStatement();
+                ResultSet rs =
+                    stmt.executeQuery(getSqlQuery(query, view, columns));
+                ResultSetMetaData rsmd = rs.getMetaData();
+                fields = getResultSetColumns(rsmd);
+                values = getResultSetValues(rs, rsmd);
+            } catch (SQLException e) {
+                throw new RepositoryException("Database error", e);
+            }
         } else {
             fields = new String[0];
             values = new Object[0][0];
@@ -148,15 +172,67 @@ final class MockClient implements Client {
     }
 
     /**
+     * Constructs a SQL query string from the {@code ListNodes}
+     * arguments. The constructed string <strong>must</strong> match the
+     * string constructed by LAPI.
+     */
+    private String getSqlQuery(String query, String view, String[] columns) {
+        StringBuilder buffer = new StringBuilder();
+        buffer.append("select ");
+        for (String column : columns) {
+            buffer.append(column);
+            buffer.append(',');
+        }
+        buffer.deleteCharAt(buffer.length() - 1);
+        buffer.append(" from ");
+        buffer.append(view);
+        buffer.append(" a where ");
+        buffer.append(query);
+        return buffer.toString();
+    }
+
+    /** Gets the array of column names from the result set metadata. */
+    private String[] getResultSetColumns(ResultSetMetaData rsmd)
+            throws SQLException {
+        int count = rsmd.getColumnCount();
+        String[] columns = new String[count];
+        for (int i = 0; i < count; i++) {
+            // Correct for the uppercasing of column names in H2.
+            columns[i] = rsmd.getColumnName(i + 1)
+                .replace("DATA", "Data")
+                .replace("STEP", "Step")
+                .replace("PARENT", "Parent");
+        }
+        return columns;
+    }
+
+    /** Gets the array of row values from the result set. */
+    private Object[][] getResultSetValues(ResultSet rs, ResultSetMetaData rsmd)
+            throws SQLException {
+        ArrayList<Object[]> rows = new ArrayList<Object[]>();
+        int count = rsmd.getColumnCount();
+        while (rs.next()) {
+            Object[] row = new Object[count];
+            for (int i = 0; i < count; i++) {
+                row[i] = rs.getObject(i + 1);
+            }
+            rows.add(row);
+        }
+        return rows.toArray(new Object[0][0]);
+    }
+
+    /**
      * {@inheritDoc}
      * <p>
      * Version of ListNodes() that does not throw exceptions.
-     * Since the MockClient version of ListNodes already doesn't
-     * throw exceptions, this doesn't do anything other than that.
      */
     public ClientValue ListNodesNoThrow(String query, String view,
             String[] columns) {
-        return ListNodes(query, view, columns);
+        try {
+            return ListNodes(query, view, columns);
+        } catch (RepositoryException e) {
+            return null;
+        }
     }
 
     /**
