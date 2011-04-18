@@ -29,8 +29,10 @@ import java.sql.Statement;
 import java.sql.SQLException;
 
 /**
- * Constructs a mock hierarchy by overriding the getParent and
- * getParents methods and tests each Genealogist implementation.
+ * Constructs a mock database hierarchy and runs the tests using the
+ * {@code Genealogist} implementation. Subclasses override
+ * {@code getClassUnderTest} to run these tests with subclass
+ * implementations.
  */
 public class GenealogistTest extends TestCase {
   /* The DTree nodes. */
@@ -45,65 +47,152 @@ public class GenealogistTest extends TestCase {
     { 3000, 300 }, { 3010, 301 }, { 3100, 310 },
     { 10100, 1010 } };
 
-  /* The includedLocationNodes property value. */
-  private static final String INCLUDED_NODES = "10";
-
-  /* The excludedLocationNodes property value. */
-  private static final String EXCLUDED_NODES = "2";
-
-  /* The nodes to call getMatchingDescendants with. */
-  private static final Integer[][] MATCHING_NODES = {
-    { 1000 }, { 1001 }, { 1010 }, { 2000 }, { 2001 }, { 2002 },
-    { 3000 }, { 3010 }, { 3100 }, {10100 }, };
-
   /** The mock client used by the Genealogist classes under test. */
   private Client client;
 
-  protected void setUp() {
+  /** The database connection. */
+  private Connection jdbcConnection;
+
+  /** Inserts database test data. */
+  protected void setUp() throws SQLException {
     // Get a separate in-memory database for each test.
     JdbcDataSource ds = new JdbcDataSource();
     ds.setURL("jdbc:h2:mem:");
     ds.setUser("sa");
     ds.setPassword("");
-    try {
-      Connection conn = ds.getConnection();
+    jdbcConnection = ds.getConnection();
 
-      // Insert the test data.
-      Statement stmt = conn.createStatement();
+    // Insert the test data.
+    Statement stmt = jdbcConnection.createStatement();
+    try {
       stmt.executeUpdate(
           "create table DTree (DataID int primary key, ParentID int)");
-      for (int[] row : TREE_NODES) {
+    } finally {
+      stmt.close();
+    }
+    insertRows(TREE_NODES);
+
+    MockClientFactory factory = new MockClientFactory(jdbcConnection);
+    client = factory.createClient();
+  }
+
+  private void insertRows(int[][] rows) throws SQLException {
+    Statement stmt = jdbcConnection.createStatement();
+    try {
+      for (int[] row : rows) {
         stmt.executeUpdate("insert into DTree(DataID, ParentID) values ("
             + row[0] + "," + row[1] + ")");
       }
-
-      MockClientFactory factory = new MockClientFactory(conn);
-      client = factory.createClient();
-    } catch (SQLException e) {
-      throw new RuntimeException("MockClient initialization error", e);
+    } finally {
+      stmt.close();
     }
   }
 
-  /** Helper method that runs the test for a given implementation. */
-  private void testGenealogist(Genealogist gen) throws RepositoryException {
+  protected void tearDown() throws SQLException {
+    jdbcConnection.close();
+  }
+
+  /** Gets the class under test. Subclasses should override this method. */
+  protected Class getClassUnderTest() {
+    return Genealogist.class;
+  }
+
+  /** Core helper method that runs a test for a given implementation. */
+  private void testGenealogist(String includedNodes, String excludedNodes,
+      Integer[] matchingNodes, String matchingDescendants)
+      throws RepositoryException {
+    Genealogist gen = Genealogist.getGenealogist(
+        getClassUnderTest().getName(),
+        client, includedNodes, excludedNodes, 10);
+    Integer[][] matchingValues = new Integer[matchingNodes.length][];
+    for (int i = 0; i < matchingNodes.length; i++) {
+      matchingValues[i] = new Integer[] { matchingNodes[i] };
+    }
     MockClientValue matching =
-        new MockClientValue(new String[] { "DataID" }, MATCHING_NODES);
+        new MockClientValue(new String[] { "DataID" }, matchingValues);
+
     Object desc = gen.getMatchingDescendants(matching);
-    assertEquals("1000,1001,1010,10100", desc);
+    assertEquals(matchingDescendants, desc);
   }
 
-  public void testBase() throws RepositoryException {
-    testGenealogist(
-        new Genealogist(client, INCLUDED_NODES, EXCLUDED_NODES, 10));
+  /** Helper method to test basic trees. */
+  private void testBasic(String includedNodes, String excludedNodes,
+      String matchingDescendants) throws RepositoryException {
+    testGenealogist(includedNodes, excludedNodes, new Integer[] {
+        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 3100, 10100, },
+        matchingDescendants);
   }
 
-  public void testHybrid() throws RepositoryException {
-    testGenealogist(
-        new HybridGenealogist(client, INCLUDED_NODES, EXCLUDED_NODES, 10));
+  /** Tests disjoint included and excluded nodes. */
+  public void testEverything() throws RepositoryException {
+    testBasic("", "", "1000,1001,1010,2000,2001,2002,3000,3010,3100,10100");
   }
 
-  public void testBatch() throws RepositoryException {
-    testGenealogist(
-        new BatchGenealogist(client, INCLUDED_NODES, EXCLUDED_NODES, 10));
+  /** Tests disjoint included and excluded nodes. */
+  public void testIncluded() throws RepositoryException {
+    testBasic("10", "2", "1000,1001,1010,10100");
+  }
+
+  /** Tests excluded nodes. */
+  public void testExcluded() throws RepositoryException {
+    testBasic("", "2,3", "1000,1001,1010,10100");
+  }
+
+  /** Tests included nodes with nested excluded nodes. */
+  public void testIncludedExcluded()
+      throws RepositoryException {
+    testBasic("1", "101", "1000,1001");
+  }
+
+  /** Tests excluded nodes with nested included nodes. */
+  public void testExcludedIncluded()
+      throws RepositoryException {
+    testBasic("101", "1", "1010,10100");
+  }
+
+  /** Helper method to test stepparent nodes (that is, volume nodes). */
+  private void testStepparents(String includedNodes, String excludedNodes,
+      String matchingDescendants) throws SQLException, RepositoryException {
+    insertRows(new int[][] {
+        { 4, -1 }, { 40, 4 }, { -40, -1 }, { 400, -40 }, { 4000, 400 } });
+    testGenealogist(includedNodes, excludedNodes, new Integer[] {
+        4, 40, 400, 1000, 1001, 1010, 4000, 10100, },
+        matchingDescendants);
+  }
+
+  /** Tests included nodes with stepparents. */
+  public void testIncludedWithStepparents()
+      throws SQLException, RepositoryException {
+    testStepparents("4", "", "4,40,400,4000");
+  }
+
+  /** Tests included stepparents. */
+  public void testIncludedStepparents()
+      throws SQLException, RepositoryException {
+    testStepparents("40", "", "40,400,4000");
+  }
+
+  /** Tests excluded stepparents. */
+  public void testExcludedStepparents()
+      throws SQLException, RepositoryException {
+    testStepparents("", "1,2,3,4", null);
+  }
+
+  /** Tests included nodes with excluded stepparents. */
+  public void testIncludedExcludedStepparents()
+      throws SQLException, RepositoryException {
+    testStepparents("4", "40", "4");
+  }
+
+  /** Tests included nodes with excluded volume. */
+  public void testExcludedVolumeStepparents()
+      throws SQLException, RepositoryException {
+    testStepparents("4", "-40", "4");
+  }
+
+  /** Tests included nodes with excluded volume descendants. */
+  public void testExcludedStepchildren()
+      throws SQLException, RepositoryException {
+    testStepparents("4", "400", "4,40");
   }
 }

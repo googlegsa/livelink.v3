@@ -88,6 +88,33 @@ class Genealogist {
     return set;
   }
 
+  /**
+   * Gets a new instance of the given Genealogist class.
+   *
+   * @param className the {@code Genealogist} class to instantiate
+   * @param matching the candidates matching the non-hierarchical filters
+   * @param startNodes the includedLocationNodes property value
+   * @param excludedNodes the excludedLocationNodes property value
+   * @param cacheSize the fixed size of the node cache
+   * @return a new instance of the configured Genealogist class
+   * @throws RepositoryException if the class cannot be instantiated
+   * or initialized
+   */
+  public static Genealogist getGenealogist(String className, Client client,
+      String startNodes, String excludedNodes, int cacheSize)
+      throws RepositoryException {
+    Genealogist genealogist;
+    try {
+      genealogist = Class.forName(className)
+          .asSubclass(Genealogist.class)
+          .getConstructor(Client.class, String.class, String.class, int.class)
+          .newInstance(client, startNodes, excludedNodes, cacheSize);
+    } catch (Exception e) {
+      throw new LivelinkException(e, LOGGER);
+    }
+    return genealogist;
+  }
+
   /** The Livelink client to use to execute SQL queries. */
   protected final Client client;
 
