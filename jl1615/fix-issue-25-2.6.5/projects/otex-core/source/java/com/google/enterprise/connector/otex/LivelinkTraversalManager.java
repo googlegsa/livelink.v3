@@ -92,14 +92,18 @@ class LivelinkTraversalManager
     list.add(new Field("OwnerID", "VolumeID"));
     list.add(new Field("UserID", "UserID"));
 
-    list.add(new Field("DataSize"));
+    // Workaround LAPI NumberFormatException/NullPointerException bug
+    // returning negative longs.
+    list.add(Field.fromExpression(
+        "case when DataSize < 0 then 0 else DataSize end DataSize",
+        "DataSize"));
     list.add(new Field("PermID"));
 
     FIELDS = list.toArray(new Field[0]);
 
     SELECT_LIST = new String[FIELDS.length];
     for (int i = 0; i < FIELDS.length; i++)
-      SELECT_LIST[i] = FIELDS[i].fieldName;
+      SELECT_LIST[i] = FIELDS[i].selectExpression;
   }
 
   /** Select list column for AuditDate; Oracle still lacks milliseconds. */
@@ -689,9 +693,8 @@ class LivelinkTraversalManager
         || ((startNodes == null || startNodes.length() == 0)
             && (excludedNodes == null || excludedNodes.length() == 0))) {
       // We're either using DTreeAncestors, or we don't need it.
-      // Patch for bug 4255719: DataSize >= 0 against WebNodes.
-      return getMatching(candidatesPredicate + " and DataSize >= 0", true,
-          "WebNodes", SELECT_LIST, traversalClient);
+      return getMatching(candidatesPredicate, true, "WebNodes", SELECT_LIST,
+          traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
       ClientValue matching = getMatching(candidatesPredicate, false, "DTree",
@@ -759,9 +762,8 @@ class LivelinkTraversalManager
 
     String descendants = matcher.getMatchingDescendants(matching);
     if (descendants != null) {
-      // Patch for bug 4255719: DataSize >= 0 against WebNodes.
-      return traversalClient.ListNodes("DataID in (" + descendants
-          + ") and DataSize >= 0 " + ORDER_BY, "WebNodes", SELECT_LIST);
+      return traversalClient.ListNodes("DataID in (" + descendants + ")"
+          + ORDER_BY, "WebNodes", SELECT_LIST);
     } else {
       return null;
     }
