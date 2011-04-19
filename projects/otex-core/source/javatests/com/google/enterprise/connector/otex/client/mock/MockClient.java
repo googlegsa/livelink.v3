@@ -150,7 +150,7 @@ final class MockClient implements Client {
             fields = new String[] { "minModifyDate" };
             values = new Object[][] {
                 new Object[] { new Date() } };
-        } else if (query.indexOf("ParentID <> -1") != -1 ||
+        } else if ((columns.length == 1 && columns[0].equals("ParentID")) ||
                 (columns.length == 3 &&
                     columns[2].indexOf("ParentID <> -1") != -1)) {
             // This is a Genealogist query. Use the database.

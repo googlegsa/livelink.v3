@@ -195,4 +195,17 @@ public class GenealogistTest extends TestCase {
       throws SQLException, RepositoryException {
     testStepparents("4", "400", "4,40");
   }
+
+  /** Tests orphan nodes. */
+  public void testOrphans()
+      throws SQLException, RepositoryException {
+    // We include two orphaned nodes here because doing so found a
+    // ConcurrentModificationException bug during development.
+    insertRows(new int[][] {
+          { 4, -1 }, { 400, 40 }, { 4000, 400 },
+          { 5, -1 }, { 500, 50 }, { 5000, 500 } });
+    testGenealogist("", "2,3", new Integer[] {
+        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000, 10100, },
+        "1000,1001,1010,10100");
+  }
 }
