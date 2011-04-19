@@ -82,6 +82,9 @@ class BatchGenealogist extends HybridGenealogist {
 
       // TODO: Check for an interrupted traversal in this loop?
       while (true) {
+        if (LOGGER.isLoggable(Level.FINEST))
+          LOGGER.finest("DESCENDANTS: Checking parents: " + tree.getParents());
+
         // Check each parent entry in the current tree, removing nodes
         // that are found from the tree.
         Iterator<Map.Entry<Integer, Node>> it = tree.entrySet().iterator();
