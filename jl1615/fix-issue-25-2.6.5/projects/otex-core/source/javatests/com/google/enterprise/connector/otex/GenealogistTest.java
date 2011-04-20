@@ -66,7 +66,7 @@ public class GenealogistTest extends TestCase {
     }
 
     @Override
-    protected int getParent(int objectId) {
+    protected Integer getParent(Object matchingId, int objectId) {
       queryCount++;
       return getMockParent(objectId);
     }
@@ -78,7 +78,7 @@ public class GenealogistTest extends TestCase {
     }
 
     @Override
-    protected int getParent(int objectId) {
+    protected Integer getParent(Object matchingId, int objectId) {
       queryCount++;
       return getMockParent(objectId);
     }
@@ -96,7 +96,7 @@ public class GenealogistTest extends TestCase {
     }
 
     @Override
-    protected int getParent(int objectId) {
+    protected Integer getParent(Object matchingId, int objectId) {
       fail("getParent should not be called");
       return 0;
     }

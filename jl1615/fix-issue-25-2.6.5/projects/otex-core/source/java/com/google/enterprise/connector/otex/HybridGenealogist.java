@@ -63,17 +63,24 @@ class HybridGenealogist extends Genealogist {
       // Next, get all of the parents of the remaining nodes at once,
       // and then enter the loop that looks up the further ancestors
       // one at a time.
+      // TODO: If any of the undecideds are direct orphans (their
+      // parents do not exist), then this loop will correctly exclude
+      // the orphans, but it won't log a message that it did so. If
+      // orphans are found in the inner loop, they will be logged.
       Parents parents = getParents(undecideds.toString());
       for (int i = 0; i < parents.size(); i++) {
         ArrayList<Integer> cachePossibles = new ArrayList<Integer>();
         final int matchingId = parents.getDataID(i);
-        int parentId = parents.getParentID(i);
+        Integer parentId = parents.getParentID(i);
         cachePossibles.add(parentId);
 
         // TODO: Check for an interrupted traversal in this loop?
         while (!matchParent(matchingId, parentId, cachePossibles,
             descendants)) {
-          parentId = getParent(parentId);
+          parentId = getParent(matchingId, parentId);
+          if (parentId == null) {
+            break;
+          }
           cachePossibles.add(parentId);
         }
       }
@@ -141,10 +148,10 @@ class HybridGenealogist extends Genealogist {
       int parentId = parents.toInteger(i, "ParentID");
       if (parentId == -1 && parents.isDefined(i, "StepParentID")) {
         parentId = parents.toInteger(i, "StepParentID");
-        // FIXME: Leave this in, or wrap it in a config property?
-        if (LOGGER.isLoggable(Level.FINEST))
+        if (LOGGER.isLoggable(Level.FINEST)) {
           LOGGER.finest("DESCENDANTS: Substituting " + parentId
               + " as stepparent for " + getDataID(i));
+        }
       }
       return parentId;
     }

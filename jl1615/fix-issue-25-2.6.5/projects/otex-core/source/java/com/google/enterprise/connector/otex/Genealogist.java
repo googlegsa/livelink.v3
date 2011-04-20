@@ -88,6 +88,9 @@ class Genealogist {
     return set;
   }
 
+  /** The logging level for orphan nodes in the Livelink database. */
+  protected static final Level LOG_ORPHANS_LEVEL = Level.WARNING;
+
   /** The Livelink client to use to execute SQL queries. */
   protected final Client client;
 
@@ -146,18 +149,15 @@ class Genealogist {
       // We do not cache the matches, which are probably mostly documents.
       ArrayList<Integer> cachePossibles = new ArrayList<Integer>();
       final int matchingId = matching.toInteger(i, "DataID");
-      int parentId = matchingId;
+      Integer parentId = matchingId;
 
       // TODO: Check for an interrupted traversal in this loop?
       while (!matchParent(matchingId, parentId, cachePossibles, descendants)) {
-        parentId = getParent(parentId);
-        cachePossibles.add(parentId);
-
-        // FIXME: Leave this in, or wrap it in a config property?
-        if (LOGGER.isLoggable(Level.FINEST)) {
-          LOGGER.finest("DESCENDANTS: Checking " + matchingId + " parent: "
-              + parentId);
+        parentId = getParent(matchingId, parentId);
+        if (parentId == null) {
+          break;
         }
+        cachePossibles.add(parentId);
       }
     }
   }
@@ -165,7 +165,7 @@ class Genealogist {
   /**
    * Matches the given parent against the included and excluded nodes.
    *
-   * @param matchingId the original node
+   * @param matchingId the original node or nodes
    * @param parentId the current ancestor node to match
    * @param cachePossibles the ancestors between the two
    * @param descendants a buffer to write the {@code matchingId} and
@@ -211,9 +211,6 @@ class Genealogist {
       descendants.append(matchingId).append(',');
       return true;
     } else {
-      // FIXME: Leave this in, or wrap it in a config property?
-      if (LOGGER.isLoggable(Level.FINEST))
-        LOGGER.finest("DESCENDANTS: No match for " + parentId);
       return false;
     }
   }
@@ -221,22 +218,53 @@ class Genealogist {
   /**
    * Gets the ParentID of the given node.
    *
+   * @param matchingId the original descendent node or nodes
    * @param objectID the object ID of the node
    * @return the parent ID of the node
    */
-  protected int getParent(int objectId) throws RepositoryException {
-    // Excluding -1 and then adding it back again is not
-    // pointless. Without the exclusion, the query might return
-    // two results, but one of them would be -1 and is ignorable
-    // (the other result is the real parent). The exclusion means
-    // that we only get the real parent back, but it also means
-    // that the query won't return a -1 as the only result, so we
-    // have to add that back again.
+  protected Integer getParent(Object matchingId, int objectId)
+      throws RepositoryException {
+    // Get the parent of the current node, and also check for the
+    // parent of the related node (with a negated object ID) in the
+    // case of volumes such as projects. The query can return 0, 1, or
+    // 2 results, since we are asking for the parents of two nodes,
+    // one or both of which might not exist.
     queryCount++;
     ClientValue parent = client.ListNodes(
-        "DataID in (" + objectId + "," + -objectId + ") and ParentID <> -1",
+        "DataID in (" + objectId + "," + -objectId + ")",
         "DTree", new String[] { "ParentID" });
-    return (parent.size() == 0) ? -1 : parent.toInteger(0, "ParentID");
+    switch (parent.size()) {
+      case 0:
+        // The nodes do not exist.
+        logOrphans(matchingId, objectId);
+        return null;
+      case 1:
+        // The usual case.
+        return parent.toInteger(0, "ParentID");
+      case 2:
+        // Both nodes exist, so one is a volume with a parent of -1.
+        // Return the other one.
+        if (parent.toInteger(0, "ParentID") != -1) {
+          return parent.toInteger(0, "ParentID");
+        } else {
+          return parent.toInteger(1, "ParentID");
+        }
+      default:
+        throw new AssertionError(String.valueOf(parent.size()));
+    }
+  }
+
+  /**
+   * Logs a warning for orphans discovered in the hierarchy.
+   *
+   * @param orphans the discovered descendants of the missing node
+   * @param parentId the missing node
+   */
+  protected final void logOrphans(Object orphans, int parentId) {
+    // We've already detected an orphan at this point, which is very
+    // rare, so don't bother checking the logging level.
+    LOGGER.log(LOG_ORPHANS_LEVEL, "DESCENDANTS: Excluding " + orphans
+        + ", ancestor " + parentId + " does not exist.");
   }
 
   /**

@@ -82,10 +82,9 @@ class BatchGenealogist extends HybridGenealogist {
 
       // TODO: Check for an interrupted traversal in this loop?
       while (true) {
-        // FIXME: Leave this in, or wrap it in a config property?
         if (LOGGER.isLoggable(Level.FINEST))
           LOGGER.finest("DESCENDANTS: Checking parents: " + tree.getParents());
-        
+
         // Check each parent entry in the current tree, removing nodes
         // that are found from the tree.
         Iterator<Map.Entry<Integer, Node>> it = tree.entrySet().iterator();
@@ -101,18 +100,19 @@ class BatchGenealogist extends HybridGenealogist {
         if (tree.isEmpty())
           break;
 
-        // FIXME: Leave this in, or wrap it in a config property?
-        if (LOGGER.isLoggable(Level.FINEST))
-          LOGGER.finest("DESCENDANTS: Remaining parents: " + tree.getParents());
-
         // Get the next level of parents. The merge moves the nodes up
-        // one level in the tree.
+        // one level in the hierarchy. We merge into a new tree so that
+        // orphan nodes (with missing parents) are left behind rather
+        // than staying in the tree forever.
+        Tree newTree = new Tree();
         parents = getParents(tree.getParents());
         for (int i = 0; i < parents.size(); i++) {
           int objectId = parents.getDataID(i);
           int parentId = parents.getParentID(i);
-          tree.merge(objectId, parentId);
+          tree.merge(objectId, parentId, newTree);
         }
+        logOrphans(tree);
+        tree = newTree;
       }
     }
   }
@@ -212,26 +212,36 @@ class BatchGenealogist extends HybridGenealogist {
      * @param objectId the object ID of the existing node
      * @param parentId the ID of the parent node to merge into
      */
-    public void merge(int objectId, int parentId) {
-      // FIXME: Leave this in, or wrap it in a config property?
-      if (LOGGER.isLoggable(Level.FINEST)) {
-        LOGGER.finest("DESCENDANTS: Merging " + objectId + " into "
-            + parentId);
-      }
-
+    public void merge(int objectId, int parentId, Tree target) {
       Node old = map.get(objectId);
       assert old != null;
-      Node n = map.get(parentId);
+      Node n = target.map.get(parentId);
       if (n == null) {
         n = old;
         n.addPossible(parentId);
-        map.put(parentId, n);
+        target.map.put(parentId, n);
       } else {
         assert n.getPossibles().contains(parentId);
         n.addPossibles(old.getPossibles());
         n.addMatches(old.getMatches());
       }
+
+      // We do not functionally have to remove nodes from this tree,
+      // but it helps detect unmerged (that is, orphan) nodes.
       map.remove(objectId);
+    }
+  }
+
+  /**
+   * Logs a warning for orphans discovered in the hierarchy.
+   *
+   * @param tree the tree containing orphans
+   */
+  private void logOrphans(Tree tree) {
+    if (LOGGER.isLoggable(LOG_ORPHANS_LEVEL)) {
+      for (Map.Entry<Integer, Node> entry : tree.entrySet()) {
+        logOrphans(entry.getValue().getMatches(), entry.getKey());
+      }
     }
   }
 }
