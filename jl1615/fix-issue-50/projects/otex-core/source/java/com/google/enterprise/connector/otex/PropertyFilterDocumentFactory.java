@@ -60,7 +60,7 @@ public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
    * @throws PatternSyntaxException if {@code pattern}'s syntax is invalid
    */
   public PropertyFilterDocumentFactory(String propertyName, String pattern,
-      String replacement, boolean overwrite) throws PatternSyntaxException {
+       String replacement) throws PatternSyntaxException {
     Preconditions.checkArgument(!Strings.isNullOrEmpty(propertyName),
                                 "propertyName may not be null or empty");
     Preconditions.checkArgument(!Strings.isNullOrEmpty(pattern),
@@ -68,7 +68,6 @@ public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
     this.propertyName = propertyName;
     this.replacement = Strings.nullToEmpty(replacement);
     this.pattern = Pattern.compile(pattern);
-    this.overwrite = overwrite;
   }
 
   /* @Override */
@@ -120,14 +119,13 @@ public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
    * @param property the source {@link Property}
    */
   /* TODO (bmj): Try to restrict this to only StringValue instances? */
-  protected class AdditionalValuePropertyFilter implements Property {
+  protected class PropertyFilter implements Property {
     private final Property source;
     private Value cachedValue = null;
 
     /**
      * Constructs a {@link Propertyfilter} that may modify the
-     * {@link Value Values} of the {@code source} Property.  The
-     * modified values are supplied in addition to the orignal values.
+     * {@link Value Values} of the {@code source} Property.
      *
      * @param source the {@link Property} to filter
      */
@@ -156,48 +154,6 @@ public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
           if (!original.equals(modified)) {
             // Next time around, return the modified value.
             cachedValue = Value.getStringValue(modified);
-          }
-        }
-      }
-      return value;
-    }
-  }
-
-  /**
-   * A {@link Property} implementation that filters all {@link Value Values},
-   * replacing any matching occurances of the {@code pattern} regular expression
-   * with the designated {@code replacement}.  This implementation overwrites
-   * the original with the modified values.
-   *
-   * @param property the source {@link Property}
-   */
-  /* TODO (bmj): Try to restrict this to only StringValue instances? */
-  protected class OverwritingValuePropertyFilter implements Property {
-    private final Property source;
-    private Value cachedValue = null;
-
-    /**
-     * Constructs a {@link Propertyfilter} that may modify the
-     * {@link Value Values} of the {@code source} Property.
-     *
-     * @param source the {@link Property} to filter
-     */
-    public OverwritingValuePropertyFilter(Property source) {
-      this.source = source;
-    }
-
-    /* @Override */
-    public Value nextValue() throws RepositoryException {
-      // Retrieve the Property's Value.  Replace any regions matching
-      // the regular expression pattern with the replacement string.
-      Value value = source.nextValue();
-      if (value != null) {
-        String original = value.toString();
-        if (!Strings.isNullOrEmpty(original)) {
-          String modified = pattern.matcher(original).replaceAll(replacement);
-          if (!original.equals(modified)) {
-            // Next time around, return the modified value.
-            return Value.getStringValue(modified);
           }
         }
       }
