@@ -171,7 +171,7 @@ class LivelinkDocumentList implements DocumentList {
       try {
         Document doc = docIterator.nextDocument();
         docsReturned++;
-        return doc;
+        return connector.getFilterDocumentFactory().newFilterDocument(doc);
       } catch (LivelinkIOException e) {
         checkpoint.restore();
         if (docsReturned > 0) {

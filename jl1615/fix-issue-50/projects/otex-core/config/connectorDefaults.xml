@@ -128,6 +128,13 @@
                   value="${traversalUsername}"/>
         <property name="includedLocationNodes"
                   value="${includedLocationNodes}"/>
+
+        <property name="filterDocumentFactory">
+            <bean class="com.google.enterprise.connector.otex.FilterDocumentChain">
+                <constructor-arg><list></list></constructor-arg>
+            </bean>
+        </property>
+
         @constructor-arg@
     </bean>
 

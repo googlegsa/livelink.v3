@@ -143,6 +143,17 @@ public class LivelinkConnector implements Connector {
    */
   private ClientFactory authenticationClientFactory;
 
+  /**
+   * The {@link FilterDocumentFactory} is used to construct
+   * {@code Document} instances that act as filters on a source
+   * document.  Document filters may add, remove, or modify
+   * {@code Properties}.  The FilterDocumentFactory set here
+   * is typically a {@link FilterDocumentChain} - a chain of
+   * FilterDocumentFactories that is used to construct a
+   * Document manipulation pipeline.
+   */
+  private FilterDocumentFactory filterDocumentFactory;
+
   /** Enables or disables HTTP tunneling. */
   private boolean useHttpTunneling;
 
@@ -1698,6 +1709,22 @@ public class LivelinkConnector implements Connector {
     if (useSeparateAuthentication && authenticationClientFactory != null)
       return authenticationClientFactory;
     return clientFactory;
+  }
+
+  /**
+   * Sets the {@link FilterDocumentFactory} for this Connector to
+   * set up a pipeline of Document manipulation filters.
+   */
+  public void setFilterDocumentFactory(FilterDocumentFactory factory) {
+    filterDocumentFactory = factory;
+  }
+
+  /**
+   * Gets the {@link FilterDocumentFactory} for this Connector to
+   * set up a pipeline of Document manipulation filters.
+   */
+  FilterDocumentFactory getFilterDocumentFactory() {
+    return filterDocumentFactory;
   }
 
   /**
