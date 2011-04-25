@@ -1713,10 +1713,28 @@ public class LivelinkConnector implements Connector {
 
   /**
    * Sets the {@link FilterDocumentFactory} for this Connector to
-   * set up a pipeline of Document manipulation filters.
+   * manufacture Document manipulation filters.
+   *
+   * @param obj an Object that may be either a {@link FilterDocumentFactory}
+   *            or a {@code List} of them.
    */
-  public void setFilterDocumentFactory(FilterDocumentFactory factory) {
-    filterDocumentFactory = factory;
+  @SuppressWarnings("unchecked")
+  public void setFilterDocumentFactory(Object obj) {
+    if (obj == null) {
+      // Empty chain does nothing.
+      filterDocumentFactory = new FilterDocumentChain();
+    } else if (obj instanceof FilterDocumentFactory) {
+      filterDocumentFactory = (FilterDocumentFactory) obj;
+    } else if (obj instanceof List) {
+      // TODO: verify that the members of the list are FilterDocumentFactory?
+      filterDocumentFactory =
+        new FilterDocumentChain((List<FilterDocumentFactory>) obj);
+    }
+    if (LOGGER.isLoggable(Level.CONFIG)) {
+      // TODO: Better log message.
+      LOGGER.config("DOCUMENT FILTER:"
+                    + filterDocumentFactory.getClass().getName());
+    }
   }
 
   /**
