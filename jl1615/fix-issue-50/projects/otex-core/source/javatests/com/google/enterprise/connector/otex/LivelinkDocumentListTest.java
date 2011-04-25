@@ -50,6 +50,8 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setIncludedCategories("all,searchable");
     connector.setExcludedCategories("none");
 
+    connector.setFilterDocumentFactory(new FilterDocumentChain());
+
     if (publicContentUsername != null) {
       connector.setPublicContentUsername(publicContentUsername);
       connector.setPublicContentAuthorizationManager(
