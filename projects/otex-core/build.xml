@@ -65,13 +65,14 @@
     <javac srcdir="${src}" destdir="${classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
+           includeAntRuntime="false">
       <compilerarg line="-Xlint -Xlint:-serial"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <pathelement location="${spi.jarfile}" />
         <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/*.jar" />
+          <include name="prod/*.jar" />
         </fileset>
       </classpath>
     </javac>
@@ -82,15 +83,15 @@
     <javac srcdir="${tests.src}" destdir="${tests.classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
+           includeAntRuntime="false">
       <!-- CM JAR Class-Path references are not available. -->
       <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/h2.jar" />
-          <include name="**/junit.jar" />
-          <include name="**/spring.jar" />
+          <include name="prod/*.jar" />
+          <include name="tests/junit.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector-tests.jar" />
@@ -125,7 +126,8 @@
       <assertions><enable/></assertions>
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/*.jar" />
+          <include name="prod/*.jar" />
+          <include name="tests/junit.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector-tests.jar" />

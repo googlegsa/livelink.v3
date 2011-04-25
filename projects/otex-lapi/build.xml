@@ -78,7 +78,8 @@
     <javac srcdir="${src}" destdir="${classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
+           includeAntRuntime="false">
       <compilerarg line="-Xlint -Xlint:-serial"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
@@ -99,15 +100,18 @@
 
   <path id="compile_tests_path">
         <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/spring.jar" />
-          <include name="**/junit.jar" />
+          <include name="prod/*.jar" />
+          <include name="tests/junit.jar" />
         </fileset>
         <path refid="base_tests_path" />
   </path>
 
   <path id="run_tests_path">
+        <!-- We need the javax.jcr package, but we don't know the JAR
+             file name, so we include everything in tests. -->
         <fileset dir="${thirdparty.jar.dir}">
-          <include name="**/*.jar" />
+          <include name="prod/*.jar" />
+          <include name="tests/*.jar" />
         </fileset>
         <pathelement location="${tests.classes}" />
         <path refid="base_tests_path" />
@@ -119,7 +123,8 @@
     <javac srcdir="${tests.src}" destdir="${tests.classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
+           includeAntRuntime="false">
       <!-- CM JAR Class-Path references are not available. -->
       <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
@@ -170,7 +175,8 @@
     <javac srcdir="${tools.src}" destdir="${tools.classes}" 
            debug="${COMPILE_DEBUG_FLAG}" 
            debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}">
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
+           includeAntRuntime="false">
       <!-- CM JAR Class-Path references are not available. -->
       <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
