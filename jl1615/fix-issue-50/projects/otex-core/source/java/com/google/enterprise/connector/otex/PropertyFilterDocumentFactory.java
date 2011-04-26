@@ -22,6 +22,8 @@ import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -30,6 +32,10 @@ import java.util.regex.PatternSyntaxException;
  * designed to alter the values of a specified {@link Property}.
  */
 public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
+  /** The logger for this class. */
+  private static final Logger LOGGER =
+      Logger.getLogger(PropertyFilterDocumentFactory.class.getName());
+
   /** The field name to look for. */
   protected String propertyName;
 
@@ -73,6 +79,11 @@ public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
   /* @Override */
   public Document newFilterDocument(Document source) {
     return new PropertyFilterDocument(source);
+  }
+
+  @Override
+  public String toString() {
+    return getClass().getName() + ":" + propertyName;
   }
 
   /**
@@ -152,6 +163,11 @@ public class PropertyFilterDocumentFactory implements FilterDocumentFactory {
         if (!Strings.isNullOrEmpty(original)) {
           String modified = pattern.matcher(original).replaceAll(replacement);
           if (!original.equals(modified)) {
+            if (LOGGER.isLoggable(Level.FINEST)) {
+              LOGGER.finest("FILTER PROPERTY: " + propertyName + " = "
+                  + modified);
+            }
+
             // Next time around, return the modified value.
             cachedValue = Value.getStringValue(modified);
           }

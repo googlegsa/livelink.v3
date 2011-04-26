@@ -53,6 +53,11 @@ public class PropertyAliasFilterDocumentFactory implements FilterDocumentFactory
     return new PropertyAliasFilterDocument(source);
   }
 
+  @Override
+  public String toString() {
+    return getClass().getName() + ":" + aliasMap;
+  }
+
   /**
    * A {@link Document} implementation provides aliases to {@link Property}
    * names.

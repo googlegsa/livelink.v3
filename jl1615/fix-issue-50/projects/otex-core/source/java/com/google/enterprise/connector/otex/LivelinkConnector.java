@@ -1731,9 +1731,7 @@ public class LivelinkConnector implements Connector {
         new FilterDocumentChain((List<FilterDocumentFactory>) obj);
     }
     if (LOGGER.isLoggable(Level.CONFIG)) {
-      // TODO: Better log message.
-      LOGGER.config("DOCUMENT FILTER:"
-                    + filterDocumentFactory.getClass().getName());
+      LOGGER.config("FILTER DOCUMENT FACTORY: " + filterDocumentFactory);
     }
   }
 

@@ -77,4 +77,9 @@ public class FilterDocumentChain implements FilterDocumentFactory {
     }
     return source;
   }
+
+  @Override
+  public String toString() {
+    return factories.toString();
+  }
 }
