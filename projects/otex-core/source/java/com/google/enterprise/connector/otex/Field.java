@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,10 @@ package com.google.enterprise.connector.otex;
  * not returned as a property to the caller.
  */
 final class Field {
-    /** The WebNodes column name. */
+    /** The WebNodes select expression. */
+    public final String selectExpression;
+
+    /** The WebNodes recarray column name. */
     public final String fieldName;
 
     /**
@@ -32,12 +35,24 @@ final class Field {
 
 
     /**
+     * Creates a field with a select list expression and no
+     * corresponding property names.
+     *
+     * @param selectExpression a select list expression
+     * @param fieldName a recarray field name
+     */
+    public static Field fromExpression(String selectExpression,
+            String fieldName) {
+        return new Field(selectExpression, fieldName, new String[0]);
+    }
+
+    /**
      * Creates a field with no corresponding property names.
      *
      * @param fieldName the recarray field name
      */
     public Field(String fieldName) {
-        this(fieldName, new String[0]);
+        this(fieldName, fieldName, new String[0]);
     }
 
     /**
@@ -47,7 +62,7 @@ final class Field {
      * @param propertyName the output property name
      */
     public Field(String fieldName, String propertyName) {
-        this(fieldName, new String[] { propertyName });
+        this(fieldName, fieldName, new String[] { propertyName });
     }
 
     /**
@@ -60,7 +75,8 @@ final class Field {
      */
     /* Close enough to varargs for our purposes. */
     public Field(String fieldName, String propertyName1, String propertyName2) {
-        this(fieldName, new String[] { propertyName1, propertyName2 });
+        this(fieldName, fieldName,
+            new String[] { propertyName1, propertyName2 });
     }
 
     /**
@@ -71,13 +87,17 @@ final class Field {
      * @param propertyNames the output property names, which may be
      * an empty array but not <code>null</code>
      */
-    private Field(String fieldName, String[] propertyNames) {
+    private Field(String selectExpression, String fieldName,
+            String[] propertyNames) {
+        assert selectExpression != null;
         assert fieldName != null;
+        assert selectExpression.endsWith(fieldName) : fieldName;
 
         // This is obvious by inspection here, but code elsewhere
         // depends on this.
         assert propertyNames != null : fieldName;
-        
+
+        this.selectExpression = selectExpression;
         this.fieldName = fieldName;
         this.propertyNames = propertyNames;
     }

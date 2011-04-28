@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import java.lang.ref.WeakReference;
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,35 +25,21 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 
 /**
  * A mock factory for the facade interface that encapsulates the Livelink API.
- * This implementation ignores the configuration properties.
+ * This implementation caches the configuration properties in a map that can
+ * be retrieved by the tests.
  */
 public class MockClientFactory implements ClientFactory {
-  /** The instance constructed most recently. */
-  private static WeakReference<MockClientFactory> lastInstance;
+  private final HashMap<String, Object> values;
 
-  /**
-   * Gets the most recently constructed instance. This is intended
-   * for use in single threaded tests. This only works because these
-   * tests don't currently any of the separate authentication
-   * properties. No exception is thrown if multiple instances exist,
-   * because it might not be an error for a previous instance to
-   * remain uncollected.
-   *
-   * @return the more recently constructed instance, or
-   * <code>null</code> if there are no uncollected instances
-   */
-  public static synchronized MockClientFactory getInstance() {
-    return lastInstance.get();
+  private final Connection jdbcConnection;
+
+  public MockClientFactory() {
+    this(null);
   }
 
-  private HashMap<String, Object> values;
-    
-  public MockClientFactory() {
-    synchronized (MockClientFactory.class) {
-      lastInstance = new WeakReference<MockClientFactory>(this);
-    }
-
-    values = new HashMap<String, Object>();
+  public MockClientFactory(Connection jdbcConnection) {
+    this.values = new HashMap<String, Object>();
+    this.jdbcConnection = jdbcConnection;
   }
 
   /**
@@ -64,7 +51,7 @@ public class MockClientFactory implements ClientFactory {
   public Map<String, Object> getValues() {
     return values;
   }
-    
+
   /** {@inheritDoc} */
   public void setServer(String value) {
     values.put("setServer", value);
@@ -147,11 +134,11 @@ public class MockClientFactory implements ClientFactory {
 
   /** {@inheritDoc} */
   public Client createClient() {
-    return new MockClient();
+    return new MockClient(jdbcConnection);
   }
 
   /** {@inheritDoc} */
   public Client createClient(String username, String password) {
-    return new MockClient();
+    return new MockClient(jdbcConnection);
   }
 }

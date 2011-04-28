@@ -10,9 +10,4 @@
         <!-- SET CUSTOM PROPERTY VALUES HERE -->
 
     </bean>
-
-    <!-- EDIT THIS BEAN DEFINTION WITH CAUTION -->
-    <bean id="authenticationManager"
-          class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"
-          scope="prototype"/>
 </beans>

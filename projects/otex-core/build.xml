@@ -88,6 +88,7 @@
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
+          <include name="**/h2.jar" />
           <include name="**/junit.jar" />
           <include name="**/spring.jar" />
         </fileset>

@@ -31,13 +31,12 @@ import java.util.Date;
 
 public class LivelinkDocumentListTest extends TestCase {
   /**
-   * Creates a LivelinkDocumentList containing one document for the tests.
+   * Creates a connector instance.
    *
-   * @param objectId the object ID (DataID) for the returned document,
-   *     usually one of the values from MockConstants
-   * @param dataSize the file size (DataSize) for the returned document
+   * @param publicContentUsername an optional parameter, may be null
+   * @return a new LivelinkConnector instance
    */
-  private DocumentList getObjectUnderTest(int objectId, int... dataSize)
+  private LivelinkConnector getConnector(String publicContentUsername)
       throws RepositoryException {
     LivelinkConnector connector = new LivelinkConnector(
         "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
@@ -50,7 +49,27 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setShowHiddenItems("true");
     connector.setIncludedCategories("all,searchable");
     connector.setExcludedCategories("none");
+
+    if (publicContentUsername != null) {
+      connector.setPublicContentUsername(publicContentUsername);
+      connector.setPublicContentAuthorizationManager(
+          new LivelinkAuthorizationManager());
+    }
+
     connector.login();
+    return connector;
+  }
+
+  /**
+   * Creates a LivelinkDocumentList containing one document for the tests.
+   *
+   * @param objectId the object ID (DataID) for the returned document,
+   *     usually one of the values from MockConstants
+   * @param dataSize the file size (DataSize) for the returned document
+   */
+  private DocumentList getObjectUnderTest(int objectId, int... dataSize)
+      throws RepositoryException {
+    LivelinkConnector connector = getConnector(null);
 
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
@@ -139,5 +158,59 @@ public class LivelinkDocumentListTest extends TestCase {
     } catch (RepositoryDocumentException e) {
       assertNotNull(list.checkpoint());
     }
+  }
+
+  /** Tests that the client must not be null. */
+  public void testNullConstructorArgs_client() throws RepositoryException {
+    LivelinkConnector connector = getConnector(null);
+
+    try {
+      DocumentList list = new LivelinkDocumentList(connector,
+          null, null, null, null, null, null, null, null);
+      fail("Expected a NullPointerException");
+    } catch (NullPointerException e) {
+    }
+  }
+
+  /** Tests that the checkpoint must not be null. */
+  public void testNullConstructorArgs_checkpoint() throws RepositoryException {
+    LivelinkConnector connector = getConnector(null);
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+
+    DocumentList list = new LivelinkDocumentList(connector,
+        client, null, null, null, null, null, null, null);
+    try {
+      Document next = list.nextDocument();
+      fail("Expected a NullPointerException");
+    } catch (NullPointerException e) {
+    }
+  }
+
+  /** Tests that all the other constructs arguments can be null. */
+  public void testNullConstructorArgs_others() throws RepositoryException {
+    LivelinkConnector connector = getConnector(null);
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    Checkpoint checkpoint = new Checkpoint();
+
+    DocumentList list = new LivelinkDocumentList(connector,
+        client, null, null, null, null, null, checkpoint, null);
+    Document next = list.nextDocument();
+    assertNull(next);
+  }
+
+  /** Tests a null recArray with a non-null publicContentUsername. */
+  public void testNullConstructorArgs_publicContentUsername()
+      throws RepositoryException {
+    LivelinkConnector connector = getConnector("anonymous");
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    Checkpoint checkpoint = new Checkpoint();
+
+    DocumentList list = new LivelinkDocumentList(connector,
+        client, null, null, null, null, null, checkpoint, null);
+    Document next = list.nextDocument();
+    assertNull(next);
   }
 }

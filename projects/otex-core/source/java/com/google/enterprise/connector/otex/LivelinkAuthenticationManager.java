@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import com.google.enterprise.connector.otex.client.ClientValue;
  */
 class LivelinkAuthenticationManager
         implements AuthenticationManager, ConnectorAware  {
-
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkAuthenticationManager.class.getName());
@@ -54,11 +53,15 @@ class LivelinkAuthenticationManager
      *
      * @param connector the current LivelinkConnector
      */
-    public void setConnector(Connector connector) {
+    /*
+     * This method and the others in this class are synchronized because
+     * initialization and use happen in different threads, and we do not
+     * control the threads.
+     */
+    public synchronized void setConnector(Connector connector) {
         this.clientFactory =
             ((LivelinkConnector) connector).getAuthenticationClientFactory();
     }
-
 
     /**
      * Authenticates the given user for access to the back-end
@@ -71,7 +74,8 @@ class LivelinkAuthenticationManager
      * @throws RepositoryException if an exception occurred during
      * authentication
      */
-    public AuthenticationResponse authenticate(AuthenticationIdentity identity)
+    public synchronized AuthenticationResponse authenticate(
+            AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("AUTHENTICATE: " + identity.getUsername());

@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 import java.util.Set;
 
 import com.google.enterprise.connector.spi.AuthenticationManager;
+import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
@@ -217,14 +218,20 @@ public class LivelinkConnector implements Connector {
   /** The set of Subtypes for which we index hidden items. */
   private HashSet<Object> hiddenItemsSubtypes = null;
 
-  /** The <code>ContentHandler</code> implementation class. */
+  /** The <code>ContentHandler</code> implementation class name. */
   private String contentHandler;
 
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
 
-  /** Whether to track deleted items, sending delete notification to GSA */
+  /** Whether to track deleted items, sending delete notification to GSA. */
   private boolean trackDeletedItems = true;
+
+  /** Whether to use DTreeAncestors table instead of a slower method. */
+  private boolean useDTreeAncestors;
+
+  /** The <code>Genealogist</code> implementation class name. */
+  private String genealogist;
 
   /** The Livelink traverser client username. */
   private String username;
@@ -238,14 +245,20 @@ public class LivelinkConnector implements Connector {
   /** The httpPassword. */
   private String httpPassword;
 
-  /** The Livelink Public Content client username. */
+  /** The Livelink public content client username. */
   private String publicContentUsername;
 
-  /** The Livelink Public Content client display URL. */
+  /** The Livelink public content client display URL. */
   private String publicContentDisplayUrl;
 
   /** The authentication manager to use. */
   private AuthenticationManager authenticationManager;
+
+  /** The authorization manager to use. */
+  private AuthorizationManager authorizationManager;
+
+  /** The Livelink public content authorization manager to use. */
+  private LivelinkAuthorizationManager publicContentAuthorizationManager;
 
   /** Lowercase usernames hack. */
   private boolean tryLowercaseUsernames;
@@ -610,8 +623,7 @@ public class LivelinkConnector implements Connector {
           value = sanitizeListOfStrings((String) value).split(",");
           break;
         default:
-          throw new AssertionError("This can't happen (" +
-              valueType + ")");
+          throw new AssertionError("This can't happen (" + valueType + ")");
       }
 
       if ("default".equals(key))
@@ -974,8 +986,7 @@ public class LivelinkConnector implements Connector {
           excludedLocationNodes =
               sanitizeListOfIntegers(excludedLocationNodesParam);
           if (LOGGER.isLoggable(Level.CONFIG))
-            LOGGER.config("EXCLUDED NODE IDS: " +
-                excludedLocationNodes);
+            LOGGER.config("EXCLUDED NODE IDS: " + excludedLocationNodes);
         }
       });
   }
@@ -1171,6 +1182,8 @@ public class LivelinkConnector implements Connector {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
           includedCategoryIds = parseCategories(categories, "all,searchable");
+          if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("INCLUDED CATEGORIES: " + includedCategoryIds);
         }
       });
   }
@@ -1196,6 +1209,8 @@ public class LivelinkConnector implements Connector {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
           excludedCategoryIds = parseCategories(categories, "none");
+          if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("EXCLUDED CATEGORIES: " + excludedCategoryIds);
         }
       });
   }
@@ -1251,35 +1266,59 @@ public class LivelinkConnector implements Connector {
   public void setShowHiddenItems(final String hidden) {
     propertyValidators.add(new PropertyValidator() {
         void validate() {
-          hiddenItemsSubtypes = new HashSet<Object>();
-          String s = sanitizeListOfStrings(hidden);
+          hiddenItemsSubtypes = getHiddenItemsSubtypes(hidden);
+          if (LOGGER.isLoggable(Level.CONFIG))
+            LOGGER.config("HIDDEN ITEM SUBTYPES: " + hiddenItemsSubtypes);
 
-          // An empty set here indicates that no hidden
-          // content should be indexed.
-          if ((s == null) || (s.length() == 0) ||
-              "false".equalsIgnoreCase(s)) {
-            return;
-          }
-          String ids[] = s.split(",");
-          for (int i = 0; i < ids.length; i++) {
-            try {
-              // If it is an integer, it represents a Subtype.
-              hiddenItemsSubtypes.add(Integer.valueOf(ids[i]));
-            } catch (NumberFormatException e) {
-              // Otherwise, it should be one of the special keywords.
-              String word = ids[i].toLowerCase();
-              // "All" in the set means all hidden
-              // content will get indexed.
-              if ("true".equals(word) || "all".equals(word) ||
-                  "'all'".equals(word)) {
-                hiddenItemsSubtypes.add("all");
-              }
-              else
-                hiddenItemsSubtypes.add(word);
-            }
+          // Excluding hidden items requires the DTreeAncestors table.
+          // See issue 62.
+          if (!hiddenItemsSubtypes.contains("all")
+              && useDTreeAncestors == false) {
+            throw new ConfigurationException("useDTreeAncestors = false "
+                + "is not supported with showHiddenItems = " + hidden,
+                "requiredAncestors", new String[] { hidden });
           }
         }
       });
+  }
+
+  /**
+   * Transforms the {@code showHiddenItems} syntax to a set of subtypes.
+   *
+   * @param hidden comma-separated list of subtypes or special keywords.
+   * @see #setShowHiddenItems
+   */
+  /* @VisibleForTesting */
+  static HashSet<Object> getHiddenItemsSubtypes(String hidden) {
+    HashSet<Object> subtypes = new HashSet<Object>();
+    String s = sanitizeListOfStrings(hidden);
+
+    // An empty set here indicates that no hidden content should be indexed.
+    if (s.length() == 0 || "false".equalsIgnoreCase(s)) {
+      return subtypes;
+    }
+
+    String ids[] = s.split(",");
+    for (int i = 0; i < ids.length; i++) {
+      try {
+        // If it is an integer, it represents a Subtype.
+        subtypes.add(Integer.valueOf(ids[i]));
+      } catch (NumberFormatException e) {
+        // Otherwise, it should be one of the special keywords.
+        String word = ids[i].toLowerCase();
+        // "All" in the set means all hidden
+        // content will get indexed.
+        if ("true".equals(word) || "all".equals(word) ||
+            "'all'".equals(word)) {
+          subtypes.add("all");
+        }
+        else {
+          // FIXME: Why is this allowed?
+          subtypes.add(word);
+        }
+      }
+    }
+    return subtypes;
   }
 
   /**
@@ -1302,6 +1341,8 @@ public class LivelinkConnector implements Connector {
    * @param trackDeletedItems
    */
   public void setTrackDeletedItems(boolean trackDeletedItems) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("TRACK DELETED ITEMS: " + trackDeletedItems);
     this.trackDeletedItems = trackDeletedItems;
   }
 
@@ -1313,6 +1354,51 @@ public class LivelinkConnector implements Connector {
    */
   public boolean getTrackDeletedItems() {
     return this.trackDeletedItems;
+  }
+
+  /**
+   * Sets whether or not to use the DTreeAncestors table for hierarchy data.
+   *
+   * @param useDTreeAncestors <code>true</code> to use the DTreeAncestors
+   * table when necessary, or <code>false</code> to use a slower method
+   */
+  public void setUseDTreeAncestors(boolean useDTreeAncestors) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("USE DTREEANCESTORS: " + useDTreeAncestors);
+    this.useDTreeAncestors = useDTreeAncestors;
+  }
+
+  /**
+   * Gets whether or not to use the DTreeAncestors table for hierarchy data.
+   *
+   * @return <code>true</code> to use the DTreeAncestors
+   * table when necessary, or <code>false</code> to use a slower method
+   */
+  public boolean getUseDTreeAncestors() {
+    return useDTreeAncestors;
+  }
+
+  /**
+   * Sets the concrete implementation for the <code>Genealogist</code>
+   * interface.
+   *
+   * @param genealogist the fully-qualified name of the
+   * <code>Genealogist</code> implementation to use
+   */
+  public void setGenealogist(String genealogist) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("GENEALOGIST: " + genealogist);
+    this.genealogist = genealogist;
+  }
+
+  /**
+   * Gets the <code>Genealogist</code> implementation class name.
+   *
+   * @return the fully-qualified name of the <code>Genealogist</code>
+   * implementation to use
+   */
+  String getGenealogist() {
+    return genealogist;
   }
 
   /**
@@ -1511,7 +1597,7 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
-   * Gets the <code>ContentHandler</code> implementation class.
+   * Gets the <code>ContentHandler</code> implementation class name.
    *
    * @return the fully-qualified name of the <code>ContentHandler</code>
    * implementation to use
@@ -1530,6 +1616,42 @@ public class LivelinkConnector implements Connector {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("AUTHENTICATION MANAGER: " + authenticationManager);
     this.authenticationManager = authenticationManager;
+  }
+
+  /**
+   * Sets the AuthorizationManager implementation to use.
+   *
+   * @param authorizationManager an authorization manager
+   */
+  public void setAuthorizationManager(
+      AuthorizationManager authorizationManager) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("AUTHORIZATION MANAGER: " + authorizationManager);
+    this.authorizationManager = authorizationManager;
+  }
+
+  /**
+   * Sets the Livelink public content AuthorizationManager
+   * implementation to use.
+   *
+   * @param authorizationManager an authorization manager
+   */
+  public void setPublicContentAuthorizationManager(
+      LivelinkAuthorizationManager authorizationManager) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("PUBLIC CONTENT AUTHORIZATION MANAGER: "
+          + authorizationManager);
+    this.publicContentAuthorizationManager = authorizationManager;
+  }
+
+  /**
+   * Gets the Livelink public content AuthorizationManager
+   * implementation to use.
+   *
+   * return an initialized authorization manager
+   */
+  public LivelinkAuthorizationManager getPublicContentAuthorizationManager() {
+    return publicContentAuthorizationManager;
   }
 
   /**
@@ -1588,14 +1710,14 @@ public class LivelinkConnector implements Connector {
    * Connector Manager, this method needs to not be a Spring
    * init-method, because that leads to Spring instantiation
    * failures that are not properly handled.
+   * TODO: Figure out if that is still true.
    */
   private void init() throws RepositoryException {
-    // Make sure we are at least CM v 1.3 (google:title property
-    // first appears in 1.3).
+    // Make sure we have at least CM v 2.6.6 (google:folder property
+    // first appears in 2.6.6).
     try {
-      if (SpiConstants.PROPNAME_TITLE != null) {
-      }
-    } catch (java.lang.NoClassDefFoundError e) {
+      SpiConstants.class.getDeclaredField("PROPNAME_FOLDER");
+    } catch (java.lang.NoSuchFieldException e) {
       LOGGER.severe("This connector requires a newer version of the " +
           "Connector Manager");
       throw new ConfigurationException("This connector requires a newer" +
@@ -1620,6 +1742,10 @@ public class LivelinkConnector implements Connector {
     // connector is fully configured when used here.
     if (authenticationManager instanceof ConnectorAware)
       ((ConnectorAware) authenticationManager).setConnector(this);
+    if (authorizationManager instanceof ConnectorAware)
+      ((ConnectorAware) authorizationManager).setConnector(this);
+    if (publicContentAuthorizationManager != null)
+      publicContentAuthorizationManager.setConnector(this);
   }
 
   /**
@@ -1684,8 +1810,8 @@ public class LivelinkConnector implements Connector {
     // the LL database.
     if (includedLocationNodes != null &&
         includedLocationNodes.length() > 0) {
-      String ancestorNodes = LivelinkTraversalManager.getAncestorNodes(
-          includedLocationNodes);
+      String ancestorNodes =
+          Genealogist.getAncestorNodes(includedLocationNodes);
       String query = "DataID in (select DataID from DTreeAncestors " +
           "where AncestorID in (" + ancestorNodes + ")) " +
           "or DataID in (" + includedLocationNodes + ")";
@@ -1858,16 +1984,18 @@ public class LivelinkConnector implements Connector {
 
     // Check first to see if we are going to need the
     // DTreeAncestors table.
-    if (!hiddenItemsSubtypes.contains("all") ||
-        (includedLocationNodes != null &&
-            includedLocationNodes.length() > 0) ||
-        (excludedLocationNodes != null &&
-            excludedLocationNodes.length() > 0)) {
+    if (useDTreeAncestors &&
+        (!hiddenItemsSubtypes.contains("all") ||
+            (includedLocationNodes != null &&
+                includedLocationNodes.length() > 0) ||
+            (excludedLocationNodes != null &&
+                excludedLocationNodes.length() > 0))) {
       validateDTreeAncestors(client);
       validateIncludedLocationStartDate(client);
       validateEnterpriseWorkspaceAncestors(client);
     }
 
-    return new LivelinkSession(this, clientFactory, authenticationManager);
+    return new LivelinkSession(this, clientFactory, authenticationManager,
+        authorizationManager);
   }
 }
