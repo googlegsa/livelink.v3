@@ -11,6 +11,59 @@ Site for the current list of known issues and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 2.6.10, Apr 28, 2010
+============================
+
+Introduction
+------------
+This is an upgrade release with some enhancements. Users of previous
+releases are encouraged to review the changes below to determine
+whether to upgrade.
+
+Summary of Changes
+------------------
+For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.6.10
+
+  * Fixed issue 25: Provide an indexing option that does not use
+    DTreeAncestors. Added the useDTreeAncestors advanced configuration
+    property, which is true by default.
+  * Fixed issue 64: Authorization could fail against case-sensitive
+    SQL Server.
+  * Fixed issue 66: Expose a pluggable AuthorizationManager. Added the
+    authorizationManager and publicContentAuthorizationManager
+    advanced configuration properties, which use the built-in
+    LivelinkAuthorizationManager by default.
+  * Fixed issue 4255719: A version file DataSize of -1 triggered a
+    Livelink API bug and prevented traversal. LAPI cannot parse a
+    server response that includes a negative long integer. The problem
+    occurred with both Oracle and SQL Server databases.
+  * For Livelink shortcuts, added an entry to the displayActions
+    advanced configuration property to use objAction=open in the
+    display URL, rather than using the default action of "properties".
+  * For the Undelete workspace, added an entry to the displayActions
+    advanced configuration property to use objAction=browse in the
+    display URL, rather than using the default action of "properties".
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 2.6.6 may be
+used with this version. This version works with Connector Manager
+versions 2.6.6. Earlier versions of the Connector Manager will not
+work correctly with this version of the connector. This product is
+designed to function with Open Text Livelink versions 9.5 SP1, 9.6,
+9.7, and 9.7.1.
+
+Customers who have edited the authenticationManager definition in
+connectorInstance.xml must update those files. The
+authenticationManager property is now overridable. Please see the
+Advanced Configuration wiki page for details, and contact Google
+Enterprise Support if you need assistance.
+
+
 Release 2.6.6, Dec 7, 2010
 ==========================
 
@@ -50,7 +103,7 @@ Version Compatibility
 ---------------------
 Connector instances created using versions 1.0.3 through 2.6.0 may be
 used with this version. This version works with Connector Manager
-versions 2.6.6. Earlier versions of the Connector Manager will not
+version 2.6.6. Earlier versions of the Connector Manager will not
 work correctly with this version of the connector. This product is
 designed to function with Open Text Livelink versions 9.5 SP1, 9.6,
 9.7, and 9.7.1.
