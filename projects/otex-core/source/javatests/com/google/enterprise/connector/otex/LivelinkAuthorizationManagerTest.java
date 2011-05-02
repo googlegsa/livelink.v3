@@ -14,16 +14,20 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.Arrays;
-import java.util.List;
-
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
+import com.google.enterprise.connector.spi.AuthenticationIdentity;
+import com.google.enterprise.connector.spi.AuthorizationManager;
+import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 
 import junit.framework.TestCase;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Tests the construction of the queries for authorizing documents.
@@ -172,5 +176,49 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     // But another subtype does exist...
     assertEquals(9999, lam.getExcludedVolumeId(667, null, client));
+  }
+
+  /** Tests the default authorization manager. */
+  public void testDefaultAuthorizationManager() throws RepositoryException {
+    LivelinkAuthorizationManager pluggable =
+        new LivelinkAuthorizationManager();
+
+    afterInit();
+
+    assertNotNull(lam);
+    assertNotSame(pluggable, lam);
+  }
+
+  /** Tests configuring a custom authorization manager. */
+  public void testPluggableAuthorizationManager() throws RepositoryException {
+    LivelinkAuthorizationManager pluggable =
+        new LivelinkAuthorizationManager();
+    conn.setAuthorizationManager(pluggable);
+
+    afterInit();
+
+    assertSame(pluggable, lam);
+  }
+
+  /**
+   * Tests configuring a custom authorization manager that implements
+   * AuthorizationManager but does not extend
+   * LivelinkAuthorizationManager.
+   */
+  public void testPlainAuthorizationManager() throws RepositoryException {
+    AuthorizationManager pluggable = new AuthorizationManager() {
+        public Collection<AuthorizationResponse> authorizeDocids(
+            Collection<String> docids, AuthenticationIdentity identity) {
+          return Collections.<AuthorizationResponse>emptySet();
+        }
+      };
+    conn.setAuthorizationManager(pluggable);
+
+    Session sess = conn.login();
+    AuthorizationManager authZ = sess.getAuthorizationManager();
+
+    assertFalse(authZ.getClass().toString(),
+        authZ instanceof LivelinkAuthorizationManager);
+    assertSame(pluggable, authZ);
   }
 }

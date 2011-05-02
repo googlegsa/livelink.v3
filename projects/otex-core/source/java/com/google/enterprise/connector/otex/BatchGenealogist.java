@@ -178,6 +178,9 @@ class BatchGenealogist extends HybridGenealogist {
 
     /** Gets a comma-separated string of the current node IDs. */
     public String getParents() {
+      if (isEmpty())
+        return "";
+
       StringBuilder buffer = new StringBuilder();
       for (Integer parent : map.keySet()) {
         buffer.append(parent).append(',');

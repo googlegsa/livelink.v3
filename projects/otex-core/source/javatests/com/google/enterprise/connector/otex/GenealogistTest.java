@@ -208,4 +208,21 @@ public class GenealogistTest extends TestCase {
         1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000, 10100, },
         "1000,1001,1010,10100");
   }
+
+  /** Tests orphan nodes as the deepest nodes in the batch. */
+  public void testDeepestOrphans()
+      throws SQLException, RepositoryException {
+    // We include two orphaned nodes here because doing so found a
+    // ConcurrentModificationException bug during development.
+    insertRows(new int[][] {
+          { 4, -1 }, { 400, 40 }, { 4000, 400 },
+          { 5, -1 }, { 500, 50 }, { 5000, 500 } });
+
+    // It is critical here that the orphans be at least as deep
+    // (relative to the missing nodes) as the other matching nodes
+    // (relative to the included/excluded nodes).
+    testGenealogist("10", "20,30", new Integer[] {
+        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000, },
+        "1000,1001,1010");
+  }
 }

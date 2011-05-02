@@ -177,6 +177,8 @@ final class MockClient implements Client {
      * string constructed by LAPI.
      */
     private String getSqlQuery(String query, String view, String[] columns) {
+        assert columns != null && columns.length > 0;
+
         StringBuilder buffer = new StringBuilder();
         buffer.append("select ");
         for (String column : columns) {
