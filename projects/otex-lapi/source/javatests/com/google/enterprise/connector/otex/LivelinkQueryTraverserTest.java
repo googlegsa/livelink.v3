@@ -34,7 +34,6 @@ import com.google.enterprise.connector.traversal.BatchResult;
 import com.google.enterprise.connector.traversal.BatchSize;
 import com.google.enterprise.connector.traversal.QueryTraverser;
 import com.google.enterprise.connector.traversal.Traverser;
-import com.google.enterprise.connector.util.SystemClock;
 
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
@@ -99,11 +98,11 @@ public class LivelinkQueryTraverserTest extends TestCase {
             new DocPusherFactory(new MockFileFeedConnection(out));
 
         MockInstantiator instantiator =
-            new MockInstantiator(new ThreadPool(300, new SystemClock()));
+            new MockInstantiator(new ThreadPool(300));
 
         Traverser traverser = new QueryTraverser(pusherFactory, qtm,
             instantiator.getTraversalStateStore(connectorName),
-            connectorName, null, new SystemClock(), null);
+            connectorName, null);
 
         instantiator.setupTraverser(connectorName, traverser);
 

@@ -99,7 +99,7 @@ public class PushOneDocumentTest extends TestCase {
 
         while ((doc = docList.nextDocument()) != null) {
             // TODO: make the feed name a property, along with the feed server and port
-            pusher.take(doc, null);
+            pusher.take(doc);
         }
     }
 }
