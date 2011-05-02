@@ -11,6 +11,26 @@ Site for the current list of known issues and workarounds.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 2.6.12, May 2, 2010
+============================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. This version replaces version 2.6.10. See the
+release notes for 2.6.10 for details on the changes in this release.
+
+Summary of Changes
+------------------
+  * Fixed issue 4372040: StringIndexOutOfBoundsException when the
+    logging level was set to FINEST or ALL and the useDTreeAncestors
+    advanced configuration property was set to false.
+
+Version Compatibility
+---------------------
+See the release notes for 2.6.10.
+
+
 Release 2.6.10, Apr 28, 2010
 ============================
 
