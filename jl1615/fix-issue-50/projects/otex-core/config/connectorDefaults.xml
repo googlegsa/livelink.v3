@@ -30,7 +30,7 @@
         <property name="publicContentDisplayUrl" value=""/>
 
         <property name="excludedNodeTypes"
-                  value="137,142,143,148,150,154,161,162,201,203,209,210,211"/>
+                  value="137,142,143,148,150,154,161,162,201,203,209,210,211,345,346,361,374,431,3030004,3030201"/>
         <property name="excludedVolumeTypes" value="148,161,162"/>
         <property name="excludedLocationNodes" value=""/>
         <property name="includedExtendedData">
@@ -40,6 +40,9 @@
                 <entry key="206" value="Instructions,Comments" />
                 <entry key="208" value="Headline,Story" />
                 <entry key="218" value="Instruction,Questions" />
+                <entry key="357" value="blogContent,blogPublish,blogPublish_date" />
+                <entry key="123470" value="topicText" />
+                <entry key="123476" value="answer" />
             </map>
         </property>
         <property name="includedObjectInfo" value="" />
@@ -61,15 +64,17 @@
         </property>
         <property name="displayActions">
             <map>
-                <entry key="0,136,202,402" value="browse" />
+                <entry key="0,136,202,348,402,5573,5574,3030202,3030329" 
+                       value="browse" />
                 <entry key="1" value="open" />
-                <entry key="130,134,215" value="view" />
+                <entry key="130,134,215,356,430,123469,123475" value="view" />
                 <entry key="144" value="overview" />
                 <entry key="204" value="BrowseTaskList" />
                 <entry key="206" value="BrowseTask" />
                 <entry key="207" value="ViewChannel" />
                 <entry key="208" value="ViewNews" />
                 <entry key="218" value="OpenPoll" />
+                <entry key="357,123470,123476" value="viewincontainer" />
                 <entry key="default" value="properties" />
             </map>
         </property>
@@ -133,7 +138,6 @@
                   value="${traversalUsername}"/>
         <property name="includedLocationNodes"
                   value="${includedLocationNodes}"/>
-
         @constructor-arg@
     </bean>
 
