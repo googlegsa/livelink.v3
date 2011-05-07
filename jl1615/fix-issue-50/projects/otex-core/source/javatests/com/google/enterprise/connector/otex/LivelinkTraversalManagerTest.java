@@ -45,8 +45,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
         
-        assertTrue(excluded, excluded.indexOf("SubType not in " +
-            "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
+        assertTrue(excluded, excluded.indexOf("SubType not in "
+                + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
+                + "345,346,361,374,431,3030004,3030201)") != -1);
     }    
 
 
