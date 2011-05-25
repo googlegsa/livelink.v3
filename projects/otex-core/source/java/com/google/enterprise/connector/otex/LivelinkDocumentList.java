@@ -581,6 +581,19 @@ class LivelinkDocumentList implements DocumentList {
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
 
+      // TODO: Make this list configurable.
+      switch (subType) {
+        case 356:    // Blog
+        case 357:    // Blog Entry
+        case 123469: // Forum
+        case 123470: // Forum Topics & Replies
+        case 123475: // FAQ
+        case 123476: // FAQ Entry
+          return;
+        default:
+          break;
+      }
+
       // DataSize is the only non-nullable column from
       // DVersData that appears in the WebNodes view,
       // but there are cases (such as categories) where
