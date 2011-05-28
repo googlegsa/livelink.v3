@@ -29,6 +29,7 @@ import com.google.enterprise.connector.pusher.PushException;
 import com.google.enterprise.connector.pusher.DocPusher;
 import com.google.enterprise.connector.pusher.GsaFeedConnection;
 import com.google.enterprise.connector.traversal.FileSizeLimitInfo;
+import com.google.enterprise.connector.util.filter.DocumentFilterChain;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
@@ -42,16 +43,16 @@ public class PushOneDocumentTest extends TestCase {
     private Pusher pusher;
 
     // TODO: get pusher server and port from [connector.?] properties
-    //private String feedServer = "8.6.49.37";
-    private String feedServer = "gogol.vizdom.com";
+    private String feedServer = "gogol";
     private int feedPort = 19900;
 
     public void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
         sess = (LivelinkSession) conn.login();
         client = sess.getFactory().createClient();
-        pusher = new DocPusher(new GsaFeedConnection(feedServer, feedPort),
-            "livelink", new FileSizeLimitInfo());
+        pusher = new DocPusher(
+            new GsaFeedConnection(null, feedServer, feedPort, -1),
+            "livelink", new FileSizeLimitInfo(), new DocumentFilterChain());
 
         // Iinitialize the Context for DocPusher.take.
         // FIXME: This code is duplicated in LivelinkQueryTraverserTest..
