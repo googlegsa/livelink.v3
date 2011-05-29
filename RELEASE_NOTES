@@ -22,7 +22,12 @@ in the 2.6.10 and 2.6.12 patch releases.
 
 Summary of Changes
 ------------------
-See the release notes for 2.6.10 and 2.6.12.
+  * Added the includedSelectExpressions advanced configuration
+    property.
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
 
 Version Compatibility
 ---------------------
@@ -209,7 +214,7 @@ Connector instances created using versions 1.0.3 through 2.4.0 may be
 used with this version. This version works with Connector Manager
 version 2.4.0 through 2.4.4. Earlier versions of the Connector Manager
 will not work correctly with this version of the connector. This
-product is designed to function with Open Text Livelink versions 
+product is designed to function with Open Text Livelink versions
 9.5 SP1, 9.6, 9.7, and 9.7.1.
 
 
@@ -493,7 +498,7 @@ product website for a complete description.
 
 Summary of Changes
 ------------------
-  * Fix Issue 1 where traversal user must have system administration 
+  * Fix Issue 1 where traversal user must have system administration
     privileges.
   * Fix Issue 4 to avoid logging an exception for a non-error condition.
   * Fix Issue 5 use a separate log file.

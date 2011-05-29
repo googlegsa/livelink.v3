@@ -22,6 +22,7 @@ import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Set;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Connector;
@@ -214,6 +216,9 @@ public class LivelinkConnector implements Connector {
 
   /** The set of Categories to exclude. */
   private HashSet<Object> excludedCategoryIds = null;
+
+  /** The additional select expressions for the main query. */
+  private Map<String, String> selectExpressions;
 
   /** The set of Subtypes for which we index hidden items. */
   private HashSet<Object> hiddenItemsSubtypes = null;
@@ -1095,7 +1100,7 @@ public class LivelinkConnector implements Connector {
     if ((sanikeys != null) && (sanikeys.length() > 0)) {
       ArrayList<String> keys = new ArrayList<String>(
           Arrays.asList(sanikeys.split(",")));
-      Field[] fields = LivelinkTraversalManager.FIELDS;
+      Field[] fields = LivelinkTraversalManager.DEFAULT_FIELDS;
 
       for (int i = 0; i < keys.size(); i++) {
         String key = keys.get(i);
@@ -1252,7 +1257,33 @@ public class LivelinkConnector implements Connector {
     return set;
   }
 
+  /**
+   * Sets the additional SQL {@code SELECT} expressions to include.
+   * The value is a map from property name that will be included in
+   * the index to SQL {@code SELECT} expressions that will be added to
+   * the main query from the {@code WebNodes} table.
+   *
+   * @param selectExpressions a map from property names to SQL
+   * {@code SELECT} expressions. The map may be null or empty.
+   */
+  public void setIncludedSelectExpressions(
+      Map<String, String> selectExpressions) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("INCLUDED SELECT EXPRESSIONS: " + selectExpressions);
+    this.selectExpressions = (selectExpressions == null)
+        ? Collections.<String, String>emptyMap() : selectExpressions;
+  }
 
+  /**
+   * Gets the additional SQL {@code SELECT} expressions to include.
+   *
+   * @return a non-null map from property names to SQL {@code SELECT}
+   * expressions
+   */
+  Map<String, String> getIncludedSelectExpressions() {
+    return selectExpressions;
+  }
+      
   /**
    * Set the rules for handling the ObjectInfo.Catalog.DISPLAYTYPE_HIDDEN
    * attribute for an object.  Specifies whether hidden items are indexed
@@ -1288,7 +1319,7 @@ public class LivelinkConnector implements Connector {
    * @param hidden comma-separated list of subtypes or special keywords.
    * @see #setShowHiddenItems
    */
-  /* @VisibleForTesting */
+  @VisibleForTesting
   static HashSet<Object> getHiddenItemsSubtypes(String hidden) {
     HashSet<Object> subtypes = new HashSet<Object>();
     String s = sanitizeListOfStrings(hidden);

@@ -17,9 +17,11 @@ package com.google.enterprise.connector.otex;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
@@ -56,21 +58,35 @@ class LivelinkTraversalManager
    * field will not be returned in the property map.
    *
    * Given package access so that LivelinkConnector.setIncludedObjectInfo()
-   * my filter out duplicates.
+   * can filter out duplicates.
    */
-  protected static final Field[] FIELDS;
+  static final Field[] DEFAULT_FIELDS;
+
+  /**
+   * The prefix for generated column aliases for the additional SQL
+   * {@code SELECT} expressions. Must not collide with anything in
+   * {@code DEFAULT_FIELDS}, but that is very unlikely since a numeric
+   * suffix is appended to this value.
+   */
+  private static final String FIELD_ALIAS_PREFIX = "alias";
+
+  /**
+   * The fields for this connector instance, which may include custom
+   * fields from the advanced configuration properties.
+   */
+  private final Field[] fields;
 
   /**
    * The columns needed in the database query, which are obtained
-   * from the field names in <code>FIELDS</code>.
+   * from the field names in <code>fields</code>.
    */
-  private static final String[] SELECT_LIST;
+  private final String[] selectList;
 
   /**
    * True if this connector instance will track deleted items and
    * submit delete actions to the GSA.
    */
-  private static boolean deleteSupported;
+  private final boolean deleteSupported;
 
   static {
     // ListNodes requires the DataID and PermID columns to be
@@ -97,21 +113,26 @@ class LivelinkTraversalManager
     list.add(Field.fromExpression(
         "case when DataSize < 0 then 0 else DataSize end DataSize",
         "DataSize"));
+
     list.add(new Field("PermID"));
 
-    FIELDS = list.toArray(new Field[0]);
+    // Make sure the alias prefix does not collide. This test is more
+    // stringent than we need (we only use "alias4, alias5, etc., so
+    // "aliasFoo" wouldn't cause problems). But we control the values,
+    // so there's no point in working harder to detect real collisions.
+    for (Field field : list) {
+      assert !field.fieldName.startsWith(FIELD_ALIAS_PREFIX) : field.fieldName;
+    }
 
-    SELECT_LIST = new String[FIELDS.length];
-    for (int i = 0; i < FIELDS.length; i++)
-      SELECT_LIST[i] = FIELDS[i].selectExpression;
+    DEFAULT_FIELDS = list.toArray(new Field[0]);
   }
 
   /** Select list column for AuditDate; Oracle still lacks milliseconds. */
-  String AUDIT_DATE_ORACLE =
+  private static final String AUDIT_DATE_ORACLE =
       "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as AuditDate";
 
   /** Select list column for AuditDate with milliseconds for SQL Server. */
-  String AUDIT_DATE_SQL_SERVER =
+  private static final String AUDIT_DATE_SQL_SERVER =
       "CONVERT(VARCHAR(23), AuditDate, 121) as AuditDate";
 
   /** The connector contains configuration information. */
@@ -195,7 +216,10 @@ class LivelinkTraversalManager
     this.contentHandler = getContentHandler();
 
     // Check to see if we will track Deleted Documents.
-    deleteSupported = connector.getTrackDeletedItems();
+    this.deleteSupported = connector.getTrackDeletedItems();
+
+    this.fields = getFields();
+    this.selectList = getSelectList();
   }
 
   /**
@@ -347,7 +371,7 @@ class LivelinkTraversalManager
    *
    * @return the SQL conditional expression
    */
-  /* This method has package access so that it can be unit tested. */
+  @VisibleForTesting
   String getExcluded(String candidatesPredicate)  {
     StringBuilder buffer = new StringBuilder();
 
@@ -431,6 +455,33 @@ class LivelinkTraversalManager
     }
     contentHandler.initialize(connector, traversalClient);
     return contentHandler;
+  }
+
+  @VisibleForTesting
+  Field[] getFields() {
+    Map<String, String> selectExpressions =
+        connector.getIncludedSelectExpressions();
+    Field[] fields =
+        new Field[DEFAULT_FIELDS.length + selectExpressions.size()];
+    System.arraycopy(DEFAULT_FIELDS, 0, fields, 0, DEFAULT_FIELDS.length);
+    int i = DEFAULT_FIELDS.length;
+    for (Map.Entry<String, String> select : selectExpressions.entrySet()) {
+      // The map value is the select expression. We pick an arbitrary
+      // column alias for the SQL expression (because the property name
+      // might not be a valid SQL identifier) and record it as the field
+      // name for the recarray. The map key is the property name.
+      fields[i++] = Field.fromExpression(select.getValue() + " "
+          + FIELD_ALIAS_PREFIX + i, FIELD_ALIAS_PREFIX + i, select.getKey());
+    }
+    return fields;
+  }
+
+  @VisibleForTesting
+  String[] getSelectList() {
+    String[] selectList = new String[fields.length];
+    for (int i = 0; i < fields.length; i++)
+      selectList[i] = fields[i].selectExpression;
+    return selectList;
   }
 
   /**
@@ -639,7 +690,7 @@ class LivelinkTraversalManager
               "DELETESET: " + numDeletes + " rows.");
         }
         return new LivelinkDocumentList(connector, traversalClient,
-            contentHandler, results, FIELDS, deletes,
+            contentHandler, results, fields, deletes,
             traversalContext, checkpoint, currentUsername);
       }
 
@@ -693,7 +744,7 @@ class LivelinkTraversalManager
         || ((startNodes == null || startNodes.length() == 0)
             && (excludedNodes == null || excludedNodes.length() == 0))) {
       // We're either using DTreeAncestors, or we don't need it.
-      return getMatching(candidatesPredicate, true, "WebNodes", SELECT_LIST,
+      return getMatching(candidatesPredicate, true, "WebNodes", selectList,
           traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
@@ -764,7 +815,7 @@ class LivelinkTraversalManager
     String descendants = matcher.getMatchingDescendants(matching);
     if (descendants != null) {
       return traversalClient.ListNodes("DataID in (" + descendants + ")"
-          + ORDER_BY, "WebNodes", SELECT_LIST);
+          + ORDER_BY, "WebNodes", selectList);
     } else {
       return null;
     }

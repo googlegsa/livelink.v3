@@ -35,15 +35,16 @@ final class Field {
 
 
     /**
-     * Creates a field with a select list expression and no
-     * corresponding property names.
+     * Creates a field with a select list expression and corresponding
+     * property names.
      *
      * @param selectExpression a select list expression
      * @param fieldName a recarray field name
+     * @param propertyNames a possibly empty array of property names
      */
     public static Field fromExpression(String selectExpression,
-            String fieldName) {
-        return new Field(selectExpression, fieldName, new String[0]);
+            String fieldName, String... propertyNames) {
+        return new Field(selectExpression, fieldName, propertyNames);
     }
 
     /**

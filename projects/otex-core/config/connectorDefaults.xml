@@ -49,6 +49,9 @@
         <property name="includedVersionInfo" value="" />
         <property name="includedCategories" value="all,searchable" />
         <property name="excludedCategories" value="" />
+        <property name="includedSelectExpressions">
+          <map></map>
+        </property>
         <property name="showHiddenItems" value="true" />
         <property name="trackDeletedItems" value="true" />
         <property name="useDTreeAncestors" value="true" />
