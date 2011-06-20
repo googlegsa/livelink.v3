@@ -17,6 +17,7 @@ package com.google.enterprise.connector.otex;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
@@ -67,9 +68,9 @@ class LivelinkAuthenticationManager
      * Authenticates the given user for access to the back-end
      * Livelink.
      *
-     * @param username the username to check
-     * @param password the user's password
-     * @returns true if the user can be authenticated
+     * @param identity the user's identity, including the domain,
+     * username, and password
+     * @returns an authentication response
      * @throws RepositoryLoginException not currently thrown
      * @throws RepositoryException if an exception occurred during
      * authentication
@@ -77,8 +78,30 @@ class LivelinkAuthenticationManager
     public synchronized AuthenticationResponse authenticate(
             AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
+        String domain = identity.getDomain();
+        String username = (Strings.isNullOrEmpty(domain))
+            ? identity.getUsername() : domain + "\\" + identity.getUsername();
+        return authenticate(username, identity.getPassword());
+    }
+
+    /**
+     * Authenticates the given user for access to the back-end
+     * Livelink. This separate helper method prevents access to the
+     * original {@link AuthenticationIdentity} parameter, to avoid
+     * using the wrong username by accident.
+     *
+     * @param username the username to check
+     * @param password the user's password
+     * @returns an authentication response
+     * @throws RepositoryLoginException not currently thrown
+     * @throws RepositoryException if an exception occurred during
+     * authentication
+     */
+    private AuthenticationResponse authenticate(
+            String username, String password)
+            throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
+            LOGGER.fine("AUTHENTICATE: " + username);
 
         // FIXME: different message text? or assume this can't
         // happen because we control it in LivelinkConnector?
@@ -89,8 +112,7 @@ class LivelinkAuthenticationManager
 
         try {
             // XXX: Pass the identity to the ClientFactory?
-            Client client = clientFactory.createClient(
-                identity.getUsername(), identity.getPassword());
+            Client client = clientFactory.createClient(username, password);
 
             // Verify connectivity by calling GetServerInfo, just like
             // LivelinkConnector.login does.
@@ -99,12 +121,12 @@ class LivelinkAuthenticationManager
             // faster.
             ClientValue serverInfo = client.GetServerInfo();
             if (LOGGER.isLoggable(Level.FINE))
-              LOGGER.fine("AUTHENTICATED: " + identity.getUsername() + ": " +
+              LOGGER.fine("AUTHENTICATED: " + username + ": " +
                 serverInfo.hasValue());
             return new AuthenticationResponse(serverInfo.hasValue(), null);
         } catch (RepositoryException e) {
             LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.getMessage());
+                username + "; " + e.getMessage());
             throw e;
         }
     }

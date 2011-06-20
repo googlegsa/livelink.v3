@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
@@ -112,13 +113,30 @@ public class LivelinkAuthorizationManager
   public synchronized Collection<AuthorizationResponse> authorizeDocids(
       Collection<String> docids, AuthenticationIdentity identity)
       throws RepositoryException {
-    String username = identity.getUsername();
+    String domain = identity.getDomain();
+    String username = (Strings.isNullOrEmpty(domain))
+        ? identity.getUsername() : domain + "\\" + identity.getUsername();
 
     // Remove the DNS-style Windows domain, if there is one.
     int index = username.indexOf("@");
     if (index != -1)
       username = username.substring(0, index);
 
+    return authorizeDocids(docids, username);
+  }
+
+  /**
+   * Returns authorization information for a list of docids. This
+   * separate helper method prevents access to the original
+   * {@link AuthenticationIdentity} parameter, to avoid using the
+   * wrong username by accident.
+   *
+   * @param docids the Collection of docids
+   * @param username the username for which to check authorization
+   * @throws RepositoryException if an error occurs
+   */
+  private Collection<AuthorizationResponse> authorizeDocids(
+      Collection<String> docids, String username) throws RepositoryException {
     if (LOGGER.isLoggable(Level.FINE)) {
       LOGGER.fine("AUTHORIZE DOCIDS: " + new ArrayList<String>(docids) +
           " FOR: " + username);
