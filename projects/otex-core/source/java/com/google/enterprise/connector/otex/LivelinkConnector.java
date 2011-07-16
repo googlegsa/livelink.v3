@@ -238,6 +238,9 @@ public class LivelinkConnector implements Connector {
   /** The <code>Genealogist</code> implementation class name. */
   private String genealogist;
 
+  /** The Windows domain name to be used for user authentication. */
+  private String windowsDomain;
+
   /** The Livelink traverser client username. */
   private String username;
 
@@ -1467,16 +1470,15 @@ public class LivelinkConnector implements Connector {
    * @param domain the Windows domain name
    * @since 1.0.3
    */
-  /*
-   * TODO: This is a possible model for how to fix issue 3, the
-   * duplication of the useUsernamePasswordWithWebServer parameter.
-   */
   public void setWindowsDomain(String domain) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("WINDOWS DOMAIN: " + domain);
-    clientFactory.setWindowsDomain(domain);
-    createAuthenticationClientFactory();
-    authenticationClientFactory.setWindowsDomain(domain);
+    this.windowsDomain = domain;
+  }
+
+  /** Gets the Windows domain name to be used for user authentication. */
+  String getWindowsDomain() {
+    return windowsDomain;
   }
 
   /**

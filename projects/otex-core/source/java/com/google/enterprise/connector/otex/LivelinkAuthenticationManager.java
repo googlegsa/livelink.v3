@@ -39,6 +39,8 @@ class LivelinkAuthenticationManager
     /** Client factory for obtaining client instances. */
     private ClientFactory clientFactory;
 
+    /* The default Windows domain name for authentication. */
+    private String windowsDomain;
 
     /**
      * Default constructor for bean instantiation.
@@ -47,6 +49,13 @@ class LivelinkAuthenticationManager
         super();
     }
 
+    /** Direct instantiation for the tests. */
+    LivelinkAuthenticationManager(ClientFactory clientFactory,
+            String windowsDomain) {
+        this.clientFactory = clientFactory;
+        this.windowsDomain = windowsDomain;
+    }
+  
     /**
      * Provides the current connector instance to this
      * authentication manager for configuration purposes.
@@ -59,8 +68,9 @@ class LivelinkAuthenticationManager
      * control the threads.
      */
     public synchronized void setConnector(Connector connector) {
-        this.clientFactory =
-            ((LivelinkConnector) connector).getAuthenticationClientFactory();
+        LivelinkConnector ll = (LivelinkConnector) connector;
+        this.clientFactory = ll.getAuthenticationClientFactory();
+        this.windowsDomain = ll.getWindowsDomain();
     }
 
     /**
@@ -87,10 +97,28 @@ class LivelinkAuthenticationManager
             throw new RepositoryException("Missing Livelink client factory");
         }
 
+        // Check for a domain value.
+        String originalUsername = identity.getUsername();
+        String username;
+        int index = originalUsername.indexOf("@");
+        if (index != -1) {
+            String user = originalUsername.substring(0, index);
+            String domain = originalUsername.substring(index + 1);
+            username = domain + '\\' + user;
+        } else if (windowsDomain != null && windowsDomain.length() > 0)
+            username = windowsDomain + '\\' + originalUsername;
+        else {
+            username = originalUsername;
+        }
+        if (LOGGER.isLoggable(Level.FINER)) {
+            if (username.indexOf('\\') != -1) {
+                LOGGER.finer("AUTHENTICATE AS: " + username);
+            }
+        }
+
         try {
-            // XXX: Pass the identity to the ClientFactory?
             Client client = clientFactory.createClient(
-                identity.getUsername(), identity.getPassword());
+                username, identity.getPassword());
 
             // Verify connectivity by calling GetServerInfo, just like
             // LivelinkConnector.login does.
@@ -99,12 +127,12 @@ class LivelinkAuthenticationManager
             // faster.
             ClientValue serverInfo = client.GetServerInfo();
             if (LOGGER.isLoggable(Level.FINE))
-              LOGGER.fine("AUTHENTICATED: " + identity.getUsername() + ": " +
+              LOGGER.fine("AUTHENTICATED: " + username + ": " +
                 serverInfo.hasValue());
             return new AuthenticationResponse(serverInfo.hasValue(), null);
         } catch (RepositoryException e) {
             LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.getMessage());
+                username + "; " + e.getMessage());
             throw e;
         }
     }

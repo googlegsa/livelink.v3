@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,13 +66,6 @@ public interface ClientFactory {
 
   /** Optional property. */
   void setUseUsernamePasswordWithWebServer(boolean value);
-
-  /**
-   * Optional property.
-   *
-   * @since 1.0.3
-   */
-  void setWindowsDomain(String value);
 
   /**
    * Gets a new client instance.
