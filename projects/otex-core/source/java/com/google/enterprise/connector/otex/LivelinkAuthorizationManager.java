@@ -44,6 +44,9 @@ public class LivelinkAuthorizationManager
   /** Client factory for obtaining client instances. */
   private ClientFactory clientFactory;
 
+  /** The mapper from the GSA identity to the Livelink username. */
+  private IdentityResolver identityResolver = new IdentityResolver();
+
   /** 
    * If deleted documents are excluded from indexing, then we should
    * also remove documents from search results that were deleted
@@ -112,17 +115,12 @@ public class LivelinkAuthorizationManager
   public synchronized Collection<AuthorizationResponse> authorizeDocids(
       Collection<String> docids, AuthenticationIdentity identity)
       throws RepositoryException {
-    String username = identity.getUsername();
-
-    // Remove the DNS-style Windows domain, if there is one.
-    int index = username.indexOf("@");
-    if (index != -1)
-      username = username.substring(0, index);
-
     if (LOGGER.isLoggable(Level.FINE)) {
       LOGGER.fine("AUTHORIZE DOCIDS: " + new ArrayList<String>(docids) +
-          " FOR: " + username);
+          " FOR: " + identity.getUsername());
     }
+
+    String username = identityResolver.getAuthorizationIdentity(identity);
 
     ArrayList<AuthorizationResponse> authorized =
         new ArrayList<AuthorizationResponse>(docids.size());

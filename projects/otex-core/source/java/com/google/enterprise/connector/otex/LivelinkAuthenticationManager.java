@@ -39,8 +39,8 @@ class LivelinkAuthenticationManager
     /** Client factory for obtaining client instances. */
     private ClientFactory clientFactory;
 
-    /* The default Windows domain name for authentication. */
-    private String windowsDomain;
+    /** The mapper from the GSA identity to the Livelink username. */
+    private IdentityResolver identityResolver;
 
     /**
      * Default constructor for bean instantiation.
@@ -53,7 +53,7 @@ class LivelinkAuthenticationManager
     LivelinkAuthenticationManager(ClientFactory clientFactory,
             String windowsDomain) {
         this.clientFactory = clientFactory;
-        this.windowsDomain = windowsDomain;
+        this.identityResolver = new IdentityResolver(windowsDomain);
     }
   
     /**
@@ -70,15 +70,14 @@ class LivelinkAuthenticationManager
     public synchronized void setConnector(Connector connector) {
         LivelinkConnector ll = (LivelinkConnector) connector;
         this.clientFactory = ll.getAuthenticationClientFactory();
-        this.windowsDomain = ll.getWindowsDomain();
+        this.identityResolver = new IdentityResolver(ll.getWindowsDomain());
     }
 
     /**
      * Authenticates the given user for access to the back-end
      * Livelink.
      *
-     * @param username the username to check
-     * @param password the user's password
+     * @param identity the user identity to check
      * @returns true if the user can be authenticated
      * @throws RepositoryLoginException not currently thrown
      * @throws RepositoryException if an exception occurred during
@@ -97,25 +96,7 @@ class LivelinkAuthenticationManager
             throw new RepositoryException("Missing Livelink client factory");
         }
 
-        // Check for a domain value.
-        String originalUsername = identity.getUsername();
-        String username;
-        int index = originalUsername.indexOf("@");
-        if (index != -1) {
-            String user = originalUsername.substring(0, index);
-            String domain = originalUsername.substring(index + 1);
-            username = domain + '\\' + user;
-        } else if (windowsDomain != null && windowsDomain.length() > 0)
-            username = windowsDomain + '\\' + originalUsername;
-        else {
-            username = originalUsername;
-        }
-        if (LOGGER.isLoggable(Level.FINER)) {
-            if (username.indexOf('\\') != -1) {
-                LOGGER.finer("AUTHENTICATE AS: " + username);
-            }
-        }
-
+        String username = identityResolver.getAuthenticationIdentity(identity);
         try {
             Client client = clientFactory.createClient(
                 username, identity.getPassword());
