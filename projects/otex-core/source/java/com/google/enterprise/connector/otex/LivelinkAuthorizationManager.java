@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
@@ -43,9 +44,6 @@ public class LivelinkAuthorizationManager
 
   /** Client factory for obtaining client instances. */
   private ClientFactory clientFactory;
-
-  /** The mapper from the GSA identity to the Livelink username. */
-  private IdentityResolver identityResolver = new IdentityResolver();
 
   /** 
    * If deleted documents are excluded from indexing, then we should
@@ -77,6 +75,9 @@ public class LivelinkAuthorizationManager
   /** Lowercase usernames hack. */
   private boolean tryLowercaseUsernames;
 
+  /** The mapper from the GSA identity to the Livelink username. */
+  private IdentityResolver identityResolver;
+
   /** Default constructor for bean instantiation. */
   public LivelinkAuthorizationManager() {
   }
@@ -102,6 +103,8 @@ public class LivelinkAuthorizationManager
     this.workflowVolumeId = getExcludedVolumeId(161, "WORKFLOW", client);
     this.showHiddenItems = this.connector.getShowHiddenItems().contains("all");
     this.tryLowercaseUsernames = this.connector.isTryLowercaseUsernames();
+    this.identityResolver=
+        new IdentityResolver(this.connector.getDomainAndName());
   }
 
 
@@ -121,7 +124,21 @@ public class LivelinkAuthorizationManager
     }
 
     String username = identityResolver.getAuthorizationIdentity(identity);
-
+    return authorizeDocids(docids, username);
+  }
+	
+  /**
+   * Returns authorization information for a list of docids. This
+   * separate helper method prevents access to the original
+   * {@link AuthenticationIdentity} parameter, to avoid using the
+   * wrong username by accident.
+   *
+   * @param docids the Collection of docids
+   * @param username the username for which to check authorization
+   * @throws RepositoryException if an error occurs
+   */
+  private Collection<AuthorizationResponse> authorizeDocids(
+      Collection<String> docids, String username) throws RepositoryException {
     ArrayList<AuthorizationResponse> authorized =
         new ArrayList<AuthorizationResponse>(docids.size());
     if (tryLowercaseUsernames) {
@@ -318,7 +335,7 @@ public class LivelinkAuthorizationManager
       // Explicitly included items and their descendants are allowed
       // even if they are hidden.
       String startNodes = connector.getIncludedLocationNodes();
-      if (startNodes != null && startNodes.length() > 0) {
+      if (!Strings.isNullOrEmpty(startNodes)) {
         String ancestorNodes = Genealogist.getAncestorNodes(startNodes);
         query.append(" and Anc.AncestorID not in (");
         query.append(startNodes);

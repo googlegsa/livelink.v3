@@ -24,10 +24,7 @@ import junit.framework.TestCase;
 public class LivelinkAuthenticationManagerTest extends TestCase {
   public void testNullClientFactory() throws RepositoryException {
     try {
-      // Get the object under test.
-      AuthenticationManager lam =
-          new LivelinkAuthenticationManager(null, null);
-
+      AuthenticationManager lam = new LivelinkAuthenticationManager();
       lam.authenticate(new SimpleAuthenticationIdentity("fred"));
       fail();
     } catch (RepositoryException e) {

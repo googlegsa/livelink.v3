@@ -51,9 +51,10 @@ class LivelinkAuthenticationManager
 
     /** Direct instantiation for the tests. */
     LivelinkAuthenticationManager(ClientFactory clientFactory,
-            String windowsDomain) {
+            DomainAndName domainAndName, String windowsDomain) {
         this.clientFactory = clientFactory;
-        this.identityResolver = new IdentityResolver(windowsDomain);
+        this.identityResolver =
+            new IdentityResolver(domainAndName, windowsDomain);
     }
   
     /**
@@ -70,18 +71,20 @@ class LivelinkAuthenticationManager
     public synchronized void setConnector(Connector connector) {
         LivelinkConnector ll = (LivelinkConnector) connector;
         this.clientFactory = ll.getAuthenticationClientFactory();
-        this.identityResolver = new IdentityResolver(ll.getWindowsDomain());
+        this.identityResolver =
+            new IdentityResolver(ll.getDomainAndName(), ll.getWindowsDomain());
     }
 
     /**
      * Authenticates the given user for access to the back-end
      * Livelink.
      *
-     * @param identity the user identity to check
-     * @returns true if the user can be authenticated
+     * @param identity the user credentials to check
+     * @returns an {@code AuthenticationResponse} indicating whether
+     *     the user credentials are valid
      * @throws RepositoryLoginException not currently thrown
      * @throws RepositoryException if an exception occurred during
-     * authentication
+     *     authentication
      */
     public synchronized AuthenticationResponse authenticate(
             AuthenticationIdentity identity)
@@ -97,9 +100,27 @@ class LivelinkAuthenticationManager
         }
 
         String username = identityResolver.getAuthenticationIdentity(identity);
+        return authenticate(username, identity.getPassword());
+    }
+	
+    /**
+     * Authenticates the given user for access to the back-end
+     * Livelink. This separate helper method prevents access to the
+     * original {@link AuthenticationIdentity} parameter, to avoid
+     * using the wrong username by accident.
+     *
+     * @param username the username to check
+     * @param password the user's password
+     * @returns an {@code AuthenticationResponse} indicating whether
+     *     the user credentials are valid
+     * @throws RepositoryLoginException not currently thrown
+     * @throws RepositoryException if an exception occurred during
+     *     authentication
+     */
+    private AuthenticationResponse authenticate(String username,
+        String password) throws RepositoryLoginException, RepositoryException {
         try {
-            Client client = clientFactory.createClient(
-                username, identity.getPassword());
+            Client client = clientFactory.createClient(username, password);
 
             // Verify connectivity by calling GetServerInfo, just like
             // LivelinkConnector.login does.

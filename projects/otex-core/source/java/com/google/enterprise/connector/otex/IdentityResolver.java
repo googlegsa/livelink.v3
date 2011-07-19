@@ -14,52 +14,84 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Maps {@AuthenticationIdentity} values to the usernames used for
+ * authentication and authorization.
+ *
+ * @since 2.8
+ */
 class IdentityResolver {
   /** The logger for this class. */
   private static final Logger LOGGER =
       Logger.getLogger(IdentityResolver.class.getName());
 
+  /** The {@code domainAndName} advanced configuration property. */
+  private final DomainAndName domainAndName;
+
   /** The {@code windowsDomain} advanced configuration property. */
   private final String windowsDomain;
 
   /** Creates an instance with no default domain. */
-  public IdentityResolver() {
-    this(null);
+  public IdentityResolver(DomainAndName domainAndName) {
+    this(domainAndName, null);
   }
 
   /** Creates an instance with the given default domain. */
-  public IdentityResolver(String windowsDomain) {
+  public IdentityResolver(DomainAndName domainAndName, String windowsDomain) {
+    this.domainAndName = domainAndName;
     this.windowsDomain = windowsDomain;
   }
 
   public String getAuthenticationIdentity(AuthenticationIdentity identity) {
-    // Check for a domain value.
-    String originalUsername = identity.getUsername();
     String username;
-    int index = originalUsername.indexOf("@");
-    if (index != -1) {
-      String user = originalUsername.substring(0, index);
-      String domain = originalUsername.substring(index + 1);
-      username = domain + '\\' + user;
-    } else if (windowsDomain != null && windowsDomain.length() > 0) {
-      username = windowsDomain + '\\' + originalUsername;
+    boolean haveDomain;
+    String domain = identity.getDomain();
+    if (domainAndName != DomainAndName.FALSE
+        && domainAndName != DomainAndName.LEGACY
+        && !Strings.isNullOrEmpty(domain)) {
+      username = domain + "\\" + identity.getUsername();
+      haveDomain = true;
     } else {
-      username = originalUsername;
+      username = identity.getUsername();
+      int index = username.indexOf("@");
+      if (index != -1) {
+        if (domainAndName != DomainAndName.FALSE) {
+          haveDomain = true;
+        } else {
+          username = username.substring(0, index);
+          haveDomain = false;
+        }
+      } else {
+        haveDomain = false;
+      }
     }
 
-    if (LOGGER.isLoggable(Level.FINER) && username.indexOf('\\') != -1) {
-      LOGGER.finer("AUTHENTICATE AS: " + username);
+    if (!haveDomain && !Strings.isNullOrEmpty(windowsDomain)) {
+      username = windowsDomain + '\\' + username;
+    }
+
+    if (LOGGER.isLoggable(Level.FINE)
+        && !username.equals(identity.getUsername())) {
+      LOGGER.fine("AUTHENTICATE AS: " + username);
     }
     return username;
   }
 
   public String getAuthorizationIdentity(AuthenticationIdentity identity) {
-    String username = identity.getUsername();
+    String username;
+    String domain = identity.getDomain();
+    if (domainAndName == DomainAndName.TRUE
+        && !Strings.isNullOrEmpty(domain)) {
+      username = domain + "\\" + identity.getUsername();
+    } else {
+      username = identity.getUsername();
+    }
 
     // Remove the DNS-style Windows domain, if there is one.
     int index = username.indexOf("@");
@@ -67,7 +99,8 @@ class IdentityResolver {
       username = username.substring(0, index);
     }
 
-    if (LOGGER.isLoggable(Level.FINE) && index != -1) {
+    if (LOGGER.isLoggable(Level.FINE)
+        && !username.equals(identity.getUsername())) {
       LOGGER.fine("AUTHORIZE FOR: " + username);
     }
     return username;

@@ -33,6 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Set;
 
+import com.google.common.base.Strings;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
@@ -237,6 +238,12 @@ public class LivelinkConnector implements Connector {
 
   /** The <code>Genealogist</code> implementation class name. */
   private String genealogist;
+
+  /**
+   * The option to include the domain name for authentication and
+   * authorization.
+   */
+  private DomainAndName domainAndName;
 
   /** The Windows domain name to be used for user authentication. */
   private String windowsDomain;
@@ -869,8 +876,9 @@ public class LivelinkConnector implements Connector {
   public void setPublicContentUsername(String username) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("PUBLIC CONTENT USERNAME: " + username);
-    if (username != null && username.length() > 0)
+    if (!Strings.isNullOrEmpty(username)) {
       this.publicContentUsername = username;
+    }
   }
 
   /**
@@ -890,8 +898,9 @@ public class LivelinkConnector implements Connector {
   public void setPublicContentDisplayUrl(String url) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("PUBLIC CONTENT DISPLAY URL: " + url);
-    if (url != null && url.length() > 0)
+    if (!Strings.isNullOrEmpty(url)) {
       this.publicContentDisplayUrl = url;
+    }
   }
 
   /**
@@ -914,8 +923,9 @@ public class LivelinkConnector implements Connector {
   public void setTraversalUsername(String username) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("TRAVERSAL USERNAME: " + username);
-    if (username != null && username.length() > 0)
+    if (!Strings.isNullOrEmpty(username)) {
       this.traversalUsername = username;
+    }
   }
 
   /**
@@ -1461,6 +1471,34 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Sets the option to include the domain name with the username for
+   * authentication and authorization.
+   *
+   * @param domainAndName one of the strings {@code "TRUE"},
+   *     {@code "FALSE"}, {@code "AUTHENTICATION"}, or {@code "LEGACY"},
+   *     case-insensitive
+   */
+  public void setDomainAndName(final String domainAndName) {
+    propertyValidators.add(new PropertyValidator() {
+        void validate() {
+          if (Strings.isNullOrEmpty(domainAndName)) {
+            throw new IllegalArgumentException(domainAndName);
+          } else {
+            LivelinkConnector.this.domainAndName =
+                DomainAndName.valueOf(domainAndName.trim().toUpperCase());
+            if (LOGGER.isLoggable(Level.CONFIG)) {
+              LOGGER.config("DOMAIN AND NAME: " + domainAndName);
+            }
+          }
+        }
+      });
+  }
+
+  DomainAndName getDomainAndName() {
+    return domainAndName;
+  }
+
+  /**
    * Sets the Windows domain name to be used for user
    * authentication. The Windows domain might be used for direct
    * connections (see the DomainAndName parameter in the [Security]
@@ -1841,8 +1879,7 @@ public class LivelinkConnector implements Connector {
     // modification time for any of those items.  We can forge
     // a start checkpoint that skips over any ancient history in
     // the LL database.
-    if (includedLocationNodes != null &&
-        includedLocationNodes.length() > 0) {
+    if (!Strings.isNullOrEmpty(includedLocationNodes)) {
       String ancestorNodes =
           Genealogist.getAncestorNodes(includedLocationNodes);
       String query = "DataID in (select DataID from DTreeAncestors " +
@@ -2018,11 +2055,9 @@ public class LivelinkConnector implements Connector {
     // Check first to see if we are going to need the
     // DTreeAncestors table.
     if (useDTreeAncestors &&
-        (!hiddenItemsSubtypes.contains("all") ||
-            (includedLocationNodes != null &&
-                includedLocationNodes.length() > 0) ||
-            (excludedLocationNodes != null &&
-                excludedLocationNodes.length() > 0))) {
+        (!hiddenItemsSubtypes.contains("all")
+            || !Strings.isNullOrEmpty(includedLocationNodes)
+            || !Strings.isNullOrEmpty(excludedLocationNodes))) {
       validateDTreeAncestors(client);
       validateIncludedLocationStartDate(client);
       validateEnterpriseWorkspaceAncestors(client);
