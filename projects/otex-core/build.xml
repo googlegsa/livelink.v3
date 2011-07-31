@@ -27,8 +27,7 @@
   <property name="tests.src" value="source/javatests" />
   <property name="tests.build" value="build/tests" />
   <property name="tests.classes" value="${tests.build}/classes" />
-  <property name="tests.todir" value="tests_outdir" />
-  <property name="tests.logging.properties" 
+  <property name="tests.logging.properties"
             location="${tests.classes}/tests.logging.properties"/>
 
   <property name="jar.dir"  value="${dist}/jar" />
@@ -45,6 +44,25 @@
   <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
   <property name="tests.jarfile" value="${spi.jar.dir}/connector-tests.jar" />
 
+  <!-- All reports go into this directory. -->
+  <property name="reports.dir" value="reports" />
+
+  <!-- Unit test reports from JUnit are deposited into this directory. -->
+  <!-- TODO: Use these if you switch to xml+html output, instead of plain text.
+  <property name="junit.xml.dir" value="${reports.dir}/junit-xml" />
+  <property name="junit.html.dir" value="${reports.dir}/junit-html" />
+  -->
+  <property name="junit.plain.dir" value="${reports.dir}/junit-plain" />
+  <property name="tests.todir" value="${junit.plain.dir}" />
+
+  <!-- ======== Cobertura Code Coverage Properties ======= -->
+  <!-- Instrumented classes are deposited into this directory. -->
+  <property name="instrumented.dir" value="${build}/instrumented" />
+
+  <!-- Coverage reports are deposited into these directories. -->
+  <property name="coverage.xml.dir" value="${reports.dir}/cobertura-xml" />
+  <property name="coverage.html.dir" value="${reports.dir}/cobertura-html" />
+
   <!-- =========================== TASKS =============================== -->
   <target name="build" depends="init,compile,compile_tests,jar">
   </target>
@@ -56,14 +74,15 @@
     <mkdir dir="${config.build}" />
     <mkdir dir="${tests.build}" />
     <mkdir dir="${tests.classes}" />
+    <mkdir dir="${reports.dir}" />
     <mkdir dir="${tests.todir}" />
     <mkdir dir="${jar.dir}" />
   </target>
 
   <target name="compile" depends="init">
     <!-- compile java source files -->
-    <javac srcdir="${src}" destdir="${classes}" 
-           debug="${COMPILE_DEBUG_FLAG}" 
+    <javac srcdir="${src}" destdir="${classes}"
+           debug="${COMPILE_DEBUG_FLAG}"
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
            includeAntRuntime="false">
@@ -80,8 +99,8 @@
 
   <target name="compile_tests" depends="init">
     <!-- compile java source files for tests -->
-    <javac srcdir="${tests.src}" destdir="${tests.classes}" 
-           debug="${COMPILE_DEBUG_FLAG}" 
+    <javac srcdir="${tests.src}" destdir="${tests.classes}"
+           debug="${COMPILE_DEBUG_FLAG}"
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
            includeAntRuntime="false">
@@ -108,9 +127,24 @@
     </copy>
   </target>
 
+  <path id="run_tests_path">
+    <pathelement location="${jarfile}" />
+    <pathelement location="${tests.classes}" />
+    <pathelement location="${spi.jarfile}" />
+    <pathelement location="${spi.jar.dir}/connector.jar" />
+    <pathelement location="${spi.jar.dir}/connector-tests.jar" />
+    <fileset dir="${thirdparty.jar.dir}">
+      <include name="prod/*.jar" />
+      <include name="tests/junit.jar" />
+    </fileset>
+  </path>
+
+  <!-- This classpath gets overridden by code_coverage. -->
+  <property name="tests.classpath" value="run_tests_path"/>
+
   <target name="run_tests" depends="compile_tests,jar">
     <property name="test.suite" value="*"/>
-    <property name="logging.file" 
+    <property name="logging.file"
               location="${tests.todir}/test.log" />
     <copy file="source/javatests/tests.logging.properties"
           tofile="${tests.logging.properties}"
@@ -120,21 +154,11 @@
                 value="${logging.file}"/>
       </filterset>
     </copy>
-    <replace file="${tests.logging.properties}" 
+    <replace file="${tests.logging.properties}"
              token="\" value="\\" />
     <junit>
       <assertions><enable/></assertions>
-      <classpath>
-        <fileset dir="${thirdparty.jar.dir}">
-          <include name="prod/*.jar" />
-          <include name="tests/junit.jar" />
-        </fileset>
-        <pathelement location="${spi.jar.dir}/connector.jar" />
-        <pathelement location="${spi.jar.dir}/connector-tests.jar" />
-        <pathelement location="${jarfile}" />
-        <pathelement location="${spi.jarfile}" />
-        <pathelement location="${tests.classes}" />
-      </classpath>
+      <classpath refid="${tests.classpath}" />
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
       <syspropertyset refid="javatest.properties"/>
@@ -148,12 +172,12 @@
     </junit>
   </target>
 
-  <target name="jar" description="livelink-connector" 
+  <target name="jar" description="livelink-connector"
           depends="compile,compile_tests">
     <copy todir="${config.build}">
       <fileset dir="${config}" />
       <filterset>
-        <filter token="constructor-arg" 
+        <filter token="constructor-arg"
                 value="&lt;constructor-arg value=&quot;com.google.enterprise.connector.otex.client.mock.MockClientFactory&quot; /&gt;" />
       </filterset>
       <!-- FIXME: Workaround for GSA country code issue. -->
@@ -168,7 +192,7 @@
       <fileset dir="${classes}"/>
       <fileset dir="${src}" includes="**/*.properties"/>
       <fileset dir="${tests.classes}" includes="**/mock/*" />
-      <fileset dir="${build}" includes="config/*.*" 
+      <fileset dir="${build}" includes="config/*.*"
         excludes="**/logging.properties" />
       <zipfileset file="${build}/config/logging.properties" prefix="" />
       <manifest>
@@ -182,9 +206,76 @@
     </jar>
   </target>
 
-  <target name="clean" description="Deletes all build files.">
+  <target name="clean" depends="clean_coverage"
+          description="Deletes all build files.">
     <delete dir="${build}" />
     <delete dir="${dist}" />
   </target>
+
+  <!-- ====================== Cobertura Tasks ====================== -->
+
+  <!-- Where Cobertura can find itself and its dependencies. -->
+  <path id="cobertura.classpath">
+    <fileset dir="${thirdparty.jar.dir}/cobertura" includes="**/*.jar" />
+  </path>
+  <taskdef classpathref="cobertura.classpath" resource="tasks.properties" />
+
+  <target name="init_coverage">
+    <mkdir dir="${instrumented.dir}" />
+    <mkdir dir="${coverage.xml.dir}" />
+    <mkdir dir="${coverage.html.dir}" />
+  </target>
+
+  <target name="compile_coverage"
+          depends="init_coverage,compile,compile_tests" />
+
+  <target name="instrument" depends="compile_coverage">
+    <cobertura-instrument todir="${instrumented.dir}">
+      <!-- The following line causes instrument to ignore any line
+           refering to log4j, for the purposes of coverage reporting.
+      -->
+      <ignore regex="org.apache.log4j.*" />
+
+      <!-- Instrument the application classes, but not the test classes. -->
+      <fileset dir="${classes}" includes="**/*.class" />
+    </cobertura-instrument>
+  </target>
+
+  <path id="coverage.classpath">
+    <pathelement location="${instrumented.dir}" />
+    <path refid="run_tests_path" />
+    <path refid="cobertura.classpath" />
+  </path>
+
+  <target name="run_coverage_tests" depends="jar,instrument">
+    <antcall target="run_tests">
+      <param name="tests.classpath" value="coverage.classpath" />
+    </antcall>
+  </target>
+
+  <target name="coverage_report">
+    <!-- Generate an XML file containing the coverage data. -->
+    <cobertura-report srcdir="${src}" destdir="${coverage.xml.dir}"
+                      format="xml" />
+    <!-- Generate a series of HTML files containing the coverage
+         data in a user-readable form using nested source filesets.
+    -->
+    <cobertura-report destdir="${coverage.html.dir}">
+      <fileset dir="${src}">
+        <include name="**/*.java"/>
+      </fileset>
+    </cobertura-report>
+  </target>
+
+  <target name="clean_coverage"
+          description="Remove all files created by the code coverage process.">
+    <delete file="cobertura.log" />
+    <delete file="cobertura.ser" />
+    <delete dir="${instrumented.dir}" />
+  </target>
+
+  <target name="code_coverage"
+          depends="run_coverage_tests,coverage_report"
+          description="Compile, instrument ourself, run the tests and generate coverage reports."/>
 
 </project>

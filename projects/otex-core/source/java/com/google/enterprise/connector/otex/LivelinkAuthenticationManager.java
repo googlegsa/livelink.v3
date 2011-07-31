@@ -39,6 +39,8 @@ class LivelinkAuthenticationManager
     /** Client factory for obtaining client instances. */
     private ClientFactory clientFactory;
 
+    /** The mapper from the GSA identity to the Livelink username. */
+    private IdentityResolver identityResolver;
 
     /**
      * Default constructor for bean instantiation.
@@ -47,6 +49,14 @@ class LivelinkAuthenticationManager
         super();
     }
 
+    /** Direct instantiation for the tests. */
+    LivelinkAuthenticationManager(ClientFactory clientFactory,
+            DomainAndName domainAndName, String windowsDomain) {
+        this.clientFactory = clientFactory;
+        this.identityResolver =
+            new IdentityResolver(domainAndName, windowsDomain);
+    }
+  
     /**
      * Provides the current connector instance to this
      * authentication manager for configuration purposes.
@@ -59,20 +69,22 @@ class LivelinkAuthenticationManager
      * control the threads.
      */
     public synchronized void setConnector(Connector connector) {
-        this.clientFactory =
-            ((LivelinkConnector) connector).getAuthenticationClientFactory();
+        LivelinkConnector ll = (LivelinkConnector) connector;
+        this.clientFactory = ll.getAuthenticationClientFactory();
+        this.identityResolver =
+            new IdentityResolver(ll.getDomainAndName(), ll.getWindowsDomain());
     }
 
     /**
      * Authenticates the given user for access to the back-end
      * Livelink.
      *
-     * @param username the username to check
-     * @param password the user's password
-     * @returns true if the user can be authenticated
+     * @param identity the user credentials to check
+     * @returns an {@code AuthenticationResponse} indicating whether
+     *     the user credentials are valid
      * @throws RepositoryLoginException not currently thrown
      * @throws RepositoryException if an exception occurred during
-     * authentication
+     *     authentication
      */
     public synchronized AuthenticationResponse authenticate(
             AuthenticationIdentity identity)
@@ -87,10 +99,28 @@ class LivelinkAuthenticationManager
             throw new RepositoryException("Missing Livelink client factory");
         }
 
+        String username = identityResolver.getAuthenticationIdentity(identity);
+        return authenticate(username, identity.getPassword());
+    }
+	
+    /**
+     * Authenticates the given user for access to the back-end
+     * Livelink. This separate helper method prevents access to the
+     * original {@link AuthenticationIdentity} parameter, to avoid
+     * using the wrong username by accident.
+     *
+     * @param username the username to check
+     * @param password the user's password
+     * @returns an {@code AuthenticationResponse} indicating whether
+     *     the user credentials are valid
+     * @throws RepositoryLoginException not currently thrown
+     * @throws RepositoryException if an exception occurred during
+     *     authentication
+     */
+    private AuthenticationResponse authenticate(String username,
+        String password) throws RepositoryLoginException, RepositoryException {
         try {
-            // XXX: Pass the identity to the ClientFactory?
-            Client client = clientFactory.createClient(
-                identity.getUsername(), identity.getPassword());
+            Client client = clientFactory.createClient(username, password);
 
             // Verify connectivity by calling GetServerInfo, just like
             // LivelinkConnector.login does.
@@ -99,12 +129,12 @@ class LivelinkAuthenticationManager
             // faster.
             ClientValue serverInfo = client.GetServerInfo();
             if (LOGGER.isLoggable(Level.FINE))
-              LOGGER.fine("AUTHENTICATED: " + identity.getUsername() + ": " +
+              LOGGER.fine("AUTHENTICATED: " + username + ": " +
                 serverInfo.hasValue());
             return new AuthenticationResponse(serverInfo.hasValue(), null);
         } catch (RepositoryException e) {
             LOGGER.warning("Authentication failed for " +
-                identity.getUsername() + "; " + e.getMessage());
+                username + "; " + e.getMessage());
             throw e;
         }
     }

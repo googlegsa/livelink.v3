@@ -1,4 +1,4 @@
-// Copyright (C) 2007-2008 Google Inc.
+// Copyright 2007 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,8 +43,6 @@ public final class LapiClientFactory implements ClientFactory {
 
   private boolean useUsernamePasswordWithWebServer = false;
 
-  private String windowsDomain = null;
-    
   /** {@inheritDoc} */
   public void setServer(String value) {
     server = value;
@@ -100,7 +98,7 @@ public final class LapiClientFactory implements ClientFactory {
   public void setHttpPassword(String value) {
     setConfig("HTTPPassword", value);
   }
-    
+
   /** {@inheritDoc} */
   public void setVerifyServer(boolean value) {
     setConfig("VerifyServer", value ? 1 : 0);
@@ -158,11 +156,6 @@ public final class LapiClientFactory implements ClientFactory {
     useUsernamePasswordWithWebServer = value;
   }
 
-  /** {@inheritDoc} */
-  public void setWindowsDomain(String value) {
-    windowsDomain = value;
-  }
-
   /**
    * Sets a string feature in the config assoc.
    *
@@ -180,7 +173,7 @@ public final class LapiClientFactory implements ClientFactory {
       config = (new LLValue()).setAssocNotSet();
     config.add(name, value);
   }
-    
+
   /**
    * Sets an integer feature in the config assoc.
    *
@@ -192,7 +185,7 @@ public final class LapiClientFactory implements ClientFactory {
       config = (new LLValue()).setAssocNotSet();
     config.add(name, value);
   }
-    
+
   /**
    * Sets an LLValue feature in the config assoc.
    *
@@ -204,7 +197,7 @@ public final class LapiClientFactory implements ClientFactory {
       config = (new LLValue()).setAssocNotSet();
     config.add(name, value);
   }
-    
+
   /** {@inheritDoc} */ 
   public Client createClient() {
     // Construct a new LLSession and pass that to the client, just
@@ -223,7 +216,6 @@ public final class LapiClientFactory implements ClientFactory {
    * Construct a new LLSession using the provided username
    * and password instead of the configured ones. This is
    * intended for use by the AuthenticationManager.
-   * 
    */
   /*
    * If a separate set of authentication parameters was not
@@ -245,23 +237,7 @@ public final class LapiClientFactory implements ClientFactory {
    * XXX: We are intentionally shadowing the username and password fields
    * in this method to prevent their accidental use.
    */
-  public Client createClient(String originalUsername, String password) {
-    // Check for a domain value.
-    String username;
-    int index = originalUsername.indexOf("@");
-    if (index != -1) {
-      String user = originalUsername.substring(0, index);
-      String domain = originalUsername.substring(index + 1);
-      username = domain + '\\' + user;
-    } else if (windowsDomain != null && windowsDomain.length() > 0)
-      username = windowsDomain + '\\' + originalUsername;
-    else
-      username = originalUsername;
-    if (LOGGER.isLoggable(Level.FINER)) {
-      if (username.indexOf('\\') != -1)
-        LOGGER.finer("AUTHENTICATE AS: " + username);
-    }
-
+  public Client createClient(String username, String password) {
     // Copy the config.
     LLValue localConfig = null; 
     if (config != null) {
@@ -281,7 +257,7 @@ public final class LapiClientFactory implements ClientFactory {
       localConfig.add("HTTPUserName", username); 
       localConfig.add("HTTPPassword", password); 
     }
-        
+
     logProperties(username, password, localConfig); 
     LLSession session = new LLSession(server, port, connection, 
         username, password, localConfig);

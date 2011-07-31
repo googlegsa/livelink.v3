@@ -19,6 +19,7 @@ import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
 import junit.framework.TestCase;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Date;
@@ -310,6 +311,53 @@ public class LivelinkConnectorTest extends TestCase {
       connector.login();
       fail("Expected an exception");
     } catch (ConfigurationException e) {
+    }
+  }
+
+  public void testDomainAndName_null() throws RepositoryException {
+    connector.setDomainAndName(null);
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (IllegalArgumentException e) {
+      assertEquals(null, e.getMessage());
+    }
+  }
+
+  public void testDomainAndName_empty() throws RepositoryException {
+    connector.setDomainAndName("");
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (IllegalArgumentException e) {
+      assertEquals("", e.getMessage());
+    }
+  }
+
+  public void testDomainAndName_invalid() throws RepositoryException {
+    connector.setDomainAndName("whenever");
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage(), e.getMessage().matches("(?i).*whenever.*"));
+    }
+  }
+
+  public void testDomainAndName_values() throws RepositoryException {
+    DomainAndName[] values = DomainAndName.values();
+    assertTrue(Arrays.toString(values), values.length > 0);
+
+    for (DomainAndName value : values) {
+      connector.setDomainAndName(value.toString());
+      connector.login();
+    }
+  }
+
+  public void testDomainAndName_lowercaseValues() throws RepositoryException {
+    for (DomainAndName value : DomainAndName.values()) {
+      connector.setDomainAndName(value.toString().toLowerCase());
+      connector.login();
     }
   }
 }

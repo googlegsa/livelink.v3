@@ -33,6 +33,9 @@ public class MockClientFactory implements ClientFactory {
 
   private final Connection jdbcConnection;
 
+  /** The most recent username passed to {@code createClient}. */
+  private String username;
+
   public MockClientFactory() {
     this(null);
   }
@@ -128,17 +131,18 @@ public class MockClientFactory implements ClientFactory {
   }
 
   /** {@inheritDoc} */
-  public void setWindowsDomain(String value) {
-    values.put("setWindowsDomain", value);
-  }
-
-  /** {@inheritDoc} */
   public Client createClient() {
     return new MockClient(jdbcConnection);
   }
 
   /** {@inheritDoc} */
   public Client createClient(String username, String password) {
+    this.username = username;
     return new MockClient(jdbcConnection);
+  }
+
+  /** Gets the most recent username passed to {@code createClient}. */
+  public String getUsername() {
+    return username;
   }
 }

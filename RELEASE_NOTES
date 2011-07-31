@@ -5,25 +5,33 @@
 This document contains the release notes for Google Search Appliance
 Connector for Open Text Livelink ECM - Enterprise Server. The following
 sections describe the release in detail and provide information that
-supplements the main documentation. See the Issues Tab on the Code Web
-Site for the current list of known issues and workarounds.
+supplements the main documentation.
 
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
-Release 2.8.0, May 26, 2010
+Release 2.8.0, Jul 18, 2011
 ===========================
 
 Introduction
 ------------
+
 This is an upgrade release with some enhancements. Users of previous
-releases are encouraged to upgrade. This release contains the updates
-in the 2.6.10 and 2.6.12 patch releases.
+releases are encouraged to upgrade. This release also contains the
+updates in the 2.6.10 and 2.6.12 patch releases.
 
 Summary of Changes
 ------------------
+  * Added basic support for the Communities and Wiki modules.
+    Configured the excludedNodeTypes, includedExtendedData, and
+    displayActions for Communities and Wiki items. The new excluded
+    node types (345,346,361,374,431,3030004,3030201) are shadow
+    volumes for Communities items. Avoid errors fetching the content
+    of Communities items with a MIME type but no version file.
   * Added the includedSelectExpressions advanced configuration
     property.
+  * Fixed issue 4644193: Livelink connector does not use domain for
+    authZ. Added the domainAndName advanced configuration property.
 
 Advanced Configuration Properties
 ---------------------------------
@@ -47,7 +55,7 @@ Enterprise Support if you need assistance.
 http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
 
 
-Release 2.6.12, May 2, 2010
+Release 2.6.12, May 2, 2011
 ============================
 
 Introduction
@@ -67,7 +75,7 @@ Version Compatibility
 See the release notes for 2.6.10.
 
 
-Release 2.6.10, Apr 28, 2010
+Release 2.6.10, Apr 28, 2011
 ============================
 
 Introduction

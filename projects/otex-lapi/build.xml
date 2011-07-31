@@ -27,8 +27,7 @@
   <property name="tests.src" value="source/javatests" />
   <property name="tests.build" value="build/tests" />
   <property name="tests.classes" value="${tests.build}/classes" />
-  <property name="tests.todir" value="tests_outdir" />
-  <property name="tests.logging.properties" 
+  <property name="tests.logging.properties"
             location="${tests.classes}/tests.logging.properties"/>
 
   <property name="tools.src" value="source/javatools" />
@@ -40,7 +39,7 @@
 
   <property name="core.dir" location="../otex-core"/>
   <property name="core.classes" location="../otex-core/build/classes"/>
-  <property name="core.tests.classes" 
+  <property name="core.tests.classes"
             location="../otex-core/build/tests/classes" />
 
   <property name="connector-manager-projects.dir"
@@ -56,6 +55,25 @@
 
   <property name="lapi.jarfile" location="${build.lapi.home}/lib/lapi.jar" />
 
+  <!-- All reports go into this directory. -->
+  <property name="reports.dir" value="reports" />
+
+  <!-- Unit test reports from JUnit are deposited into this directory. -->
+  <!-- TODO: Use these if you switch to xml+html output, instead of plain text.
+  <property name="junit.xml.dir" value="${reports.dir}/junit-xml" />
+  <property name="junit.html.dir" value="${reports.dir}/junit-html" />
+  -->
+  <property name="junit.plain.dir" value="${reports.dir}/junit-plain" />
+  <property name="tests.todir" value="${junit.plain.dir}" />
+
+  <!-- ======== Cobertura Code Coverage Properties ======= -->
+  <!-- Instrumented classes are deposited into this directory. -->
+  <property name="instrumented.dir" value="${build}/instrumented" />
+
+  <!-- Coverage reports are deposited into these directories. -->
+  <property name="coverage.xml.dir" value="${reports.dir}/cobertura-xml" />
+  <property name="coverage.html.dir" value="${reports.dir}/cobertura-html" />
+
   <!-- =========================== TASKS =============================== -->
   <target name="build" depends="init,compile,compile_tests,compile_tools,jar">
   </target>
@@ -67,16 +85,17 @@
     <mkdir dir="${config.build}" />
     <mkdir dir="${tests.build}" />
     <mkdir dir="${tests.classes}" />
-    <mkdir dir="${tests.todir}" />
     <mkdir dir="${tools.build}" />
     <mkdir dir="${tools.classes}" />
+    <mkdir dir="${reports.dir}" />
+    <mkdir dir="${tests.todir}" />
     <mkdir dir="${jar.dir}" />
   </target>
 
   <target name="compile" depends="init">
     <!-- compile java source files -->
-    <javac srcdir="${src}" destdir="${classes}" 
-           debug="${COMPILE_DEBUG_FLAG}" 
+    <javac srcdir="${src}" destdir="${classes}"
+           debug="${COMPILE_DEBUG_FLAG}"
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
            includeAntRuntime="false">
@@ -106,6 +125,20 @@
         <path refid="base_tests_path" />
   </path>
 
+  <target name="compile_tests" depends="init,jar">
+    <!-- compile java source files for tests -->
+    <javac srcdir="${tests.src}" destdir="${tests.classes}"
+           debug="${COMPILE_DEBUG_FLAG}"
+           debuglevel="${COMPILE_DEBUG_LEVEL}"
+           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
+           includeAntRuntime="false">
+      <!-- CM JAR Class-Path references are not available. -->
+      <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
+      <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
+      <classpath refid="compile_tests_path" />
+    </javac>
+  </target>
+
   <path id="run_tests_path">
         <!-- We need the javax.jcr package, but we don't know the JAR
              file name, so we include everything in tests. -->
@@ -117,22 +150,8 @@
         <path refid="base_tests_path" />
         <pathelement location="${lapi.jarfile}" />
   </path>
-
-  <target name="compile_tests" depends="init,jar">
-    <!-- compile java source files for tests -->
-    <javac srcdir="${tests.src}" destdir="${tests.classes}" 
-           debug="${COMPILE_DEBUG_FLAG}" 
-           debuglevel="${COMPILE_DEBUG_LEVEL}"
-           target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
-           includeAntRuntime="false">
-      <!-- CM JAR Class-Path references are not available. -->
-      <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
-      <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
-      <classpath>
-      	<path refid="compile_tests_path" />
-      </classpath>
-    </javac>
-  </target>
+  <!-- This classpath gets overridden by code_coverage. -->
+  <property name="tests.classpath" value="run_tests_path"/>
 
   <target name="run_tests" depends="compile_tests,jar">
     <property name="test.suite" value="*"/>
@@ -145,21 +164,19 @@
                 value="${logging.file}"/>
       </filterset>
     </copy>
-    <replace file="${tests.logging.properties}" 
+    <replace file="${tests.logging.properties}"
              token="\" value="\\" />
     <delete file="${logging.file}"/>
     <junit>
       <assertions><enable/></assertions>
-      <classpath>
-        <path refid="run_tests_path" />
-      </classpath>
+      <classpath refid="${tests.classpath}" />
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
       <syspropertyset refid="javatest.properties"/>
       <sysproperty key="java.util.logging.config.file"
                    value="${tests.logging.properties}"/>
       <!-- For initializing the Context for DocPusher.take. -->
-      <sysproperty key="connector-manager.dir" 
+      <sysproperty key="connector-manager.dir"
                    value="${connector-manager.dir}" />
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tests.src}">
@@ -172,8 +189,8 @@
   <!-- tools are tests that cannot run automatically (require input) -->
   <target name="compile_tools" depends="init,jar,compile_tests">
     <!-- compile java source files for tools -->
-    <javac srcdir="${tools.src}" destdir="${tools.classes}" 
-           debug="${COMPILE_DEBUG_FLAG}" 
+    <javac srcdir="${tools.src}" destdir="${tools.classes}"
+           debug="${COMPILE_DEBUG_FLAG}"
            debuglevel="${COMPILE_DEBUG_LEVEL}"
            target="${COMPILE_TARGET}" source="${COMPILE_TARGET}"
            includeAntRuntime="false">
@@ -186,6 +203,12 @@
     </javac>
   </target>
 
+  <path id="run_tools_path">
+        <pathelement location="${tools.classes}" />
+        <path refid="run_tests_path" />
+  </path>
+  <property name="tools.classpath" value="run_tools_path"/>
+
   <target name="run_tools" depends="compile_tools,jar">
     <property name="test.suite" value="*"/>
     <property name="logging.file" location="${tests.todir}/test.log" />
@@ -197,15 +220,12 @@
                 value="${logging.file}"/>
       </filterset>
     </copy>
-    <replace file="${tests.logging.properties}" 
+    <replace file="${tests.logging.properties}"
              token="\" value="\\" />
     <delete file="${logging.file}"/>
     <junit>
       <assertions><enable/></assertions>
-      <classpath>
-        <pathelement location="${tools.classes}" />
-        <path refid="run_tests_path" />
-      </classpath>
+      <classpath refid="${tools.classpath}" />
       <formatter type="brief" usefile="no"/>
       <formatter type="plain" />
       <syspropertyset refid="javatest.properties"/>
@@ -214,7 +234,7 @@
       <sysproperty key="test.docid" value="${test.docid}" />
       <sysproperty key="test.docids" value="${test.docids}" />
       <!-- For initializing the Context for DocPusher.take. -->
-      <sysproperty key="connector-manager.dir" 
+      <sysproperty key="connector-manager.dir"
                    value="${connector-manager.dir}" />
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tools.src}">
@@ -223,7 +243,6 @@
       </batchtest>
     </junit>
   </target>
-
 
   <target name="jar" description="livelink-connector" depends="compile">
     <copy todir="${config.build}">
@@ -239,7 +258,7 @@
       <fileset dir="${core.dir}/source/java"
         includes="**/*.properties"/>
       <fileset dir="${classes}"/>
-      <fileset dir="${build}" includes="config/*.*" 
+      <fileset dir="${build}" includes="config/*.*"
         excludes="**/logging.properties" />
       <zipfileset file="${build}/config/logging.properties" prefix="" />
       <manifest>
@@ -257,9 +276,80 @@
     </jar>
   </target>
 
-  <target name="clean" description="Deletes all build files.">
+  <target name="clean" depends="clean_coverage"
+          description="Deletes all build files.">
     <delete dir="${build}" />
     <delete dir="${dist}" />
   </target>
+
+  <!-- ====================== Cobertura Tasks ====================== -->
+
+  <!-- Where Cobertura can find itself and its dependencies. -->
+  <path id="cobertura.classpath">
+    <fileset dir="${thirdparty.jar.dir}/cobertura" includes="**/*.jar" />
+  </path>
+  <taskdef classpathref="cobertura.classpath" resource="tasks.properties" />
+
+  <target name="init_coverage">
+    <mkdir dir="${instrumented.dir}" />
+    <mkdir dir="${coverage.xml.dir}" />
+    <mkdir dir="${coverage.html.dir}" />
+  </target>
+
+  <target name="compile_coverage"
+          depends="init_coverage,compile,compile_tests,compile_tools" />
+
+  <target name="instrument" depends="compile_coverage">
+    <cobertura-instrument todir="${instrumented.dir}">
+      <!-- The following line causes instrument to ignore any line
+           refering to log4j, for the purposes of coverage reporting.
+      -->
+      <ignore regex="org.apache.log4j.*" />
+
+      <!-- Instrument the application classes, but not the test classes. -->
+      <fileset dir="${classes}" includes="**/*.class" />
+    </cobertura-instrument>
+  </target>
+
+  <path id="coverage.classpath">
+    <pathelement location="${instrumented.dir}" />
+    <pathelement location="${tools.classes}" />
+    <path refid="run_tests_path" />
+    <path refid="cobertura.classpath" />
+  </path>
+
+  <target name="run_coverage_tests" depends="jar,instrument">
+    <antcall target="run_tests">
+      <param name="tests.classpath" value="coverage.classpath" />
+    </antcall>
+    <antcall target="run_tools">
+      <param name="tools.classpath" value="coverage.classpath" />
+    </antcall>
+  </target>
+
+  <target name="coverage_report">
+    <!-- Generate an XML file containing the coverage data. -->
+    <cobertura-report srcdir="${src}" destdir="${coverage.xml.dir}"
+                      format="xml" />
+    <!-- Generate a series of HTML files containing the coverage
+         data in a user-readable form using nested source filesets.
+    -->
+    <cobertura-report destdir="${coverage.html.dir}">
+      <fileset dir="${src}">
+        <include name="**/*.java"/>
+      </fileset>
+    </cobertura-report>
+  </target>
+
+  <target name="clean_coverage"
+          description="Remove all files created by the code coverage process.">
+    <delete file="cobertura.log" />
+    <delete file="cobertura.ser" />
+    <delete dir="${instrumented.dir}" />
+  </target>
+
+  <target name="code_coverage"
+          depends="run_coverage_tests,coverage_report"
+          description="Compile, instrument ourself, run the tests and generate coverage reports."/>
 
 </project>
