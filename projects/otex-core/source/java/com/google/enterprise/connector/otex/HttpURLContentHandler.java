@@ -46,7 +46,10 @@ class HttpURLContentHandler implements ContentHandler {
 
     /** The user's LLCookie value. */
     private String llCookie;
-    
+
+    /** The data URL pattern. */
+    String baseUrl = "?func=ll&objAction=download&objId=";  
+
     HttpURLContentHandler() {
     }
 
@@ -59,6 +62,17 @@ class HttpURLContentHandler implements ContentHandler {
         llCookie = getLLCookie();
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine("LLCOOKIE: " + llCookie);
+    }
+
+    /**
+     * Sets the baseUrl property. 
+     *
+     * @param baseUrl the URL pattern for data retrieval; by
+     * default "?func=ll&objAction=download&objId="
+     * @since 3.0
+     */
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl; 
     }
 
     /**
@@ -83,8 +97,10 @@ class HttpURLContentHandler implements ContentHandler {
             int versionNumber, int size) throws RepositoryException {
         try {
             String downloadUrlBase = connector.getDisplayUrl() +
-                "?func=ll&objAction=download&objId=";
+                baseUrl; 
             URL downloadUrl = new URL(downloadUrlBase + objectId);
+            if (LOGGER.isLoggable(Level.FINEST))
+                LOGGER.fine("DOWNLOAD URL: " + downloadUrl);
             URLConnection download = downloadUrl.openConnection();
             download.addRequestProperty("Cookie", "LLCookie=" + llCookie);
 
