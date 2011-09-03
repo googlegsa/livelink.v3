@@ -42,6 +42,7 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.SpiConstants.FeedType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -226,6 +227,9 @@ public class LivelinkConnector implements Connector {
 
   /** The <code>ContentHandler</code> implementation class. */
   private ContentHandler contentHandler;
+
+  /** True if using content feeds, false for content url feeds. */
+  private FeedType feedType;
 
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
@@ -1296,7 +1300,7 @@ public class LivelinkConnector implements Connector {
   Map<String, String> getIncludedSelectExpressions() {
     return selectExpressions;
   }
-      
+
   /**
    * Set the rules for handling the ObjectInfo.Catalog.DISPLAYTYPE_HIDDEN
    * attribute for an object.  Specifies whether hidden items are indexed
@@ -1671,14 +1675,14 @@ public class LivelinkConnector implements Connector {
         this.contentHandler = (ContentHandler)
             Class.forName((String) contentHandler).newInstance();
       } catch (Exception e) {
-          throw new ConfigurationException("contentHandler " + 
+          throw new ConfigurationException("contentHandler " +
             "class " + contentHandler + " could not be instantiated", e);
       }
     }
     else if (contentHandler instanceof ContentHandler)
       this.contentHandler = (ContentHandler) contentHandler;
     else
-      throw new ConfigurationException("contentHandler must be " 
+      throw new ConfigurationException("contentHandler must be "
         + "a class name string or a ContentHandler object.");
   }
 
@@ -1689,6 +1693,38 @@ public class LivelinkConnector implements Connector {
    */
   ContentHandler getContentHandler() {
     return contentHandler;
+  }
+
+  /**
+   * Sets the FeedType.  Supported feed types are CONTENT and CONTENTURL.
+   *
+   * @param feedTypeString the String representation of a
+   *        {@link SpiConstants.FeedType}
+   */
+  public void setFeedType(String feedTypeString) {
+    FeedType type;
+    try {
+      type = Enum.valueOf(FeedType.class, feedTypeString.toUpperCase());
+      if (type != FeedType.CONTENT && type != FeedType.CONTENTURL) {
+        LOGGER.warning("Unsupported FeedType: " + feedTypeString);
+        type = FeedType.CONTENT;
+      }
+    } catch (IllegalArgumentException e) {
+      LOGGER.warning("Unknown FeedType: " + feedTypeString);
+      type = FeedType.CONTENT;
+    }
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("FEED TYPE: " + type.toString());
+    this.feedType = type;
+  }
+
+  /**
+   * Returns the configured {@link SpiConstants.FeedType} to use for content.
+   *
+   * @return the configured {@link SpiConstants.FeedType}
+   */
+  FeedType getFeedType() {
+    return feedType;
   }
 
   /**

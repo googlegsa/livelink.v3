@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.logging.Logger;
 
+import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
@@ -150,6 +151,23 @@ final class MockClient implements Client {
             fields = new String[] { "minModifyDate" };
             values = new Object[][] {
                 new Object[] { new Date() } };
+        } else if (query.startsWith("DataID = ") && view.equals("WebNodes")) {
+            // This is the Retriever fetching meta-data.
+            fields = getRecArrayFieldNames(columns);
+            int objectId =
+                Integer.parseInt(query.substring("DataID = ".length()));
+            if (objectId == MockConstants.IO_OBJECT_ID) {
+              throw new LivelinkIOException(new RuntimeException(
+                   "Simulated Server did not accept open request"), LOGGER);
+            } else if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
+              // No rows.
+              values = new Object[0][0];
+            } else {
+              values = new Object[][] {
+                new Object[] { new Integer(objectId), new Integer(0),
+                               new Date(), new String("text/html"),
+                               new Integer(200), new Integer(100) } };
+            }
         } else if ((columns.length == 1 && columns[0].equals("ParentID")) ||
                 (columns.length == 3 &&
                     columns[2].indexOf("ParentID <> -1") != -1)) {
@@ -169,6 +187,18 @@ final class MockClient implements Client {
             values = new Object[0][0];
         }
         return new MockClientValue(fields, values);
+    }
+
+    /** Extracts field names from any select expressions. */
+    private String[] getRecArrayFieldNames(String[] columns) {
+      String[] fields = new String[columns.length];
+      for (int i = 0; i < columns.length; i++) {
+        String[] tokens = columns[i].split("\\W+");
+        // In a select expression, the name of the field is at the end.
+        // Otherwise, the single token is the original field name.
+        fields[i] = tokens[tokens.length - 1];
+      }
+      return fields;
     }
 
     /**
@@ -255,7 +285,7 @@ final class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-    
+
     /** {@inheritDoc} */
     public ClientValue AttrListNames(ClientValue categoryVersion,
             ClientValue attributeSetPath) throws RepositoryException {
@@ -265,7 +295,7 @@ final class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-    
+
     /** {@inheritDoc} */
     public ClientValue AttrGetInfo(ClientValue categoryVersion,
             String attributeName, ClientValue attributeSetPath)
@@ -276,7 +306,7 @@ final class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-    
+
     /** {@inheritDoc} */
     public ClientValue AttrGetValues(ClientValue categoryVersion,
             String attributeName, ClientValue attributeSetPath)
@@ -301,7 +331,8 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation does nothing.
+     * This implementation simulates problems accessing content for
+     * some "special" docids; otherwise it does nothing.
      */
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             File path) throws RepositoryException {
@@ -320,11 +351,19 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation does nothing but close the output stream.
+     * This implementation simulates problems accessing content for
+     * some "special" docids, otherwise it simply closes the output stream.
      */
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             OutputStream out) throws RepositoryException {
         LOGGER.fine("Entering MockClient.FetchVersion");
+        if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
+          throw new LivelinkException(new RuntimeException(
+                  "Simulated Premature end-of-data on socket"), LOGGER);
+        } else if (objectId == MockConstants.IO_OBJECT_ID) {
+          throw new LivelinkIOException(new RuntimeException(
+                  "Simulated Server did not accept open request"), LOGGER);
+        }
         try {
             out.close();
         } catch (IOException e) {
@@ -333,12 +372,11 @@ final class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
-    public ClientValue GetVersionInfo(int volumeId, int objectId, int versionNumber)
-            throws RepositoryException {
+    public ClientValue GetVersionInfo(int volumeId, int objectId,
+            int versionNumber) throws RepositoryException {
         LOGGER.fine("Entering MockClient.GetVersionInfo");
         return null; // FIXME; stub implementation to get it to compile
     }
-
 
     /**
      * {@inheritDoc}
