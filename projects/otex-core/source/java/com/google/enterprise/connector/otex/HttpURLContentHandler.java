@@ -47,8 +47,11 @@ class HttpURLContentHandler implements ContentHandler {
     /** The user's LLCookie value. */
     private String llCookie;
 
-    /** The data URL pattern. */
-    String baseUrl = "?func=ll&objAction=download&objId=";  
+    /** The Livelink base URL. The default is the configured Livelink URL. */
+    String urlBase;  
+
+    /** The document URL path. */
+    String urlPath = "?func=ll&objAction=download&objId=";  
 
     HttpURLContentHandler() {
     }
@@ -60,19 +63,29 @@ class HttpURLContentHandler implements ContentHandler {
         this.client = client;
 
         llCookie = getLLCookie();
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("LLCOOKIE: " + llCookie);
+        urlBase = connector.getDisplayUrl();
     }
 
     /**
-     * Sets the baseUrl property. 
+     * Sets the document base URL. 
      *
-     * @param baseUrl the URL pattern for data retrieval; by
+     * @param urlBase the Livelink base URL for document retrieval; by
+     * default the configured Livelink URL
+     * @since 3.0
+     */
+    public void setUrlBase(String urlBase) {
+        this.urlBase = urlBase; 
+    }
+
+    /**
+     * Sets the document URL path, which is appended to the base URL.
+     *
+     * @param urlPath the URL path for document retrieval; by
      * default "?func=ll&objAction=download&objId="
      * @since 3.0
      */
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl; 
+    public void setUrlPath(String urlPath) {
+        this.urlPath = urlPath; 
     }
 
     /**
@@ -96,9 +109,7 @@ class HttpURLContentHandler implements ContentHandler {
     public InputStream getInputStream(int volumeId, int objectId,
             int versionNumber, int size) throws RepositoryException {
         try {
-            String downloadUrlBase = connector.getDisplayUrl() +
-                baseUrl; 
-            URL downloadUrl = new URL(downloadUrlBase + objectId);
+            URL downloadUrl = new URL(urlBase + urlPath + objectId);
             if (LOGGER.isLoggable(Level.FINEST))
                 LOGGER.fine("DOWNLOAD URL: " + downloadUrl);
             URLConnection download = downloadUrl.openConnection();
