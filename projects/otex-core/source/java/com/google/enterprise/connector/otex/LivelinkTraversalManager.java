@@ -445,14 +445,7 @@ class LivelinkTraversalManager
    * or initialized
    */
   private ContentHandler getContentHandler() throws RepositoryException {
-    ContentHandler contentHandler;
-    String contentHandlerClass = connector.getContentHandler();
-    try {
-      contentHandler = (ContentHandler)
-          Class.forName(contentHandlerClass).newInstance();
-    } catch (Exception e) {
-      throw new LivelinkException(e, LOGGER);
-    }
+    ContentHandler contentHandler = connector.getContentHandler();
     contentHandler.initialize(connector, traversalClient);
     return contentHandler;
   }

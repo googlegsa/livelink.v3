@@ -224,8 +224,8 @@ public class LivelinkConnector implements Connector {
   /** The set of Subtypes for which we index hidden items. */
   private HashSet<Object> hiddenItemsSubtypes = null;
 
-  /** The <code>ContentHandler</code> implementation class name. */
-  private String contentHandler;
+  /** The <code>ContentHandler</code> implementation class. */
+  private ContentHandler contentHandler;
 
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
@@ -1659,21 +1659,35 @@ public class LivelinkConnector implements Connector {
    * <code>ContentHandler</code> interface.
    *
    * @param contentHandler the fully-qualified name of the
-   * <code>ContentHandler</code> implementation to use
+   * <code>ContentHandler</code> implementation to use, or
+   * a <code>ContentHandler</code> object
    */
-  public void setContentHandler(String contentHandler) {
+  public void setContentHandler(Object contentHandler) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("CONTENT HANDLER: " + contentHandler);
-    this.contentHandler = contentHandler;
+
+    if (contentHandler instanceof String) {
+      try {
+        this.contentHandler = (ContentHandler)
+            Class.forName((String) contentHandler).newInstance();
+      } catch (Exception e) {
+          throw new ConfigurationException("contentHandler " + 
+            "class " + contentHandler + " could not be instantiated", e);
+      }
+    }
+    else if (contentHandler instanceof ContentHandler)
+      this.contentHandler = (ContentHandler) contentHandler;
+    else
+      throw new ConfigurationException("contentHandler must be " 
+        + "a class name string or a ContentHandler object.");
   }
 
   /**
-   * Gets the <code>ContentHandler</code> implementation class name.
+   * Gets the <code>ContentHandler</code> implementation class.
    *
-   * @return the fully-qualified name of the <code>ContentHandler</code>
-   * implementation to use
+   * @return the <code>ContentHandler</code> implementation to use
    */
-  String getContentHandler() {
+  ContentHandler getContentHandler() {
     return contentHandler;
   }
 
