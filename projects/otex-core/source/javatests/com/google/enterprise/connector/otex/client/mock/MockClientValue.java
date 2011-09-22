@@ -279,8 +279,13 @@ public final class MockClientValue implements ClientValue {
     throw new IllegalArgumentException();
   }
 
-  public ClientValue toValue(int index) {
-    throw new IllegalArgumentException();
+  public ClientValue toValue(int index) throws RepositoryException {
+    Object value = getValue(index);
+    if (value instanceof ClientValue) {
+      return (ClientValue) value;
+    } else {
+      return new MockClientValue(value);
+    }
   }
 
   public boolean toBoolean(int index) {

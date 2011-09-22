@@ -79,10 +79,13 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns an empty list.
+     * This implementation returns an LLCookie with an invalid value.
      */
     public ClientValue GetCookieInfo() throws RepositoryException {
-        return new MockClientValue(new Object[0]);
+      ClientValue llcookie = new MockClientValue(
+          new String[] { "Name", "Value" },
+          new Object[] { "LLCookie", "llcookie value goes here" });
+      return new MockClientValue(new Object[] { llcookie });
     }
 
     /** {@inheritDoc} */
