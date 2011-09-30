@@ -184,10 +184,6 @@ class LivelinkTraversalManager
     this.connector = connector;
     this.traversalClient = clientFactory.createClient();
 
-    // NOTE: This logic is replicated in the LivelinkRetriever constructor.
-    // Changes here should probably be reflected there and vice-versa.
-    // TODO: Extract this logic into a common utility function.
-
     // Get the current username to compare to the configured
     // traversalUsername and publicContentUsername.
     String username = null;
@@ -449,7 +445,14 @@ class LivelinkTraversalManager
    * or initialized
    */
   private ContentHandler getContentHandler() throws RepositoryException {
-    ContentHandler contentHandler = connector.getContentHandler();
+    ContentHandler contentHandler;
+    String contentHandlerClass = connector.getContentHandler();
+    try {
+      contentHandler = (ContentHandler)
+          Class.forName(contentHandlerClass).newInstance();
+    } catch (Exception e) {
+      throw new LivelinkException(e, LOGGER);
+    }
     contentHandler.initialize(connector, traversalClient);
     return contentHandler;
   }

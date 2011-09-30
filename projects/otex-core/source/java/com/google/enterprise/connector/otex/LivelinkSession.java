@@ -17,13 +17,11 @@ package com.google.enterprise.connector.otex;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Retriever;
-import com.google.enterprise.connector.spi.RetrieverAware;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
-class LivelinkSession implements Session, RetrieverAware {
+class LivelinkSession implements Session {
     /** The connector instance. */
     private final LivelinkConnector connector;
 
@@ -36,15 +34,11 @@ class LivelinkSession implements Session, RetrieverAware {
     /** The authorization manager. */
     private final AuthorizationManager authorizationManager;
 
-    /** The Retriever. */
-    private Retriever retriever;
-
     /**
      *
      * @param connector a connector instance
      * @param clientFactory a client factory
      * @param authenticationManager the configured AuthenticationManager
-     * @param authorizationtionManager the configured AuthorizationManager
      * @throws RepositoryException not thrown
      */
     public LivelinkSession(LivelinkConnector connector,
@@ -56,7 +50,6 @@ class LivelinkSession implements Session, RetrieverAware {
         this.clientFactory = clientFactory;
         this.authenticationManager = authenticationManager;
         this.authorizationManager = authorizationManager;
-        this.retriever = null;
     }
 
     /**
@@ -91,19 +84,6 @@ class LivelinkSession implements Session, RetrieverAware {
         throws RepositoryException
     {
         return authorizationManager;
-    }
-
-    /**
-     * Gets the Retriever to implement Content URL Web feed.
-     *
-     * @return a Retriever
-     * @throws RepositoryException
-     */
-    public synchronized Retriever getRetriever() throws RepositoryException {
-      if (retriever == null) {
-            retriever = new LivelinkRetriever(connector, clientFactory);
-        }
-        return retriever;
     }
 
     /**

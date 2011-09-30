@@ -30,7 +30,6 @@ import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.SkippedDocumentException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.SpiConstants.ActionType;
-import com.google.enterprise.connector.spi.SpiConstants.FeedType;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.otex.client.Client;
@@ -490,15 +489,8 @@ class LivelinkDocumentList implements DocumentList {
       props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
           isPublic ? VALUE_TRUE : VALUE_FALSE);
 
-      if (connector.getFeedType() == FeedType.CONTENTURL) {
-        // If we are not using content feeds, don't supply the content yet.
-        // TODO: What about SkippedDocumentExceptions?
-        Value value = Value.getStringValue(FeedType.CONTENTURL.toString());
-        props.addProperty(SpiConstants.PROPNAME_FEEDTYPE, value);
-      } else {
-        // Fetch the content.
-        collectContentProperty();
-      }
+      // Fetch the content.
+      collectContentProperty();
 
       // Add the ExtendedData as MetaData properties.
       collectExtendedDataProperties();
@@ -585,10 +577,6 @@ class LivelinkDocumentList implements DocumentList {
      *
      * @return content Value object, null if no content
      */
-    // NOTE: Some of the logic here has been replicated in
-    // Retriever.getContent().  Changes here should probably be
-    // reflected there, and vice-versa.
-    // TODO: Extract the common logic out into a shared utility method.
     private void collectContentProperty() throws RepositoryException {
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);

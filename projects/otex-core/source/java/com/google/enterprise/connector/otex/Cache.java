@@ -31,11 +31,40 @@ class Cache<E> {
   /** The logger for this class. */
   private static final Logger LOGGER = Logger.getLogger(Cache.class.getName());
 
+  /**
+   * The underlying LRU store. We need to subclass LinkedHashMap to
+   * override removeEldestEntry.
+   */
+  private static class CacheMap<K, V> extends LinkedHashMap<K, V> {
+    /** The initial and maximum capacity of the cache. */
+    private final int capacity;
+
+    public CacheMap(int capacity) {
+      // 0.75f is the default load factor; true implies access-order
+      super(capacity, 0.75f, true);
+      this.capacity = capacity;
+    }
+
+    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+      boolean remove = size() > capacity;
+      if (remove && LOGGER.isLoggable(Level.FINEST)) {
+        LOGGER.finest("CACHE: removing entry " + eldest.getKey());
+      }
+      return remove;
+    }
+  }
+
   /** Object stored in the map for each key in our cache. */
   private static final Object VALUE = new Object();
 
   /** Backing store for the cache. */
   private final CacheMap<E, Object> store;
+
+  /** Cache hit counter, for logging statistics. */
+  private int hits = 0;
+
+  /** Cache miss counter, for logging statistics. */
+  private int misses = 0;
 
   public Cache(int capacity) {
     store = new CacheMap<E, Object>(capacity);
@@ -53,11 +82,16 @@ class Cache<E> {
   public boolean contains(Object target) {
     // For the access-ordering to work we have to use get here instead
     // of containsKey.
-    return (store.get(target) != null);
+    boolean exists = store.get(target) != null;
+    if (exists)
+      hits++;
+    else
+      misses++;
+    return exists;
   }
 
   public String statistics() {
-    return store.statistics();
+    return store.size() + " entries, " + hits + " hits, " + misses + " misses";
   }
 
   /** A convenience method for logging. */

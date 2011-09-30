@@ -22,7 +22,6 @@ import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -31,17 +30,13 @@ import com.google.enterprise.connector.otex.client.ClientValue;
  * This content handler implementation uses a Livelink download URL.
  * It depends on the LAPI client, so it can't be used in deployments
  * with the mock client.
- *
+ * 
  * @see ContentHandler
  */
 class HttpURLContentHandler implements ContentHandler {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(HttpURLContentHandler.class.getName());
-
-    @VisibleForTesting
-    static final String DEFAULT_URL_PATH =
-        "?func=ll&objAction=download&objId=";
 
     /** The connector contains configuration information. */
     private LivelinkConnector connector;
@@ -51,13 +46,7 @@ class HttpURLContentHandler implements ContentHandler {
 
     /** The user's LLCookie value. */
     private String llCookie;
-
-    /** The Livelink base URL. The default is the configured Livelink URL. */
-    String urlBase;
-
-    /** The document URL path. */
-    String urlPath = DEFAULT_URL_PATH;
-
+    
     HttpURLContentHandler() {
     }
 
@@ -68,44 +57,8 @@ class HttpURLContentHandler implements ContentHandler {
         this.client = client;
 
         llCookie = getLLCookie();
-
-        // Use the default value if no custom value was set.
-        if (urlBase == null) {
-          urlBase = connector.getDisplayUrl();
-        }
-    }
-
-    /**
-     * Sets the document base URL. By default the configured Livelink
-     * URL is used.
-     *
-     * @param urlBase the Livelink base URL for document retrieval
-     * @since 3.0
-     */
-    public void setUrlBase(String urlBase) {
-        this.urlBase = urlBase;
-    }
-
-    @VisibleForTesting
-    String getUrlBase() {
-        return urlBase;
-    }
-
-    /**
-     * Sets the document URL path, which is appended to the base URL.
-     * By default the URL path used is
-     * "?func=ll&amp;objAction=download&amp;objId=".
-     *
-     * @param urlPath the URL path for document retrieval
-     * @since 3.0
-     */
-    public void setUrlPath(String urlPath) {
-        this.urlPath = urlPath;
-    }
-
-    @VisibleForTesting
-    String getUrlPath() {
-        return urlPath;
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("LLCOOKIE: " + llCookie);
     }
 
     /**
@@ -124,14 +77,14 @@ class HttpURLContentHandler implements ContentHandler {
         }
         throw new RepositoryException("Missing LLCookie");
     }
-
+    
     /** {@inheritDoc} */
     public InputStream getInputStream(int volumeId, int objectId,
             int versionNumber, int size) throws RepositoryException {
         try {
-            URL downloadUrl = new URL(urlBase + urlPath + objectId);
-            if (LOGGER.isLoggable(Level.FINEST))
-                LOGGER.fine("DOWNLOAD URL: " + downloadUrl);
+            String downloadUrlBase = connector.getDisplayUrl() +
+                "?func=ll&objAction=download&objId=";
+            URL downloadUrl = new URL(downloadUrlBase + objectId);
             URLConnection download = downloadUrl.openConnection();
             download.addRequestProperty("Cookie", "LLCookie=" + llCookie);
 
