@@ -1687,11 +1687,21 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
-   * Gets the <code>ContentHandler</code> implementation class.
+   * Gets the <code>ContentHandler</code> implementation object.
    *
+   * @param client the client to use to access the server
    * @return the <code>ContentHandler</code> implementation to use
+   * @throws RepositoryException if the class cannot be initialized
    */
-  ContentHandler getContentHandler() {
+  ContentHandler getContentHandler(Client client)
+      throws RepositoryException {
+    // TODO: This code is relying on the fact that the client is
+    // always the traversal client. In order for this to work with
+    // retrievers at serve-time, we need to push the client down into
+    // the ContentHandler.getInputStream method. The alternative is to
+    // create a new ContentHandlerFactory interface and configure that
+    // instead so that we can create new instances here.
+    contentHandler.initialize(this, client);
     return contentHandler;
   }
 

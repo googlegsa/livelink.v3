@@ -37,14 +37,18 @@ import com.google.enterprise.connector.otex.client.ClientValueFactory;
 /**
  * A mock client implementation.
  */
-final class MockClient implements Client {
+public class MockClient implements Client {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
 
     private final Connection jdbcConnection;
 
-    MockClient(Connection jdbcConnection) {
+    public MockClient() {
+      this(null);
+    }
+
+    public MockClient(Connection jdbcConnection) {
       this.jdbcConnection = jdbcConnection;
     }
 
@@ -159,6 +163,11 @@ final class MockClient implements Client {
             fields = getRecArrayFieldNames(columns);
             int objectId =
                 Integer.parseInt(query.substring("DataID = ".length()));
+            // TODO(johnsonb): It seems like if these are going to
+            // throw exceptions or return no data(?) from ListNodes,
+            // that you need different MockConstants to distinguish
+            // these from object IDs that throw exceptions from
+            // FetchVersion.
             if (objectId == MockConstants.IO_OBJECT_ID) {
               throw new LivelinkIOException(new RuntimeException(
                    "Simulated Server did not accept open request"), LOGGER);
@@ -342,13 +351,7 @@ final class MockClient implements Client {
         LOGGER.fine("Entering MockClient.FetchVersion");
         // TODO: Make sure that the file exists and is empty.
 
-        if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
-          throw new LivelinkException(new RuntimeException(
-                  "Simulated Premature end-of-data on socket"), LOGGER);
-        } else if (objectId == MockConstants.IO_OBJECT_ID) {
-          throw new LivelinkIOException(new RuntimeException(
-                  "Simulated Server did not accept open request"), LOGGER);
-        }
+        throwFetchVersionException(objectId);
     }
 
     /**
@@ -360,19 +363,32 @@ final class MockClient implements Client {
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             OutputStream out) throws RepositoryException {
         LOGGER.fine("Entering MockClient.FetchVersion");
-        if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
-          throw new LivelinkException(new RuntimeException(
-                  "Simulated Premature end-of-data on socket"), LOGGER);
-        } else if (objectId == MockConstants.IO_OBJECT_ID) {
-          throw new LivelinkIOException(new RuntimeException(
-                  "Simulated Server did not accept open request"), LOGGER);
-        }
+        throwFetchVersionException(objectId);
         try {
             out.close();
         } catch (IOException e) {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+  /**
+   * Simulates throwing an exception for some "special" docids.
+   * Otherwise it does nothing.
+   */
+  private void throwFetchVersionException(int objectId)
+      throws RepositoryException {
+    if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
+      throw new RepositoryDocumentException(new RuntimeException(
+              "Simulated Premature end-of-data on socket"));
+    } else if (objectId == MockConstants.IO_OBJECT_ID) {
+      throw new LivelinkIOException(new RuntimeException(
+              "Simulated Server did not accept open request"), LOGGER);
+    } else if (objectId == MockConstants.REPOSITORY_OBJECT_ID) {
+      throw new LivelinkException("This document version is not yet "
+          + "available.  It will be uploaded from a remote location "
+          + "at a later time. Please try again later.", LOGGER);
+    }
+  }
 
     /** {@inheritDoc} */
     public ClientValue GetVersionInfo(int volumeId, int objectId,

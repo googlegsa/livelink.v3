@@ -17,6 +17,7 @@ package com.google.enterprise.connector.otex;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockConstants;
 import com.google.enterprise.connector.spi.Document;
@@ -62,28 +63,52 @@ public class LivelinkDocumentListTest extends TestCase {
   }
 
   /**
-   * Creates a LivelinkDocumentList containing one document for the tests.
+   * Creates a LivelinkDocumentList containing documents for the tests.
    *
-   * @param objectId the object ID (DataID) for the returned document,
-   *     usually one of the values from MockConstants
-   * @param dataSize the file size (DataSize) for the returned document
+   * @param docInfo the object IDs (DataID) for the returned documents,
+   *     usually one of the values from MockConstants, alternating with
+   *     the file sizes (DataSize) for the returned documents
    */
-  private DocumentList getObjectUnderTest(int objectId, int... dataSize)
+  private DocumentList getObjectUnderTest(int... docInfo)
       throws RepositoryException {
     LivelinkConnector connector = getConnector(null);
 
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
 
+    return getObjectUnderTest(connector, client, docInfo);
+  }
+
+  /**
+   * Creates a LivelinkDocumentList containing documents for the tests.
+   *
+   * @param client the client to use, instead of getting one from the connector
+   * @param docInfo the object IDs (DataID) for the returned documents,
+   *     usually one of the values from MockConstants, alternating with
+   *     the file sizes (DataSize) for the returned documents
+   */
+  private DocumentList getObjectUnderTest(Client client, int... docInfo)
+      throws RepositoryException {
+    LivelinkConnector connector = getConnector(null);
+
+    return getObjectUnderTest(connector, client, docInfo);
+  }
+
+  /** Helper method for the other two overloads. */
+  private DocumentList getObjectUnderTest(LivelinkConnector connector,
+      Client client, int... docInfo) throws RepositoryException {
     ContentHandler contentHandler = new FileContentHandler();
     contentHandler.initialize(connector, client);
 
     final String[] FIELDS = {
       "ModifyDate", "DataID", "OwnerID", "Subtype", "MimeType", "DataSize" };
-    Object[][] values = new Object[dataSize.length][];
-    for (int i = 0; i < dataSize.length; i++) {
+    assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 2);
+    Object[][] values = new Object[docInfo.length / 2][];
+    for (int i = 0; i < docInfo.length / 2; i++) {
+      int objectId = docInfo[2 * i];
+      int dataSize = docInfo[2 * i + 1];
       values[i] = new Object[] {
-        new Date(), objectId, 2000, 144, "text/plain", dataSize[i] };
+        new Date(), objectId, 2000, 144, "text/plain", dataSize };
     }
     ClientValue recArray = new MockClientValue(FIELDS, values);
 
@@ -135,7 +160,8 @@ public class LivelinkDocumentListTest extends TestCase {
    * case where the LivelinkIOException was rethrown.
    */
   public void testNextDocument_partial() throws RepositoryException {
-    DocumentList list = getObjectUnderTest(MockConstants.IO_OBJECT_ID, 0, 1);
+    DocumentList list = getObjectUnderTest(MockConstants.HARMLESS_OBJECT_ID, 0,
+        MockConstants.IO_OBJECT_ID, 1);
 
     Document doc = list.nextDocument();
     assertNotNull(doc);
@@ -151,14 +177,85 @@ public class LivelinkDocumentListTest extends TestCase {
    * RepositoryDocumentException and be skipped.
    */
   public void testNextDocument_skipped() throws RepositoryException {
-    DocumentList list = getObjectUnderTest(MockConstants.DOCUMENT_OBJECT_ID, 1);
+    // This client throws an exception if GetCurrentUserID is called,
+    // since that is used to discriminate between document and
+    // transient exceptions, and we are expecting a document
+    // exception.
+    PingErrorClient client = new PingErrorClient();
+    DocumentList list = getObjectUnderTest(client,
+        MockConstants.DOCUMENT_OBJECT_ID, 1);
 
+    try {
+      Document doc = list.nextDocument();
+      fail("Expected a RepositoryDocumentException");
+    } catch (RepositoryDocumentException e) {
+      assertFalse(client.isThrown());
+      assertNotNull(list.checkpoint());
+    }
+  }
+
+  private static class PingErrorClient extends MockClient {
+    private boolean isThrown = false;
+
+    public boolean isThrown() {
+      return isThrown;
+    }
+
+    @Override
+    public int GetCurrentUserID() throws RepositoryException {
+      isThrown = true;
+      throw new RepositoryException();
+    }
+  }
+
+  /**
+   * Tests a pair of documents where FetchVersion should throw a
+   * RepositoryDocumentException on the first and a repository
+   * exception with a client that will throw an exception on the
+   * GetCurrentUserID discriminator on the second. Previously, this
+   * would throw an exception from the batch rather than return null
+   * to retry the batch starting with the second document.
+   */
+  public void testNextDocument_document_fail() throws RepositoryException {
+    PingErrorClient client = new PingErrorClient();
+    DocumentList list = getObjectUnderTest(client,
+        MockConstants.DOCUMENT_OBJECT_ID, 1,
+        MockConstants.REPOSITORY_OBJECT_ID, 1);
+    testNextDocument_skipped_fail(list, MockConstants.DOCUMENT_OBJECT_ID);
+    assertTrue(client.isThrown());
+  }
+
+  /**
+   * Tests a pair of documents where FetchVersion should throw a
+   * RepositoryException on the first and an I/O exception on
+   * the second. Previously, this would throw an exception from the
+   * batch rather than return null to retry the batch starting with
+   * the second document.
+   */
+  public void testNextDocument_repository_fail() throws RepositoryException {
+    DocumentList list = getObjectUnderTest(
+        MockConstants.REPOSITORY_OBJECT_ID, 1,
+        MockConstants.IO_OBJECT_ID, 1);
+    testNextDocument_skipped_fail(list, MockConstants.REPOSITORY_OBJECT_ID);
+  }
+
+  /**
+   * Expects to get a RepositoryDocumentException on the first
+   * document, and null on the second document, with the first
+   * document ID being returned in the checkpoint.
+   */
+  private void testNextDocument_skipped_fail(DocumentList list,
+      int checkpointId) throws RepositoryException {
     try {
       Document doc = list.nextDocument();
       fail("Expected a RepositoryDocumentException");
     } catch (RepositoryDocumentException e) {
       assertNotNull(list.checkpoint());
     }
+
+    Document doc = list.nextDocument();
+    String checkpoint = list.checkpoint();
+    assertTrue(checkpoint, checkpoint.endsWith("," + checkpointId));
   }
 
   /** Tests that the client must not be null. */

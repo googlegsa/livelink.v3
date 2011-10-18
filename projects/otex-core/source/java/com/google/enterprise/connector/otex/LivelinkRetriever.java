@@ -23,7 +23,6 @@ import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.util.Clock;
 import com.google.enterprise.connector.util.SystemClock;
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 import java.io.InputStream;
@@ -53,12 +52,6 @@ class LivelinkRetriever implements Retriever {
    * traversal user.
    */
   private final Client traversalClient;
-
-  /**
-   * The current user, either the system administrator or an
-   * impersonated traversal user.
-   */
-  private final String currentUsername;
 
   /** Clock for getting the current time of day. */
   private final Clock clock;
@@ -121,43 +114,11 @@ class LivelinkRetriever implements Retriever {
     }
   }
 
-  LivelinkRetriever(LivelinkConnector connector, ClientFactory clientFactory)
-      throws RepositoryException {
+  LivelinkRetriever(LivelinkConnector connector, Client traversalClient,
+      ContentHandler contentHandler) throws RepositoryException {
     this.connector = connector;
-    this.traversalClient = clientFactory.createClient();
-
-    // NOTE: This logic was taken from the LivelinkTraversalManager constructor.
-    // Changes here should probably be reflected there and vice-versa.
-    // TODO: Extract this logic into a common utility function.
-
-    // Get the current username to compare to the configured
-    // traversalUsername and publicContentUsername.
-    String username = null;
-    try {
-      int id = traversalClient.GetCurrentUserID();
-      ClientValue userInfo = traversalClient.GetUserOrGroupByIDNoThrow(id);
-      if (userInfo != null)
-        username = userInfo.toString("Name");
-    } catch (LivelinkException e) {
-      // Ignore exceptions, which is conservative. Worst case is
-      // that we will impersonate the already logged in user
-      // and gratuitously check the permissions on all content.
-    }
-
-    // If there is a separately specified traversal user (different
-    // than our current user), then impersonate that traversal user
-    // when building the list of documents to index.
-    String traversalUsername = connector.getTraversalUsername();
-    if (traversalUsername != null && !traversalUsername.equals(username)) {
-      traversalClient.ImpersonateUserEx(traversalUsername,
-          connector.getDomainName());
-      this.currentUsername = traversalUsername;
-    } else {
-      this.currentUsername = username;
-    }
-
-    this.contentHandler = connector.getContentHandler();
-    contentHandler.initialize(connector, traversalClient);
+    this.traversalClient = traversalClient;
+    this.contentHandler = contentHandler;
 
     // This cache holds the Document objects recently returned by getMetaData()
     // for a short period, in case that information is needed again.

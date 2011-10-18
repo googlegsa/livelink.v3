@@ -22,6 +22,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
@@ -29,7 +30,6 @@ import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.TraversalContextAware;
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
@@ -180,44 +180,15 @@ class LivelinkTraversalManager
   private TraversalContext traversalContext = null;
 
   LivelinkTraversalManager(LivelinkConnector connector,
-      ClientFactory clientFactory) throws RepositoryException {
+      Client traversalClient, String traversalUsername, Client sysadminClient,
+      ContentHandler contentHandler) throws RepositoryException {
     this.connector = connector;
-    this.traversalClient = clientFactory.createClient();
-
-    // NOTE: This logic is replicated in the LivelinkRetriever constructor.
-    // Changes here should probably be reflected there and vice-versa.
-    // TODO: Extract this logic into a common utility function.
-
-    // Get the current username to compare to the configured
-    // traversalUsername and publicContentUsername.
-    String username = null;
-    try {
-      int id = traversalClient.GetCurrentUserID();
-      ClientValue userInfo = traversalClient.GetUserOrGroupByIDNoThrow(id);
-      if (userInfo != null)
-        username = userInfo.toString("Name");
-    } catch (LivelinkException e) {
-      // Ignore exceptions, which is conservative. Worst case is
-      // that we will impersonate the already logged in user
-      // and gratuitously check the permissions on all content.
-    }
-
-    // If there is a separately specified traversal user (different
-    // than our current user), then impersonate that traversal user
-    // when building the list of documents to index.
-    String traversalUsername = connector.getTraversalUsername();
-    if (traversalUsername != null && !traversalUsername.equals(username)) {
-      traversalClient.ImpersonateUserEx(traversalUsername,
-          connector.getDomainName());
-      this.sysadminClient = clientFactory.createClient();
-      this.currentUsername = traversalUsername;
-    } else {
-      this.sysadminClient = traversalClient;
-      this.currentUsername = username;
-    }
+    this.currentUsername = traversalUsername;
+    this.traversalClient = traversalClient;
+    this.sysadminClient = sysadminClient;
+    this.contentHandler = contentHandler;
 
     this.isSqlServer = connector.isSqlServer();
-    this.contentHandler = getContentHandler();
 
     // Check to see if we will track Deleted Documents.
     this.deleteSupported = connector.getTrackDeletedItems();
@@ -441,19 +412,6 @@ class LivelinkTraversalManager
     return buffer.toString();
   }
 
-  /**
-   * Gets a new instance of the configured content handler class.
-   *
-   * @return a new instance of the configured content handler class
-   * @throws RepositoryException if the class cannot be instantiated
-   * or initialized
-   */
-  private ContentHandler getContentHandler() throws RepositoryException {
-    ContentHandler contentHandler = connector.getContentHandler();
-    contentHandler.initialize(connector, traversalClient);
-    return contentHandler;
-  }
-
   @VisibleForTesting
   Field[] getFields() {
     Map<String, String> selectExpressions =
@@ -515,23 +473,18 @@ class LivelinkTraversalManager
   public DocumentList resumeTraversal(String checkpoint)
       throws RepositoryException {
     // Resume with no checkpoint is the same as Start.
-    if (checkpoint == null || checkpoint.length() == 0) {
-      return startTraversal();
+    if (Strings.isNullOrEmpty(checkpoint)) {
+      checkpoint = getStartCheckpoint();
     }
 
     if (LOGGER.isLoggable(Level.FINE))
       LOGGER.fine("RESUME TRAVERSAL: " + batchSize + " rows from " +
           checkpoint + ".");
 
-    // Ping the Livelink Server.  If I can't talk to the server,
-    // I will consider this a transient Exception (server down,
-    // network error, etc).  In that case, return null, signalling
-    // no new documents available at this time.
-    try {
-      traversalClient.GetCurrentUserID();  // ping()
-    } catch (RepositoryException e) {
-      return null;
-    }
+    // Ping the Livelink Server. If I can't talk to the server, this
+    // will throw an exception, signalling a retry after an error
+    // delay.
+    traversalClient.GetCurrentUserID();
 
     return listNodes(checkpoint);
   }
