@@ -14,13 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.lang.reflect.Constructor;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.DocumentList;
@@ -31,6 +24,13 @@ import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.TraversalContextAware;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
+
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This implementation of <code>TraversalManager</code> requires
@@ -296,6 +296,7 @@ class LivelinkTraversalManager
    *
    * @return the SQL conditional expression
    */
+  @VisibleForTesting
   String getIncluded(String candidatesPredicate) {
     StringBuilder buffer = new StringBuilder();
 
@@ -686,7 +687,8 @@ class LivelinkTraversalManager
    * @param candidatesPredicate a SQL condition matching the candidates
    * @return the main query results
    */
-  private ClientValue getResults(String candidatesPredicate)
+  @VisibleForTesting
+  ClientValue getResults(String candidatesPredicate)
       throws RepositoryException {
     String startNodes = connector.getIncludedLocationNodes();
     String excludedNodes = connector.getExcludedLocationNodes();
@@ -698,9 +700,15 @@ class LivelinkTraversalManager
           traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
-      ClientValue matching = getMatching(candidatesPredicate, false, "DTree",
+      // If there's a SQL WHERE condition, we need to consistently
+      // run it against WebNodes. Otherwise, DTree is enough here.
+      String sqlWhereCondition = connector.getSqlWhereCondition();
+      String view =
+          (Strings.isNullOrEmpty(sqlWhereCondition)) ? "DTree" : "WebNodes";
+      ClientValue matching = getMatching(candidatesPredicate, false, view,
           new String[] { "DataID" }, sysadminClient);
-      return getMatchingDescendants(matching, startNodes, excludedNodes);
+      return (matching.size() == 0)
+          ? null : getMatchingDescendants(matching, startNodes, excludedNodes);
     }
   }
 
@@ -723,6 +731,7 @@ class LivelinkTraversalManager
       throws RepositoryException {
     String included = getIncluded(candidatesPredicate);
     String excluded = getExcluded(candidatesPredicate);
+    String sqlWhereCondition = connector.getSqlWhereCondition();
     StringBuilder buffer = new StringBuilder();
     buffer.append(candidatesPredicate);
     if (included != null) {
@@ -732,6 +741,11 @@ class LivelinkTraversalManager
     if (excluded != null) {
       buffer.append(" and ");
       buffer.append(excluded);
+    }
+    if (!Strings.isNullOrEmpty(sqlWhereCondition)) {
+      buffer.append(" and (");
+      buffer.append(sqlWhereCondition);
+      buffer.append(')');
     }
     if (sortResults)
       buffer.append(ORDER_BY);
@@ -864,7 +878,7 @@ class LivelinkTraversalManager
     }
 
     StringBuilder buffer = new StringBuilder();
-    // This is the same as "(AuditStr = 'Delete'", except that as
+    // This is the same as "AuditStr = 'Delete'", except that as
     // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
     // would run afoul of the ListNodesQueryBlackList.
     buffer.append("AuditID = 2");
@@ -918,7 +932,7 @@ class LivelinkTraversalManager
     }
 
     StringBuilder buffer = new StringBuilder();
-    // This is the same as "(AuditStr = 'Delete'", except that as
+    // This is the same as "AuditStr = 'Delete'", except that as
     // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
     // would run afoul of the ListNodesQueryBlackList.
     buffer.append("AuditID = 2");

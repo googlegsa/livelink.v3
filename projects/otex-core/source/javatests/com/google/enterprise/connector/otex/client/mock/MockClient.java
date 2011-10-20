@@ -180,17 +180,18 @@ public class MockClient implements Client {
                                new Date(), new String("text/html"),
                                new Integer(200), new Integer(100) } };
             }
-        } else if ((columns.length == 1 && columns[0].equals("ParentID")) ||
-                (columns.length == 3 &&
-                    columns[2].indexOf("ParentID <> -1") != -1)) {
-            // This is a Genealogist query. Use the database.
+        } else if (jdbcConnection != null) {
             try {
                 Statement stmt = jdbcConnection.createStatement();
-                ResultSet rs =
-                    stmt.executeQuery(getSqlQuery(query, view, columns));
-                ResultSetMetaData rsmd = rs.getMetaData();
-                fields = getResultSetColumns(rsmd);
-                values = getResultSetValues(rs, rsmd);
+                try {
+                    ResultSet rs =
+                        stmt.executeQuery(getSqlQuery(query, view, columns));
+                    ResultSetMetaData rsmd = rs.getMetaData();
+                    fields = getResultSetColumns(rsmd);
+                    values = getResultSetValues(rs, rsmd);
+                } finally {
+                    stmt.close();
+                }
             } catch (SQLException e) {
                 throw new RepositoryException("Database error", e);
             }

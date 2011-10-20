@@ -243,6 +243,9 @@ public class LivelinkConnector implements Connector {
   /** The <code>Genealogist</code> implementation class name. */
   private String genealogist;
 
+  /** An additional SQL WHERE clause condition. */
+  private String sqlWhereCondition;
+
   /**
    * The option to include the domain name for authentication and
    * authorization.
@@ -301,17 +304,25 @@ public class LivelinkConnector implements Connector {
    */
   /* XXX: Should we throw the relevant checked exceptions instead? */
   LivelinkConnector(String clientFactoryClass) {
+    this(newClientFactory(clientFactoryClass));
+  }
+
+  LivelinkConnector(ClientFactory clientFactory) {
+    this.clientFactory = clientFactory;
+    nonGroupingNumberFormat = NumberFormat.getIntegerInstance();
+    nonGroupingNumberFormat.setGroupingUsed(false);
+  }
+
+  private static ClientFactory newClientFactory(String clientFactoryClass) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("NEW INSTANCE: " + clientFactoryClass);
     try {
-      clientFactory = (ClientFactory)
+      return (ClientFactory)
           Class.forName(clientFactoryClass).newInstance();
     } catch (Exception e) {
       LOGGER.log(Level.SEVERE, e.getMessage(), e);
       throw new RuntimeException(e); // XXX: More specific exception?
     }
-    nonGroupingNumberFormat = NumberFormat.getIntegerInstance();
-    nonGroupingNumberFormat.setGroupingUsed(false);
   }
 
   /**
@@ -1450,6 +1461,26 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Sets an additional SQL WHERE clause condition.
+   *
+   * @param sqlWhereCondition a valid SQL condition
+   */
+  public void setSqlWhereCondition(String sqlWhereCondition) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("SQL WHERE CONDITION: " + sqlWhereCondition);
+    this.sqlWhereCondition = sqlWhereCondition;
+  }
+
+  /**
+   * Gets the additional SQL WHERE clause condition.
+   *
+   * @param sqlWhereCondition a valid SQL condition
+   */
+  String getSqlWhereCondition() {
+    return sqlWhereCondition;
+  }
+
+  /**
    * Creates an empty client factory instance for use with
    * authentication configuration parameters. This will use the
    * same implementation class as the default client factory.
@@ -2030,6 +2061,35 @@ public class LivelinkConnector implements Connector {
     }
   }
 
+  /**
+   * Validates the additional SQL WHERE clause condition.
+   *
+   * @param client the client to use for the query
+   */
+  private void validateSqlWhereCondition(Client client)
+      throws RepositoryException {
+    // TODO: We should use the traversal client here, because it seems
+    // like permissions are a valid concern in this case.
+    String query;
+    String view = "WebNodes";
+    String[] columns;
+    if (isSqlServer) {
+      query = sqlWhereCondition;
+      columns = new String[] { "TOP 1 DataID", "PermID" };
+    } else {
+      query = "(" + sqlWhereCondition + ") and rownum = 1";
+      columns = new String[] { "DataID", "PermID" };
+    }
+    ClientValue rows = client.ListNodes(query, view, columns);
+    if (rows.size() == 0) {
+      // TODO: ConfigurationException or LivelinkException?
+      throw new LivelinkException(
+          "The additional SQL WHERE clause condition is too restrictive. "
+          + "No documents were found with this condition.",
+          LOGGER, "emptySqlResults", null);
+    }
+  }
+
   /** {@inheritDoc} */
   public Session login()
       throws RepositoryLoginException, RepositoryException {
@@ -2121,6 +2181,10 @@ public class LivelinkConnector implements Connector {
       validateDTreeAncestors(client);
       validateIncludedLocationStartDate(client);
       validateEnterpriseWorkspaceAncestors(client);
+    }
+
+    if (!Strings.isNullOrEmpty(sqlWhereCondition)) {
+      validateSqlWhereCondition(client);
     }
 
     return new LivelinkSession(this, clientFactory, authenticationManager,

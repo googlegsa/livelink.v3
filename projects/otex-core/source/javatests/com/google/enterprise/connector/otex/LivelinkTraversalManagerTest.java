@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.DocumentList;
@@ -24,6 +25,7 @@ import com.google.enterprise.connector.spi.Session;
 import junit.framework.TestCase;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,9 +44,35 @@ import java.util.Map;
 public class LivelinkTraversalManagerTest extends TestCase {
     private LivelinkConnector conn;
 
-    public void setUp() throws RepositoryException {
-        conn = LivelinkConnectorFactory.getConnector("connector.");
-    }
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
+  public void setUp() throws RepositoryException, SQLException {
+    conn = LivelinkConnectorFactory.getConnector("connector.");
+
+    jdbcFixture.setUp();
+
+    // Insert the test data. Shared with LivelinkConnectorTest.
+    jdbcFixture.executeUpdate(
+        JdbcFixture.CREATE_TABLE_DTREE,
+        JdbcFixture.CREATE_TABLE_DTREEANCESTORS,
+        JdbcFixture.CREATE_TABLE_WEBNODES,
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(24, 6, 0, 0)",
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(42, 6, 0, 144)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(24, 6)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(42, 6)",
+        "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
+        + "values(24, 6, 0, 0, null)",
+        "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
+        + "values(42, 6, 0, 144, 'text/xml')");
+  }
+
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
+  }
 
     public void testExcludedNodes1() throws RepositoryException {
         // No excluded nodes configured.
@@ -343,5 +371,79 @@ public class LivelinkTraversalManagerTest extends TestCase {
     } catch (RepositoryException e) {
       assertSame(expected, e);
     }
+  }
+
+  private LivelinkTraversalManager getObjectUnderTest(
+      boolean useDTreeAncestors, String sqlWhereCondition)
+      throws RepositoryException, SQLException {
+    // This is a little twisted. We need to call login after setting
+    // includedLocationNodes for it to santize the value, but we can't
+    // set the sqlWhereCondition before calling login because we
+    // Spring-instatiated the connector using a MockClientFactory
+    // without a JDBC connection.
+    conn.setIncludedLocationNodes("6");
+    Session sess = conn.login();
+    conn.setUseDTreeAncestors(useDTreeAncestors);
+    conn.setSqlWhereCondition(sqlWhereCondition);
+
+    Client client = new MockClient(jdbcFixture.getConnection());
+    return new LivelinkTraversalManager(conn, client, "Admin", client,
+        conn.getContentHandler(client)) {
+      /** Slimmer select list to avoid having to mock extra columns. */
+      @Override String[] getSelectList() { return new String[] { "DataID" }; }
+    };
+  }
+
+  private void testSqlWhereCondition(boolean useDTreeAncestors,
+      String sqlWhereCondition, int expectedRows) throws Exception {
+    LivelinkTraversalManager ltm =
+        getObjectUnderTest(useDTreeAncestors, sqlWhereCondition);
+    ClientValue results = ltm.getResults("DataID in (24, 42)");
+
+    if (expectedRows == 0) {
+      assertNullOrEmpty(results);
+    } else {      
+      assertEquals(expectedRows, results.size());
+    }
+  }
+
+  private void assertNullOrEmpty(ClientValue value) {
+    if (value != null) {
+      assertEquals(0, value.size());
+    }
+  }
+
+  public void testSqlWhereCondition_none_dta() throws Exception {
+    testSqlWhereCondition(true, "", 2);
+  }
+
+  public void testSqlWhereCondition_none_gen() throws Exception {
+    testSqlWhereCondition(false, "", 2);
+  }
+
+  public void testSqlWhereCondition_empty_dta() throws Exception {
+    testSqlWhereCondition(true, "DataID = 0", 0);
+  }
+
+  public void testSqlWhereCondition_empty_gen() throws Exception {
+    testSqlWhereCondition(false, "DataID = 0", 0);
+  }
+
+  public void testSqlWhereCondition_condition_dta() throws Exception {
+    testSqlWhereCondition(true, "DataID > 40", 1);
+  }
+
+  public void testSqlWhereCondition_condition_gen() throws Exception {
+    testSqlWhereCondition(false, "DataID > 40", 1);
+  }
+
+  /** Tests selecting a column that only exists in WebNodes and not DTree. */
+  public void testSqlWhereCondition_webnodes_dta() throws Exception {
+    testSqlWhereCondition(true, "MimeType is not null", 1);
+  }
+
+  /** Tests selecting a column that only exists in WebNodes and not DTree. */
+  public void testSqlWhereCondition_webnodes_gen() throws Exception {
+    testSqlWhereCondition(false, "MimeType is not null", 1);
   }
 }
