@@ -137,7 +137,7 @@ final class LapiClient implements Client {
       // and in English, and I cannot think of another way to
       // distinguish this error, which we must distinguish.
       if ("Premature end-of-data on socket".equals(e.getMessage())) {
-        return new LivelinkException(e, LOGGER);
+        return new RepositoryDocumentException(e);
       } else {
         return new LivelinkIOException(e, LOGGER);
       }
