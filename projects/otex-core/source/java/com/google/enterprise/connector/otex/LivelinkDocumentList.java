@@ -33,7 +33,6 @@ import com.google.enterprise.connector.spi.SpiConstants.ActionType;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 
 /*
@@ -108,8 +107,8 @@ class LivelinkDocumentList implements DocumentList {
   /** This is the DocumentList Iterator */
   private final LivelinkDocumentListIterator docIterator;
 
-  /** Count of documents returned in this batch. */
-  private int docsReturned;
+  /** Count of documents returned or skipped in this batch. */
+  private int docsProcessed;
 
   /**
    * Constructor for non-trivial document set.  Iterate over a
@@ -136,7 +135,7 @@ class LivelinkDocumentList implements DocumentList {
 
     // Prime the DocumentList.nextDocument() iterator
     docIterator = new LivelinkDocumentListIterator();
-    docsReturned = 0;
+    docsProcessed = 0;
   }
 
   /**
@@ -170,15 +169,13 @@ class LivelinkDocumentList implements DocumentList {
       // document, we want to simply skip it and go onto the next.
       try {
         Document doc = docIterator.nextDocument();
-        docsReturned++;
+        docsProcessed++;
         return doc;
       } catch (LivelinkIOException e) {
-        checkpoint.restore();
-        if (docsReturned > 0) {
-          return null;
-        } else {
-          throw e;
-        }
+        return handleTransientException(e);
+      } catch (RepositoryDocumentException e) {
+        docsProcessed++;
+        throw e;
       } catch (Throwable t) {
         LOGGER.severe("Caught exception when fetching a document: " +
             t.getMessage());
@@ -195,16 +192,12 @@ class LivelinkDocumentList implements DocumentList {
         } catch (RepositoryException e) {
           // The failure seems to be systemic, rather than a problem
           // with this particular document.
-          checkpoint.restore();
-          if (docsReturned > 0) {
-            return null;
-          } else {
-            throw e;
-          }
+          return handleTransientException(e);
         }
 
         // It does not appear to be a transient failure.  Assume this
         // document contains permanent failures, and skip over it.
+        docsProcessed++;
         throw new RepositoryDocumentException(t);
       }
     }
@@ -212,6 +205,24 @@ class LivelinkDocumentList implements DocumentList {
     // No more documents available.
     checkpoint.advanceToEnd();
     return null;
+  }
+
+  /**
+   * Returns a partial batch or throws the given exception. If the
+   * batch is partially processed, returns null to indicate the end of
+   * the batch, in which case a followup batch will be tried
+   * immediately. Otherwise, if the exception occurs at the beginning
+   * of a batch, the given exception is thrown, and the error wait
+   * will be triggered before a retry.
+   */
+  private Document handleTransientException(RepositoryException e)
+      throws RepositoryException {
+    checkpoint.restore();
+    if (docsProcessed > 0) {
+      return null;
+    } else {
+      throw e;
+    }
   }
 
   /**

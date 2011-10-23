@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.logging.Logger;
 
+import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
@@ -36,14 +37,18 @@ import com.google.enterprise.connector.otex.client.ClientValueFactory;
 /**
  * A mock client implementation.
  */
-final class MockClient implements Client {
+public class MockClient implements Client {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
 
     private final Connection jdbcConnection;
 
-    MockClient(Connection jdbcConnection) {
+    public MockClient() {
+      this(null);
+    }
+
+    public MockClient(Connection jdbcConnection) {
       this.jdbcConnection = jdbcConnection;
     }
 
@@ -78,10 +83,13 @@ final class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation returns an empty list.
+     * This implementation returns an LLCookie with an invalid value.
      */
     public ClientValue GetCookieInfo() throws RepositoryException {
-        return new MockClientValue(new Object[0]);
+      ClientValue llcookie = new MockClientValue(
+          new String[] { "Name", "Value" },
+          new Object[] { "LLCookie", "llcookie value goes here" });
+      return new MockClientValue(new Object[] { llcookie });
     }
 
     /** {@inheritDoc} */
@@ -150,17 +158,18 @@ final class MockClient implements Client {
             fields = new String[] { "minModifyDate" };
             values = new Object[][] {
                 new Object[] { new Date() } };
-        } else if ((columns.length == 1 && columns[0].equals("ParentID")) ||
-                (columns.length == 3 &&
-                    columns[2].indexOf("ParentID <> -1") != -1)) {
-            // This is a Genealogist query. Use the database.
+        } else if (jdbcConnection != null) {
             try {
                 Statement stmt = jdbcConnection.createStatement();
-                ResultSet rs =
-                    stmt.executeQuery(getSqlQuery(query, view, columns));
-                ResultSetMetaData rsmd = rs.getMetaData();
-                fields = getResultSetColumns(rsmd);
-                values = getResultSetValues(rs, rsmd);
+                try {
+                    ResultSet rs =
+                        stmt.executeQuery(getSqlQuery(query, view, columns));
+                    ResultSetMetaData rsmd = rs.getMetaData();
+                    fields = getResultSetColumns(rsmd);
+                    values = getResultSetValues(rs, rsmd);
+                } finally {
+                    stmt.close();
+                }
             } catch (SQLException e) {
                 throw new RepositoryException("Database error", e);
             }
@@ -308,13 +317,7 @@ final class MockClient implements Client {
         LOGGER.fine("Entering MockClient.FetchVersion");
         // TODO: Make sure that the file exists and is empty.
 
-        if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
-          throw new LivelinkException(new RuntimeException(
-                  "Simulated Premature end-of-data on socket"), LOGGER);
-        } else if (objectId == MockConstants.IO_OBJECT_ID) {
-          throw new LivelinkIOException(new RuntimeException(
-                  "Simulated Server did not accept open request"), LOGGER);
-        }
+        throwFetchVersionException(objectId);
     }
 
     /**
@@ -325,12 +328,32 @@ final class MockClient implements Client {
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             OutputStream out) throws RepositoryException {
         LOGGER.fine("Entering MockClient.FetchVersion");
+        throwFetchVersionException(objectId);
         try {
             out.close();
         } catch (IOException e) {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+  /**
+   * Simulates throwing an exception for some "special" docids.
+   * Otherwise it does nothing.
+   */
+  private void throwFetchVersionException(int objectId)
+      throws RepositoryException {
+    if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
+      throw new RepositoryDocumentException(new RuntimeException(
+              "Simulated Premature end-of-data on socket"));
+    } else if (objectId == MockConstants.IO_OBJECT_ID) {
+      throw new LivelinkIOException(new RuntimeException(
+              "Simulated Server did not accept open request"), LOGGER);
+    } else if (objectId == MockConstants.REPOSITORY_OBJECT_ID) {
+      throw new LivelinkException("This document version is not yet "
+          + "available.  It will be uploaded from a remote location "
+          + "at a later time. Please try again later.", LOGGER);
+    }
+  }
 
     /** {@inheritDoc} */
     public ClientValue GetVersionInfo(int volumeId, int objectId, int versionNumber)

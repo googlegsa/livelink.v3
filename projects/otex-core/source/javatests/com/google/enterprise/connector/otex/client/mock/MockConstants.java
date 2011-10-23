@@ -15,9 +15,18 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 public interface MockConstants {
-  /** A object ID that forces FetchVersion to throw a LivelinkException. */
+  /** An ordinary object ID. */
+  int HARMLESS_OBJECT_ID = 42;
+
+  /**
+   * A object ID that forces FetchVersion to throw a
+   * RepositoryDocumentException.
+   */
   int DOCUMENT_OBJECT_ID = 665;
 
   /** A object ID that forces FetchVersion to throw a LivelinkIOException. */
   int IO_OBJECT_ID = 666;
+
+  /** A object ID that forces FetchVersion to throw a RepositoryException. */
+  int REPOSITORY_OBJECT_ID = 667;
 }

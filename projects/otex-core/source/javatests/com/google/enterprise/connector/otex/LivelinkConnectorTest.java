@@ -19,6 +19,7 @@ import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
 import junit.framework.TestCase;
 
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,15 +28,32 @@ import java.util.Date;
 public class LivelinkConnectorTest extends TestCase {
   private LivelinkConnector connector;
 
-  protected void setUp() {
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
+  protected void setUp() throws SQLException {
+    // TODO: Move this fixture and its tests to a separate test class.
+    jdbcFixture.setUp();
+
+    // Insert the test data. Shared with LivelinkTraversalManagerTest.
+    jdbcFixture.executeUpdate(
+        JdbcFixture.CREATE_TABLE_KDUAL,
+        JdbcFixture.CREATE_TABLE_WEBNODES,
+        "insert into KDual values(104 /* does not matter */)",
+        "insert into WebNodes(DataID, PermID, MimeType) "
+        + "values(42, 0, 'text/xml')");
+
     connector = new LivelinkConnector(
-        "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
+        new MockClientFactory(jdbcFixture.getConnection()));
     connector.setServer(System.getProperty("connector.server"));
     connector.setPort(System.getProperty("connector.port"));
     connector.setUsername(System.getProperty("connector.username"));
     connector.setPassword(System.getProperty("connector.password"));
 
     connector.setShowHiddenItems("true");
+  }
+
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
   }
 
   public void testSanitizingListsOfIntegers() {
@@ -359,5 +377,41 @@ public class LivelinkConnectorTest extends TestCase {
       connector.setDomainAndName(value.toString().toLowerCase());
       connector.login();
     }
+  }
+
+  public void testSqlWhereCondition_empty() throws RepositoryException {
+    connector.setSqlWhereCondition("DataID = 0");
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (RepositoryException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("SQL WHERE"));
+    }
+  }
+
+  public void testSqlWhereCondition_invalid() throws RepositoryException {
+    connector.setSqlWhereCondition("DataID is zero");
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (RepositoryException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("zero"));
+    }
+  }
+
+  public void testSqlWhereCondition_everything() throws RepositoryException {
+    connector.setSqlWhereCondition("1=1");
+    connector.login();
+  }
+
+  public void testSqlWhereCondition_condition() throws RepositoryException {
+    connector.setSqlWhereCondition("DataID = 42");
+    connector.login();
+  }
+
+  /** Tests selecting a column that only exists in WebNodes and not DTree. */
+  public void testSqlWhereCondition_webnodes() throws RepositoryException {
+    connector.setSqlWhereCondition("MimeType is not null");
+    connector.login();
   }
 }

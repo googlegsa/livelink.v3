@@ -19,7 +19,9 @@ import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
+import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 class LivelinkSession implements Session {
     /** The connector instance. */
@@ -52,15 +54,37 @@ class LivelinkSession implements Session {
         this.authorizationManager = authorizationManager;
     }
 
-    /**
-     * Gets a TraversalManager to implement query-based traversal
-     *
-     * @return a TraversalManager
-     * @throws RepositoryException
-     */
-    public TraversalManager getTraversalManager() throws RepositoryException {
-        return new LivelinkTraversalManager(connector, clientFactory);
+  /**
+   * Gets a TraversalManager to implement query-based traversal
+   *
+   * @return a TraversalManager
+   * @throws RepositoryException
+   */
+  public TraversalManager getTraversalManager() throws RepositoryException {
+    Client traversalClient = clientFactory.createClient();
+
+    // Get the current username to compare to the configured
+    // traversalUsername and publicContentUsername.
+    String username = getCurrentUsername(traversalClient);
+
+    // If there is a separately specified traversal user (different
+    // than our current user), then impersonate that traversal user
+    // when building the list of documents to index.
+    String currentUsername;
+    Client sysadminClient;
+    String traversalUsername = connector.getTraversalUsername();
+    if (impersonateUser(traversalClient, username, traversalUsername)) {
+      currentUsername = traversalUsername;
+      sysadminClient = clientFactory.createClient();
+    } else {
+      currentUsername = username;
+      sysadminClient = traversalClient;
     }
+
+    return new LivelinkTraversalManager(connector, traversalClient,
+        currentUsername, sysadminClient,
+        connector.getContentHandler(traversalClient));
+  }
 
     /**
      * Gets an AuthenticationManager to implement per-user authentication.
@@ -81,10 +105,41 @@ class LivelinkSession implements Session {
      * @throws RepositoryException
      */
     public AuthorizationManager getAuthorizationManager()
-        throws RepositoryException
-    {
+            throws RepositoryException {
         return authorizationManager;
     }
+
+  private String getCurrentUsername(Client client) {
+    String username = null;
+    try {
+      int id = client.GetCurrentUserID();
+      ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(id);
+      if (userInfo != null)
+        username = userInfo.toString("Name");
+    } catch (RepositoryException e) {
+      // Ignore exceptions, which is conservative. Worst case is
+      // that we will impersonate the already logged in user
+      // and gratuitously check the permissions on all content.
+    }
+    return username;
+  }
+  
+  /**
+   * Impersonates a user.
+   *
+   * @return {@code true} if the new username is impersonated, and
+   * {@code false} if the new username is null or already the current
+   * username
+   */
+  private boolean impersonateUser(Client client, String currentUsername,
+      String newUsername) throws RepositoryException {
+    if (newUsername != null && !newUsername.equals(currentUsername)) {
+      client.ImpersonateUserEx(newUsername, connector.getDomainName());
+      return true;
+    } else {
+      return false;
+    }
+  }
 
     /**
      * Returns the ClientFactory for test use.

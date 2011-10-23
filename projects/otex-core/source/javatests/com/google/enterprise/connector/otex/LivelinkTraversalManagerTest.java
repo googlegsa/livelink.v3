@@ -14,11 +14,18 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.otex.client.mock.MockClient;
+import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
+import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
 
 import junit.framework.TestCase;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,11 +43,37 @@ import java.util.Map;
  */
 public class LivelinkTraversalManagerTest extends TestCase {
     private LivelinkConnector conn;
-    
-    public void setUp() throws RepositoryException {
-        conn = LivelinkConnectorFactory.getConnector("connector.");
-    }
-    
+
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
+  public void setUp() throws RepositoryException, SQLException {
+    conn = LivelinkConnectorFactory.getConnector("connector.");
+
+    jdbcFixture.setUp();
+
+    // Insert the test data. Shared with LivelinkConnectorTest.
+    jdbcFixture.executeUpdate(
+        JdbcFixture.CREATE_TABLE_DTREE,
+        JdbcFixture.CREATE_TABLE_DTREEANCESTORS,
+        JdbcFixture.CREATE_TABLE_WEBNODES,
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(24, 6, 0, 0)",
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(42, 6, 0, 144)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(24, 6)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(42, 6)",
+        "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
+        + "values(24, 6, 0, 0, null)",
+        "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
+        + "values(42, 6, 0, 144, 'text/xml')");
+  }
+
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
+  }
+
     public void testExcludedNodes1() throws RepositoryException {
         // No excluded nodes configured.
 
@@ -48,11 +81,11 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        
+
         assertTrue(excluded, excluded.indexOf("SubType not in "
                 + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
                 + "345,346,361,374,431,3030004,3030201)") != -1);
-    }    
+    }
 
     public void testExcludedNodes2() throws RepositoryException {
         conn.setExcludedVolumeTypes("");
@@ -63,9 +96,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        
+
         assertNull(excluded);
-    }    
+    }
 
     public void testExcludedNodes3() throws RepositoryException {
         conn.setExcludedVolumeTypes("2001,4104");
@@ -76,9 +109,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        
+
         assertNull(excluded);
-    }    
+    }
 
     public void testExcludedNodes4() throws RepositoryException {
         conn.setExcludedVolumeTypes("");
@@ -90,10 +123,10 @@ public class LivelinkTraversalManagerTest extends TestCase {
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
         String excluded = lqtm.getExcluded(null);
-        
+
         assertTrue(excluded, excluded.indexOf("SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
-    }    
+    }
 
     public void testExcludedNodes5() throws RepositoryException {
         conn.setExcludedVolumeTypes("148,162");
@@ -110,7 +143,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         assertTrue(included, included.indexOf("-OwnerID not in") != -1);
         assertTrue(included,
             included.indexOf("SubType in (148,162)") != -1);
-    }    
+    }
 
     public void testExcludedNodes6() throws RepositoryException {
         conn.setExcludedVolumeTypes("");
@@ -134,7 +167,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         String excluded2 = lqtm.getExcluded(null);
 
         assertEquals((Object) excluded, excluded2);
-    }    
+    }
 
     public void testExcludedNodes7() throws RepositoryException {
         conn.setExcludedVolumeTypes("148,162");
@@ -153,7 +186,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         assertTrue(included, included.indexOf("-OwnerID not in") != -1);
         assertTrue(included,
             included.indexOf("SubType in (148,162)") != -1);
-    }    
+    }
 
     public void testExcludedNodes8() throws RepositoryException {
         conn.setExcludedVolumeTypes("148,162");
@@ -172,7 +205,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         assertTrue(included, included.indexOf("-OwnerID not in") != -1);
         assertTrue(included,
             included.indexOf("SubType in (148,162)") != -1);
-    }    
+    }
 
     public void testExcludedNodes9() throws RepositoryException {
         conn.setExcludedVolumeTypes("");
@@ -192,7 +225,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
             "not (DataID in (13832) or DataID in (select DataID from " + 
             "DTreeAncestors where null and " +
             "AncestorID in (13832,-13832)))") != -1);
-    }    
+    }
 
     public void testExcludedNodes10() throws RepositoryException {
         conn.setExcludedVolumeTypes("148,162");
@@ -302,5 +335,115 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
         String[] selectList = ltm.getSelectList();
         assertEquals(fields.length, selectList.length);
+  }
+
+  private LivelinkTraversalManager getObjectUnderTest(Client traversalClient)
+      throws RepositoryException {
+    return new LivelinkTraversalManager(conn, traversalClient, "Admin",
+        new MockClient(), conn.getContentHandler(traversalClient));
+  }
+
+  /** Positive test to set a baseline for testResumeTraversalPingError. */
+  public void testResumeTraversal() throws RepositoryException {
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
+
+    DocumentList list = ltm.resumeTraversal("2011-10-16 14:13:52,12345");
+    assertNotNull(list);
+  }
+
+  /**
+   * Tests that if GetCurrentUserID throws an exception, so does
+   * resumeTraversal. Legacy code returned null and triggered the
+   * retry delay instead of the error wait.
+   */
+  public void testResumeTraversalPingError() throws RepositoryException {
+    final RepositoryException expected = new RepositoryException();
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient() {
+        @Override
+        public int GetCurrentUserID() throws RepositoryException {
+          throw expected;
+        }
+      });
+
+    try {
+      DocumentList list = ltm.resumeTraversal("2011-10-16 14:13:52,12345");
+      fail("Expected an exception, but got " + list);
+    } catch (RepositoryException e) {
+      assertSame(expected, e);
+    }
+  }
+
+  private LivelinkTraversalManager getObjectUnderTest(
+      boolean useDTreeAncestors, String sqlWhereCondition)
+      throws RepositoryException, SQLException {
+    // This is a little twisted. We need to call login after setting
+    // includedLocationNodes for it to santize the value, but we can't
+    // set the sqlWhereCondition before calling login because we
+    // Spring-instatiated the connector using a MockClientFactory
+    // without a JDBC connection.
+    conn.setIncludedLocationNodes("6");
+    Session sess = conn.login();
+    conn.setUseDTreeAncestors(useDTreeAncestors);
+    conn.setSqlWhereCondition(sqlWhereCondition);
+
+    Client client = new MockClient(jdbcFixture.getConnection());
+    return new LivelinkTraversalManager(conn, client, "Admin", client,
+        conn.getContentHandler(client)) {
+      /** Slimmer select list to avoid having to mock extra columns. */
+      @Override String[] getSelectList() { return new String[] { "DataID" }; }
+    };
+  }
+
+  private void testSqlWhereCondition(boolean useDTreeAncestors,
+      String sqlWhereCondition, int expectedRows) throws Exception {
+    LivelinkTraversalManager ltm =
+        getObjectUnderTest(useDTreeAncestors, sqlWhereCondition);
+    ClientValue results = ltm.getResults("DataID in (24, 42)");
+
+    if (expectedRows == 0) {
+      assertNullOrEmpty(results);
+    } else {      
+      assertEquals(expectedRows, results.size());
+    }
+  }
+
+  private void assertNullOrEmpty(ClientValue value) {
+    if (value != null) {
+      assertEquals(0, value.size());
+    }
+  }
+
+  public void testSqlWhereCondition_none_dta() throws Exception {
+    testSqlWhereCondition(true, "", 2);
+  }
+
+  public void testSqlWhereCondition_none_gen() throws Exception {
+    testSqlWhereCondition(false, "", 2);
+  }
+
+  public void testSqlWhereCondition_empty_dta() throws Exception {
+    testSqlWhereCondition(true, "DataID = 0", 0);
+  }
+
+  public void testSqlWhereCondition_empty_gen() throws Exception {
+    testSqlWhereCondition(false, "DataID = 0", 0);
+  }
+
+  public void testSqlWhereCondition_condition_dta() throws Exception {
+    testSqlWhereCondition(true, "DataID > 40", 1);
+  }
+
+  public void testSqlWhereCondition_condition_gen() throws Exception {
+    testSqlWhereCondition(false, "DataID > 40", 1);
+  }
+
+  /** Tests selecting a column that only exists in WebNodes and not DTree. */
+  public void testSqlWhereCondition_webnodes_dta() throws Exception {
+    testSqlWhereCondition(true, "MimeType is not null", 1);
+  }
+
+  /** Tests selecting a column that only exists in WebNodes and not DTree. */
+  public void testSqlWhereCondition_webnodes_gen() throws Exception {
+    testSqlWhereCondition(false, "MimeType is not null", 1);
   }
 }

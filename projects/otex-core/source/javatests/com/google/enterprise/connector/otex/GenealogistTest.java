@@ -22,10 +22,6 @@ import com.google.enterprise.connector.spi.RepositoryException;
 
 import junit.framework.TestCase;
 
-import org.h2.jdbcx.JdbcDataSource;
-
-import java.sql.Connection;
-import java.sql.Statement;
 import java.sql.SQLException;
 
 /**
@@ -51,45 +47,34 @@ public class GenealogistTest extends TestCase {
   private Client client;
 
   /** The database connection. */
-  private Connection jdbcConnection;
+  private JdbcFixture jdbcFixture = new JdbcFixture();
 
   /** Inserts database test data. */
   protected void setUp() throws SQLException {
     // Get a separate in-memory database for each test.
-    JdbcDataSource ds = new JdbcDataSource();
-    ds.setURL("jdbc:h2:mem:");
-    ds.setUser("sa");
-    ds.setPassword("");
-    jdbcConnection = ds.getConnection();
+    jdbcFixture.setUp();
 
     // Insert the test data.
-    Statement stmt = jdbcConnection.createStatement();
-    try {
-      stmt.executeUpdate(
-          "create table DTree (DataID int primary key, ParentID int)");
-    } finally {
-      stmt.close();
-    }
+    jdbcFixture.executeUpdate(JdbcFixture.CREATE_TABLE_DTREE);
     insertRows(TREE_NODES);
 
-    MockClientFactory factory = new MockClientFactory(jdbcConnection);
+    MockClientFactory factory =
+        new MockClientFactory(jdbcFixture.getConnection());
     client = factory.createClient();
   }
 
   private void insertRows(int[][] rows) throws SQLException {
-    Statement stmt = jdbcConnection.createStatement();
-    try {
-      for (int[] row : rows) {
-        stmt.executeUpdate("insert into DTree(DataID, ParentID) values ("
-            + row[0] + "," + row[1] + ")");
-      }
-    } finally {
-      stmt.close();
+    String[] sqls = new String[rows.length];
+    int i = 0;
+    for (int[] row : rows) {
+      sqls[i++] = "insert into DTree(DataID, ParentID) values ("
+          + row[0] + "," + row[1] + ")";
     }
+    jdbcFixture.executeUpdate(sqls);
   }
 
   protected void tearDown() throws SQLException {
-    jdbcConnection.close();
+    jdbcFixture.tearDown();
   }
 
   /** Gets the class under test. Subclasses should override this method. */
