@@ -46,7 +46,7 @@ class LivelinkSession implements Session, RetrieverAware {
      * @param connector a connector instance
      * @param clientFactory a client factory
      * @param authenticationManager the configured AuthenticationManager
-     * @param authorizationtionManager the configured AuthorizationManager
+     * @param authorizationManager the configured AuthorizationManager
      * @throws RepositoryException not thrown
      */
     public LivelinkSession(LivelinkConnector connector,
