@@ -24,6 +24,7 @@ import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
+import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.opentext.api.GoogleThunk;
 import com.opentext.api.LAPI_ATTRIBUTES;
@@ -116,28 +117,29 @@ final class LapiClient implements Client {
   }
 
   /**
-   * Maps a LAPI exception to a LivelinkException or a
-    * LivelinkIOException. A LivelinkIOException is explicitly treated
-    * as a transient error, rather than document-related error.
-    *
-    * <p>LAPI exceptions have no hierarchy; they all directly extend
-    * RuntimeException. All but one of the occurrences of
-    * LLIOException is an I/O-related exception. That one is the
-    * exception thrown when a version file length does not match the
-    * expected length, and that must not be thrown as a
-    * LivelinkIOException here. That happens on corrupt or missing
-    * version files, and is document-specific.
-    *
-    * @param e a LAPI exception
-    * @return a matching LivelinkException that wraps the LAPI exception
+   * Maps a LAPI exception to a RepositoryDocumentException,
+   * LivelinkException or a LivelinkIOException. A LivelinkIOException
+   * is explicitly treated as a transient error, rather than
+   * document-related error.
+   *
+   * <p>LAPI exceptions have no hierarchy; they all directly extend
+   * RuntimeException. All but one of the occurrences of
+   * LLIOException is an I/O-related exception. That one is the
+   * exception thrown when a version file length does not match the
+   * expected length, and that must not be thrown as a
+   * LivelinkIOException here. That happens on corrupt or missing
+   * version files, and is document-specific.
+   *
+   * @param e a LAPI exception
+   * @return a matching RepositoryException that wraps the LAPI exception
    */
-  private static LivelinkException getLivelinkException(RuntimeException e) {
+  private static RepositoryException getLivelinkException(RuntimeException e) {
     if (e instanceof LLIOException) {
       // XXX: Hideous hack, but the LAPI error strings are hard-coded
       // and in English, and I cannot think of another way to
       // distinguish this error, which we must distinguish.
       if ("Premature end-of-data on socket".equals(e.getMessage())) {
-        return new LivelinkException(e, LOGGER);
+        return new RepositoryDocumentException(e);
       } else {
         return new LivelinkIOException(e, LOGGER);
       }
