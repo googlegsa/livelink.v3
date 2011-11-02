@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -95,20 +96,23 @@ class Genealogist {
    * @param matching the candidates matching the non-hierarchical filters
    * @param startNodes the includedLocationNodes property value
    * @param excludedNodes the excludedLocationNodes property value
-   * @param cacheSize the fixed size of the node cache
+   * @param minCacheSize the initial size of the node cache
+   * @param maxCacheSize the maximum size of the node cache
    * @return a new instance of the configured Genealogist class
    * @throws RepositoryException if the class cannot be instantiated
    * or initialized
    */
   public static Genealogist getGenealogist(String className, Client client,
-      String startNodes, String excludedNodes, int cacheSize)
-      throws RepositoryException {
+      String startNodes, String excludedNodes, int minCacheSize,
+      int maxCacheSize)  throws RepositoryException {
     Genealogist genealogist;
     try {
       genealogist = Class.forName(className)
           .asSubclass(Genealogist.class)
-          .getConstructor(Client.class, String.class, String.class, int.class)
-          .newInstance(client, startNodes, excludedNodes, cacheSize);
+          .getConstructor(Client.class, String.class, String.class, int.class,
+                          int.class)
+          .newInstance(client, startNodes, excludedNodes, minCacheSize,
+                       maxCacheSize);
     } catch (Exception e) {
       throw new LivelinkException(e, LOGGER);
     }
@@ -128,10 +132,12 @@ class Genealogist {
   private final Set<Integer> excludedSet;
 
   /** A cache of items known to be included. */
-  private final Cache<Integer> includedCache;
+  @VisibleForTesting
+  final Cache<Integer> includedCache;
 
   /** A cache of items known to be excluded. */
-  private final Cache<Integer> excludedCache;
+  @VisibleForTesting
+  final Cache<Integer> excludedCache;
 
   /** For logging statistics, the number of nodes processed by this instance.*/
   protected int nodeCount = 0;
@@ -140,7 +146,7 @@ class Genealogist {
   protected int queryCount = 0;
 
   public Genealogist(Client client, String startNodes, String excludedNodes,
-      int cacheSize) {
+                     int minCacheSize, int maxCacheSize) {
     this.client = client;
 
     this.includedSet = getAncestorSet(startNodes);
@@ -155,10 +161,12 @@ class Genealogist {
     if (LOGGER.isLoggable(Level.FINEST)) {
       LOGGER.finest("DESCENDANTS: includedSet = " + includedSet);
       LOGGER.finest("DESCENDANTS: excludedSet = " + excludedSet);
+      LOGGER.finest("DESCENDANTS: minCacheSize = " + minCacheSize);
+      LOGGER.finest("DESCENDANTS: maxCacheSize = " + maxCacheSize);
     }
 
-    this.excludedCache = new Cache<Integer>(cacheSize);
-    this.includedCache = new Cache<Integer>(cacheSize);
+    this.excludedCache = new Cache<Integer>(minCacheSize, maxCacheSize);
+    this.includedCache = new Cache<Integer>(minCacheSize, maxCacheSize);
   }
 
   /**

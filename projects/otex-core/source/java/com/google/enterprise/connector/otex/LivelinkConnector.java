@@ -243,6 +243,12 @@ public class LivelinkConnector implements Connector {
   /** The <code>Genealogist</code> implementation class name. */
   private String genealogist;
 
+  /** The initial size of the <code>Genealogist</code> ancestor node caches. */
+  private int genealogistMinCacheSize;
+
+  /** The maximum of the <code>Genealogist</code> ancestor node caches. */
+  private int genealogistMaxCacheSize;
+
   /** An additional SQL WHERE clause condition. */
   private String sqlWhereCondition;
 
@@ -1458,6 +1464,86 @@ public class LivelinkConnector implements Connector {
    */
   String getGenealogist() {
     return genealogist;
+  }
+
+  /**
+   * Sets the minimum size of the <code>Genealogist</code>
+   * ancestor node caches.
+   * <p/>
+   * The caches will grow (doubling in size) upto the maximum configured cache
+   * size before aging LRU ancestor nodes from the cache.  Optimal values of
+   * the minimum cacheSize are slightly less than (but not exactly equal to)
+   * a power of 2.
+   *
+   * @param cacheSize minimum cache size in number of entries.
+   *        The minimum value must not be less than or equal to zero.
+   */
+  public void setGenealogistMinCacheSize(final int cacheSize) {
+    propertyValidators.add(new PropertyValidator() {
+        void validate() {
+          if (cacheSize <= 0) {
+            throw new ConfigurationException(
+                "genealogistMinCacheSize must be positive.");
+          }
+          if (cacheSize > CacheMap.MAXIMUM_CAPACITY) {
+            throw new ConfigurationException("genealogistMinCacheSize must "
+                + "not exceed " + CacheMap.MAXIMUM_CAPACITY);
+          }
+          LivelinkConnector.this.genealogistMinCacheSize = cacheSize;
+          if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("GENEALOGIST MIN CACHE SIZE: " + cacheSize);
+          }
+        }
+      });
+  }
+
+  /**
+   * Gets the minimum <code>Genealogist</code> cache size.
+   *
+   * @return the minimum <code>Genealogist</code> cache size
+   */
+  int getGenealogistMinCacheSize() {
+    return genealogistMinCacheSize;
+  }
+
+  /**
+   * Sets the maximum size of the <code>Genealogist</code>
+   * ancestor node caches.
+   * <p/>
+   * The caches will grow (doubling in size) upto the maximum configured cache
+   * size before aging LRU ancestor nodes from the cache.
+   *
+   * @param cacheSize maximum cache size in number of entries.
+   *        The maximum cache size should be greater than or equal to the
+   *        minimum, and should be a power-of-2 multiple of the minimum.
+   */
+  public void setGenealogistMaxCacheSize(final int cacheSize) {
+    propertyValidators.add(new PropertyValidator() {
+        void validate() {
+          if (cacheSize <= 0) {
+            throw new ConfigurationException(
+                "genealogistMaxCacheSize must be positive.");
+          }
+          if (cacheSize > CacheMap.MAXIMUM_CAPACITY) {
+            throw new ConfigurationException("genealogistMaxCacheSize must "
+                + "not exceed " + CacheMap.MAXIMUM_CAPACITY);
+          }
+          LivelinkConnector.this.genealogistMaxCacheSize = cacheSize;
+          if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("GENEALOGIST MAX CACHE SIZE: " + cacheSize);
+          }
+        }
+      });
+  }
+
+  /**
+   * Gets the <code>Genealogist</code> maximum cache size. The cache size is
+   * the maximum number of ancestor nodes that will be held in each cache.
+   *
+   * @return the <code>Genealogist</code> maximum cache size
+   */
+  int getGenealogistMaxCacheSize() {
+    return genealogistMaxCacheSize;
   }
 
   /**

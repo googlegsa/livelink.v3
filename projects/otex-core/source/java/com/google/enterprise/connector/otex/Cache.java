@@ -37,8 +37,17 @@ class Cache<E> {
   /** Backing store for the cache. */
   private final CacheMap<E, Object> store;
 
-  public Cache(int capacity) {
-    store = new CacheMap<E, Object>(capacity);
+  /**
+   * Constructs a new Cache that starts out at the minCapacity
+   * and grows to the maxCapacity before it starts removing LRU items.
+   * Due to  the interal resize logic of the underlying implementation,
+   * the maxCapacity should be a power of 2 multiple of the minCapacity.
+   *
+   * @param minCapacity the initial capacity of the cache
+   * @param maxCapacity the maximum capacity of the cache
+   */
+  public Cache(int minCapacity, int maxCapacity) {
+    store = new CacheMap<E, Object>(minCapacity, maxCapacity);
   }
 
   public boolean addAll(Collection<? extends E> collection) {

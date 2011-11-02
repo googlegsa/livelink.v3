@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.base.Preconditions;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -24,12 +26,15 @@ import java.util.logging.Logger;
  * We need to subclass LinkedHashMap to override removeEldestEntry.
  */
 class CacheMap<K, V> extends LinkedHashMap<K, V> {
+  /** The Maximum Cache size. */
+  public static final int MAXIMUM_CAPACITY = (1 << 24);
+
   /** The logger for this class. */
   private static final Logger LOGGER =
       Logger.getLogger(CacheMap.class.getName());
 
-  /** The initial and maximum capacity of the cache. */
-  private final int capacity;
+  /** The maximum capacity of the cache. */
+  private final int maxCapacity;
 
   /** Cache hit counter, for logging statistics. */
   private int hits = 0;
@@ -37,15 +42,37 @@ class CacheMap<K, V> extends LinkedHashMap<K, V> {
   /** Cache miss counter, for logging statistics. */
   private int misses = 0;
 
-  public CacheMap(int capacity) {
-    // 0.75f is the default load factor; true implies access-order
-    super(capacity, 0.75f, true);
-    this.capacity = capacity;
+  /**
+   * Constructs a new CacheMap that starts out at the minCapacity
+   * and grows to the maxCapacity before it starts removing LRU items.
+   * Due to  the interal resize logic of HashMap, the maxCapacity
+   * should be a power of 2 multiple of the minCapacity.
+   *
+   * @param minCapacity the initial capacity of the cache
+   * @param maxCapacity the maximum capacity of the cache
+   */
+  public CacheMap(int minCapacity, int maxCapacity) {
+    // Adjust the initial capacity to account for the load factor.
+    // This allows the allocated LinkedHashMap to hold the actual
+    // minimum number of items before resizing and the actual maximum
+    // number of items before we start purging LRU entries.
+    // + 1 because LinkedHashMap resizes on >= capacity.  I want the
+    // cache to hold the configured number of items without resizing (yet).
+    super((int)((minCapacity / 0.75f) + 1), 0.75f, true);
+
+    Preconditions.checkArgument(minCapacity > 0,
+        "minCapacity must be positive");  // Avoid divide by 0.
+    Preconditions.checkArgument(maxCapacity >= minCapacity,
+        "maxCapacity must be at least as large as minCapacity");
+    Preconditions.checkArgument(maxCapacity <= MAXIMUM_CAPACITY,
+        "maxCapacity must be less than " + MAXIMUM_CAPACITY);
+
+    this.maxCapacity = maxCapacity;
   }
 
   @Override
   protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-    boolean remove = size() > capacity;
+    boolean remove = size() > maxCapacity;
     if (remove && LOGGER.isLoggable(Level.FINEST)) {
       LOGGER.finest("CACHE: removing entry " + eldest.getKey());
     }

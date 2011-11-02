@@ -326,12 +326,13 @@ class LivelinkRetriever implements Retriever {
     private final long timeout;
 
     public AgingDocumentCache(int size, long timeout) {
-      super(size);
+      super(size, size * 8);
       this.timeout = timeout;
     }
 
-    /** Returns cached Document, if not expired.  Returns {@code null} for
-     *  expired documents or cache misses.
+    /**
+     * Returns cached Document, if not expired.  Returns {@code null} for
+     * expired documents or cache misses.
      */
     public AgingDocument get(Integer key) {
       AgingDocument doc = super.get(key);

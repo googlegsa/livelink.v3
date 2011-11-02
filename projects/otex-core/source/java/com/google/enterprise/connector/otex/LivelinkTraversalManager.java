@@ -88,6 +88,13 @@ class LivelinkTraversalManager
    */
   private final boolean deleteSupported;
 
+  /**
+   * Genealogist used to discover ancestor nodes for documents.
+   * This is null if using DTreeAncestors or there are no explicit
+   * included or excluded nodes.
+   */
+  private final Genealogist genealogist;
+
   static {
     // ListNodes requires the DataID and PermID columns to be
     // included here. This implementation requires DataID,
@@ -195,6 +202,23 @@ class LivelinkTraversalManager
 
     this.fields = getFields();
     this.selectList = getSelectList();
+
+    // Cache a Genealogist, if we need one.
+    String startNodes = connector.getIncludedLocationNodes();
+    String excludedNodes = connector.getExcludedLocationNodes();
+    if (connector.getUseDTreeAncestors()
+        || ((startNodes == null || startNodes.length() == 0)
+            && (excludedNodes == null || excludedNodes.length() == 0))) {
+      this.genealogist = null;
+    } else {
+      // We use sysadminClient here to match the behavior of using
+      // DTreeAncestors when the traversal user does not have
+      // permission for intermediate nodes.
+      this.genealogist = Genealogist.getGenealogist(connector.getGenealogist(),
+          sysadminClient, startNodes, excludedNodes,
+          connector.getGenealogistMinCacheSize(),
+          connector.getGenealogistMaxCacheSize());
+    }
   }
 
   /**
@@ -690,11 +714,7 @@ class LivelinkTraversalManager
   @VisibleForTesting
   ClientValue getResults(String candidatesPredicate)
       throws RepositoryException {
-    String startNodes = connector.getIncludedLocationNodes();
-    String excludedNodes = connector.getExcludedLocationNodes();
-    if (connector.getUseDTreeAncestors()
-        || ((startNodes == null || startNodes.length() == 0)
-            && (excludedNodes == null || excludedNodes.length() == 0))) {
+    if (genealogist == null) {
       // We're either using DTreeAncestors, or we don't need it.
       return getMatching(candidatesPredicate, true, "WebNodes", selectList,
           traversalClient);
@@ -707,8 +727,7 @@ class LivelinkTraversalManager
           (Strings.isNullOrEmpty(sqlWhereCondition)) ? "DTree" : "WebNodes";
       ClientValue matching = getMatching(candidatesPredicate, false, view,
           new String[] { "DataID" }, sysadminClient);
-      return (matching.size() == 0)
-          ? null : getMatchingDescendants(matching, startNodes, excludedNodes);
+      return (matching.size() == 0) ? null : getMatchingDescendants(matching);
     }
   }
 
@@ -762,21 +781,16 @@ class LivelinkTraversalManager
    * use of DTreeAncestors.
    *
    * @param matching the candidates matching the non-hierarchical filters
-   * @param startNodes the includedLocationNodes property value
-   * @param excludedNodes the excludedLocationNodes property value
    * @return the main query results
    */
-  private ClientValue getMatchingDescendants(ClientValue matching,
-      String startNodes, String excludedNodes) throws RepositoryException {
-    // We use sysadminClient here to match the behavior of using
-    // DTreeAncestors when the traversal user does not have
-    // permission for intermediate nodes. The cache size is arbitrary.
-    // TODO: We could keep this Genealogist instance between batches.
-    Genealogist matcher =
-        Genealogist.getGenealogist(connector.getGenealogist(),
-            sysadminClient, startNodes, excludedNodes, matching.size());
-
-    String descendants = matcher.getMatchingDescendants(matching);
+  private ClientValue getMatchingDescendants(ClientValue matching)
+      throws RepositoryException {
+    String descendants;
+    // We are using the same genealogist for multiple traversal batches, which
+    // might be done from different threads (although never concurrently).
+    synchronized (genealogist) {
+      descendants = genealogist.getMatchingDescendants(matching);
+    }
     if (descendants != null) {
       return traversalClient.ListNodes("DataID in (" + descendants + ")"
           + ORDER_BY, "WebNodes", selectList);

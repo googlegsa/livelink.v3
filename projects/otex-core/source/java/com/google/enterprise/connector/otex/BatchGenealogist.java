@@ -35,9 +35,9 @@ class BatchGenealogist extends HybridGenealogist {
       Logger.getLogger(BatchGenealogist.class.getName());
 
   public BatchGenealogist(Client client, String startNodes,
-      String excludedNodes, int cacheSize) {
+      String excludedNodes, int minCacheSize, int maxCacheSize) {
     // TODO: We may want to disable the cache for this implementation.
-    super(client, startNodes, excludedNodes, cacheSize);
+    super(client, startNodes, excludedNodes, minCacheSize, maxCacheSize);
   }
 
   /**

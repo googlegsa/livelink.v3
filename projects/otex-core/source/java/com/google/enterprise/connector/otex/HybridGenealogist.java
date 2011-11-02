@@ -30,8 +30,8 @@ class HybridGenealogist extends Genealogist {
       Logger.getLogger(HybridGenealogist.class.getName());
 
   public HybridGenealogist(Client client, String startNodes,
-      String excludedNodes, int cacheSize) {
-    super(client, startNodes, excludedNodes, cacheSize);
+      String excludedNodes, int minCacheSize, int maxCacheSize) {
+    super(client, startNodes, excludedNodes, minCacheSize, maxCacheSize);
   }
 
   /**

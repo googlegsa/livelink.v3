@@ -21,10 +21,40 @@ public class CacheMapTest extends TestCase {
   private CacheMap<Integer, String> cache;
 
   protected void setUp() {
-    cache = new CacheMap<Integer, String>(3);
+    cache = new CacheMap<Integer, String>(3, 3);
     cache.put(1, "one");
     cache.put(2, "two");
     cache.put(3, "three");
+  }
+
+  public void testInvalidArgs() {
+    // minCapacity must be positive.
+    try {
+      cache = new CacheMap<Integer, String>(-1, -1);
+    } catch (IllegalArgumentException expected) {
+      // Expected.
+    }
+
+    // minCapacity must not be zero.
+    try {
+      cache = new CacheMap<Integer, String>(0, 1);
+    } catch (IllegalArgumentException expected) {
+      // Expected.
+    }
+
+    // maxCapacity must be >= minCapacity.
+    try {
+      cache = new CacheMap<Integer, String>(5, 4);
+    } catch (IllegalArgumentException expected) {
+      // Expected.
+    }
+
+    // maxCapacity must not exceed MAXIMUM_CAPACITY
+    try {
+      cache = new CacheMap<Integer, String>(1, CacheMap.MAXIMUM_CAPACITY + 1);
+    } catch (IllegalArgumentException expected) {
+      // Expected.
+    }
   }
 
   public void testCacheHit() {
