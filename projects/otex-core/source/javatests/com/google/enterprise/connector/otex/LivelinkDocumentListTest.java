@@ -32,12 +32,23 @@ import java.util.Date;
 
 public class LivelinkDocumentListTest extends TestCase {
   /**
-   * Creates a connector instance.
+   * Creates a default connector instance.
    *
-   * @param publicContentUsername an optional parameter, may be null
    * @return a new LivelinkConnector instance
    */
-  private LivelinkConnector getConnector(String publicContentUsername)
+  private LivelinkConnector getConnector()
+      throws RepositoryException {
+    return getConnector(null, null);
+  }
+
+  /**
+   * Creates a connector instance with an optional custom property.
+   *
+   * @param property an optional property name, may be null
+   * @param value a property value
+   * @return a new LivelinkConnector instance
+   */
+  private LivelinkConnector getConnector(String property, String value)
       throws RepositoryException {
     LivelinkConnector connector = new LivelinkConnector(
         "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
@@ -51,11 +62,16 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setIncludedCategories("all,searchable");
     connector.setExcludedCategories("none");
     connector.setFeedType("content");
+    connector.setUnsupportedFetchVersionTypes("");
 
-    if (publicContentUsername != null) {
-      connector.setPublicContentUsername(publicContentUsername);
-      connector.setPublicContentAuthorizationManager(
-          new LivelinkAuthorizationManager());
+    if (property != null) {
+      if (property.equals("publicContentUsername")) {
+        connector.setPublicContentUsername(value);
+        connector.setPublicContentAuthorizationManager(
+            new LivelinkAuthorizationManager());
+      } else if (property.equals("unsupportedFetchVersionTypes")) {
+        connector.setUnsupportedFetchVersionTypes(value);
+      }
     }
 
     connector.login();
@@ -71,7 +87,7 @@ public class LivelinkDocumentListTest extends TestCase {
    */
   private DocumentList getObjectUnderTest(int... docInfo)
       throws RepositoryException {
-    LivelinkConnector connector = getConnector(null);
+    LivelinkConnector connector = getConnector();
 
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
@@ -89,7 +105,7 @@ public class LivelinkDocumentListTest extends TestCase {
    */
   private DocumentList getObjectUnderTest(Client client, int... docInfo)
       throws RepositoryException {
-    LivelinkConnector connector = getConnector(null);
+    LivelinkConnector connector = getConnector();
 
     return getObjectUnderTest(connector, client, docInfo);
   }
@@ -150,6 +166,24 @@ public class LivelinkDocumentListTest extends TestCase {
     } catch (LivelinkIOException e) {
       assertNull(list.checkpoint());
     }
+  }
+
+  /**
+   * Tests a document where FetchVersion should throw an I/O exception
+   * but unsupportedFetchVersionTypes is configured to skip it.
+   */
+  public void testNextDocument_unsupportedFetchVersionTypes()
+      throws RepositoryException {
+    LivelinkConnector connector =
+        getConnector("unsupportedFetchVersionTypes", "144");
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    DocumentList list =
+        getObjectUnderTest(connector, client, MockConstants.IO_OBJECT_ID, 1);
+
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertNotNull(list.checkpoint());
   }
 
   /**
@@ -260,7 +294,7 @@ public class LivelinkDocumentListTest extends TestCase {
 
   /** Tests that the client must not be null. */
   public void testNullConstructorArgs_client() throws RepositoryException {
-    LivelinkConnector connector = getConnector(null);
+    LivelinkConnector connector = getConnector();
 
     try {
       DocumentList list = new LivelinkDocumentList(connector,
@@ -272,7 +306,7 @@ public class LivelinkDocumentListTest extends TestCase {
 
   /** Tests that the checkpoint must not be null. */
   public void testNullConstructorArgs_checkpoint() throws RepositoryException {
-    LivelinkConnector connector = getConnector(null);
+    LivelinkConnector connector = getConnector();
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
 
@@ -287,7 +321,7 @@ public class LivelinkDocumentListTest extends TestCase {
 
   /** Tests that all the other constructs arguments can be null. */
   public void testNullConstructorArgs_others() throws RepositoryException {
-    LivelinkConnector connector = getConnector(null);
+    LivelinkConnector connector = getConnector();
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
     Checkpoint checkpoint = new Checkpoint();
@@ -301,7 +335,8 @@ public class LivelinkDocumentListTest extends TestCase {
   /** Tests a null recArray with a non-null publicContentUsername. */
   public void testNullConstructorArgs_publicContentUsername()
       throws RepositoryException {
-    LivelinkConnector connector = getConnector("anonymous");
+    LivelinkConnector connector =
+        getConnector("publicContentUsername", "anonymous");
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
     Checkpoint checkpoint = new Checkpoint();

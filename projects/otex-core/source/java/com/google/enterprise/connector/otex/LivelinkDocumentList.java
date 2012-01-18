@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -591,10 +592,7 @@ class LivelinkDocumentList implements DocumentList {
      * If the item does not (or must not) have content, then no
      * content property is generated.  If the item's content is
      * not acceptable according to the TraversalContext, then no
-     * content is generated.  The content property's value is
-     * inserted into the property map, but is also returned.
-     *
-     * @return content Value object, null if no content
+     * content is generated.
      */
     // NOTE: Some of the logic here has been replicated in
     // Retriever.getContent().  Changes here should probably be
@@ -604,17 +602,14 @@ class LivelinkDocumentList implements DocumentList {
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);
 
-      // TODO: Make this list configurable.
-      switch (subType) {
-        case 356:    // Blog
-        case 357:    // Blog Entry
-        case 123469: // Forum
-        case 123470: // Forum Topics & Replies
-        case 123475: // FAQ
-        case 123476: // FAQ Entry
-          return;
-        default:
-          break;
+      List<Integer> unsupportedTypes =
+          connector.getUnsupportedFetchVersionTypes();
+      if (unsupportedTypes.contains(subType)) {
+        if (LOGGER.isLoggable(Level.FINEST)) {
+          LOGGER.finest("NO CONTENT PROPERTY FOR FOR UNSUPPORTED SUBTYPE = "
+              + subType);
+        }
+        return;
       }
 
       // DataSize is the only non-nullable column from
@@ -655,7 +650,6 @@ class LivelinkDocumentList implements DocumentList {
         // Is the content too large?
         if (((long) size) > traversalContext.maxDocumentSize())
           return;
-
       } else {
         // If there is no traversal context, we'll enforce a size
         // limit of 30 MB. This limit is hard-coded in the GSA anyway.
