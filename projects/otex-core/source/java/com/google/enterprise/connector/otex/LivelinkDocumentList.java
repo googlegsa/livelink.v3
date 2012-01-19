@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -84,7 +85,8 @@ class LivelinkDocumentList implements DocumentList {
   private final UserNameHandler nameHandler;
 
   /** The table of Livelink data, one row per doc, one column per field. */
-  private final ClientValue recArray;
+  @VisibleForTesting
+  final ClientValue recArray;
 
   /** The recarray fields. */
   private final Field[] fields;
@@ -96,7 +98,8 @@ class LivelinkDocumentList implements DocumentList {
   private final TraversalContext traversalContext;
 
   /** The current checkpoint reflecting the cursor in the DocumentList */
-  private final Checkpoint checkpoint;
+  @VisibleForTesting
+  final Checkpoint checkpoint;
 
   /** If the traversal client user is the public content user,
    *  then all documents it sees will be publicly available.
@@ -414,7 +417,7 @@ class LivelinkDocumentList implements DocumentList {
           // Return an Inserted Item.
           objectId = recArray.toInteger(insRow, "DataID");
           volumeId = recArray.toInteger(insRow, "OwnerID");
-          subType  = recArray.toInteger(insRow, "Subtype");
+          subType  = recArray.toInteger(insRow, "SubType");
 
           props = new LivelinkDocument(objectId, fields.length*2);
 

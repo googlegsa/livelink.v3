@@ -187,7 +187,7 @@ public class MockClient implements Client {
                     ResultSet rs =
                         stmt.executeQuery(getSqlQuery(query, view, columns));
                     ResultSetMetaData rsmd = rs.getMetaData();
-                    fields = getResultSetColumns(rsmd);
+                    fields = getResultSetColumns(rsmd, columns);
                     values = getResultSetValues(rs, rsmd);
                 } finally {
                     stmt.close();
@@ -237,18 +237,26 @@ public class MockClient implements Client {
     }
 
     /** Gets the array of column names from the result set metadata. */
-    private String[] getResultSetColumns(ResultSetMetaData rsmd)
-            throws SQLException {
-        int count = rsmd.getColumnCount();
-        String[] columns = new String[count];
-        for (int i = 0; i < count; i++) {
-            // Correct for the uppercasing of column names in H2.
-            columns[i] = rsmd.getColumnName(i + 1)
-                .replace("DATA", "Data")
-                .replace("STEP", "Step")
-                .replace("PARENT", "Parent");
+    private String[] getResultSetColumns(ResultSetMetaData rsmd,
+        String[] origColumns) throws SQLException {
+      int count = rsmd.getColumnCount();
+      String[] columns = new String[count];
+      // This is a bit hacky, but works OK for our queries at the moment.
+      for (int i = 0; i < count; i++) {
+        // StepParent and ModifyDate are handled especially, because their
+        // origColumns are adorned with SQL syntax like "top 1000 ModifyDate".
+        columns[i] = rsmd.getColumnName(i + 1)
+            .replace("STEPPARENT", "StepParent")
+            .replace("MODIFYDATE", "ModifyDate");
+        // Correct for the uppercasing of column names in H2.
+        for (String origName : origColumns) {
+          if (origName.equalsIgnoreCase(columns[i])) {
+            columns[i] = origName;
+            break;
+          }
         }
-        return columns;
+      }
+      return columns;
     }
 
     /** Gets the array of row values from the result set. */

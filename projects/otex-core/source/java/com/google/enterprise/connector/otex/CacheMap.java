@@ -90,7 +90,24 @@ class CacheMap<K, V> extends LinkedHashMap<K, V> {
     return value;
   }
 
-  public String statistics() {
-    return size() + " entries, " + hits + " hits, " + misses + " misses";
+  public class CacheStatistics {
+    public final int entries; // Number of entries in the CacheMap.
+    public final int hits;    // number of cache hits accessing the CacheMap.
+    public final int misses;  // Number of cache misses accessing the CacheMap.
+
+    public CacheStatistics(int entries, int hits, int misses) {
+      this.entries = entries;
+      this.hits = hits;
+      this.misses = misses;
+    }
+
+    public String toString() {
+      return entries + " entries, " + hits + " hits, " + misses + " misses";
+    }
+  }
+
+  /** Returns a snapshot of the current CacheMap Statistics. */
+  public CacheStatistics statistics() {
+    return new CacheStatistics(size(), CacheMap.this.hits, CacheMap.this.misses);
   }
 }

@@ -95,10 +95,10 @@ public class CacheMapTest extends TestCase {
   }
 
   public void testStatistics() {
-    assertEquals("3 entries, 0 hits, 0 misses", cache.statistics());
+    assertEquals("3 entries, 0 hits, 0 misses", cache.statistics().toString());
     assertEquals("one", cache.get(1));
     assertEquals("two", cache.get(2));
     assertNull(cache.get(4));
-    assertEquals("3 entries, 2 hits, 1 misses", cache.statistics());
+    assertEquals("3 entries, 2 hits, 1 misses", cache.statistics().toString());
   }
 }

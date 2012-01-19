@@ -117,7 +117,7 @@ public class LivelinkDocumentListTest extends TestCase {
     contentHandler.initialize(connector, client);
 
     final String[] FIELDS = {
-      "ModifyDate", "DataID", "OwnerID", "Subtype", "MimeType", "DataSize" };
+      "ModifyDate", "DataID", "OwnerID", "SubType", "MimeType", "DataSize" };
     assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 2);
     Object[][] values = new Object[docInfo.length / 2][];
     for (int i = 0; i < docInfo.length / 2; i++) {

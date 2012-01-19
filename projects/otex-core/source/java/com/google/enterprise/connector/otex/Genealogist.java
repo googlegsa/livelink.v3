@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.CacheMap.CacheStatistics;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -332,5 +334,39 @@ class Genealogist {
       LOGGER.finer("DESCENDANTS: No matching descendants.");
       return null;
     }
+  }
+
+  /* Used for testing and instrumentation. */
+  public class Statistics {
+    public final int nodeCount;   // Number of nodes processed by this instance.
+    public final int queryCount;  // Number of queries run by this instance.
+    public final CacheStatistics includedStats; // Statistics for includedCache.
+    public final CacheStatistics excludedStats; // Statistics for excludedCache.
+
+    public Statistics(int nodeCount, int queryCount,
+        CacheStatistics includedStats, CacheStatistics excludedStats) {
+      this.nodeCount = nodeCount;
+      this.queryCount = queryCount;
+      this.includedStats = includedCache.statistics();
+      this.excludedStats = excludedCache.statistics();
+    }
+
+    public String toString() {
+      return "nodes: " + nodeCount + ", queries: " + queryCount
+          + ", includedCache: ( " + includedStats + " ), excludedCache: ( "
+          + excludedStats + " )";
+    }
+  }
+
+  /**
+   * Returns a structure that contains the accumulated Genealogist and Cache
+   * statistics.
+   *
+   * @return a Genealogist.Statistics structure.
+   */
+  /* Used for testing and instrumentation. */
+  public synchronized Statistics statistics() {
+    return new Statistics(nodeCount, queryCount, includedCache.statistics(),
+                          excludedCache.statistics());
   }
 }

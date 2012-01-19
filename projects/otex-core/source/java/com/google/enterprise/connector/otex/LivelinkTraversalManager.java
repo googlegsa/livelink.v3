@@ -93,7 +93,8 @@ class LivelinkTraversalManager
    * This is null if using DTreeAncestors or there are no explicit
    * included or excluded nodes.
    */
-  private final Genealogist genealogist;
+  @VisibleForTesting
+  final Genealogist genealogist;
 
   static {
     // ListNodes requires the DataID and PermID columns to be
@@ -246,7 +247,8 @@ class LivelinkTraversalManager
 
     // We don't care about any existing Delete events in the audit
     // logs, since we're just starting the traversal.
-    forgeInitialDeleteCheckpoint(checkpoint);
+    if (deleteSupported)
+      forgeInitialDeleteCheckpoint(checkpoint);
 
     String startCheckpoint = checkpoint.toString();
     if (LOGGER.isLoggable(Level.FINE))

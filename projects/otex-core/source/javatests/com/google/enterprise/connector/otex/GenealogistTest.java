@@ -232,7 +232,7 @@ public class GenealogistTest extends TestCase {
     genealogist.includedCache.addAll(
         Arrays.asList(new Integer[] { 1, 10, 100, 101 }));
     assertEquals("4 entries, 0 hits, 0 misses",
-                 genealogist.includedCache.statistics());
+                 genealogist.includedCache.statistics().toString());
 
     // Test the grandchild of a cached node. One new parent entry, 1010,
     // should be added.
@@ -240,7 +240,7 @@ public class GenealogistTest extends TestCase {
     assertEquals(1, genealogist.nodeCount);
     assertEquals(2, genealogist.queryCount);
     assertEquals("5 entries, 1 hits, 2 misses",
-                 genealogist.includedCache.statistics());
+                 genealogist.includedCache.statistics().toString());
     assertTrue(genealogist.includedCache.contains(new Integer(1010)));
 
     // Test nodes that should be fully cached. They should all hit,
@@ -251,6 +251,6 @@ public class GenealogistTest extends TestCase {
     assertEquals(6, genealogist.nodeCount);
     assertEquals(2, genealogist.queryCount);
     assertEquals("5 entries, 7 hits, 2 misses",
-                 genealogist.includedCache.statistics());
+                 genealogist.includedCache.statistics().toString());
   }
 }

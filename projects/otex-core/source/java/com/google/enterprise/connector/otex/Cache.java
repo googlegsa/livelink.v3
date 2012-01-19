@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.CacheMap.CacheStatistics;
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -65,7 +67,7 @@ class Cache<E> {
     return (store.get(target) != null);
   }
 
-  public String statistics() {
+  public CacheStatistics statistics() {
     return store.statistics();
   }
 
