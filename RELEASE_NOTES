@@ -10,12 +10,61 @@ supplements the main documentation.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 2.8.4, Jan 18, 2012
+===========================
+
+Introduction
+------------
+This is an upgrade release with some enhancements. Users of previous
+releases are encouraged to review the changes below to determine
+whether to upgrade.
+
+Summary of Changes
+------------------
+  * Fixed issue 5888095: Basic support for the Question and Answer items
+    for the Communities module. Added the unsupportedFetchVersionTypes
+    advanced configuration property, to better handle subtypes with a
+    MIME type but no version file. Added the relevant Question and
+    Answer subtypes to the excludedNodeTypes (441, Question Folder),
+    includedExtendedData (432, Answer, which has a "ResponseContent"
+    field), and the new unsupportedFetchVersionTypes (430, Question
+    and 432, Answer) advanced configuration properties.
+  * Fixed issue 30: Added the sqlWhereCondition advanced configuration
+    property, which adds conditions to the traversal queries.
+  * Fixed issue 5478925: Clean up inefficiencies in the traversal
+    exception handling. There are no functional changes, but the fixes
+    avoid refetching documents in some circumstances and decrease the
+    load on the Livelink server in the presence of errors.
+  * Made the Livelink base URL and path used by the
+    HttpURLContentHandler configurable, so that the connector can
+    retrieve content from different front-end Livelink servers or from
+    custom actions in Livelink.
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 2.8.0 may be
+used with this version. This version works with Connector Manager
+version 2.8.0 or later. Earlier versions of the Connector Manager will
+not work correctly with this version of the connector. This product is
+designed to function with Open Text Livelink versions 9.5 SP1, 9.6,
+9.7, and 9.7.1.
+
+Customers who have edited the authenticationManager definition in
+connectorInstance.xml must update those files. The
+authenticationManager property is now overridable. Please see the
+Advanced Configuration wiki page for details, and contact Google
+Enterprise Support if you need assistance.
+
+
 Release 2.8.0, Jul 18, 2011
 ===========================
 
 Introduction
 ------------
-
 This is an upgrade release with some enhancements. Users of previous
 releases are encouraged to upgrade. This release also contains the
 updates in the 2.6.10 and 2.6.12 patch releases.
@@ -52,11 +101,9 @@ authenticationManager property is now overridable. Please see the
 Advanced Configuration wiki page for details, and contact Google
 Enterprise Support if you need assistance.
 
-http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
-
 
 Release 2.6.12, May 2, 2011
-============================
+===========================
 
 Introduction
 ------------
