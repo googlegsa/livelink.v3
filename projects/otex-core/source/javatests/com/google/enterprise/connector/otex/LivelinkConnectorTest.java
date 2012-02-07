@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.ConfigurationException;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -62,6 +63,7 @@ public class LivelinkConnectorTest extends TestCase {
       "  ",       "",
       " \t ",     "",
       "\t",       "",
+      ",",        null,
       "168",      "168",
       "1,2,3",            "1,2,3",
       " 1 , 2 , 3 ",      "1,2,3",
@@ -100,8 +102,9 @@ public class LivelinkConnectorTest extends TestCase {
       "",         "",
       "  ",       "",
       " \t ",     "",
-      "\t",      "",
-      "168",     "168",
+      "\t",       "",
+      ",",        ",",
+      "168",      "168",
       "a,b,c",            "a,b,c",
       " a , b , c ",      "a,b,c",
       "a\t,2,,,-",        "a,2,,,-",
@@ -376,6 +379,50 @@ public class LivelinkConnectorTest extends TestCase {
     for (DomainAndName value : DomainAndName.values()) {
       connector.setDomainAndName(value.toString().toLowerCase());
       connector.login();
+    }
+  }
+
+  public void testUnsupportedFetchVersionTypes_null() throws Exception {
+    connector.setUnsupportedFetchVersionTypes(null);
+    connector.login();
+    assertEquals(ImmutableList.<Integer>of(),
+        connector.getUnsupportedFetchVersionTypes());
+  }
+
+  public void testUnsupportedFetchVersionTypes_empty() throws Exception {
+    connector.setUnsupportedFetchVersionTypes("");
+    connector.login();
+    assertEquals(ImmutableList.<Integer>of(),
+        connector.getUnsupportedFetchVersionTypes());
+  }
+
+  public void testUnsupportedFetchVersionTypes_one() throws Exception {
+    connector.setUnsupportedFetchVersionTypes("123");
+    connector.login();
+    assertEquals(ImmutableList.of(123),
+        connector.getUnsupportedFetchVersionTypes());
+  }
+
+  public void testUnsupportedFetchVersionTypes_many() throws Exception {
+    connector.setUnsupportedFetchVersionTypes("123, 456  , 789");
+    connector.login();
+    assertEquals(ImmutableList.of(123, 456, 789),
+        connector.getUnsupportedFetchVersionTypes());
+  }
+
+  /**
+   * Tests a missing integer (two consecutive comma separators).
+   * setUnsupportedFetchVersionTypes relies on the internal
+   * sanitizeListOfIntegers method to handle this case.
+   */
+  public void testUnsupportedFetchVersionTypes_missing() throws Exception {
+    String missingValue = "123,,789";
+    connector.setUnsupportedFetchVersionTypes(missingValue);
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (IllegalArgumentException e) {
+      assertEquals(missingValue, e.getMessage());
     }
   }
 

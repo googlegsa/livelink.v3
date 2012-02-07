@@ -64,10 +64,13 @@ public class LivelinkConnector implements Connector {
   private static final int LIST_OF_STRINGS = 2;
 
   /**
-   * A pattern describing a comma-separated list of unsigned
-   * integers, with optional whitespace and brace delimiters. The
-   * list may be empty or consist entirely of whitespace. The
-   * delimiters do not need to appear in a matching pair.
+   * A pattern describing a comma-separated list of unsigned integers,
+   * with optional whitespace and brace delimiters. The list may be
+   * empty or consist entirely of whitespace. Empty entries (with no
+   * digits) are not allowed. Every comma must have one or more digits
+   * on both sides of it, in other words, leading, trailing, or
+   * multiple consecutive commas are not allowed. The delimiters do
+   * not need to appear in a matching pair.
    */
   private static final Pattern LIST_OF_INTEGERS_PATTERN =
       Pattern.compile("\\s*\\{?\\s*(?:\\d+\\s*(?:,\\s*\\d+\\s*)*)?\\}?\\s*");
@@ -154,6 +157,9 @@ public class LivelinkConnector implements Connector {
    * authentication parameters.
    */
   private boolean useSeparateAuthentication;
+
+  /* The subtypes that do not support FetchVersion. */
+  private List<Integer> unsupportedFetchVersionTypes;
 
   /** The base display URL for the search results. */
   private String displayUrl;
@@ -1056,6 +1062,35 @@ public class LivelinkConnector implements Connector {
   /* Only valid after init(). */
   String getIncludedLocationNodes() {
     return includedLocationNodes;
+  }
+
+  /**
+   * Sets the subtypes that do not support FetchVersion.
+   *
+   * @param unsupportedTypes a comma-separated list of subtypes
+   */
+  public void setUnsupportedFetchVersionTypes(final String unsupportedTypes) {
+    propertyValidators.add(new PropertyValidator() {
+        void validate() {
+          unsupportedFetchVersionTypes = new ArrayList<Integer>();
+          if (!Strings.isNullOrEmpty(unsupportedTypes)) {
+            String[] subtypes =
+                sanitizeListOfIntegers(unsupportedTypes).split(",");
+            for (int i = 0; i < subtypes.length; i++) {
+              unsupportedFetchVersionTypes.add(new Integer(subtypes[i]));
+            }
+          }
+          if (LOGGER.isLoggable(Level.CONFIG)) {
+            LOGGER.config("UNSUPPORTED FETCH VERSION TYPES: "
+                + unsupportedFetchVersionTypes);
+          }
+        }
+      });
+  }
+
+  /** Gets the subtypes that do not support FetchVersion. */
+  List<Integer> getUnsupportedFetchVersionTypes() {
+    return unsupportedFetchVersionTypes;
   }
 
   /**
