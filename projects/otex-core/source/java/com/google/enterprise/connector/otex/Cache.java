@@ -14,8 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.otex.CacheMap.CacheStatistics;
-
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,23 +31,43 @@ class Cache<E> {
   /** The logger for this class. */
   private static final Logger LOGGER = Logger.getLogger(Cache.class.getName());
 
+  /**
+   * The underlying LRU store. We need to subclass LinkedHashMap to
+   * override removeEldestEntry.
+   */
+  private static class CacheMap<K, V> extends LinkedHashMap<K, V> {
+    /** The initial and maximum capacity of the cache. */
+    private final int capacity;
+
+    public CacheMap(int capacity) {
+      // 0.75f is the default load factor; true implies access-order
+      super(capacity, 0.75f, true);
+      this.capacity = capacity;
+    }
+
+    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+      boolean remove = size() > capacity;
+      if (remove && LOGGER.isLoggable(Level.FINEST)) {
+        LOGGER.finest("CACHE: removing entry " + eldest.getKey());
+      }
+      return remove;
+    }
+  }
+
   /** Object stored in the map for each key in our cache. */
   private static final Object VALUE = new Object();
 
   /** Backing store for the cache. */
   private final CacheMap<E, Object> store;
 
-  /**
-   * Constructs a new Cache that starts out at the minCapacity
-   * and grows to the maxCapacity before it starts removing LRU items.
-   * Due to  the interal resize logic of the underlying implementation,
-   * the maxCapacity should be a power of 2 multiple of the minCapacity.
-   *
-   * @param minCapacity the initial capacity of the cache
-   * @param maxCapacity the maximum capacity of the cache
-   */
-  public Cache(int minCapacity, int maxCapacity) {
-    store = new CacheMap<E, Object>(minCapacity, maxCapacity);
+  /** Cache hit counter, for logging statistics. */
+  private int hits = 0;
+
+  /** Cache miss counter, for logging statistics. */
+  private int misses = 0;
+
+  public Cache(int capacity) {
+    store = new CacheMap<E, Object>(capacity);
   }
 
   public boolean addAll(Collection<? extends E> collection) {
@@ -64,11 +82,16 @@ class Cache<E> {
   public boolean contains(Object target) {
     // For the access-ordering to work we have to use get here instead
     // of containsKey.
-    return (store.get(target) != null);
+    boolean exists = store.get(target) != null;
+    if (exists)
+      hits++;
+    else
+      misses++;
+    return exists;
   }
 
-  public CacheStatistics statistics() {
-    return store.statistics();
+  public String statistics() {
+    return store.size() + " entries, " + hits + " hits, " + misses + " misses";
   }
 
   /** A convenience method for logging. */

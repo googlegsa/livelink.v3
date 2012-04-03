@@ -23,8 +23,7 @@ import java.sql.SQLException;
 /** Manages an in-memory H2 database modeling the Livelink database. */
 class JdbcFixture {
   public static final String CREATE_TABLE_DTREE = "create table DTree "
-      + "(DataID int primary key, ParentID int, PermID int, "
-      + "SubType int, ModifyDate timestamp)";
+      + "(DataID int primary key, ParentID int, PermID int, SubType int)";
 
   public static final String CREATE_TABLE_DTREEANCESTORS =
       "create table DTreeAncestors (DataID int, AncestorID int)";
@@ -34,8 +33,8 @@ class JdbcFixture {
 
   public static final String CREATE_TABLE_WEBNODES =
       "create table WebNodes "
-      + "(DataID int primary key, ParentID int, PermID int, "
-      + "SubType int, ModifyDate timestamp, MimeType varchar)";
+      + "(DataID int primary key, ParentID int, PermID int, SubType int, "
+      + "ModifyDate int /* TODO: date type */, MimeType varchar)";
 
   /** The database connection. */
   private Connection jdbcConnection;

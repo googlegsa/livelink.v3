@@ -23,7 +23,7 @@ public class CacheTest extends TestCase {
   private Cache<Integer> cache;
 
   protected void setUp() {
-    cache = new Cache<Integer>(3, 3);
+    cache = new Cache<Integer>(3);
     addAll(cache, 1, 2, 3);
   }
 

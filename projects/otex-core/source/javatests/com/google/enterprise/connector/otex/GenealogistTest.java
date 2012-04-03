@@ -22,7 +22,6 @@ import com.google.enterprise.connector.spi.RepositoryException;
 
 import junit.framework.TestCase;
 
-import java.util.Arrays;
 import java.sql.SQLException;
 
 /**
@@ -87,16 +86,9 @@ public class GenealogistTest extends TestCase {
   private void testGenealogist(String includedNodes, String excludedNodes,
       Integer[] matchingNodes, String matchingDescendants)
       throws RepositoryException {
-    Genealogist genealogist = Genealogist.getGenealogist(
+    Genealogist gen = Genealogist.getGenealogist(
         getClassUnderTest().getName(),
-        client, includedNodes, excludedNodes, 10, 10);
-    testMatching(genealogist, matchingNodes, matchingDescendants);
-  }
-
-  /** Helper method to test matching nodes. */
-  private void testMatching(Genealogist genealogist,
-      Integer[] matchingNodes, String matchingDescendants)
-      throws RepositoryException {
+        client, includedNodes, excludedNodes, 10);
     Integer[][] matchingValues = new Integer[matchingNodes.length][];
     for (int i = 0; i < matchingNodes.length; i++) {
       matchingValues[i] = new Integer[] { matchingNodes[i] };
@@ -104,7 +96,7 @@ public class GenealogistTest extends TestCase {
     MockClientValue matching =
         new MockClientValue(new String[] { "DataID" }, matchingValues);
 
-    Object desc = genealogist.getMatchingDescendants(matching);
+    Object desc = gen.getMatchingDescendants(matching);
     assertEquals(matchingDescendants, desc);
   }
 
@@ -198,7 +190,7 @@ public class GenealogistTest extends TestCase {
           { 4, -1 }, { 400, 40 }, { 4000, 400 },
           { 5, -1 }, { 500, 50 }, { 5000, 500 } });
     testGenealogist("", "2,3", new Integer[] {
-        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000, 10100 },
+        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000, 10100, },
         "1000,1001,1010,10100");
   }
 
@@ -215,42 +207,7 @@ public class GenealogistTest extends TestCase {
     // (relative to the missing nodes) as the other matching nodes
     // (relative to the included/excluded nodes).
     testGenealogist("10", "20,30", new Integer[] {
-        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000 },
+        1000, 1001, 1010, 2000, 2001, 2002, 3000, 3010, 4000, 5000, },
         "1000,1001,1010");
-  }
-
-  /** Test the caching of found ancestor nodes. */
-  public void testCaching()
-      throws SQLException, RepositoryException {
-    Genealogist genealogist = Genealogist.getGenealogist(
-        getClassUnderTest().getName(), client, "1", "", 10, 10);
-
-    assertEquals(0, genealogist.nodeCount);
-    assertEquals(0, genealogist.queryCount);
-
-    // Seed the cache with a small tree of known parents.
-    genealogist.includedCache.addAll(
-        Arrays.asList(new Integer[] { 1, 10, 100, 101 }));
-    assertEquals("4 entries, 0 hits, 0 misses",
-                 genealogist.includedCache.statistics().toString());
-
-    // Test the grandchild of a cached node. One new parent entry, 1010,
-    // should be added.
-    testMatching(genealogist, new Integer[] { 10100 }, "10100");
-    assertEquals(1, genealogist.nodeCount);
-    assertEquals(2, genealogist.queryCount);
-    assertEquals("5 entries, 1 hits, 2 misses",
-                 genealogist.includedCache.statistics().toString());
-    assertTrue(genealogist.includedCache.contains(new Integer(1010)));
-
-    // Test nodes that should be fully cached. They should all hit,
-    // so no new queries should run. The number of hits should go up,
-    // while the number of entries and misses should remain the same.
-    testMatching(genealogist, new Integer[] { 1, 10, 100, 101, 1010 },
-                 "1,10,100,101,1010");
-    assertEquals(6, genealogist.nodeCount);
-    assertEquals(2, genealogist.queryCount);
-    assertEquals("5 entries, 7 hits, 2 misses",
-                 genealogist.includedCache.statistics().toString());
   }
 }

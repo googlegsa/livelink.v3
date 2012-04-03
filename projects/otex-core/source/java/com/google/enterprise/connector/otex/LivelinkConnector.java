@@ -42,7 +42,6 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.SpiConstants.FeedType;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -234,9 +233,6 @@ public class LivelinkConnector implements Connector {
   /** The <code>ContentHandler</code> implementation class. */
   private ContentHandler contentHandler;
 
-  /** True if using content feeds, false for content url feeds. */
-  private FeedType feedType;
-
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
 
@@ -248,12 +244,6 @@ public class LivelinkConnector implements Connector {
 
   /** The <code>Genealogist</code> implementation class name. */
   private String genealogist;
-
-  /** The initial size of the <code>Genealogist</code> ancestor node caches. */
-  private int genealogistMinCacheSize;
-
-  /** The maximum of the <code>Genealogist</code> ancestor node caches. */
-  private int genealogistMaxCacheSize;
 
   /** An additional SQL WHERE clause condition. */
   private String sqlWhereCondition;
@@ -1352,7 +1342,7 @@ public class LivelinkConnector implements Connector {
   Map<String, String> getIncludedSelectExpressions() {
     return selectExpressions;
   }
-
+      
   /**
    * Set the rules for handling the ObjectInfo.Catalog.DISPLAYTYPE_HIDDEN
    * attribute for an object.  Specifies whether hidden items are indexed
@@ -1499,86 +1489,6 @@ public class LivelinkConnector implements Connector {
    */
   String getGenealogist() {
     return genealogist;
-  }
-
-  /**
-   * Sets the minimum size of the <code>Genealogist</code>
-   * ancestor node caches.
-   * <p/>
-   * The caches will grow (doubling in size) upto the maximum configured cache
-   * size before aging LRU ancestor nodes from the cache.  Optimal values of
-   * the minimum cacheSize are slightly less than (but not exactly equal to)
-   * a power of 2.
-   *
-   * @param cacheSize minimum cache size in number of entries.
-   *        The minimum value must not be less than or equal to zero.
-   */
-  public void setGenealogistMinCacheSize(final int cacheSize) {
-    propertyValidators.add(new PropertyValidator() {
-        void validate() {
-          if (cacheSize <= 0) {
-            throw new ConfigurationException(
-                "genealogistMinCacheSize must be positive.");
-          }
-          if (cacheSize > CacheMap.MAXIMUM_CAPACITY) {
-            throw new ConfigurationException("genealogistMinCacheSize must "
-                + "not exceed " + CacheMap.MAXIMUM_CAPACITY);
-          }
-          LivelinkConnector.this.genealogistMinCacheSize = cacheSize;
-          if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("GENEALOGIST MIN CACHE SIZE: " + cacheSize);
-          }
-        }
-      });
-  }
-
-  /**
-   * Gets the minimum <code>Genealogist</code> cache size.
-   *
-   * @return the minimum <code>Genealogist</code> cache size
-   */
-  int getGenealogistMinCacheSize() {
-    return genealogistMinCacheSize;
-  }
-
-  /**
-   * Sets the maximum size of the <code>Genealogist</code>
-   * ancestor node caches.
-   * <p/>
-   * The caches will grow (doubling in size) upto the maximum configured cache
-   * size before aging LRU ancestor nodes from the cache.
-   *
-   * @param cacheSize maximum cache size in number of entries.
-   *        The maximum cache size should be greater than or equal to the
-   *        minimum, and should be a power-of-2 multiple of the minimum.
-   */
-  public void setGenealogistMaxCacheSize(final int cacheSize) {
-    propertyValidators.add(new PropertyValidator() {
-        void validate() {
-          if (cacheSize <= 0) {
-            throw new ConfigurationException(
-                "genealogistMaxCacheSize must be positive.");
-          }
-          if (cacheSize > CacheMap.MAXIMUM_CAPACITY) {
-            throw new ConfigurationException("genealogistMaxCacheSize must "
-                + "not exceed " + CacheMap.MAXIMUM_CAPACITY);
-          }
-          LivelinkConnector.this.genealogistMaxCacheSize = cacheSize;
-          if (LOGGER.isLoggable(Level.CONFIG)) {
-            LOGGER.config("GENEALOGIST MAX CACHE SIZE: " + cacheSize);
-          }
-        }
-      });
-  }
-
-  /**
-   * Gets the <code>Genealogist</code> maximum cache size. The cache size is
-   * the maximum number of ancestor nodes that will be held in each cache.
-   *
-   * @return the <code>Genealogist</code> maximum cache size
-   */
-  int getGenealogistMaxCacheSize() {
-    return genealogistMaxCacheSize;
   }
 
   /**
@@ -1827,14 +1737,14 @@ public class LivelinkConnector implements Connector {
         this.contentHandler = (ContentHandler)
             Class.forName((String) contentHandler).newInstance();
       } catch (Exception e) {
-          throw new ConfigurationException("contentHandler " +
+          throw new ConfigurationException("contentHandler " + 
             "class " + contentHandler + " could not be instantiated", e);
       }
     }
     else if (contentHandler instanceof ContentHandler)
       this.contentHandler = (ContentHandler) contentHandler;
     else
-      throw new ConfigurationException("contentHandler must be "
+      throw new ConfigurationException("contentHandler must be " 
         + "a class name string or a ContentHandler object.");
   }
 
@@ -1855,38 +1765,6 @@ public class LivelinkConnector implements Connector {
     // instead so that we can create new instances here.
     contentHandler.initialize(this, client);
     return contentHandler;
-  }
-
-  /**
-   * Sets the FeedType.  Supported feed types are CONTENT and CONTENTURL.
-   *
-   * @param feedTypeString the String representation of a
-   *        {@link SpiConstants.FeedType}
-   */
-  public void setFeedType(String feedTypeString) {
-    FeedType type;
-    try {
-      type = Enum.valueOf(FeedType.class, feedTypeString.toUpperCase());
-      if (type != FeedType.CONTENT && type != FeedType.CONTENTURL) {
-        LOGGER.warning("Unsupported FeedType: " + feedTypeString);
-        type = FeedType.CONTENT;
-      }
-    } catch (IllegalArgumentException e) {
-      LOGGER.warning("Unknown FeedType: " + feedTypeString);
-      type = FeedType.CONTENT;
-    }
-    if (LOGGER.isLoggable(Level.CONFIG))
-      LOGGER.config("FEED TYPE: " + type.toString());
-    this.feedType = type;
-  }
-
-  /**
-   * Returns the configured {@link SpiConstants.FeedType} to use for content.
-   *
-   * @return the configured {@link SpiConstants.FeedType}
-   */
-  FeedType getFeedType() {
-    return feedType;
   }
 
   /**

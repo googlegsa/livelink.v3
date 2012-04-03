@@ -61,7 +61,6 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setShowHiddenItems("true");
     connector.setIncludedCategories("all,searchable");
     connector.setExcludedCategories("none");
-    connector.setFeedType("content");
     connector.setUnsupportedFetchVersionTypes("");
 
     if (property != null) {
@@ -117,7 +116,7 @@ public class LivelinkDocumentListTest extends TestCase {
     contentHandler.initialize(connector, client);
 
     final String[] FIELDS = {
-      "ModifyDate", "DataID", "OwnerID", "SubType", "MimeType", "DataSize" };
+      "ModifyDate", "DataID", "OwnerID", "Subtype", "MimeType", "DataSize" };
     assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 2);
     Object[][] values = new Object[docInfo.length / 2][];
     for (int i = 0; i < docInfo.length / 2; i++) {

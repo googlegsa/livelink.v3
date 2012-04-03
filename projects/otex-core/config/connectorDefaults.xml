@@ -31,7 +31,6 @@
         <property name="startDate" value=""/>
         <property name="publicContentUsername" value=""/>
         <property name="publicContentDisplayUrl" value=""/>
-        <property name="feedType" value="content"/>
 
         <property name="excludedNodeTypes"
                   value="137,142,143,148,150,154,161,162,201,203,209,210,211,345,346,361,374,431,441,3030004,3030201"/>
@@ -63,8 +62,6 @@
         <property name="showHiddenItems" value="true" />
         <property name="trackDeletedItems" value="true" />
         <property name="useDTreeAncestors" value="true" />
-        <property name="genealogistMinCacheSize" value="1000" />
-        <property name="genealogistMaxCacheSize" value="32000" />
         <property name="sqlWhereCondition" value="" />
 
         <property name="displayPatterns">
@@ -78,7 +75,7 @@
         </property>
         <property name="displayActions">
             <map>
-                <entry key="0,136,202,348,402,5573,5574,3030202,3030329"
+                <entry key="0,136,202,348,402,5573,5574,3030202,3030329" 
                        value="browse" />
                 <entry key="1" value="open" />
                 <entry key="130,134,215,356,430,123469,123475" value="view" />
@@ -95,7 +92,7 @@
 
         <!-- OVERRIDE THESE PROPERTIES WITH CAUTION BY COPYING TO connectorInstance.xml -->
         <property name="authenticationManager">
-            <bean class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"/>
+	    <bean class="com.google.enterprise.connector.otex.LivelinkAuthenticationManager"/>
         </property>
         <property name="authorizationManager">
             <bean class="com.google.enterprise.connector.otex.LivelinkAuthorizationManager"/>

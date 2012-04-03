@@ -14,9 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.otex.CacheMap.CacheStatistics;
-
-import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -98,23 +95,20 @@ class Genealogist {
    * @param matching the candidates matching the non-hierarchical filters
    * @param startNodes the includedLocationNodes property value
    * @param excludedNodes the excludedLocationNodes property value
-   * @param minCacheSize the initial size of the node cache
-   * @param maxCacheSize the maximum size of the node cache
+   * @param cacheSize the fixed size of the node cache
    * @return a new instance of the configured Genealogist class
    * @throws RepositoryException if the class cannot be instantiated
    * or initialized
    */
   public static Genealogist getGenealogist(String className, Client client,
-      String startNodes, String excludedNodes, int minCacheSize,
-      int maxCacheSize)  throws RepositoryException {
+      String startNodes, String excludedNodes, int cacheSize)
+      throws RepositoryException {
     Genealogist genealogist;
     try {
       genealogist = Class.forName(className)
           .asSubclass(Genealogist.class)
-          .getConstructor(Client.class, String.class, String.class, int.class,
-                          int.class)
-          .newInstance(client, startNodes, excludedNodes, minCacheSize,
-                       maxCacheSize);
+          .getConstructor(Client.class, String.class, String.class, int.class)
+          .newInstance(client, startNodes, excludedNodes, cacheSize);
     } catch (Exception e) {
       throw new LivelinkException(e, LOGGER);
     }
@@ -134,12 +128,10 @@ class Genealogist {
   private final Set<Integer> excludedSet;
 
   /** A cache of items known to be included. */
-  @VisibleForTesting
-  final Cache<Integer> includedCache;
+  private final Cache<Integer> includedCache;
 
   /** A cache of items known to be excluded. */
-  @VisibleForTesting
-  final Cache<Integer> excludedCache;
+  private final Cache<Integer> excludedCache;
 
   /** For logging statistics, the number of nodes processed by this instance.*/
   protected int nodeCount = 0;
@@ -148,7 +140,7 @@ class Genealogist {
   protected int queryCount = 0;
 
   public Genealogist(Client client, String startNodes, String excludedNodes,
-                     int minCacheSize, int maxCacheSize) {
+      int cacheSize) {
     this.client = client;
 
     this.includedSet = getAncestorSet(startNodes);
@@ -163,12 +155,10 @@ class Genealogist {
     if (LOGGER.isLoggable(Level.FINEST)) {
       LOGGER.finest("DESCENDANTS: includedSet = " + includedSet);
       LOGGER.finest("DESCENDANTS: excludedSet = " + excludedSet);
-      LOGGER.finest("DESCENDANTS: minCacheSize = " + minCacheSize);
-      LOGGER.finest("DESCENDANTS: maxCacheSize = " + maxCacheSize);
     }
 
-    this.excludedCache = new Cache<Integer>(minCacheSize, maxCacheSize);
-    this.includedCache = new Cache<Integer>(minCacheSize, maxCacheSize);
+    this.excludedCache = new Cache<Integer>(cacheSize);
+    this.includedCache = new Cache<Integer>(cacheSize);
   }
 
   /**
@@ -334,39 +324,5 @@ class Genealogist {
       LOGGER.finer("DESCENDANTS: No matching descendants.");
       return null;
     }
-  }
-
-  /* Used for testing and instrumentation. */
-  public class Statistics {
-    public final int nodeCount;   // Number of nodes processed by this instance.
-    public final int queryCount;  // Number of queries run by this instance.
-    public final CacheStatistics includedStats; // Statistics for includedCache.
-    public final CacheStatistics excludedStats; // Statistics for excludedCache.
-
-    public Statistics(int nodeCount, int queryCount,
-        CacheStatistics includedStats, CacheStatistics excludedStats) {
-      this.nodeCount = nodeCount;
-      this.queryCount = queryCount;
-      this.includedStats = includedCache.statistics();
-      this.excludedStats = excludedCache.statistics();
-    }
-
-    public String toString() {
-      return "nodes: " + nodeCount + ", queries: " + queryCount
-          + ", includedCache: ( " + includedStats + " ), excludedCache: ( "
-          + excludedStats + " )";
-    }
-  }
-
-  /**
-   * Returns a structure that contains the accumulated Genealogist and Cache
-   * statistics.
-   *
-   * @return a Genealogist.Statistics structure.
-   */
-  /* Used for testing and instrumentation. */
-  public synchronized Statistics statistics() {
-    return new Statistics(nodeCount, queryCount, includedCache.statistics(),
-                          excludedCache.statistics());
   }
 }

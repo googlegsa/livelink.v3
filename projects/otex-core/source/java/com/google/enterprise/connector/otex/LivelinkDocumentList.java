@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -32,7 +31,6 @@ import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.SkippedDocumentException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.SpiConstants.ActionType;
-import com.google.enterprise.connector.spi.SpiConstants.FeedType;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.otex.client.Client;
@@ -85,8 +83,7 @@ class LivelinkDocumentList implements DocumentList {
   private final UserNameHandler nameHandler;
 
   /** The table of Livelink data, one row per doc, one column per field. */
-  @VisibleForTesting
-  final ClientValue recArray;
+  private final ClientValue recArray;
 
   /** The recarray fields. */
   private final Field[] fields;
@@ -98,8 +95,7 @@ class LivelinkDocumentList implements DocumentList {
   private final TraversalContext traversalContext;
 
   /** The current checkpoint reflecting the cursor in the DocumentList */
-  @VisibleForTesting
-  final Checkpoint checkpoint;
+  private final Checkpoint checkpoint;
 
   /** If the traversal client user is the public content user,
    *  then all documents it sees will be publicly available.
@@ -417,7 +413,7 @@ class LivelinkDocumentList implements DocumentList {
           // Return an Inserted Item.
           objectId = recArray.toInteger(insRow, "DataID");
           volumeId = recArray.toInteger(insRow, "OwnerID");
-          subType  = recArray.toInteger(insRow, "SubType");
+          subType  = recArray.toInteger(insRow, "Subtype");
 
           props = new LivelinkDocument(objectId, fields.length*2);
 
@@ -505,15 +501,8 @@ class LivelinkDocumentList implements DocumentList {
       props.addProperty(SpiConstants.PROPNAME_ISPUBLIC,
           isPublic ? VALUE_TRUE : VALUE_FALSE);
 
-      if (connector.getFeedType() == FeedType.CONTENTURL) {
-        // If we are not using content feeds, don't supply the content yet.
-        // TODO: What about SkippedDocumentExceptions?
-        Value value = Value.getStringValue(FeedType.CONTENTURL.toString());
-        props.addProperty(SpiConstants.PROPNAME_FEEDTYPE, value);
-      } else {
-        // Fetch the content.
-        collectContentProperty();
-      }
+      // Fetch the content.
+      collectContentProperty();
 
       // Add the ExtendedData as MetaData properties.
       collectExtendedDataProperties();
@@ -597,10 +586,6 @@ class LivelinkDocumentList implements DocumentList {
      * not acceptable according to the TraversalContext, then no
      * content is generated.
      */
-    // NOTE: Some of the logic here has been replicated in
-    // Retriever.getContent().  Changes here should probably be
-    // reflected there, and vice-versa.
-    // TODO: Extract the common logic out into a shared utility method.
     private void collectContentProperty() throws RepositoryException {
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT WITH SUBTYPE = " + subType);

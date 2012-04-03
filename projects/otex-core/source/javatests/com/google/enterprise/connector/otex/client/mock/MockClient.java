@@ -158,28 +158,6 @@ public class MockClient implements Client {
             fields = new String[] { "minModifyDate" };
             values = new Object[][] {
                 new Object[] { new Date() } };
-        } else if (query.startsWith("DataID = ") && view.equals("WebNodes")) {
-            // This is the Retriever fetching meta-data.
-            fields = getRecArrayFieldNames(columns);
-            int objectId =
-                Integer.parseInt(query.substring("DataID = ".length()));
-            // TODO(johnsonb): It seems like if these are going to
-            // throw exceptions or return no data(?) from ListNodes,
-            // that you need different MockConstants to distinguish
-            // these from object IDs that throw exceptions from
-            // FetchVersion.
-            if (objectId == MockConstants.IO_OBJECT_ID) {
-              throw new LivelinkIOException(new RuntimeException(
-                   "Simulated Server did not accept open request"), LOGGER);
-            } else if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
-              // No rows.
-              values = new Object[0][0];
-            } else {
-              values = new Object[][] {
-                new Object[] { new Integer(objectId), new Integer(0),
-                               new Date(), new String("text/html"),
-                               new Integer(200), new Integer(100) } };
-            }
         } else if (jdbcConnection != null) {
             try {
                 Statement stmt = jdbcConnection.createStatement();
@@ -187,7 +165,7 @@ public class MockClient implements Client {
                     ResultSet rs =
                         stmt.executeQuery(getSqlQuery(query, view, columns));
                     ResultSetMetaData rsmd = rs.getMetaData();
-                    fields = getResultSetColumns(rsmd, columns);
+                    fields = getResultSetColumns(rsmd);
                     values = getResultSetValues(rs, rsmd);
                 } finally {
                     stmt.close();
@@ -200,18 +178,6 @@ public class MockClient implements Client {
             values = new Object[0][0];
         }
         return new MockClientValue(fields, values);
-    }
-
-    /** Extracts field names from any select expressions. */
-    private String[] getRecArrayFieldNames(String[] columns) {
-      String[] fields = new String[columns.length];
-      for (int i = 0; i < columns.length; i++) {
-        String[] tokens = columns[i].split("\\W+");
-        // In a select expression, the name of the field is at the end.
-        // Otherwise, the single token is the original field name.
-        fields[i] = tokens[tokens.length - 1];
-      }
-      return fields;
     }
 
     /**
@@ -237,26 +203,18 @@ public class MockClient implements Client {
     }
 
     /** Gets the array of column names from the result set metadata. */
-    private String[] getResultSetColumns(ResultSetMetaData rsmd,
-        String[] origColumns) throws SQLException {
-      int count = rsmd.getColumnCount();
-      String[] columns = new String[count];
-      // This is a bit hacky, but works OK for our queries at the moment.
-      for (int i = 0; i < count; i++) {
-        // StepParent and ModifyDate are handled especially, because their
-        // origColumns are adorned with SQL syntax like "top 1000 ModifyDate".
-        columns[i] = rsmd.getColumnName(i + 1)
-            .replace("STEPPARENT", "StepParent")
-            .replace("MODIFYDATE", "ModifyDate");
-        // Correct for the uppercasing of column names in H2.
-        for (String origName : origColumns) {
-          if (origName.equalsIgnoreCase(columns[i])) {
-            columns[i] = origName;
-            break;
-          }
+    private String[] getResultSetColumns(ResultSetMetaData rsmd)
+            throws SQLException {
+        int count = rsmd.getColumnCount();
+        String[] columns = new String[count];
+        for (int i = 0; i < count; i++) {
+            // Correct for the uppercasing of column names in H2.
+            columns[i] = rsmd.getColumnName(i + 1)
+                .replace("DATA", "Data")
+                .replace("STEP", "Step")
+                .replace("PARENT", "Parent");
         }
-      }
-      return columns;
+        return columns;
     }
 
     /** Gets the array of row values from the result set. */
@@ -306,7 +264,7 @@ public class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-
+    
     /** {@inheritDoc} */
     public ClientValue AttrListNames(ClientValue categoryVersion,
             ClientValue attributeSetPath) throws RepositoryException {
@@ -316,7 +274,7 @@ public class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-
+    
     /** {@inheritDoc} */
     public ClientValue AttrGetInfo(ClientValue categoryVersion,
             String attributeName, ClientValue attributeSetPath)
@@ -327,7 +285,7 @@ public class MockClient implements Client {
             throw new LivelinkException(e, LOGGER);
         }
     }
-
+    
     /** {@inheritDoc} */
     public ClientValue AttrGetValues(ClientValue categoryVersion,
             String attributeName, ClientValue attributeSetPath)
@@ -352,8 +310,7 @@ public class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation simulates problems accessing content for
-     * some "special" docids; otherwise it does nothing.
+     * This implementation does nothing.
      */
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             File path) throws RepositoryException {
@@ -366,8 +323,7 @@ public class MockClient implements Client {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation simulates problems accessing content for
-     * some "special" docids, otherwise it simply closes the output stream.
+     * This implementation does nothing but close the output stream.
      */
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             OutputStream out) throws RepositoryException {
@@ -400,11 +356,12 @@ public class MockClient implements Client {
   }
 
     /** {@inheritDoc} */
-    public ClientValue GetVersionInfo(int volumeId, int objectId,
-            int versionNumber) throws RepositoryException {
+    public ClientValue GetVersionInfo(int volumeId, int objectId, int versionNumber)
+            throws RepositoryException {
         LOGGER.fine("Entering MockClient.GetVersionInfo");
         return null; // FIXME; stub implementation to get it to compile
     }
+
 
     /**
      * {@inheritDoc}

@@ -113,7 +113,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
         int docsProcessed = 0;
         int totalDocsProcessed = 0;
         int batchNumber = 0;
-        BatchSize batchSize = new BatchSize(batchHint);
+        BatchSize batchSize = new BatchSize(batchHint, batchHint);
         do {
             BatchResult result = traverser.runBatch(batchSize);
             docsProcessed = result.getCountProcessed();

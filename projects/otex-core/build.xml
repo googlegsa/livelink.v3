@@ -156,7 +156,7 @@
     </copy>
     <replace file="${tests.logging.properties}"
              token="\" value="\\" />
-    <junit maxmemory="1024m">
+    <junit>
       <assertions><enable/></assertions>
       <classpath refid="${tests.classpath}" />
       <formatter type="brief" usefile="no"/>
@@ -164,7 +164,6 @@
       <syspropertyset refid="javatest.properties"/>
       <sysproperty key="java.util.logging.config.file"
                    value="${tests.logging.properties}"/>
-      <sysproperty key="test.suite" value="${test.suite}"/>
       <batchtest fork="yes" todir="${tests.todir}">
         <fileset dir="${tests.src}">
           <include name="**/${test.suite}Test.java" />
