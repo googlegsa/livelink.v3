@@ -64,6 +64,8 @@
   <property name="coverage.html.dir" value="${reports.dir}/cobertura-html" />
 
   <!-- =========================== TASKS =============================== -->
+  <include file="${connector-manager-projects.dir}/svnbuild.xml" as="svn"/>
+
   <target name="build" depends="init,compile,compile_tests,jar">
   </target>
 
@@ -174,7 +176,7 @@
   </target>
 
   <target name="jar" description="livelink-connector"
-          depends="compile,compile_tests">
+          depends="compile,compile_tests,svn.svn-branch-version">
     <copy todir="${config.build}">
       <fileset dir="${config}" />
       <filterset>
@@ -198,11 +200,14 @@
       <zipfileset file="${build}/config/logging.properties" prefix="" />
       <manifest>
         <attribute name="Implementation-Title" value="Mock Livelink Connector"/>
-        <attribute name="Implementation-Version" value="${version} ${TODAY}"/>
+        <attribute name="Implementation-Version"
+                   value="${version} (build ${svn.branch.version} ${TODAY})"/>
         <attribute name="Implementation-Vendor" value="Google Inc."/>
         <attribute name="Specification-Title" value="Connector Manager SPI"/>
         <attribute name="Specification-Version" value="${version.spi}"/>
         <attribute name="Specification-Vendor" value="Google Inc."/>
+        <attribute name="Main-Class"
+                   value="com.google.enterprise.connector.otex.LivelinkMain" />
       </manifest>
     </jar>
   </target>

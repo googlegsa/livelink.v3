@@ -3,6 +3,7 @@
 
   <!-- ========================= PROPERTIES ============================= -->
   <property file="version.properties"/>
+  <property file="${user.home}/google-enterprise-connector-otex.properties"/>
 
   <!-- Define Directories. -->
   <property name="otex-core.dir" value="otex-core" />
@@ -12,7 +13,11 @@
   <property name="build.dir" value="build" />
   <property name="trunk.dir" value=".." />
 
+  <property name="connector-manager-projects.dir"
+            location="${build.connector.manager.home}/projects" />
+
   <!-- =========================== TASKS =============================== -->
+  <include file="${connector-manager-projects.dir}/svnbuild.xml" as="svn"/>
 
   <target name="clean-all">
     <ant dir="${otex-core.dir}" target="clean" />
@@ -23,12 +28,6 @@
   </target>
 
   <target name="prebuild">
-    <exec executable="svnversion" spawn="false"
-      failifexecutionfails="false"
-      dir="${basedir}"
-      outputproperty="svnversion">
-      <arg line="."/>
-    </exec>
     <mkdir dir="${build.dir}" />
   </target>
 
@@ -70,11 +69,11 @@
     </target>
 
   <target name="bin-archive" 
-    depends="prebuild,install-otex-core,install-otex-lapi">
+    depends="prebuild,svn.svn-branch,install-otex-core,install-otex-lapi">
     <condition property="lang" value="" else="_en">
       <available file="otex-core/config/OtexConnectorResources_de.properties" />
     </condition>
-    <property name="bin.archive" value="connector-otex-${version}${lang}" />
+    <property name="bin.archive" value="connector-otex-${svn.branch}${lang}" />
     <zip destfile="${build.dir}/${bin.archive}.zip">
       <zipfileset dir="${install.dir}/otex-lapi/jar" 
         prefix="${bin.archive}" />
@@ -92,8 +91,8 @@
     </tar>
   </target>
 
-  <target name="src-archive" depends="prebuild">
-    <property name="src.archive" value="connector-otex-${version}-src" />
+  <target name="src-archive" depends="prebuild,svn.svn-branch">
+    <property name="src.archive" value="connector-otex-${svn.branch}-src" />
 
     <!-- Use 'svn export' to create a clean version of the source tree
          in the build dir.  You can adjust the behaviour of this by setting
@@ -105,6 +104,7 @@
 
          Note: you cannot specify both svn.export.revision and point
          svn.export.source at a local working tree.
+         TODO: Make this work with svn.branch in src.archive value.
     -->
     <condition property="svn.export.revision.arg"
                value="-r ${svn.export.revision}" 
@@ -144,10 +144,10 @@
             <include name="${bin.archive}.tar.gz"/>
           </fileset>
         </copy>
-    <checksum file="${downloads.dir}/${src.archive}.zip"/>
-    <checksum file="${downloads.dir}/${src.archive}.tar.gz"/>
-    <checksum file="${downloads.dir}/${bin.archive}.zip"/>
-    <checksum file="${downloads.dir}/${bin.archive}.tar.gz"/>
+    <checksum algorithm="SHA-1" file="${downloads.dir}/${src.archive}.zip"/>
+    <checksum algorithm="SHA-1" file="${downloads.dir}/${src.archive}.tar.gz"/>
+    <checksum algorithm="SHA-1" file="${downloads.dir}/${bin.archive}.zip"/>
+    <checksum algorithm="SHA-1" file="${downloads.dir}/${bin.archive}.tar.gz"/>
     </target>
 
   <target name="everything" depends="clean-all,build-all,install-all,downloads-all"/>
