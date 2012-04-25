@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -186,7 +186,7 @@ public class BigCacheTest extends TestCase {
     long start = System.currentTimeMillis();
     LOGGER.info("Start Data Loading");
 
-    long anchor = (long) (random.nextInt() * 1000L);
+    long anchor = random.nextInt() * 1000L;
     int node;
     // Seed the root nodes.
     for (node = 1; node <= foldersPerNode; node++) {
@@ -291,7 +291,7 @@ public class BigCacheTest extends TestCase {
       int sign = 1;
       if ((++counter & 1) == 0) {
         // Return a random date.
-        return (long) (random.nextInt() * 1000L);
+        return random.nextInt() * 1000L;
       } else {
         // Return a date within a year of the anchor.
         return anchor + (random.nextInt(365 * 24 * 3600) * 1000L);
@@ -312,7 +312,7 @@ public class BigCacheTest extends TestCase {
       int sign = 1;
       switch (++counter & 7) {
         // Return a random date.
-        case 0: return (long) (random.nextInt() * 1000L);
+        case 0: return random.nextInt() * 1000L;
 
         // Return the same date as the anchor.
         case 1:
@@ -401,12 +401,12 @@ public class BigCacheTest extends TestCase {
   }
 
   private static class MockContentHandler implements ContentHandler {
-    /* @Override */
+    @Override
     public void initialize(LivelinkConnector connector, Client client) {
       // Do nothing;
     }
 
-    /* @Override */
+    @Override
     public InputStream getInputStream(int volumeId, int objectId,
                                       int versionNumber, int size) {
       return new ByteArrayInputStream(Integer.toString(objectId).getBytes());
