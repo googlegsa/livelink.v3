@@ -144,27 +144,10 @@ class LivelinkDocumentList implements DocumentList {
   }
 
   /**
-   * Constructor for an empty document list.
-   */
-  LivelinkDocumentList(Checkpoint checkpoint) {
-    this.checkpoint = checkpoint;
-    this.docIterator = null;
-    this.connector = null;
-    this.client = null;
-    this.contentHandler = null;
-    this.categoryHandler = null;
-    this.nameHandler = null;
-    this.recArray = null;
-    this.delArray = null;
-    this.fields = null;
-    this.traversalContext = null;
-  }
-
-  /**
    * {@inheritDoc}
    */
   public Document nextDocument() throws RepositoryException {
-    if (docIterator != null && docIterator.hasNext()) {
+    if (docIterator.hasNext()) {
       // If processing a document throws an exception, we will try to
       // determine if the failure is transient (like server not
       // responding), or permanent (like the document is corrupt and

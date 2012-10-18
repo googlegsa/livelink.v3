@@ -16,14 +16,16 @@ package com.google.enterprise.connector.otex;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.TraversalContextAware;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.util.EmptyDocumentList;
+import com.google.enterprise.connector.util.TraversalTimer;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -612,11 +614,8 @@ class LivelinkTraversalManager
     // of candidates looking for something applicable.  However,
     // we cannot do this indefinitely or we will run afoul of the
     // Connector Manager's thread timeout.
-    long startTime = System.currentTimeMillis();
-    long maxTimeSlice = 1000L * ((traversalContext != null) ?
-        traversalContext.traversalTimeLimitSeconds() / 2 : 60 * 4);
-
-    while (System.currentTimeMillis() - startTime < maxTimeSlice) {
+    TraversalTimer timer = new TraversalTimer(traversalContext);
+    while (timer.isTicking()) {
       ClientValue candidates, deletes, results = null;
       if (isSqlServer) {
         candidates = getCandidatesSqlServer(checkpoint, batchsz);
@@ -688,7 +687,7 @@ class LivelinkTraversalManager
     // to consider.  Indicate to the Connector Manager that this batch
     // has no documents, but to reschedule us immediately to keep looking.
     LOGGER.fine("RESULTSET: 0 rows, so far.");
-    return new LivelinkDocumentList(checkpoint);
+    return new EmptyDocumentList(checkpoint.toString());
   }
 
   /**
