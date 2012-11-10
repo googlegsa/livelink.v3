@@ -35,7 +35,7 @@ class AuthenticationManagerChain
         Logger.getLogger(AuthenticationManagerChain.class.getName());
 
     /** The list of authentication managers. */
-    private List authenticationManagers;
+    private List<AuthenticationManager> authenticationManagers;
 
     /**
      * Constructor.
@@ -50,7 +50,8 @@ class AuthenticationManagerChain
      * @param authenticationManagers the list of authentication
      * managers; may not be null or empty
      */
-    public void setAuthenticationManagers(List authenticationManagers) {
+    public void setAuthenticationManagers(List<AuthenticationManager>
+                                          authenticationManagers) {
         if (authenticationManagers == null ||
                 authenticationManagers.size() == 0) {
             throw new IllegalArgumentException();
@@ -64,10 +65,9 @@ class AuthenticationManagerChain
      * setAuthenticationManagers.
      */
     public void setConnector(Connector connector) throws RepositoryException {
-        for (int i = 0; i < authenticationManagers.size(); i++) {
-            Object o = authenticationManagers.get(i);
-            if (o instanceof ConnectorAware)
-                ((ConnectorAware) o).setConnector(connector);
+        for (AuthenticationManager authn : authenticationManagers) {
+            if (authn instanceof ConnectorAware)
+                ((ConnectorAware) authn).setConnector(connector);
         }
     }
 
@@ -78,13 +78,11 @@ class AuthenticationManagerChain
             LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
 
         AuthenticationResponse response = null;
-        for (int i = 0; i < authenticationManagers.size(); i++) {
+        for (AuthenticationManager authn : authenticationManagers) {
             try {
-                AuthenticationManager a = (AuthenticationManager)
-                    authenticationManagers.get(i);
                 if (LOGGER.isLoggable(Level.FINER))
-                    LOGGER.finer("Trying authentication manager " + a);
-                response = a.authenticate(identity);
+                    LOGGER.finer("Trying authentication manager " + authn);
+                response = authn.authenticate(identity);
                 if (response.isValid())
                     break;
             }

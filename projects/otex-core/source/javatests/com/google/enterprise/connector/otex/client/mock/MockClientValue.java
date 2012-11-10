@@ -183,13 +183,13 @@ public final class MockClientValue implements ClientValue {
     return type;
   }
 
-  public Enumeration enumerateNames() {
-    return new Enumeration() {
+  public Enumeration<String> enumerateNames() {
+    return new Enumeration<String>() {
       private int i = 0;
       public boolean hasMoreElements() {
         return i < fieldNames.size();
       }
-      public Object nextElement() {
+      public String nextElement() {
         return fieldNames.get(i++);
       }
     };

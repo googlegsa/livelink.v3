@@ -20,7 +20,7 @@ package com.google.enterprise.connector.otex;
  */
 public class HybridGenealogistTest extends GenealogistTest {
   @Override
-  protected Class getClassUnderTest() {
+  protected Class<? extends Genealogist> getClassUnderTest() {
     return HybridGenealogist.class;
   }
 }

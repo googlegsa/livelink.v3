@@ -79,7 +79,7 @@ public class GenealogistTest extends TestCase {
   }
 
   /** Gets the class under test. Subclasses should override this method. */
-  protected Class getClassUnderTest() {
+  protected Class<? extends Genealogist> getClassUnderTest() {
     return Genealogist.class;
   }
 

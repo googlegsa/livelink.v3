@@ -199,7 +199,7 @@ public class LivelinkConnectorTest extends TestCase {
     connector.login();
     MockClientFactory clientFactory =
         (MockClientFactory) connector.getClientFactory();
-    Map values = clientFactory.getValues();
+    Map<String, Object> values = clientFactory.getValues();
     assertTrue(values.toString(), values.containsKey("setServer"));
     assertEquals(System.getProperty("connector.server"),
         values.get("setServer"));
