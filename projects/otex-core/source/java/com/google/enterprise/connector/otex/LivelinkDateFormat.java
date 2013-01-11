@@ -1,4 +1,4 @@
-// Copyright 2007 Google Inc.
+// Copyright (C) 2007-2009 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,41 +14,23 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.text.ParsePosition;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.TimeZone;
 import java.util.logging.Logger;
+import java.util.TimeZone;
 
 /**
- * Formats dates multiple ways: ISO 8601 GMT time, SQL local time
- * (with or without milliseconds), and RFC 822 local time.
- *
- * This class is thread-safe. Access to the underlying
- * <code>Calendar</code> and <code>SimpleDateFormat</code> objects is
- * synchronized.
- */
-/*
- * TODO(jlacey): The code here was designed to have one instance per
- * batch, to balance object creation, not frequent at just once per
- * DocumentList, and synchronization, which is fast in the absence of
- * contention. The code was extracted from what is now
- * LivelinkDocumentList and turned into a singleton. So we have
- * essentially no object creation, but all connector instances use the
- * singleton.
- *
- * So far that hasn't been a problem, but I noticed when writing
- * LivelinkDateFormatTest that testEverything runs in 6 milliseconds,
- * but testParse, which has only a single call to parse instead of
- * four calls to parse mixed with four calls to the toXxxString
- * methods, takes 100 milliseconds. That's about 140 times slower,
- * presumably due to thread contention.
+ * This Date Formatter knows how to format dates two
+ * different ways: ISO8601 GMT time and SQL local time.
  */
 class LivelinkDateFormat {
+
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(LivelinkDateFormat.class.getName());
+
 
     /** A GMT calendar for converting timestamps to UTC. */
     private final Calendar gmtCalendar =
@@ -90,6 +72,7 @@ class LivelinkDateFormat {
         return singleton;
     }
 
+
     /**
      * Livelink only stores timestamps to the nearest second, but LAPI
      * constructs a Date object that includes milliseconds, which are
@@ -102,6 +85,16 @@ class LivelinkDateFormat {
      * @see toSqlString
      */
     /*
+     * This method is synchronized to emphasize safety over speed.
+     * <code>Calendar</code> and <code>SimpleDateFormat</code> objects
+     * are not thread-safe. We've put these calendar and date format
+     * objects in instance fields to balance object creation, not
+     * frequent at just once per result set, and synchronization,
+     * which is fast in the absence of contention. It is extremely
+     * unlikely that <code>DocumentList</code> instances or their
+     * children will be called from multiple threads, but there's no
+     * need to cut corners here.
+     *
      * TODO: LAPI converts the database local time to UTC using the
      * default Java time zone, so if the database time zone is different
      * from the Java time zone, we need to adjust the given Date
@@ -113,6 +106,7 @@ class LivelinkDateFormat {
     public synchronized String toIso8601String(Date value) {
         return iso8601.format(value);
     }
+
 
     /**
      * Converts a local time date to an ISO SQL local time string.
@@ -151,14 +145,15 @@ class LivelinkDateFormat {
         return rfc822.format(value);
     }
 
+
     /**
-     * Parses a string representation of a Date according to the
+     * Parses a string representation of a Date according to the the
      * known underlying DateFormats.
      *
      * @param dateStr a String representation of a Date.
      * @return a Date parsed from the string, or null, if error.
      */
-    public synchronized Date parse(String dateStr) {
+    public Date parse(String dateStr) {
         ParsePosition ppos = new ParsePosition(0);
         Date date = null;
         if (dateStr.length() > 10) {
