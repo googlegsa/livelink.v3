@@ -137,13 +137,13 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
-    public Enumeration enumerateNames() {
-        final Enumeration names = value.enumerateNames();
-        return new Enumeration() {
+    public Enumeration<String> enumerateNames() {
+        final Enumeration<?> names = value.enumerateNames();
+        return new Enumeration<String>() {
                 public boolean hasMoreElements() {
                     return names.hasMoreElements();
                 }
-                public Object nextElement() {
+                public String nextElement() {
                     return names.nextElement().toString();
                 }
             };

@@ -90,7 +90,7 @@ class CacheMap<K, V> extends LinkedHashMap<K, V> {
     return value;
   }
 
-  public class CacheStatistics {
+  public static class CacheStatistics {
     public final int entries; // Number of entries in the CacheMap.
     public final int hits;    // number of cache hits accessing the CacheMap.
     public final int misses;  // Number of cache misses accessing the CacheMap.

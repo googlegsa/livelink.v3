@@ -102,7 +102,7 @@ class LivelinkConnectorFactory implements ConnectorFactory {
     p.putAll(emptyProperties);
 
     Properties system = System.getProperties();
-    Enumeration names = system.propertyNames();
+    Enumeration<?> names = system.propertyNames();
     boolean prefixFound = false;
 
     while (names.hasMoreElements()) {

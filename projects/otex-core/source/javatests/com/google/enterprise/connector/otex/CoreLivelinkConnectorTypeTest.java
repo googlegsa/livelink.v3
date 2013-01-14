@@ -99,7 +99,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     }
 
     void cacheAttrs(Map<String, Object> cache, MutableAttributeSet attrs) {
-      Enumeration attrNames = attrs.getAttributeNames();
+      Enumeration<?> attrNames = attrs.getAttributeNames();
       while (attrNames.hasMoreElements()) {
         Object attr = attrNames.nextElement();
         cache.put(attr.toString(), attrs.getAttribute(attr));
@@ -729,13 +729,14 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
       // If it's a select, figure out which option is selected.
       // XXX: It's not obvious to me how to recover the parameterized
       // types here, so we're using raw types.
-      ArrayList options = (ArrayList) element.get("options");
+      @SuppressWarnings("unchecked") ArrayList<Map<String, String>> options =
+          (ArrayList<Map<String, String>>) element.get("options");
       assertNotNull("Missing options for " + name, options);
       assertEquals("Number of options", 2, options.size());
       String selectedValue = null;
       for (int i = 0; i < 2; i++) {
-        Map option = (Map) options.get(i);
-        String value = (String) option.get("value");
+        Map<String, String> option = options.get(i);
+        String value = option.get("value");
         assertNotNull("Missing value for option in " + name, value);
         if (option.get("selected") != null) {
           if (selectedValue != null)

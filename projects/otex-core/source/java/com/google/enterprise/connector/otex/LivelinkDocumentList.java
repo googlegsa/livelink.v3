@@ -672,9 +672,9 @@ class LivelinkDocumentList implements DocumentList {
 
       // Make a set of the names in the assoc.
       HashSet<String> names = new HashSet<String>();
-      Enumeration it = extendedData.enumerateNames();
+      Enumeration<String> it = extendedData.enumerateNames();
       while (it.hasMoreElements())
-        names.add((String) it.nextElement());
+        names.add(it.nextElement());
 
       // Decompose the ExtendedData into its atomic values,
       // and add them as properties.
@@ -793,9 +793,9 @@ class LivelinkDocumentList implements DocumentList {
           break;
 
         case ClientValue.ASSOC:
-          Enumeration keys = value.enumerateNames();
+          Enumeration<String> keys = value.enumerateNames();
           while (keys.hasMoreElements()) {
-            String key = (String) keys.nextElement();
+            String key = keys.nextElement();
             collectValueProperties(key, value.toValue(key));
           }
           break;
