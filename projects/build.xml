@@ -63,17 +63,18 @@
       <copy todir="${install.dir}" >
         <fileset dir="${build.dir}">
           <include name="${bin.archive}.zip"/>
-          <include name="${bin.archive}.tar.gz"/>
         </fileset>
       </copy>
     </target>
 
+  <target name="init-package" depends="svn.svn-branch">
+    <property name="downloads.prefix" value="connector-otex-${svn.branch}" />
+    <property name="repackage.prefix" value="connector-otex-${version}"/>
+  </target>
+
   <target name="bin-archive" 
-    depends="prebuild,svn.svn-branch,install-otex-core,install-otex-lapi">
-    <condition property="lang" value="" else="_en">
-      <available file="otex-core/config/OtexConnectorResources_de.properties" />
-    </condition>
-    <property name="bin.archive" value="connector-otex-${svn.branch}${lang}" />
+    depends="prebuild,init-package,install-otex-core,install-otex-lapi">
+    <property name="bin.archive" value="${downloads.prefix}" />
     <zip destfile="${build.dir}/${bin.archive}.zip">
       <zipfileset dir="${install.dir}/otex-lapi/jar" 
         prefix="${bin.archive}" />
@@ -85,14 +86,10 @@
       <zipfileset file="../COPYING" 
         prefix="${bin.archive}/License" />
     </zip>
-    <tar destfile="${build.dir}/${bin.archive}.tar.gz" 
-      compression="gzip">
-      <zipfileset src="${build.dir}/${bin.archive}.zip"/>
-    </tar>
   </target>
 
   <target name="src-archive" depends="prebuild,svn.svn-branch">
-    <property name="src.archive" value="connector-otex-${svn.branch}-src" />
+    <property name="src.archive" value="${downloads.prefix}-src" />
 
     <!-- Use 'svn export' to create a clean version of the source tree
          in the build dir.  You can adjust the behaviour of this by setting
@@ -119,14 +116,10 @@
       <arg line="export ${svn.export.revision.arg} ${svn.export.source} ${svn.export.dir}" />
     </exec>
 
-    <!-- Create .zip and .tar.gz archives of the exported source tree. -->
+    <!-- Create .zip archives of the exported source tree. -->
     <zip destfile="${build.dir}/${src.archive}.zip">
           <zipfileset dir="${svn.export.dir}" prefix="${src.archive}" />
     </zip>
-    <tar destfile="${build.dir}/${src.archive}.tar.gz"
-         longfile="gnu" compression="gzip">
-      <zipfileset src="${build.dir}/${src.archive}.zip"/>
-    </tar>
     <delete dir="${svn.export.dir}" quiet="true" />
   </target>
 
@@ -139,16 +132,19 @@
     <copy todir="${downloads.dir}" preservelastmodified="true">
           <fileset dir="${build.dir}">
             <include name="${src.archive}.zip"/>
-            <include name="${src.archive}.tar.gz"/>
             <include name="${bin.archive}.zip"/>
-            <include name="${bin.archive}.tar.gz"/>
           </fileset>
         </copy>
     <checksum algorithm="SHA-1" file="${downloads.dir}/${src.archive}.zip"/>
-    <checksum algorithm="SHA-1" file="${downloads.dir}/${src.archive}.tar.gz"/>
     <checksum algorithm="SHA-1" file="${downloads.dir}/${bin.archive}.zip"/>
-    <checksum algorithm="SHA-1" file="${downloads.dir}/${bin.archive}.tar.gz"/>
     </target>
+
+  <target name="repackage" depends="init-package"
+          description="Repackage release candidate files for release.">
+    <repackage-downloads downloads.dir="${downloads.dir}"
+                         downloads.prefix="${downloads.prefix}"
+                         repackage.prefix="${repackage.prefix}" />
+  </target>
 
   <target name="everything" depends="clean-all,build-all,install-all,downloads-all"/>
 
