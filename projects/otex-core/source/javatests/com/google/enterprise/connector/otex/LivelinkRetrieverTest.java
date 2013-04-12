@@ -24,19 +24,26 @@ import com.google.enterprise.connector.spi.Session;
 import junit.framework.TestCase;
 
 import java.io.InputStream;
+import java.sql.SQLException;
 
 /**
  * Tests the LivelinkRetriever.
  */
 // TODO: Figure out MockClient; extract MockLivelinkDocument from
 // MockLivelinkDocumentList.
-
 public class LivelinkRetrieverTest extends TestCase {
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
   private LivelinkConnector conn;
   private LivelinkSession sess;
   private LivelinkRetriever retriever;
 
-  public void setUp() throws RepositoryException {
+  protected void setUp() throws SQLException, RepositoryException {
+    jdbcFixture.setUp();
+    jdbcFixture.executeUpdate(
+        "insert into WebNodes(DataID, SubType, MimeType, DataSize) "
+        + "values(9999, 144, 'text/xml', 100)");
+
     conn = LivelinkConnectorFactory.getConnector("connector.");
     conn.setFeedType("CONTENTURL");
     sess = (LivelinkSession) conn.login();
@@ -44,30 +51,38 @@ public class LivelinkRetrieverTest extends TestCase {
     assertNotNull(retriever);
   }
 
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
+  }
+
+  private void assertMessage(Exception e, String message) {
+    assertTrue(e.getMessage(), e.getMessage().startsWith(message));
+  }
+
   public void testInvalidDocidGetContent() throws Exception {
     try {
       retriever.getContent("invalidDocid");
       fail("Expected RepositoryDocumentException");
     } catch (RepositoryDocumentException expected) {
-      assertTrue(expected.getMessage().startsWith("Invalid docid:"));
+      assertMessage(expected, "Invalid docid:");
     }
   }
 
   public void testDocumentNotFoundGetContent() throws Exception {
     try {
-      retriever.getContent(Integer.toString(MockConstants.DOCUMENT_OBJECT_ID));
+      retriever.getContent("404");
       fail("Expected RepositoryDocumentException");
     } catch (RepositoryDocumentException expected) {
-      // TODO: verify it is document not found.
+      assertMessage(expected, "Not found:");
     }
   }
 
   public void testDocumentNotFoundGetMetaData() throws Exception {
     try {
-      retriever.getMetaData(Integer.toString(MockConstants.DOCUMENT_OBJECT_ID));
+      retriever.getMetaData("404");
       fail("Expected RepositoryDocumentException");
     } catch (RepositoryDocumentException expected) {
-      // TODO: verify it is document not found.
+      assertMessage(expected, "Not found:");
     }
   }
 

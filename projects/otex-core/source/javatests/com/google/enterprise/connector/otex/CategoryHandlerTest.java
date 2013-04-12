@@ -21,10 +21,23 @@ import com.google.enterprise.connector.otex.client.ClientValueFactory;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.otex.client.mock.MockClientValueFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
+
 import junit.framework.TestCase;
+
+import java.sql.SQLException;
 
 public class CategoryHandlerTest extends TestCase {
   private static final Integer CATEGORY_ID = new Integer(42);
+
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
+  protected void setUp() throws SQLException {
+    jdbcFixture.setUp();
+  }
+
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
+  }
 
   private CategoryHandler getObjectUnderTest(String includedCategories)
       throws RepositoryException {

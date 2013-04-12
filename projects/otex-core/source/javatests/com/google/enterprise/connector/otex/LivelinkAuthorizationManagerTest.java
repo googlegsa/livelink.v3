@@ -24,6 +24,7 @@ import com.google.enterprise.connector.spi.Session;
 
 import junit.framework.TestCase;
 
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,16 +41,34 @@ import java.util.List;
  * need.
  */
 public class LivelinkAuthorizationManagerTest extends TestCase {
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
   private LivelinkConnector conn;
 
   LivelinkAuthorizationManager lam;
 
   Client client;
 
-  public void setUp() throws RepositoryException {
+  protected void setUp() throws SQLException, RepositoryException {
+    jdbcFixture.setUp();
+    jdbcFixture.executeUpdate(
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(1729, -1, 0, 161)",
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(13832, -1, 0, 402)",
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(9999, -1, 0, 500)",
+        "insert into DTree(DataID, ParentID, PermID, SubType) "
+        + "values(6667, -1, 0, 667)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(4104, 2002)"); // The values do not matter.
+
     conn = LivelinkConnectorFactory.getConnector("connector.");
   }
 
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
+  }
 
   /** Continue the setup after initializing the connector. */
   protected void afterInit() throws RepositoryException {
@@ -109,7 +128,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     afterInit();
 
     assertEquals(0, lam.getExcludedVolumeId(402, null, client));
-    assertEquals(9999, lam.getExcludedVolumeId(161, null, client));
+    assertEquals(1729, lam.getExcludedVolumeId(161, null, client));
   }
 
   /**
@@ -121,7 +140,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     afterInit();
 
-    assertEquals(9999, lam.getExcludedVolumeId(402, null, client));
+    assertEquals(13832, lam.getExcludedVolumeId(402, null, client));
     assertEquals(0, lam.getExcludedVolumeId(161, null, client));
   }
 
@@ -130,7 +149,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
    */
   public void testExcludedVolumes3() throws RepositoryException {
     conn.setExcludedVolumeTypes("162,402,109");
-    conn.setExcludedLocationNodes("1729,13832");
+    conn.setExcludedLocationNodes("9999");
 
     afterInit();
 
@@ -161,21 +180,21 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     assertEquals(0, lam.getExcludedVolumeId(666, null, client));
 
     // But another subtype does exist...
-    assertEquals(9999, lam.getExcludedVolumeId(402, null, client));
+    assertEquals(13832, lam.getExcludedVolumeId(402, null, client));
   }
 
   /**
    * Tests a volume excluded by ID that does not exist.
    */
   public void testExcludedVolumes6() throws RepositoryException {
-    conn.setExcludedLocationNodes("1729,13832");
+    conn.setExcludedLocationNodes("6667");
 
     afterInit();
 
     assertEquals(0, lam.getExcludedVolumeId(666, null, client));
 
     // But another subtype does exist...
-    assertEquals(9999, lam.getExcludedVolumeId(667, null, client));
+    assertEquals(6667, lam.getExcludedVolumeId(667, null, client));
   }
 
   /** Tests the default authorization manager. */

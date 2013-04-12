@@ -31,18 +31,11 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 public class MockClientFactory implements ClientFactory {
   private final HashMap<String, Object> values;
 
-  private final Connection jdbcConnection;
-
   /** The most recent username passed to {@code createClient}. */
   private String username;
 
   public MockClientFactory() {
-    this(null);
-  }
-
-  public MockClientFactory(Connection jdbcConnection) {
     this.values = new HashMap<String, Object>();
-    this.jdbcConnection = jdbcConnection;
   }
 
   /**
@@ -132,13 +125,13 @@ public class MockClientFactory implements ClientFactory {
 
   /** {@inheritDoc} */
   public Client createClient() {
-    return new MockClient(jdbcConnection);
+    return new MockClient();
   }
 
   /** {@inheritDoc} */
   public Client createClient(String username, String password) {
     this.username = username;
-    return new MockClient(jdbcConnection);
+    return new MockClient();
   }
 
   /** Gets the most recent username passed to {@code createClient}. */

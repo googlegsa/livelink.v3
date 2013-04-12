@@ -50,20 +50,19 @@ public class LivelinkTraversalManagerTest extends TestCase {
     conn = LivelinkConnectorFactory.getConnector("connector.");
 
     jdbcFixture.setUp();
-
-    // Insert the test data. Shared with LivelinkConnectorTest.
     jdbcFixture.executeUpdate(
-        JdbcFixture.CREATE_TABLE_DTREE,
-        JdbcFixture.CREATE_TABLE_DTREEANCESTORS,
-        JdbcFixture.CREATE_TABLE_WEBNODES,
-        "insert into DTree(DataID, ParentID, PermID, SubType) "
-        + "values(24, 6, 0, 0)",
-        "insert into DTree(DataID, ParentID, PermID, SubType) "
-        + "values(42, 6, 0, 144)",
+        "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
+        + "values(24, 6, 0, 0, sysdate)",
+        "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
+        + "values(42, 6, 0, 144, sysdate)",
+        "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
+        + "values(2000, -1, 0, 0, sysdate)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(24, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(42, 6)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(4104, 2000)", // DataID value does not matter.
         "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
         + "values(24, 6, 0, 0, null)",
         "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
@@ -339,6 +338,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
   private LivelinkTraversalManager getObjectUnderTest(Client traversalClient)
       throws RepositoryException {
+    conn.login();
     return new LivelinkTraversalManager(conn, traversalClient, "Admin",
         new MockClient(), conn.getContentHandler(traversalClient));
   }
@@ -377,16 +377,15 @@ public class LivelinkTraversalManagerTest extends TestCase {
       boolean useDTreeAncestors, String sqlWhereCondition)
       throws RepositoryException, SQLException {
     // This is a little twisted. We need to call login after setting
-    // includedLocationNodes for it to santize the value, but we can't
-    // set the sqlWhereCondition before calling login because we
-    // Spring-instatiated the connector using a MockClientFactory
-    // without a JDBC connection.
+    // includedLocationNodes for it to sanitize the value, but we don't
+    // want to validate the sqlWhereCondition, since we're explicitly
+    // testing the traversal manager here.
     conn.setIncludedLocationNodes("6");
-    Session sess = conn.login();
+    conn.login();
     conn.setUseDTreeAncestors(useDTreeAncestors);
     conn.setSqlWhereCondition(sqlWhereCondition);
 
-    Client client = new MockClient(jdbcFixture.getConnection());
+    Client client = new MockClient();
     return new LivelinkTraversalManager(conn, client, "Admin", client,
         conn.getContentHandler(client)) {
       /** Slimmer select list to avoid having to mock extra columns. */

@@ -16,7 +16,7 @@ package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
-import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
+import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
 
@@ -52,16 +52,10 @@ public class GenealogistTest extends TestCase {
 
   /** Inserts database test data. */
   protected void setUp() throws SQLException {
-    // Get a separate in-memory database for each test.
     jdbcFixture.setUp();
-
-    // Insert the test data.
-    jdbcFixture.executeUpdate(JdbcFixture.CREATE_TABLE_DTREE);
     insertRows(TREE_NODES);
 
-    MockClientFactory factory =
-        new MockClientFactory(jdbcFixture.getConnection());
-    client = factory.createClient();
+    client = new MockClient();
   }
 
   private void insertRows(int[][] rows) throws SQLException {

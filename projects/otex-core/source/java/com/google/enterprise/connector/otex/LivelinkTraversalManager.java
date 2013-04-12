@@ -847,19 +847,16 @@ class LivelinkTraversalManager
       throws RepositoryException {
     StringBuilder buffer = new StringBuilder();
     if (checkpoint != null && checkpoint.insertDate != null) {
-      /* The TIMESTAMP literal, part of the SQL standard, was first
-       * supported by Oracle 9i, and not at all by SQL Server. SQL
-       * Server doesn't require a prefix on timestamp literals, and
-       * we're using TO_DATE with Oracle in order to work with Oracle
-       * 8i, and therefore with Livelink 9.0 or later.
+      /* The TIMESTAMP literal, part of the SQL standard, is supported
+       * by Oracle 9i or later, and not at all by SQL Server.
        */
       String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
-      buffer.append("(ModifyDate > TO_DATE('");
+      buffer.append("(ModifyDate > TIMESTAMP'");
       buffer.append(modifyDate);
       buffer.append(
-          "', 'YYYY-MM-DD HH24:MI:SS') or (ModifyDate = TO_DATE('");
+          "' or (ModifyDate = TIMESTAMP'");
       buffer.append(modifyDate);
-      buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and DataID > ");
+      buffer.append("' and DataID > ");
       buffer.append(checkpoint.insertDataId);
       buffer.append(")) and ");
     }
@@ -954,11 +951,11 @@ class LivelinkTraversalManager
 
     // Only include delete events after the checkpoint.
     String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
-    buffer.append(" and (AuditDate > TO_DATE('");
+    buffer.append(" and (AuditDate > TIMESTAMP'");
     buffer.append(deleteDate);
-    buffer.append("', 'YYYY-MM-DD HH24:MI:SS') or (AuditDate = TO_DATE('");
+    buffer.append("' or (AuditDate = TIMESTAMP'");
     buffer.append(deleteDate);
-    buffer.append("', 'YYYY-MM-DD HH24:MI:SS') and EventID > ");
+    buffer.append("' and EventID > ");
     buffer.append(checkpoint.deleteEventId);
     buffer.append("))");
 

@@ -43,6 +43,8 @@ import org.xml.sax.SAXParseException;
 import com.google.enterprise.connector.spi.ConfigureResponse;
 import junit.framework.TestCase;
 
+import java.sql.SQLException;
+
 /**
  * Tests the LivelinkConnectorType implementation.
  */
@@ -301,10 +303,18 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     builder.parse(new ByteArrayInputStream(html.getBytes("UTF-8")));
   }
 
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
   protected LivelinkConnectorType connectorType;
 
-  protected void setUp() {
+  protected void setUp() throws SQLException {
+    jdbcFixture.setUp();
+
     connectorType = new LivelinkConnectorType();
+  }
+
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
   }
 
   /** The default locale for use in creating config forms. */

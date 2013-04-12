@@ -34,17 +34,14 @@ public class LivelinkConnectorTest extends TestCase {
   protected void setUp() throws SQLException {
     // TODO: Move this fixture and its tests to a separate test class.
     jdbcFixture.setUp();
-
-    // Insert the test data. Shared with LivelinkTraversalManagerTest.
     jdbcFixture.executeUpdate(
-        JdbcFixture.CREATE_TABLE_KDUAL,
-        JdbcFixture.CREATE_TABLE_WEBNODES,
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(4104, 2002)", // The values do not matter.
         "insert into KDual values(104 /* does not matter */)",
         "insert into WebNodes(DataID, PermID, MimeType) "
         + "values(42, 0, 'text/xml')");
 
-    connector = new LivelinkConnector(
-        new MockClientFactory(jdbcFixture.getConnection()));
+    connector = new LivelinkConnector(new MockClientFactory());
     connector.setServer(System.getProperty("connector.server"));
     connector.setPort(System.getProperty("connector.port"));
     connector.setUsername(System.getProperty("connector.username"));

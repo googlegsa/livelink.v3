@@ -92,11 +92,6 @@ public class BigCacheTest extends TestCase {
     jdbcFixture.setUp();
     connection = jdbcFixture.getConnection();
 
-    // Insert the test data. Shared with LivelinkConnectorTest.
-    jdbcFixture.executeUpdate(
-        JdbcFixture.CREATE_TABLE_DTREE,
-        JdbcFixture.CREATE_TABLE_WEBNODES);
-
     insertDTree = connection.prepareStatement("insert into DTree "
         + "(DataId, ParentID, PermID, SubType, ModifyDate) "
         + "values (?,?,?,?,?)");
@@ -365,7 +360,7 @@ public class BigCacheTest extends TestCase {
     connector.setUseDTreeAncestors(false);
     connector.setTrackDeletedItems(false);
     connector.login();
-    Client client = new MockClient(connection);
+    Client client = new MockClient();
     return new LivelinkTraversalManager(connector, client, "Admin", client,
                                         new MockContentHandler()) {
       /** Slimmer select list to avoid having to mock extra columns. */

@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.mock.MockClient;
+
 import org.h2.jdbcx.JdbcDataSource;
 
 import java.sql.Connection;
@@ -22,38 +24,54 @@ import java.sql.SQLException;
 
 /** Manages an in-memory H2 database modeling the Livelink database. */
 class JdbcFixture {
-  public static final String CREATE_TABLE_DTREE = "create table DTree "
+  private static final String CREATE_TABLE_DAUDITNEW = "create table DAuditNew "
+      + "(EventID int primary key, AuditID int, DataID int, "
+      + "SubType int, AuditDate timestamp)";
+
+  private static final String CREATE_TABLE_DTREE = "create table DTree "
       + "(DataID int primary key, ParentID int, PermID int, "
       + "SubType int, ModifyDate timestamp)";
 
-  public static final String CREATE_TABLE_DTREEANCESTORS =
+  private static final String CREATE_TABLE_DTREEANCESTORS =
       "create table DTreeAncestors (DataID int, AncestorID int)";
 
-  public static final String CREATE_TABLE_KDUAL =
+  private static final String CREATE_TABLE_KDUAL =
       "create table KDual (dummy int primary key)";
 
-  public static final String CREATE_TABLE_WEBNODES =
+  // TODO(jlacey): Turn this into a joined view on DTree and DVersData.
+  private static final String CREATE_TABLE_WEBNODES =
       "create table WebNodes "
       + "(DataID int primary key, ParentID int, PermID int, "
-      + "SubType int, ModifyDate timestamp, MimeType varchar)";
+      + "SubType int, ModifyDate timestamp, Name varchar, "
+      + "DComment varchar, CreateDate timestamp, OwnerName varchar, "
+      + "OwnerID int, UserID int, "
+      + "MimeType varchar, DataSize bigint)";
 
   /** The database connection. */
   private Connection jdbcConnection;
 
   /** Initializes a database connection. */
-  public void setUp() throws SQLException {
-    // Get a separate in-memory database for each test.
-    JdbcDataSource ds = new JdbcDataSource();
-    ds.setURL("jdbc:h2:mem:");
-    ds.setUser("sa");
-    ds.setPassword("");
-    jdbcConnection = ds.getConnection();
+  protected void setUp() throws SQLException {
+    // Get a named in-memory database for sharing across connections.
+    // We delete all objects from the database for each test in tearDown.
+    jdbcConnection = MockClient.getConnection();
+
+    executeUpdate(
+        CREATE_TABLE_DAUDITNEW,
+        CREATE_TABLE_DTREE,
+        CREATE_TABLE_DTREEANCESTORS,
+        CREATE_TABLE_KDUAL,
+        CREATE_TABLE_WEBNODES);
   }
 
-  public void tearDown() throws SQLException {
-    Connection tmp = jdbcConnection;
-    jdbcConnection = null; // In case this object is reused.
-    tmp.close();
+  protected void tearDown() throws SQLException {
+    try {
+      executeUpdate("drop all objects");
+    } finally {
+      Connection tmp = jdbcConnection;
+      jdbcConnection = null; // In case this object is reused.
+      tmp.close();
+    }
   }
 
   public Connection getConnection() throws SQLException {

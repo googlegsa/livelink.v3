@@ -27,10 +27,21 @@ import com.google.enterprise.connector.spi.RepositoryException;
 
 import junit.framework.TestCase;
 
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Date;
 
 public class LivelinkDocumentListTest extends TestCase {
+  private final JdbcFixture jdbcFixture = new JdbcFixture();
+
+  protected void setUp() throws SQLException {
+    jdbcFixture.setUp();
+  }
+
+  protected void tearDown() throws SQLException {
+    jdbcFixture.tearDown();
+  }
+
   /**
    * Creates a default connector instance.
    *

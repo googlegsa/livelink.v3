@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
+import org.h2.jdbcx.JdbcDataSource;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -44,12 +46,20 @@ public class MockClient implements Client {
 
     private final Connection jdbcConnection;
 
-    public MockClient() {
-      this(null);
+    public static Connection getConnection() {
+      try {
+        JdbcDataSource ds = new JdbcDataSource();
+        ds.setURL("jdbc:h2:mem:test");
+        ds.setUser("sa");
+        ds.setPassword("");
+        return ds.getConnection();
+      } catch (SQLException e) {
+        throw new RuntimeException(e);
+      }
     }
 
-    public MockClient(Connection jdbcConnection) {
-      this.jdbcConnection = jdbcConnection;
+    public MockClient() {
+      this.jdbcConnection = getConnection();
     }
 
     /** {@inheritDoc} */
@@ -127,77 +137,32 @@ public class MockClient implements Client {
             throws RepositoryException {
         LOGGER.fine("Entering MockClient.ListNodes");
 
+        // Rewrite a date to string expression from SQL Server and
+        // Oracle syntax to H2 syntax.
+        String sqlServer = "CONVERT(VARCHAR(23), AuditDate, 121)";
+        String oracle = "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS')";
+        String h2 = "CONVERT(AuditDate, VARCHAR(23))";
+        String[] newColumns = new String[columns.length];
+        for (int i = 0; i < columns.length; i++) {
+          newColumns[i] = columns[i].replace(sqlServer, h2).replace(oracle, h2);
+        }
+        columns = newColumns;
+
         String[] fields;
         Object[][] values;
-        if (query.startsWith("SubType =") && view.equals("DTree")) {
-            // This is the authZ excluded volume types query.
-            fields = new String[] { "DataID", "PermID" };
-
-            // Some of the tests ask for invalid subtypes, namely 666,
-            // or invalid volume types, namely 2001 and 4104. Those
-            // queries needs to return no values. Other than that,
-            // 9999 should be returned.
-            if (query.indexOf("2001,4104") != -1
-                    || query.indexOf("666") != -1) {
-                values = new Object[0][0];
-            } else {
-                values = new Object[][] {
-                    new Object[] { new Integer(9999), new Integer(0) } };
-            }
-        } else if (view.equals("DTreeAncestors")) {
-            // This is the check for an empty DTreeAncestors table.
-            // The returned value doesn't matter.
-            fields = new String[] { "DataID" };
-            values = new Object[][] {
-                new Object[] { new Integer(4104) } };
-        } else if (columns.length == 1 &&
-                columns[0].endsWith("minModifyDate")) {
-            // This is the check for missing entries in the
-            // DTreeAncestors table, and the optimized startDate. The
-            // returned value doesn't matter.
-            fields = new String[] { "minModifyDate" };
-            values = new Object[][] {
-                new Object[] { new Date() } };
-        } else if (query.startsWith("DataID = ") && view.equals("WebNodes")) {
-            // This is the Retriever fetching meta-data.
-            fields = getRecArrayFieldNames(columns);
-            int objectId =
-                Integer.parseInt(query.substring("DataID = ".length()));
-            // TODO(johnsonb): It seems like if these are going to
-            // throw exceptions or return no data(?) from ListNodes,
-            // that you need different MockConstants to distinguish
-            // these from object IDs that throw exceptions from
-            // FetchVersion.
-            if (objectId == MockConstants.IO_OBJECT_ID) {
-              throw new LivelinkIOException(new RuntimeException(
-                   "Simulated Server did not accept open request"), LOGGER);
-            } else if (objectId == MockConstants.DOCUMENT_OBJECT_ID) {
-              // No rows.
-              values = new Object[0][0];
-            } else {
-              values = new Object[][] {
-                new Object[] { new Integer(objectId), new Integer(0),
-                               new Date(), new String("text/html"),
-                               new Integer(200), new Integer(100) } };
-            }
-        } else if (jdbcConnection != null) {
+        try {
+            Statement stmt = jdbcConnection.createStatement();
             try {
-                Statement stmt = jdbcConnection.createStatement();
-                try {
-                    ResultSet rs =
-                        stmt.executeQuery(getSqlQuery(query, view, columns));
-                    ResultSetMetaData rsmd = rs.getMetaData();
-                    fields = getResultSetColumns(rsmd, columns);
-                    values = getResultSetValues(rs, rsmd);
-                } finally {
-                    stmt.close();
-                }
-            } catch (SQLException e) {
-                throw new RepositoryException("Database error", e);
+                ResultSet rs =
+                    stmt.executeQuery(getSqlQuery(query, view, columns));
+                ResultSetMetaData rsmd = rs.getMetaData();
+                fields = getResultSetColumns(rsmd, columns);
+                values = getResultSetValues(rs, rsmd);
+            } finally {
+                stmt.close();
             }
-        } else {
-            fields = new String[0];
-            values = new Object[0][0];
+        } catch (SQLException e) {
+            throw new RepositoryException("Database error", e);
         }
         return new MockClientValue(fields, values);
     }
@@ -241,17 +206,18 @@ public class MockClient implements Client {
         String[] origColumns) throws SQLException {
       int count = rsmd.getColumnCount();
       String[] columns = new String[count];
-      // This is a bit hacky, but works OK for our queries at the moment.
+      // This is a bit hacky, but all our select expressions have an alias.
       for (int i = 0; i < count; i++) {
-        // StepParent and ModifyDate are handled especially, because their
-        // origColumns are adorned with SQL syntax like "top 1000 ModifyDate".
-        columns[i] = rsmd.getColumnName(i + 1)
-            .replace("STEPPARENT", "StepParent")
-            .replace("MODIFYDATE", "ModifyDate");
         // Correct for the uppercasing of column names in H2.
+        String columnName = rsmd.getColumnName(i + 1);
         for (String origName : origColumns) {
-          if (origName.equalsIgnoreCase(columns[i])) {
-            columns[i] = origName;
+          // Extract the column name or alias from the select expression.
+          int index = origName.lastIndexOf(' ');
+          String alias =
+              (index == -1) ? origName : origName.substring(index + 1);
+
+          if (alias.equalsIgnoreCase(columnName)) {
+            columns[i] = alias;
             break;
           }
         }
