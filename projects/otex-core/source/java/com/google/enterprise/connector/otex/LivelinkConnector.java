@@ -796,23 +796,23 @@ public class LivelinkConnector implements Connector {
    * for Oracle.
    */
   /*
-   * The client must be a sysadmin client because this method uses
-   * <code>ListNodes</code> but does not select either DataID or
-   * PermID, or even use the DTree table at all.
+   * We could use the traversal client (by adding PermID to the
+   * selected columns), but these queries do not return useful data,
+   * so we might as well avoid the permissions checks.
    */
   private void autoDetectServtype(Client client) throws RepositoryException {
     boolean isSqlServer;
     if (servtype == null) {
       // Autodetection of the database type. First, ferret out
       // generic errors when connecting or using ListNodes.
-      String query = "1=1"; // ListNodes requires a WHERE clause.
-      String[] columns = { "42" };
-      ClientValue results = client.ListNodes(query, "KDual", columns);
+      String view = "DTree";
+      String[] columns = { "DataID" };
+      ClientValue results = client.ListNodes("0=1", view, columns);
 
       // Then check an Oracle-specific query.
       // We use ListNodesNoThrow() to avoid logging our expected error.
       LOGGER.finest("Testing an Oracle-specific SQL query...");
-      results = client.ListNodesNoThrow(query, "dual", columns);
+      results = client.ListNodesNoThrow("0=1 and rownum=1", view, columns);
       isSqlServer = (results == null);
 
       if (LOGGER.isLoggable(Level.INFO)) {

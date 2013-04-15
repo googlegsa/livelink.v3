@@ -134,6 +134,13 @@ public class LivelinkConnectorTest extends TestCase {
     }
   }
 
+  public void testAutoDetectServtype() throws RepositoryException {
+    // Force the call to autoDetectServtype
+    connector.login();
+    // H2 supports Oracle's rownum, so it looks like Oracle to us.
+    assertFalse(connector.isSqlServer());
+  }
+
   public void testStartDate1() throws Exception {
     connector.setStartDate("2007-09-27 01:12:13");
     connector.login();
