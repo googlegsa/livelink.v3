@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
@@ -21,6 +22,7 @@ import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 
 import junit.framework.TestCase;
 
@@ -52,16 +54,25 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
   protected void setUp() throws SQLException, RepositoryException {
     jdbcFixture.setUp();
     jdbcFixture.executeUpdate(
-        "insert into DTree(DataID, ParentID, PermID, SubType) "
-        + "values(1729, -1, 0, 161)",
-        "insert into DTree(DataID, ParentID, PermID, SubType) "
-        + "values(13832, -1, 0, 402)",
-        "insert into DTree(DataID, ParentID, PermID, SubType) "
-        + "values(9999, -1, 0, 500)",
-        "insert into DTree(DataID, ParentID, PermID, SubType) "
-        + "values(6667, -1, 0, 667)",
+        // TODO(jlacey): Include permission checking in MockClient.ListNodes.
+        "insert into DTree(Name, DataID, ParentID, OwnerID, SubType) "
+        + "values('Workflow', 1729, -1, -1729, 161)",
+        "insert into DTree(Name, DataID, ParentID, OwnerID, SubType) "
+        + "values('Livelink Undelete Workspace', 13832, -1, -13832, 402)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
+        + "values(9999, -1, -9999, 500)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
+        + "values(6667, -1, -6667, 667)",
         "insert into DTreeAncestors(DataID, AncestorID) "
-        + "values(4104, 2002)"); // The values do not matter.
+        + "values(4104, 2002)", // The values do not matter.
+        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
+        + "values(2100, 2000, -2000, 144)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
+        + "values(2101, 2000, -2000, 144)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
+        + "values(2102, 2000, -1729, 144)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
+        + "values(3299, 2000, -2000, 144)");
 
     conn = LivelinkConnectorFactory.getConnector("connector.");
   }
@@ -195,6 +206,46 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
     // But another subtype does exist...
     assertEquals(6667, lam.getExcludedVolumeId(667, null, client));
+  }
+
+  /** Tests a small authZ request with partially authorized results. */
+  public void testAuthorizeDocids_small() throws RepositoryException {
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.of("2100", "2101", "2102", "2103"),
+            identity);
+    assertPermittedDocs(ImmutableSet.of("2100", "2101"), responses);
+  }
+
+  /**
+   * Tests a large authZ request that will be split across queries
+   * (1000 docids per query), with partially authorized results.
+   */
+  public void testAuthorizeDocids_large() throws RepositoryException {
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    ImmutableSet.Builder<String> builder = new ImmutableSet.Builder<String>();
+    for (int i = 2100; i < 3300; i++) {
+      builder.add(String.valueOf(i));
+    }
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(builder.build(), identity);
+    assertPermittedDocs(ImmutableSet.of("2100", "2101", "3299"),
+        responses);
+  }
+
+  private void assertPermittedDocs(ImmutableSet<String> expected,
+      Collection<AuthorizationResponse> responses) {
+    ImmutableSet.Builder<String> builder = new ImmutableSet.Builder<String>();
+    for (AuthorizationResponse response : responses) {
+      if (response.isValid()) {
+        builder.add(response.getDocid());
+      }
+    }
+    assertEquals(expected, builder.build());
   }
 
   /** Tests the default authorization manager. */

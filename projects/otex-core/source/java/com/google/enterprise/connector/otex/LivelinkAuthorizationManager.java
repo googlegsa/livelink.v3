@@ -14,12 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
@@ -29,6 +24,12 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implements an AuthorizationManager for the Livelink connector.
@@ -126,7 +127,7 @@ public class LivelinkAuthorizationManager
     String username = identityResolver.getAuthorizationIdentity(identity);
     return authorizeDocids(docids, username);
   }
-	
+
   /**
    * Returns authorization information for a list of docids. This
    * separate helper method prevents access to the original
@@ -212,7 +213,7 @@ public class LivelinkAuthorizationManager
     Using ListNodes to authorize docids in bulk is much faster (up
     to 300 times faster in testing) that authorizing a single docid
     at a time.
-      
+
     There are limits to the size of the SQL query in the
     backing databases. They're pretty big, but on general
     principles we're breaking the query into pieces.
@@ -254,7 +255,7 @@ public class LivelinkAuthorizationManager
     while ((query = getDocidQuery(iterator)) != null) {
       if (LOGGER.isLoggable(Level.FINEST))
         LOGGER.finest("AUTHORIZATION QUERY: " + query);
-      ClientValue results = client.ListNodes(query, "WebNodes",
+      ClientValue results = client.ListNodes(query, "DTree",
           new String[] { "DataID", "PermID" });
       for (int i = 0; i < results.size(); i++)
         authorized.add(creator.fromString(results.toString(i, "DataID")));
@@ -299,7 +300,7 @@ public class LivelinkAuthorizationManager
    * @param docids the docids to include in the query
    * @return the SQL query string; null if no docids are provided
    */
-  /* @VisibleForTesting */
+  @VisibleForTesting
   String getDocidQuery(Iterator<String> iterator) {
     if (!iterator.hasNext())
       return null; 
@@ -367,7 +368,7 @@ public class LivelinkAuthorizationManager
    * @return the volume ID if the volume is excluded from indexing,
    * zero otherwise.
    */
-  /* @VisibleForTesting */
+  @VisibleForTesting
   int getExcludedVolumeId(int subtype, String label, Client client)
       throws RepositoryException {
     // First look for volume subtype in the excludedVolumeTypes.

@@ -30,7 +30,9 @@ class JdbcFixture {
 
   private static final String CREATE_TABLE_DTREE = "create table DTree "
       + "(DataID int primary key, ParentID int, PermID int, "
-      + "SubType int, ModifyDate timestamp)";
+      + "SubType int, ModifyDate timestamp, Name varchar, "
+      + "DComment varchar, CreateDate timestamp, CreatedBy int, "
+      + "OwnerID int, UserID int)";
 
   private static final String CREATE_TABLE_DTREEANCESTORS =
       "create table DTreeAncestors (DataID int, AncestorID int)";
