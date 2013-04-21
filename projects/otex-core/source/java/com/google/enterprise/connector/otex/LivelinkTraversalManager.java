@@ -137,14 +137,6 @@ class LivelinkTraversalManager
     DEFAULT_FIELDS = list.toArray(new Field[0]);
   }
 
-  /** Select list column for AuditDate; Oracle still lacks milliseconds. */
-  private static final String AUDIT_DATE_ORACLE =
-      "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as AuditDate";
-
-  /** Select list column for AuditDate with milliseconds for SQL Server. */
-  private static final String AUDIT_DATE_SQL_SERVER =
-      "CONVERT(VARCHAR(23), AuditDate, 121) as AuditDate";
-
   /** The connector contains configuration information. */
   private final LivelinkConnector connector;
 
@@ -176,6 +168,9 @@ class LivelinkTraversalManager
   /* XXX: We could use the state or strategy pattern if this gets messy. */
   private final boolean isSqlServer;
 
+  /** The SQL queries resource bundle wrapper. */
+  private final SqlQueries sqlQueries;
+
   /** A concrete strategy for retrieving the content from the server. */
   private final ContentHandler contentHandler;
 
@@ -199,6 +194,7 @@ class LivelinkTraversalManager
     this.contentHandler = contentHandler;
 
     this.isSqlServer = connector.isSqlServer();
+    this.sqlQueries = new SqlQueries(this.isSqlServer);
 
     // Check to see if we will track Deleted Documents.
     this.deleteSupported = connector.getTrackDeletedItems();
@@ -263,17 +259,8 @@ class LivelinkTraversalManager
    */
   private void forgeInitialDeleteCheckpoint(Checkpoint checkpoint) {
     try {
-      String auditDate;
-      if (isSqlServer)
-        auditDate = AUDIT_DATE_SQL_SERVER;
-      else
-        auditDate = AUDIT_DATE_ORACLE;
-
-      String query = "EventID in (select max(EventID) from DAuditNew)";
-      String[] columns = { auditDate, "EventID" };
-      String view = "DAuditNew";
-      ClientValue results =
-          sysadminClient.ListNodes(query, view, columns);
+      ClientValue results = sqlQueries.execute(sysadminClient, null,
+          "LivelinkTraversalManager.forgeInitialDeleteCheckpoint");
       if (results.size() > 0) {
         checkpoint.setDeleteCheckpoint(
             dateFormat.parse(results.toString(0, "AuditDate")),
@@ -294,151 +281,31 @@ class LivelinkTraversalManager
   }
 
   /**
-   * Builds a SQL conditional expression that includes all
-   * the starting nodes and all descendants of the starting
-   * nodes.
-   *
-   * The list of traversal starting locations is derived
-   * either from an explicit list of start nodes
-   * (<em>includedLocationNodes</em>) or an implicit
-   * list of all non-excluded Volumes.
-   *
-   * If explicit starting nodes are provided, we return a SQL
-   * expression of the following form:
-   *
-   * <pre>
-   *     (DataID in (<em>includedLocationNodes</em>) or
-   *      DataID in
-   *         (select DataID from DTreeAncestors where AncestorID in
-   *             (<em>includedLocationNodes</em>)))
-   * </pre>
-   *
-   * Otherwise, we just avoid items in the excluded volume types
-   * (but not items in otherwise included subvolumes), and return
-   * a SQL expression of the following form:
-   *
-   * <pre>
-   *     -OwnerID not in (select DataID from DTree where SubType in
-   *         (<em>excludedVolumeTypes</em>))
-   * </pre>
-   *
-   * @return the SQL conditional expression
-   */
-  @VisibleForTesting
-  String getIncluded(String candidatesPredicate) {
-    StringBuilder buffer = new StringBuilder();
-
-    String startNodes = connector.getIncludedLocationNodes();
-    if (startNodes != null && startNodes.length() > 0) {
-      if (connector.getUseDTreeAncestors()) {
-        // If we have an explict list of start locations, build a
-        // query that includes only those and their descendants.
-        buffer.append(getDescendants(startNodes, candidatesPredicate));
-      }
-    } else {
-      // FIXME: I think this else is wrong. The excludedVolumeTypes
-      // should always be applied. For example, you might exclude
-      // everything in projects.
-      String excludedVolumes = connector.getExcludedVolumeTypes();
-      if (excludedVolumes != null && excludedVolumes.length() > 0) {
-        // If we don't have an explicit list of start points,
-        // just avoid the excluded volume types.
-        buffer.append("-OwnerID not in (select DataID from DTree ");
-        buffer.append("where SubType in (");
-        buffer.append(excludedVolumes);
-        buffer.append("))");
-      }
-    }
-
-    String included = (buffer.length() > 0) ? buffer.toString() : null;
-    if (LOGGER.isLoggable(Level.FINER))
-      LOGGER.finer("INCLUDED: " + included);
-    return included;
-  }
-
-  /**
-   * Gets a SQL conditional expression that excludes nodes that
-   * should not be traversed. This returns a SQL expression of the
-   * form
-   *
-   * <pre>
-   *     SubType not in (<em>excludedNodeTypes</em>) and
-   *     DataID not in
-   *         (select DataID from DTreeAncestors where AncestorID in
-   *                 (<em>excludedLocationNodes</em>))
-   * </pre>
-   *
-   * FIXME: This SQL expression doesn't account for hidden items.
-   *
-   * The returned expression is simplified in the obvious way when
-   * one or more of the configuration parameters is null or empty.
-   *
-   * @return the SQL conditional expression
-   */
-  @VisibleForTesting
-  String getExcluded(String candidatesPredicate)  {
-    StringBuilder buffer = new StringBuilder();
-
-    String excludedNodeTypes = connector.getExcludedNodeTypes();
-    if (excludedNodeTypes != null
-        && excludedNodeTypes.length() > 0) {
-      buffer.append("SubType not in (");
-      buffer.append(excludedNodeTypes);
-      buffer.append(')');
-    }
-
-    String excludedLocationNodes = connector.getExcludedLocationNodes();
-    if (connector.getUseDTreeAncestors() && excludedLocationNodes != null
-        && excludedLocationNodes.length() > 0) {
-      if (buffer.length() > 0) {
-        buffer.append(" and ");
-      }
-      buffer.append("not ");
-      buffer.append(
-          getDescendants(excludedLocationNodes, candidatesPredicate));
-    }
-
-    String excluded = (buffer.length() > 0) ? buffer.toString() : null;
-    if (LOGGER.isLoggable(Level.FINER))
-      LOGGER.finer("EXCLUDED: " + excluded);
-    return excluded;
-  }
-
-  /**
    * Gets a SQL condition that matches descendants of the starting nodes,
    * including the starting nodes themselves, from among the candidates.
    *
    * @param startNodes a comma-separated string of object IDs
-   * @param candidatesPredicate a SQL condition matching the candidates
+   * @param candidatesList a comma-separated string of candidate object IDs
    * @return a SQL conditional expression string
    */
   /*
    * With Oracle 10, we could use a CONNECT BY query:
    *
-   *   buffer.append("DataID in (select connect_by_root DataID DataID ");
-   *   buffer.append("from DTree where DataID in (");
-   *   buffer.append(ancestorNodes);
-   *   buffer.append(") start with ");
-   *   buffer.append(candidatesPredicate);
-   *   buffer.append("connect by DataID = prior ParentID)");
+   *    DataID in (select connect_by_root DataID DataID
+   *        from DTree where DataID in (<ancestorNodes>)
+   *        start with DataID in (<candidatesList>)
+   *        connect by DataID = prior ParentID)
    *
    * This failed, however, at a customer site, for unknown reasons.
    * The corresponding SQL Server query, a recursive CTE of the form
    * "with ... as (select ...) select ...", is not possible due to the
    * ListNodes "select {columns} from {view} a where {query}" format.
    */
-  private String getDescendants(String startNodes,
-      String candidatesPredicate) {
-    StringBuilder buffer = new StringBuilder();
+  private String getDescendants(String startNodes, String candidatesList) {
     String ancestorNodes = Genealogist.getAncestorNodes(startNodes);
-    buffer.append("(DataID in (");
-    buffer.append(startNodes);
-    buffer.append(") or DataID in (select DataID from DTreeAncestors where ");
-    buffer.append(candidatesPredicate);
-    buffer.append(" and AncestorID in (");
-    buffer.append(ancestorNodes);
-    buffer.append(")))");
-    return buffer.toString();
+    return sqlQueries.getWhere(null,
+        "LivelinkTraversalManager.getDescendants",
+        startNodes, candidatesList, ancestorNodes);
   }
 
   @VisibleForTesting
@@ -524,19 +391,7 @@ class LivelinkTraversalManager
   }
 
   /**
-   * This method uses <code>LAPI_DOCUMENTS.ListNodes</code>, which
-   * is an undocumented LAPI method. This method essentially
-   * executes a query of the form
-   *
-   * <pre>
-   *     SELECT <em>columns</em> FROM <em>view</em> WHERE <em>query</em>
-   * </pre>
-   *
-   * where <em>columns</em>, <em>view</em>, and <em>query</em> are
-   * three of the parameters to <code>ListNodes</code>.
-   *
-   * <p>
-   * We want to execute queries of the following form
+   * This method essentially executes queries of the following form
    *
    * <pre>
    *     SELECT <em>columns</em>
@@ -546,7 +401,7 @@ class LivelinkTraversalManager
    *     ORDER BY ModifyDate, DataID
    * </pre>
    *
-   * and only read the first <code>batchSize</code> rows. The ORDER
+   * and only reads the first <code>batchSize</code> rows. The ORDER
    * BY clause is passed to the <code>ListNodes</code> method as
    * part of the WHERE clause. The <em>after_last_checkpoint</em>
    * condition is empty for <code>startTraversal</code>, or
@@ -616,14 +471,9 @@ class LivelinkTraversalManager
     // Connector Manager's thread timeout.
     TraversalTimer timer = new TraversalTimer(traversalContext);
     while (timer.isTicking()) {
-      ClientValue candidates, deletes, results = null;
-      if (isSqlServer) {
-        candidates = getCandidatesSqlServer(checkpoint, batchsz);
-        deletes = getDeletesSqlServer(checkpoint, batchsz);
-      } else {
-        candidates = getCandidatesOracle(checkpoint, batchsz);
-        deletes = getDeletesOracle(checkpoint, batchsz);
-      }
+      ClientValue candidates = getCandidates(checkpoint, batchsz);
+      ClientValue deletes = getDeletes(checkpoint, batchsz);
+      ClientValue results = null;
 
       int numInserts = (candidates == null) ? 0 : candidates.size();
       int numDeletes = (deletes == null) ? 0 : deletes.size();
@@ -650,12 +500,11 @@ class LivelinkTraversalManager
             candidates.toInteger(numInserts - 1, "DataID"));
 
         StringBuilder buffer = new StringBuilder();
-        buffer.append("DataID in (");
         for (int i = 0; i < numInserts; i++) {
           buffer.append(candidates.toInteger(i, "DataID"));
           buffer.append(',');
         }
-        buffer.setCharAt(buffer.length() - 1, ')');
+        buffer.deleteCharAt(buffer.length() - 1);
         results = getResults(buffer.toString());
         numInserts = (results == null) ? 0 : results.size();
       }
@@ -691,33 +540,17 @@ class LivelinkTraversalManager
   }
 
   /**
-   * The sort order of the traversal. We need a complete ordering
-   * based on the modification date, in order to get incremental
-   * crawling without duplicates.
-   */
-  private static final String ORDER_BY = " order by ModifyDate, DataID";
-
-  /**
-   * The sort order of the deleted documents traversal. We need a
-   * complete ordering based on the event date, in order to get
-   * incremental crawling without duplicates.
-   */
-  private static final String DELETE_ORDER_BY =
-      " order by AuditDate, EventID";
-
-  /**
    * Filters the candidates down and returns the main recarray needed
    * for the DocumentList.
    *
-   * @param candidatesPredicate a SQL condition matching the candidates
+   * @param candidatesList a comma-separated string of candidate object IDs
    * @return the main query results
    */
   @VisibleForTesting
-  ClientValue getResults(String candidatesPredicate)
-      throws RepositoryException {
+  ClientValue getResults(String candidatesList) throws RepositoryException {
     if (genealogist == null) {
       // We're either using DTreeAncestors, or we don't need it.
-      return getMatching(candidatesPredicate, true, "WebNodes", selectList,
+      return getMatching(candidatesList, true, "WebNodes", selectList,
           traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
@@ -726,7 +559,7 @@ class LivelinkTraversalManager
       String sqlWhereCondition = connector.getSqlWhereCondition();
       String view =
           (Strings.isNullOrEmpty(sqlWhereCondition)) ? "DTree" : "WebNodes";
-      ClientValue matching = getMatching(candidatesPredicate, false, view,
+      ClientValue matching = getMatching(candidatesList, false, view,
           new String[] { "DataID" }, sysadminClient);
       return (matching.size() == 0) ? null : getMatchingDescendants(matching);
     }
@@ -737,7 +570,7 @@ class LivelinkTraversalManager
    * restrictions using DTreeAncestors, but not does not filter the
    * results by hierarchy without DTreeAncestors.
    *
-   * @param candidatesPredicate a SQL condition matching the candidates
+   * @param candidatesList a comma-separated string of candidate object IDs
    * @param sortResults {@code true} to use an ORDER BY clause on the query,
    *     or {@code false} to let the database use any order
    * @param view the database view to select from
@@ -746,35 +579,42 @@ class LivelinkTraversalManager
    * @return the matching results, which may be the main query results,
    *     or which may need to have the hierarchical filtering applied
    */
-  private ClientValue getMatching(String candidatesPredicate,
+  private ClientValue getMatching(String candidatesList,
       boolean sortResults, String view, String[] columns, Client client)
       throws RepositoryException {
-    String included = getIncluded(candidatesPredicate);
-    String excluded = getExcluded(candidatesPredicate);
+    return client.ListNodes(getMatchingQuery(candidatesList, sortResults),
+        view, columns);
+  }
+
+  /** Transforms a boolean into a 0/1 value for use in a ChoiceFormat. */
+  private int choice(boolean selector) {
+    return selector ? 1 : 0;
+  }
+
+  @VisibleForTesting
+  String getMatchingQuery(String candidatesList, boolean sortResults) {
+    String startNodes = connector.getIncludedLocationNodes();
+    String excludedVolumes = connector.getExcludedVolumeTypes();
+    String excludedNodeTypes = connector.getExcludedNodeTypes();
+    String excludedLocationNodes = connector.getExcludedLocationNodes();
     String sqlWhereCondition = connector.getSqlWhereCondition();
-    StringBuilder buffer = new StringBuilder();
-    buffer.append(candidatesPredicate);
-    if (included != null) {
-      buffer.append(" and ");
-      buffer.append(included);
-    }
-    if (excluded != null) {
-      buffer.append(" and ");
-      buffer.append(excluded);
-    }
-    if (!Strings.isNullOrEmpty(sqlWhereCondition)) {
-      buffer.append(" and (");
-      buffer.append(sqlWhereCondition);
-      buffer.append(')');
-    }
-    if (sortResults)
-      buffer.append(ORDER_BY);
 
-    String query = buffer.toString();
-    if (LOGGER.isLoggable(Level.FINEST))
-      LOGGER.finest("RESULTS QUERY: " + query);
-
-    return client.ListNodes(query, view, columns);
+    return sqlQueries.getWhere("RESULTS QUERY",
+        "LivelinkTraversalManager.getMatching",
+        /* 0 */ candidatesList,
+        /* 1 */ choice(Strings.isNullOrEmpty(startNodes)), // [sic]
+        /* 2 */ choice(connector.getUseDTreeAncestors()),
+        /* 3 */ getDescendants(startNodes, candidatesList),
+        /* 4 */ choice(!Strings.isNullOrEmpty(excludedVolumes)),
+        /* 5 */ excludedVolumes,
+        /* 6 */ choice(!Strings.isNullOrEmpty(excludedNodeTypes)),
+        /* 7 */ excludedNodeTypes,
+        /* 8 */ choice(connector.getUseDTreeAncestors()
+            && !Strings.isNullOrEmpty(excludedLocationNodes)),
+        /* 9 */ getDescendants(excludedLocationNodes, candidatesList),
+        /* 10 */ choice(!Strings.isNullOrEmpty(sqlWhereCondition)),
+        /* 11 */ sqlWhereCondition,
+        /* 12 */ choice(sortResults));
   }
 
   /**
@@ -793,8 +633,9 @@ class LivelinkTraversalManager
       descendants = genealogist.getMatchingDescendants(matching);
     }
     if (descendants != null) {
-      return traversalClient.ListNodes("DataID in (" + descendants + ")"
-          + ORDER_BY, "WebNodes", selectList);
+      String query = sqlQueries.getWhere(null,
+          "LivelinkTraversalManager.getMatchingDescendants", descendants);
+      return traversalClient.ListNodes(query, "WebNodes", selectList);
     } else {
       return null;
     }
@@ -805,71 +646,12 @@ class LivelinkTraversalManager
    * candidates when the traversal user does not have permission for
    * any of the potential candidates.
    */
-  private ClientValue getCandidatesSqlServer(Checkpoint checkpoint,
+  private ClientValue getCandidates(Checkpoint checkpoint,
       int batchsz) throws RepositoryException {
-    StringBuilder buffer = new StringBuilder();
-    if (checkpoint == null || checkpoint.insertDate == null) {
-      buffer.append("1=1");
-    } else {
-      String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
-      buffer.append("(ModifyDate > '");
-      buffer.append(modifyDate);
-      buffer.append("' or (ModifyDate = '");
-      buffer.append(modifyDate);
-      buffer.append("' and DataID > ");
-      buffer.append(checkpoint.insertDataId);
-      buffer.append("))");
-    }
-    buffer.append(ORDER_BY);
-
-    String query = buffer.toString();
-    String view = "DTree";
-    String[] columns = {
-      "top " + batchsz +  " ModifyDate", "DataID" };
-    if (LOGGER.isLoggable(Level.FINEST))
-      LOGGER.finest("CANDIDATES QUERY: " + query);
-
-    return sysadminClient.ListNodes(query, view, columns);
-  }
-
-  /*
-   * We could use FIRST_ROWS(<batchSize>), but that doesn't help
-   * when there is a sort on the query. Simple tests show that it
-   * would allow us to eliminate the outer query with ROWNUM and get
-   * equal performance, except that it doesn't limit the number of
-   * rows, and LAPI materializes the entire result set.
-   *
-   * We need to use the sysadminClient to avoid getting no
-   * candidates when the traversal user does not have permission for
-   * any of the potential candidates.
-   */
-  private ClientValue getCandidatesOracle(Checkpoint checkpoint, int batchsz)
-      throws RepositoryException {
-    StringBuilder buffer = new StringBuilder();
-    if (checkpoint != null && checkpoint.insertDate != null) {
-      /* The TIMESTAMP literal, part of the SQL standard, is supported
-       * by Oracle 9i or later, and not at all by SQL Server.
-       */
-      String modifyDate = dateFormat.toSqlString(checkpoint.insertDate);
-      buffer.append("(ModifyDate > TIMESTAMP'");
-      buffer.append(modifyDate);
-      buffer.append(
-          "' or (ModifyDate = TIMESTAMP'");
-      buffer.append(modifyDate);
-      buffer.append("' and DataID > ");
-      buffer.append(checkpoint.insertDataId);
-      buffer.append(")) and ");
-    }
-    buffer.append("rownum <= ");
-    buffer.append(batchsz);
-
-    String query = buffer.toString();
-    String view = "(select * from DTree" + ORDER_BY + ")";
-    String[] columns = new String[] { "ModifyDate", "DataID" };
-    if (LOGGER.isLoggable(Level.FINEST))
-      LOGGER.finest("CANDIDATES QUERY: " + query);
-
-    return sysadminClient.ListNodes(query, view, columns);
+    return sqlQueries.executeLimit(sysadminClient, "CANDIDATES QUERY",
+        "LivelinkTraversalManager.getCandidates",
+        batchsz, choice(checkpoint.insertDate != null),
+        dateFormat.toSqlString(checkpoint.insertDate), checkpoint.insertDataId);
   }
 
   /** Fetches the list of Deleted Items candidates for SQL Server. */
@@ -883,100 +665,19 @@ class LivelinkTraversalManager
    * an explicitly included location, or an explicitly
    * excluded location.
    */
-  private ClientValue getDeletesSqlServer(Checkpoint checkpoint, int batchsz)
+  private ClientValue getDeletes(Checkpoint checkpoint, int batchsz)
       throws RepositoryException {
     if (deleteSupported == false) {
       return null;
     }
 
-    StringBuilder buffer = new StringBuilder();
-    // This is the same as "AuditStr = 'Delete'", except that as
-    // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
-    // would run afoul of the ListNodesQueryBlackList.
-    buffer.append("AuditID = 2");
-
-    // Only include delete events after the checkpoint.
-    String deleteDate = dateFormat.toSqlMillisString(checkpoint.deleteDate);
-    buffer.append(" and (AuditDate > '");
-    buffer.append(deleteDate);
-    buffer.append("' or (AuditDate = '");
-    buffer.append(deleteDate);
-    buffer.append("' and EventID > ");
-    buffer.append(checkpoint.deleteEventId);
-    buffer.append("))");
-
-    // Exclude items with a SubType we know we excluded when indexing.
+    String deleteDate = (isSqlServer)
+        ? dateFormat.toSqlMillisString(checkpoint.deleteDate)
+        : dateFormat.toSqlString(checkpoint.deleteDate);
     String excludedNodeTypes = connector.getExcludedNodeTypes();
-    if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
-      buffer.append(" and SubType not in (");
-      buffer.append(excludedNodeTypes);
-      buffer.append(')');
-    }
-
-    buffer.append(DELETE_ORDER_BY);
-
-    String query = buffer.toString();
-    String view = "DAuditNew";
-    String[] columns = {
-      "top " + batchsz + " " + AUDIT_DATE_SQL_SERVER, "EventID",
-      "DataID" };
-    if (LOGGER.isLoggable(Level.FINEST))
-      LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
-
-    return sysadminClient.ListNodes(query, view, columns);
-  }
-
-  /** Fetches the list of Deleted Items candidates for Oracle. */
-  /*
-   * I try limit the list of delete candidates to those
-   * recently deleted (via a checkpoint) and items only of
-   * SubTypes we would have indexed in the first place.
-   * Unfortunately, Livelink loses an items ancestral history
-   * when recording the delete event in the audit logs, so
-   * I cannot determine if the deleted item came from
-   * an explicitly included location, or an explicitly
-   * excluded location.
-   */
-  private ClientValue getDeletesOracle(Checkpoint checkpoint, int batchsz)
-      throws RepositoryException {
-    if (deleteSupported == false) {
-      return null;
-    }
-
-    StringBuilder buffer = new StringBuilder();
-    // This is the same as "AuditStr = 'Delete'", except that as
-    // of the July 2008 monthly patch for Livelink 9.7.1, "Delete"
-    // would run afoul of the ListNodesQueryBlackList.
-    buffer.append("AuditID = 2");
-
-    // Only include delete events after the checkpoint.
-    String deleteDate = dateFormat.toSqlString(checkpoint.deleteDate);
-    buffer.append(" and (AuditDate > TIMESTAMP'");
-    buffer.append(deleteDate);
-    buffer.append("' or (AuditDate = TIMESTAMP'");
-    buffer.append(deleteDate);
-    buffer.append("' and EventID > ");
-    buffer.append(checkpoint.deleteEventId);
-    buffer.append("))");
-
-    // Exclude items with a SubType we know we excluded when indexing.
-    String excludedNodeTypes = connector.getExcludedNodeTypes();
-    if (excludedNodeTypes != null && excludedNodeTypes.length() > 0) {
-      buffer.append(" and SubType not in (");
-      buffer.append(excludedNodeTypes);
-      buffer.append(')');
-    }
-
-    buffer.append(" and rownum <= ");
-    buffer.append(batchsz);
-
-    String query = buffer.toString();
-    String view = "(select * from DAuditNew" + DELETE_ORDER_BY + ")";
-    String[] columns = new String[] {
-      AUDIT_DATE_ORACLE, "EventID", "DataID" };
-    if (LOGGER.isLoggable(Level.FINEST))
-      LOGGER.finest("DELETE CANDIDATES QUERY: " + query);
-
-    return sysadminClient.ListNodes(query, view, columns);
+    return sqlQueries.executeLimit(sysadminClient, "DELETE CANDIDATES QUERY",
+        "LivelinkTraversalManager.getDeletes", batchsz,
+        deleteDate, checkpoint.deleteEventId,
+        choice(!Strings.isNullOrEmpty(excludedNodeTypes)), excludedNodeTypes);
   }
 }

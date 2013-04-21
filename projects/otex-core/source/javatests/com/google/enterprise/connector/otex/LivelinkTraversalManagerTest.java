@@ -73,15 +73,25 @@ public class LivelinkTraversalManagerTest extends TestCase {
     jdbcFixture.tearDown();
   }
 
+  private void assertIncludedEmpty(String included) {
+    assertFalse(included, included.contains("and (DataID in"));
+    assertFalse(included, included.contains("and -OwnerID not in"));
+  }
+
+  private void assertExcludedEmpty(String excluded) {
+    assertFalse(excluded, excluded.contains("and SubType not in"));
+    assertFalse(excluded, excluded.contains("and not"));
+  }
+
     public void testExcludedNodes1() throws RepositoryException {
         // No excluded nodes configured.
 
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in "
+        assertTrue(query, query.indexOf("and SubType not in "
                 + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
                 + "345,346,361,374,431,441,3030004,3030201)") != -1);
     }
@@ -94,9 +104,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertNull(excluded);
+        assertExcludedEmpty(query);
     }
 
     public void testExcludedNodes3() throws RepositoryException {
@@ -107,9 +117,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertNull(excluded);
+        assertExcludedEmpty(query);
     }
 
     public void testExcludedNodes4() throws RepositoryException {
@@ -121,9 +131,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in " +
+        assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
     }
 
@@ -135,13 +145,12 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertNull(excluded);
-        assertTrue(included, included.indexOf("-OwnerID not in") != -1);
-        assertTrue(included,
-            included.indexOf("SubType in (148,162)") != -1);
+        assertExcludedEmpty(query);
+        assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
+        assertTrue(query,
+            query.indexOf("SubType in (148,162)") != -1);
     }
 
     public void testExcludedNodes6() throws RepositoryException {
@@ -152,20 +161,21 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertTrue(excluded, excluded.indexOf("not (DataID in (13832) or " +
+        String expectedExcluded = "and not (DataID in (13832) or " +
             "DataID in (select DataID from DTreeAncestors where " +
-            "null and AncestorID in (13832,-13832)))") != -1);
+            "DataID in (null) and AncestorID in (13832,-13832)))";
+        assertTrue(query, query.indexOf(expectedExcluded) != -1);
 
         conn.setExcludedVolumeTypes("2001,4104");
         conn.setExcludedLocationNodes("13832");
 
         sess = conn.login();
         lqtm = (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded2 = lqtm.getExcluded(null);
+        String query2 = lqtm.getMatchingQuery(null, false);
 
-        assertEquals((Object) excluded, excluded2);
+        assertTrue(query2, query2.endsWith(expectedExcluded));
     }
 
     public void testExcludedNodes7() throws RepositoryException {
@@ -177,14 +187,13 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in " +
+        assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
-        assertTrue(included, included.indexOf("-OwnerID not in") != -1);
-        assertTrue(included,
-            included.indexOf("SubType in (148,162)") != -1);
+        assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
+        assertTrue(query,
+            query.indexOf("SubType in (148,162)") != -1);
     }
 
     public void testExcludedNodes8() throws RepositoryException {
@@ -195,15 +204,14 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertTrue(excluded, excluded.indexOf("not (DataID in (13832) or " +
+        assertTrue(query, query.indexOf("and not (DataID in (13832) or " +
             "DataID in (select DataID from DTreeAncestors where " +
-            "null and AncestorID in (13832,-13832)))") != -1);
-        assertTrue(included, included.indexOf("-OwnerID not in") != -1);
-        assertTrue(included,
-            included.indexOf("SubType in (148,162)") != -1);
+            "DataID in (null) and AncestorID in (13832,-13832)))") != -1);
+        assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
+        assertTrue(query,
+            query.indexOf("SubType in (148,162)") != -1);
     }
 
     public void testExcludedNodes9() throws RepositoryException {
@@ -215,14 +223,13 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertNull(included, included);
-        assertTrue(excluded, excluded.indexOf("SubType not in " +
+        assertIncludedEmpty(query);
+        assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
             "not (DataID in (13832) or DataID in (select DataID from " + 
-            "DTreeAncestors where null and " +
+            "DTreeAncestors where DataID in (null) and " +
             "AncestorID in (13832,-13832)))") != -1);
     }
 
@@ -235,17 +242,16 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertTrue(excluded, excluded.indexOf("SubType not in " +
+        assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
             "not (DataID in (13832) or DataID in (select DataID from " + 
-            "DTreeAncestors where null and " +
+            "DTreeAncestors where DataID in (null) and " +
             "AncestorID in (13832,-13832)))") != -1);
-        assertTrue(included, included.indexOf("-OwnerID not in") != -1);
-        assertTrue(included,
-            included.indexOf("SubType in (148,162)") != -1);
+        assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
+        assertTrue(query,
+            query.indexOf("SubType in (148,162)") != -1);
     }
 
     /**
@@ -261,13 +267,13 @@ public class LivelinkTraversalManagerTest extends TestCase {
         Session sess = conn.login();
         LivelinkTraversalManager lqtm =
             (LivelinkTraversalManager) sess.getTraversalManager();
-        String excluded = lqtm.getExcluded(null);
-        String included = lqtm.getIncluded(null);
+        String query = lqtm.getMatchingQuery(null, false);
 
-        assertNull(excluded);
-        assertEquals("(DataID in (2000) or DataID in (select DataID from " +
-            "DTreeAncestors where null and AncestorID in (2000,-2000)))",
-            included);
+        assertExcludedEmpty(query);
+        assertTrue(query, query.indexOf(
+            " and (DataID in (2000) or DataID in (select DataID from "
+            + "DTreeAncestors where DataID in (null) "
+            + "and AncestorID in (2000,-2000)))") != -1);
     }
 
     /** Tests a null select expressions map. */
@@ -397,7 +403,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
       String sqlWhereCondition, int expectedRows) throws Exception {
     LivelinkTraversalManager ltm =
         getObjectUnderTest(useDTreeAncestors, sqlWhereCondition);
-    ClientValue results = ltm.getResults("DataID in (24, 42)");
+    ClientValue results = ltm.getResults("24, 42");
 
     if (expectedRows == 0) {
       assertNullOrEmpty(results);
