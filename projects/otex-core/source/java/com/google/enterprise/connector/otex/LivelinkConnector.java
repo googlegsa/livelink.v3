@@ -191,6 +191,9 @@ public class LivelinkConnector implements Connector {
    */
   private boolean isSqlServer;
 
+  /** The SQL queries resource bundle wrapper. */
+  private SqlQueries sqlQueries;
+
   /** The Traversal username.  */
   private String traversalUsername;
 
@@ -2046,17 +2049,8 @@ public class LivelinkConnector implements Connector {
    */
   private void validateDTreeAncestors(Client client)
       throws RepositoryException {
-    String query;
-    String view = "DTreeAncestors";
-    String[] columns;
-    if (isSqlServer) {
-      query = "1=1";
-      columns = new String[] { "TOP 1 DataID" };
-    } else {
-      query = "rownum = 1";
-      columns = new String[] { "DataID" };
-    }
-    ClientValue ancestors = client.ListNodes(query, view, columns);
+    ClientValue ancestors = sqlQueries.execute(client, null,
+        "LivelinkConnector.validateDTreeAncestors");
     if (ancestors.size() > 0) {
       LOGGER.finest("The Livelink DTreeAncestors table is not empty");
     } else {
@@ -2094,12 +2088,9 @@ public class LivelinkConnector implements Connector {
     if (!Strings.isNullOrEmpty(includedLocationNodes)) {
       String ancestorNodes =
           Genealogist.getAncestorNodes(includedLocationNodes);
-      String query = "DataID in (select DataID from DTreeAncestors " +
-          "where AncestorID in (" + ancestorNodes + ")) " +
-          "or DataID in (" + includedLocationNodes + ")";
-      String view = "DTree";
-      String[] columns = { "min(ModifyDate) as minModifyDate" };
-      ClientValue results = client.ListNodes(query, view, columns);
+      ClientValue results = sqlQueries.execute(client, null,
+          "LivelinkConnector.validateIncludedLocationStartDate",
+          ancestorNodes, includedLocationNodes);
 
       if (results.size() > 0 &&
           results.isDefined(0, "minModifyDate")) {
@@ -2149,26 +2140,11 @@ public class LivelinkConnector implements Connector {
     String id = info.toString("ID");
     String volumeId = info.toString("VolumeID");
 
-    // For the correlated subquery to work, we have to refer to
-    // DTree using the "a" range variable that LAPI adds behind
-    // the scenes. This query is designed to be very fast and
-    // avoid table scans. For performance reasons, we don't
-    // restrict this query by subtype.
-    String query = "not exists (select DataID from DTreeAncestors " +
-        "where DataID = a.DataID and AncestorID = " + id + ") " +
-        "and OwnerID = " + volumeId + " and DataID <> " + id;
-    String view = "DTree";
-    String[] columns;
-    if (isSqlServer) {
-      columns = new String[] { "TOP 1 DataID" };
-    } else {
-      query += " and rownum = 1";
-      columns = new String[] { "DataID" };
-    }
-
     // FIXME: We don't want to log the exception as an error, but it
     // would be nice to be able to log it as a warning.
-    ClientValue missing = client.ListNodesNoThrow(query, view, columns);
+    ClientValue missing = sqlQueries.executeNoThrow(client, null,
+        "LivelinkConnector.validateEnterpriseWorkspaceAncestors",
+        id, volumeId);
     if (missing == null) {
       LOGGER.warning("Unable to check for missing entries in the " +
           "Livelink DTreeAncestors table.");
@@ -2191,17 +2167,9 @@ public class LivelinkConnector implements Connector {
       throws RepositoryException {
     // TODO: We should use the traversal client here, because it seems
     // like permissions are a valid concern in this case.
-    String query;
-    String view = "WebNodes";
-    String[] columns;
-    if (isSqlServer) {
-      query = sqlWhereCondition;
-      columns = new String[] { "TOP 1 DataID", "PermID" };
-    } else {
-      query = "(" + sqlWhereCondition + ") and rownum = 1";
-      columns = new String[] { "DataID", "PermID" };
-    }
-    ClientValue rows = client.ListNodes(query, view, columns);
+    ClientValue rows = sqlQueries.execute(client, null,
+        "LivelinkConnector.validateSqlWhereCondition",
+        sqlWhereCondition);
     if (rows.size() == 0) {
       // TODO: ConfigurationException or LivelinkException?
       throw new LivelinkException(
@@ -2292,6 +2260,7 @@ public class LivelinkConnector implements Connector {
     }
 
     autoDetectServtype(client);
+    sqlQueries = new SqlQueries(isSqlServer);
 
     // Check first to see if we are going to need the
     // DTreeAncestors table.

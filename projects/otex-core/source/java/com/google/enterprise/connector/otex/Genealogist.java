@@ -127,6 +127,9 @@ class Genealogist {
   /** The Livelink client to use to execute SQL queries. */
   protected final Client client;
 
+  /** The SQL queries resource bundle wrapper. */
+  protected final SqlQueries sqlQueries;
+
   /** A set based on the includedLocationNodes property value. */
   private final Set<Integer> includedSet;
 
@@ -150,6 +153,11 @@ class Genealogist {
   public Genealogist(Client client, String startNodes, String excludedNodes,
                      int minCacheSize, int maxCacheSize) {
     this.client = client;
+
+    // TODO(jlacey): We're saying this is SQL Server, because we aren't
+    // wired to Connector.isSqlServer. All the genealogist queries are
+    // DB agnostic at the moment, so this is (just barely) OK.
+    this.sqlQueries = new SqlQueries(true);
 
     this.includedSet = getAncestorSet(startNodes);
     this.excludedSet = getAncestorSet(excludedNodes);
@@ -267,9 +275,8 @@ class Genealogist {
     // 2 results, since we are asking for the parents of two nodes,
     // one or both of which might not exist.
     queryCount++;
-    ClientValue parent = client.ListNodes(
-        "DataID in (" + objectId + "," + -objectId + ")",
-        "DTree", new String[] { "ParentID" });
+    ClientValue parent = sqlQueries.execute(client, null,
+        "Genealogist.getParent", objectId, -objectId);
     switch (parent.size()) {
       case 0:
         // The nodes do not exist.

@@ -30,6 +30,11 @@ class SqlQueries {
   private static final Logger LOGGER =
       Logger.getLogger(SqlQueries.class.getName());
 
+  /** Transforms a boolean into a 0/1 value for use in a ChoiceFormat. */
+  public static int choice(boolean selector) {
+    return selector ? 1 : 0;
+  }
+
   private final ResourceBundle resources;
 
   SqlQueries(boolean isSqlServer) {
@@ -44,6 +49,14 @@ class SqlQueries {
     String view = resources.getString(key + ".from");
     String query = getWhere(logPrefix, key, parameters);
     return client.ListNodes(query, view, columns);
+  }
+
+  public ClientValue executeNoThrow(Client client, String logPrefix, String key,
+      Object... parameters) throws RepositoryException {
+    String[] columns = resources.getStringArray(key + ".select");
+    String view = resources.getString(key + ".from");
+    String query = getWhere(logPrefix, key, parameters);
+    return client.ListNodesNoThrow(query, view, columns);
   }
 
   /**
@@ -101,6 +114,37 @@ class SqlQueries {
   public static class Resources extends ListResourceBundle {
     protected Object[][] getContents() {
       return new Object[][] {
+        { "LivelinkConnector.validateIncludedLocationStartDate.select",
+          new String[] {
+            "min(ModifyDate) as minModifyDate" } },
+        { "LivelinkConnector.validateIncludedLocationStartDate.from",
+          "DTree" },
+        { "LivelinkConnector.validateIncludedLocationStartDate.where",
+          "DataID in (select DataID from DTreeAncestors "
+          + "where AncestorID in ({0})) or DataID in ({1})" },
+
+        { "Genealogist.getParent.select",
+          new String[] {
+            "ParentID" } },
+        { "Genealogist.getParent.from",
+          "DTree" },
+        { "Genealogist.getParent.where",
+          "DataID in ({0,number,#},{1,number,#})" },
+
+        { "HybridGenealogist.getParents.select",
+          // The StepParent column uses a correlated subquery (using
+          // the implicit "a" range variable over DTree added by LAPI)
+          // to lookup the parent object ID for volumes.
+          new String[] {
+            "DataID",
+            "ParentID",
+            "(select ParentID from DTree b where -a.DataID = b.DataID "
+            + "and b.ParentID <> -1) as StepParentID" } },
+        { "HybridGenealogist.getParents.from",
+          "DTree" },
+        { "HybridGenealogist.getParents.where",
+          "DataID in ({0})" },
+
         { "LivelinkTraversalManager.getDescendants.where",
           "(DataID in ({0}) or "
           + "DataID in (select DataID from DTreeAncestors where "
@@ -134,6 +178,51 @@ class SqlQueries {
 
         { "LivelinkTraversalManager.getMatchingDescendants.where",
           "DataID in ({0})" + ORDER_BY },
+
+        { "LivelinkAuthorizationManager.getExcludedVolumeId.select",
+          new String[] {
+            "DataID",
+            "PermID" } },
+        { "LivelinkAuthorizationManager.getExcludedVolumeId.from",
+          "DTree" },
+        { "LivelinkAuthorizationManager.getExcludedVolumeId.where",
+          "SubType = {0}{1,choice,0#|1# and DataID in ({2})}" },
+
+        { "LivelinkAuthorizationManager.addAuthorizedDocids.select",
+          new String[] {
+            "DataID",
+            "PermID" } },
+        { "LivelinkAuthorizationManager.addAuthorizedDocids.from",
+          "DTree" },
+        { "LivelinkAuthorizationManager.addAuthorizedDocids.where",
+          "DataID in ({0})"
+
+          // If we are excluding deleted documents from the result
+          // set, add a subquery to eliminate those docids that are in
+          // the DeletedDocs table. Open Text uses ParentID in the
+          // Undelete OScript code, so we will, too.
+          + "{1,choice,0#|1#' and ParentID <> {2,number,#}'}"
+
+          // If we are excluding items in the workflow volume, add a
+          // subquery to eliminate those.
+          + "{3,choice,0#|1#' and OwnerID <> {4,number,#}'}"
+
+          // If we are excluding hidden items, add a subquery to
+          // eliminate those.
+          + "{5,choice,0#|1#'"
+          // This is a correlated subquery (using the implicit "a"
+          // range variable added by LAPI) to only check for the
+          // documents we're authorizing.
+          + " and Catalog <> {6,number,#} and DataID not in "
+          + "(select Anc.DataID from DTreeAncestors Anc join DTree T "
+          + "on Anc.AncestorID = T.DataID where Anc.DataID = a.DataID "
+          + "and T.Catalog = {6,number,#}"
+          // Explicitly included items and their descendants are allowed
+          // even if they are hidden.
+          + "{7,choice,0#|1# and Anc.AncestorID not in ({8}) "
+          + "and Anc.AncestorID not in (select AncestorID from DTreeAncestors "
+          + "where DataID in ({9}))}"
+          + ")'}" },
       };
     }
   }
@@ -141,6 +230,38 @@ class SqlQueries {
   public static class Resources_mssql extends ListResourceBundle {
     protected Object[][] getContents() {
       return new Object[][] {
+        { "LivelinkConnector.validateDTreeAncestors.select",
+          new String[] {
+            "TOP 1 DataID" } },
+        { "LivelinkConnector.validateDTreeAncestors.from",
+          "DTreeAncestors" },
+        { "LivelinkConnector.validateDTreeAncestors.where",
+          "1=1" },
+
+        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.select",
+          new String[] {
+            "TOP 1 DataID" } },
+        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.from",
+          "DTree" },
+        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.where",
+          // For the correlated subquery to work, we have to refer to
+          // DTree using the "a" range variable that LAPI adds behind
+          // the scenes. This query is designed to be very fast and
+          // avoid table scans. For performance reasons, we don't
+          // restrict this query by subtype.
+          "not exists (select DataID from DTreeAncestors "
+          + "where DataID = a.DataID and AncestorID = {0}) "
+          + "and OwnerID = {1} and DataID <> {0}" },
+
+        { "LivelinkConnector.validateSqlWhereCondition.select",
+          new String[] {
+            "TOP 1 DataID",
+            "PermID" } },
+        { "LivelinkConnector.validateSqlWhereCondition.from",
+          "WebNodes" },
+        { "LivelinkConnector.validateSqlWhereCondition.where",
+          "{0}" },
+
         { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.select",
           new String[] {
             AUDIT_DATE_SQL_SERVER,
@@ -186,6 +307,39 @@ class SqlQueries {
   public static class Resources_oracle extends ListResourceBundle {
     protected Object[][] getContents() {
       return new Object[][] {
+        { "LivelinkConnector.validateDTreeAncestors.select",
+          new String[] {
+            "DataID" } },
+        { "LivelinkConnector.validateDTreeAncestors.from",
+          "DTreeAncestors" },
+        { "LivelinkConnector.validateDTreeAncestors.where",
+          "rownum = 1" },
+
+        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.select",
+          new String[] {
+            "DataID" } },
+        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.from",
+          "DTree" },
+        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.where",
+          // For the correlated subquery to work, we have to refer to
+          // DTree using the "a" range variable that LAPI adds behind
+          // the scenes. This query is designed to be very fast and
+          // avoid table scans. For performance reasons, we don't
+          // restrict this query by subtype.
+          "not exists (select DataID from DTreeAncestors "
+          + "where DataID = a.DataID and AncestorID = {0}) "
+          + "and OwnerID = {1} and DataID <> {0}"
+          + " and rownum = 1" },
+
+        { "LivelinkConnector.validateSqlWhereCondition.select",
+          new String[] {
+            "DataID",
+            "PermID" } },
+        { "LivelinkConnector.validateSqlWhereCondition.from",
+          "WebNodes" },
+        { "LivelinkConnector.validateSqlWhereCondition.where",
+          "({0}) and rownum = 1" },
+
         { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.select",
           new String[] {
             AUDIT_DATE_ORACLE,

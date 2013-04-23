@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.enterprise.connector.otex.SqlQueries.choice;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.enterprise.connector.otex.client.Client;
@@ -584,11 +586,6 @@ class LivelinkTraversalManager
       throws RepositoryException {
     return client.ListNodes(getMatchingQuery(candidatesList, sortResults),
         view, columns);
-  }
-
-  /** Transforms a boolean into a 0/1 value for use in a ChoiceFormat. */
-  private int choice(boolean selector) {
-    return selector ? 1 : 0;
   }
 
   @VisibleForTesting

@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.enterprise.connector.otex.SqlQueries.choice;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
@@ -45,6 +47,9 @@ public class LivelinkAuthorizationManager
 
   /** Client factory for obtaining client instances. */
   private ClientFactory clientFactory;
+
+  /** The SQL queries resource bundle wrapper. */
+  private SqlQueries sqlQueries;
 
   /** 
    * If deleted documents are excluded from indexing, then we should
@@ -100,6 +105,7 @@ public class LivelinkAuthorizationManager
     this.connector = (LivelinkConnector) connector;
     this.clientFactory = this.connector.getClientFactory();
     Client client = clientFactory.createClient();
+    this.sqlQueries = new SqlQueries(this.connector.isSqlServer());
     this.undeleteVolumeId = getExcludedVolumeId(402, "UNDELETE", client);
     this.workflowVolumeId = getExcludedVolumeId(161, "WORKFLOW", client);
     this.showHiddenItems = this.connector.getShowHiddenItems().contains("all");
@@ -251,12 +257,24 @@ public class LivelinkAuthorizationManager
     Client client = clientFactory.createClient();
     client.ImpersonateUserEx(username, connector.getDomainName());
 
-    String query;
-    while ((query = getDocidQuery(iterator)) != null) {
-      if (LOGGER.isLoggable(Level.FINEST))
-        LOGGER.finest("AUTHORIZATION QUERY: " + query);
-      ClientValue results = client.ListNodes(query, "DTree",
-          new String[] { "DataID", "PermID" });
+    String docids;
+    while ((docids = getDocids(iterator)) != null) {
+      String ancestorNodes;
+      String startNodes = connector.getIncludedLocationNodes();
+      if (Strings.isNullOrEmpty(startNodes)) {
+        ancestorNodes = null;
+      } else {
+        ancestorNodes = Genealogist.getAncestorNodes(startNodes);
+      }
+
+      ClientValue results = sqlQueries.execute(client, "AUTHORIZATION QUERY",
+          "LivelinkAuthorizationManager.addAuthorizedDocids",
+          /* 0 */ docids,
+          /* 1 */ choice(undeleteVolumeId != 0), undeleteVolumeId,
+          /* 3 */ choice(workflowVolumeId != 0), -workflowVolumeId,
+          /* 5 */ choice(!showHiddenItems), Client.DISPLAYTYPE_HIDDEN,
+          /* 7 */ choice(!Strings.isNullOrEmpty(startNodes)), startNodes,
+          /* 9 */ ancestorNodes);
       for (int i = 0; i < results.size(); i++)
         authorized.add(creator.fromString(results.toString(i, "DataID")));
     }
@@ -282,77 +300,24 @@ public class LivelinkAuthorizationManager
   }
 
   /**
-   * Builds a SQL query of the form "DataId in (...)" where the
-   * contents of the iterator's list are the provided docids.  
-   * At most, 1,000 docids will be added to the query due to SQL
-   * syntax limits in Oracle.
-   *
-   * If we are excluding deleted documents from the result set,
-   * add a subquery to eliminate those docids that are
-   * in the DeletedDocs table.
-   *
-   * If we are excluding items in the workflow volume, add a subquery
-   * to eliminate those.
-   *
-   * If we are excluding hidden items, add a subquery to eliminate
-   * those.
+   * Builds a comma-separated string of up to 1,000 docids from the
+   * given iterator. At most, 1,000 docids will be added to the query
+   * due to SQL syntax limits in Oracle.
    *
    * @param docids the docids to include in the query
-   * @return the SQL query string; null if no docids are provided
+   * @return the comma-separated string; null if no docids are provided
    */
   @VisibleForTesting
-  String getDocidQuery(Iterator<String> iterator) {
+  String getDocids(Iterator<String> iterator) {
     if (!iterator.hasNext())
       return null; 
 
-    StringBuilder query = new StringBuilder("DataID in ("); 
+    StringBuilder buffer = new StringBuilder();
     for (int i = 0; i < 1000 && iterator.hasNext(); i++ ) 
-      query.append(iterator.next()).append(',');
-    query.setCharAt(query.length() - 1, ')');
-
-    if (undeleteVolumeId != 0) {
-      // Open Text uses ParentID in the Undelete OScript code, so we
-      // will, too.
-      query.append(" and ParentID <> " + undeleteVolumeId);
-    }
-
-    if (workflowVolumeId != 0)
-      query.append(" and OwnerID <> -" + workflowVolumeId);
-
-    if (!showHiddenItems) {
-      // This is a correlated subquery (using the implicit "a"
-      // range variable added by LAPI) to only check for the
-      // documents we're authorizing.
-      String hidden = String.valueOf(Client.DISPLAYTYPE_HIDDEN);
-      query.append(" and Catalog <> ");
-      query.append(hidden);
-      query.append(" and DataID not in (select Anc.DataID ");
-      query.append("from DTreeAncestors Anc join DTree T ");
-      query.append("on Anc.AncestorID = T.DataID ");
-      query.append("where Anc.DataID = a.DataID ");
-      query.append("and T.Catalog = ");
-      query.append(hidden);
-
-      // Explicitly included items and their descendants are allowed
-      // even if they are hidden.
-      String startNodes = connector.getIncludedLocationNodes();
-      if (!Strings.isNullOrEmpty(startNodes)) {
-        String ancestorNodes = Genealogist.getAncestorNodes(startNodes);
-        query.append(" and Anc.AncestorID not in (");
-        query.append(startNodes);
-        query.append(") and Anc.AncestorID not in ");
-        query.append("(select AncestorID from DTreeAncestors ");
-        query.append("where DataID in (");
-        query.append(ancestorNodes);
-        query.append("))");
-      }
-
-      query.append(')');
-    }
-
-    return query.toString();
+      buffer.append(iterator.next()).append(',');
+    buffer.deleteCharAt(buffer.length() - 1);
+    return buffer.toString();
   }
-
 
   /**
    * Gets the volume ID of an excluded volume type.  
@@ -373,31 +338,34 @@ public class LivelinkAuthorizationManager
       throws RepositoryException {
     // First look for volume subtype in the excludedVolumeTypes.
     String exclVolTypes = connector.getExcludedVolumeTypes();
-    if ((exclVolTypes != null) && (exclVolTypes.length() > 0)) {
-      String[] subtypes = exclVolTypes.split(",");
-      for (int i = 0; i < subtypes.length; i++) {
-        if (String.valueOf(subtype).equals(subtypes[i]))
-          return getNodeId("SubType = " + subtype, label, client);
-      }
+    if (!Strings.isNullOrEmpty(exclVolTypes)
+        && arrayContains(exclVolTypes.split(","), String.valueOf(subtype))) {
+      return getNodeId(label, client, subtype, choice(false));
     }
 
     // If volume subtype was not excluded, then look for
     // explicitly excluded volume nodes in excludedLocationNodes.
     String exclNodes = connector.getExcludedLocationNodes();
-    if ((exclNodes != null) && (exclNodes.length() > 0)) {
-      String query =
-          "SubType = " + subtype + " and DataID in (" + exclNodes + ")";
-      LOGGER.finest(query);
-      return getNodeId(query, label, client);
+    if (!Strings.isNullOrEmpty(exclNodes)) {
+      return getNodeId(label, client, subtype, choice(true), exclNodes);
     }
 
     return 0;
   }
 
-  private int getNodeId(String query, String label, Client client)
+  private boolean arrayContains(String[] array, String target) {
+    for (String element : array) {
+      if (element.equals(target)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private int getNodeId(String label, Client client, Object... parameters)
       throws RepositoryException {
-    ClientValue results = client.ListNodes(query, "DTree",
-        new String[] { "DataID", "PermID" });
+    ClientValue results = sqlQueries.execute(client, null,
+        "LivelinkAuthorizationManager.getExcludedVolumeId", parameters);
     if (results.size() > 0) {
       int volumeId = results.toInteger(0, "DataID");
       if (LOGGER.isLoggable(Level.FINEST))

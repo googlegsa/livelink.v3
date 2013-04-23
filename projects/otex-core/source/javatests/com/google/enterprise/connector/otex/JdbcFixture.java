@@ -32,7 +32,7 @@ class JdbcFixture {
       + "(DataID int primary key, ParentID int, PermID int, "
       + "SubType int, ModifyDate timestamp, Name varchar, "
       + "DComment varchar, CreateDate timestamp, CreatedBy int, "
-      + "OwnerID int, UserID int)";
+      + "OwnerID int, UserID int, Catalog int default 0)";
 
   private static final String CREATE_TABLE_DTREEANCESTORS =
       "create table DTreeAncestors (DataID int, AncestorID int)";
@@ -46,7 +46,7 @@ class JdbcFixture {
       + "(DataID int primary key, ParentID int, PermID int, "
       + "SubType int, ModifyDate timestamp, Name varchar, "
       + "DComment varchar, CreateDate timestamp, OwnerName varchar, "
-      + "OwnerID int, UserID int, "
+      + "OwnerID int, UserID int, Catalog int default 0, "
       + "MimeType varchar, DataSize bigint)";
 
   /** The database connection. */

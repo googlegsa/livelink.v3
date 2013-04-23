@@ -104,10 +104,8 @@ class HybridGenealogist extends Genealogist {
     // sign must be on the correlated column (a.DataID) and not
     // b.DataID, or Oracle will avoid using an index.
     queryCount++;
-    ClientValue parents = client.ListNodes("DataID in (" + objectIds + ")",
-        "DTree", new String[] { "DataID", "ParentID",
-            "(select ParentID from DTree b where -a.DataID = b.DataID "
-            + "and b.ParentID <> -1) as StepParentID" });
+    ClientValue parents = sqlQueries.execute(client, null,
+        "HybridGenealogist.getParents", objectIds);
     return new Parents(parents);
   }
 

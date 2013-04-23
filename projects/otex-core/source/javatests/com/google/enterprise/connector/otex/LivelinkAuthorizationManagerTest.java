@@ -30,6 +30,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -67,8 +68,8 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         + "values(4104, 2002)", // The values do not matter.
         "insert into DTree(DataID, ParentID, OwnerID, SubType) "
         + "values(2100, 2000, -2000, 144)",
-        "insert into DTree(DataID, ParentID, OwnerID, SubType) "
-        + "values(2101, 2000, -2000, 144)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, Catalog) "
+        + "values(2101, 2000, -2000, 144, 2)",
         "insert into DTree(DataID, ParentID, OwnerID, SubType) "
         + "values(2102, 2000, -1729, 144)",
         "insert into DTree(DataID, ParentID, OwnerID, SubType) "
@@ -89,21 +90,47 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     client = clientFactory.createClient();
   }
 
+  public void testGetDocids() throws RepositoryException {
+    final String docid = "hello, world";
+    Iterator<String> it = Collections.nCopies(1001, docid).iterator();
+
+    afterInit();
+
+    // The first request returns 1000 comma-separated copies of the docid.
+    String docids = lam.getDocids(it);
+    assertNotNull(docids);
+    assertEquals(docid.length() * 1000 + 999, docids.length());
+
+    // The second request has just one docid left.
+    assertEquals(docid, lam.getDocids(it));
+
+    // The third request has none left.
+    assertNull(lam.getDocids(it));
+  }
   /**
    * Tests that showing hidden items doesn't include a query restriction.
    *
    * @throws RepositoryException if an unexpected error occurs
    */
-  public void testShowHiddenItems() throws RepositoryException {
-    // This just needs to be a non-empty array of strings.
-    List<String> docids = Arrays.asList(new String[] { "42" });
+  public void testShowHiddenItems_true() throws RepositoryException {
+    afterInit();
 
-    Session sess = conn.login();
-    LivelinkAuthorizationManager lam =
-        (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-    String query = lam.getDocidQuery(docids.iterator());
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.of("2100", "2101"),
+            identity);
+    assertPermittedDocs(ImmutableSet.of("2100", "2101"), responses);
+  }
 
-    assertTrue(query, query.indexOf("Catalog") == -1);
+  public void testShowHiddenItems_false() throws RepositoryException {
+    conn.setShowHiddenItems("false");
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.of("2100", "2101"),
+            identity);
+    assertPermittedDocs(ImmutableSet.of("2100"), responses);
   }
 
   /**
@@ -113,25 +140,15 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
    * @throws RepositoryException if an unexpected error occurs
    */
   public void testHiddenItemSubtypes() throws RepositoryException {
-    // This just needs to be a non-empty array of strings.
-    List<String> docids = Arrays.asList(new String[] { "42" });
+    // Treated as false, does not ignore documents.
+    conn.setShowHiddenItems("{ 144 }");
+    afterInit();
 
-    conn.setShowHiddenItems("false");
-
-    Session sess = conn.login();
-    LivelinkAuthorizationManager lam =
-        (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-    String query = lam.getDocidQuery(docids.iterator());
-
-    assertTrue(query, query.indexOf("Catalog = 2") != -1);
-
-    conn.setShowHiddenItems("{ 1234 }");
-
-    sess = conn.login();
-    lam = (LivelinkAuthorizationManager) sess.getAuthorizationManager();
-    String query2 = lam.getDocidQuery(docids.iterator());
-
-    assertEquals((Object) query, query2);
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.of("2100", "2101"),
+            identity);
+    assertPermittedDocs(ImmutableSet.of("2100"), responses);
   }
 
   /** Tests the default excluded volumes. */
