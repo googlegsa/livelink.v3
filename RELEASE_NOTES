@@ -10,7 +10,85 @@ supplements the main documentation.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
-Release 3.0.6, Jan 14, 2012
+Release 3.2.0, Apr 30, 2013
+===========================
+
+Introduction
+------------
+This is an upgrade release with some enhancements. Users of previous
+releases are encouraged to review the changes below to determine
+whether to upgrade.
+
+Summary of Changes
+------------------
+  * Fixed issue 8610278: Use DTree instead of WebNodes for the
+    connector authorization queries. Using DTree is faster than using
+    the WebNodes joined view.
+
+  * Fixed issues 8054421, 7005056, 6032685: Support OpenText Content
+    Server 10. This also applies to the latest updates of Livelink
+    9.7.1. See the sections below for deployment changes with these
+    versions of OpenText Content Server.
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 3.0.6 may be
+used with this version. This version works with Connector Manager
+version 3.0.0 or later. Earlier versions of the Connector Manager will
+not work correctly with this version of the connector. This product is
+designed to function with OpenText Livelink versions 9.5 SP1, 9.6,
+9.7, and 9.7.1, and OpenText Content Server 10.
+
+Customers running OpenText Content Server 10, or Livelink 9.7.1 with
+the July 2008 or later monthly patch, must update the ListNodes white
+list in opentext.ini as described in the section below.
+
+Customers upgrading from version 2.6.12 or earlier who have edited the
+authenticationManager definition in connectorInstance.xml must update
+those files. The authenticationManager property is now overridable.
+Please see the Advanced Configuration wiki page for details, and
+contact Google Enterprise Support if you need assistance.
+
+Enabling ListNodes with this Release
+------------------------------------
+The list of views that need to be added to the white list has changed.
+
+http://www.google.com/support/enterprise/static/gsa/docs/admin/connector_30/livelink/livelink.html#1083570
+
+For SQL Server-based installations, you must now add the following
+tables and derived views to the white list:
+
+DTreeAncestors
+(select b.*, (select ParentID from DTree c 
+              where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID
+    from DTree b)
+(select b.*, CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate
+    from DAuditNew b)
+(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize
+    from WebNodes b)
+
+ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)','(select b.*, CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate from DAuditNew b)','(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize from WebNodes b)'}
+
+For Oracle-based installations, you must now add the following tables
+and derived views to the white list:
+
+DTreeAncestors
+(select * from DTree order by ModifyDate, DataID)
+(select b.*, (select ParentID from DTree c
+              where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID
+    from DTree b)
+(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate
+    from DAuditNew b
+    order by AuditDate, EventID)
+(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize
+    from WebNodes b)
+
+ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select * from DTree order by ModifyDate, DataID)','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)',"(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate from DAuditNew b order by AuditDate, EventID)",'(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize from WebNodes b)'}
+
+Note: The derived view with 'YYYY-MM-DD HH24:MI:SS' uses double quotes.
+
+
+Release 3.0.6, Jan 14, 2013
 ===========================
 
 Introduction
