@@ -270,10 +270,12 @@ class LivelinkTraversalManager
             dateFormat.parse(results.toString(0, "AuditDate")),
             results.toValue(0, "EventID"));
       } else {
+        LOGGER.fine("Unable to establish initial Deleted Items " +
+            "Checkpoint: No query results.");
         checkpoint.setDeleteCheckpoint(new Date(), null);
       }
     } catch (Exception e) {
-      LOGGER.warning( "Error establishing initial Deleted Items " +
+      LOGGER.warning("Error establishing initial Deleted Items " +
           "Checkpoint: " + e.getMessage());
       try {
         checkpoint.setDeleteCheckpoint(new Date(), null);

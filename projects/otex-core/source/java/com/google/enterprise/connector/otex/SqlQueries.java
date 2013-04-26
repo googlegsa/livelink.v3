@@ -61,6 +61,7 @@ class SqlQueries {
 
   public String getWhere(String logPrefix, String key, Object... parameters) {
     String pattern = resources.getString(key + ".where");
+    LOGGER.log(Level.FINEST, "QUERY KEY: {0}", key);
     String query = MessageFormat.format(pattern, parameters);
     if (logPrefix != null && LOGGER.isLoggable(Level.FINEST))
       LOGGER.finest(logPrefix + ": " + query);
@@ -107,7 +108,8 @@ class SqlQueries {
       return new Object[][] {
         { "Genealogist.getParent.select",
           new String[] {
-            "ParentID" } },
+            "ParentID",
+            "DataID" } },
         { "Genealogist.getParent.from",
           "DTree" },
         { "Genealogist.getParent.where",
@@ -225,7 +227,8 @@ class SqlQueries {
 
         { "LivelinkConnector.validateIncludedLocationStartDate.select",
           new String[] {
-            "ModifyDate as minModifyDate" } },
+            "ModifyDate as minModifyDate",
+            "DataID" } },
         { "LivelinkConnector.validateIncludedLocationStartDate.from",
           "DTree" },
         { "LivelinkConnector.validateIncludedLocationStartDate.where",
@@ -267,7 +270,8 @@ class SqlQueries {
         { "LivelinkTraversalManager.getLastAuditEvent.select",
           new String[] {
             "GoogleAuditDate as AuditDate",
-            "EventID" } },
+            "EventID",
+            "DataID" } },
         { "LivelinkTraversalManager.getLastAuditEvent.from",
           DAUDITNEW_VIEW_SQL_SERVER },
         { "LivelinkTraversalManager.getLastAuditEvent.where",
@@ -325,7 +329,8 @@ class SqlQueries {
 
         { "LivelinkConnector.validateIncludedLocationStartDate.select",
           new String[] {
-            "ModifyDate as minModifyDate" } },
+            "ModifyDate as minModifyDate",
+            "DataID" } },
         { "LivelinkConnector.validateIncludedLocationStartDate.from",
           DTREE_VIEW_ORACLE },
         { "LivelinkConnector.validateIncludedLocationStartDate.where",
@@ -363,7 +368,8 @@ class SqlQueries {
         { "LivelinkTraversalManager.getLastAuditEvent.select",
           new String[] {
             "GoogleAuditDate as AuditDate",
-            "EventID" } },
+            "EventID",
+            "DataID" } },
         { "LivelinkTraversalManager.getLastAuditEvent.from",
           DAUDITNEW_VIEW_ORACLE },
         { "LivelinkTraversalManager.getLastAuditEvent.where",

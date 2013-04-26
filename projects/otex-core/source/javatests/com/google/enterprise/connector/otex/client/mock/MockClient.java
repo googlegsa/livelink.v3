@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
+import com.google.common.base.Joiner;
+
 import org.h2.jdbcx.JdbcDataSource;
 
 import java.io.File;
@@ -136,16 +138,33 @@ public class MockClient implements Client {
     public ClientValue ListNodes(String query, String view, String[] columns)
             throws RepositoryException {
         LOGGER.fine("Entering MockClient.ListNodes");
-        // This is an attempt to match the SQL injection protections in
-        // recent updates (6 or 7) of Livelink 9.7.1 and OTCS 10. We're
-        // actually a little more strict: columns names must be
-        // alphabetic, not alphanumeric, and column aliases require the
-        // AS keyword (just to help enforce a consistent coding style).
+
+        // Match the more stringent requirements in recent updates (6
+        // or 7) of Livelink 9.7.1 and OTCS 10.
+        boolean foundIdColumn = false;
         for (String column : columns) {
+          // This is an attempt to match the SQL injection
+          // protections, which quote the column names (which must
+          // therefore be identifiers and not keywords, numbers, or
+          // function calls) and which only allow multiple words for
+          // column aliases. We're actually a little more strict:
+          // columns names must be alphabetic, not alphanumeric, and
+          // column aliases require the AS keyword (just to help
+          // enforce a consistent coding style).
           // Using case-insensitive regexp matching with (?i:...).
           if (!column.matches("(?i:[a-z]+( as ([a-z]+))?)")) {
             throw new RepositoryException("Invalid SQL column: " + column);
           }
+
+          // Check for the required ID column. We throw in a little
+          // case-sensitivity check here.
+          if (column.equals("DataID") || column.equals("PermID")) {
+            foundIdColumn = true;
+          }
+        }
+        if (!foundIdColumn) {
+          throw new RepositoryException("DataID or PermID must be selected: "
+              + Joiner.on(',').join(columns));
         }
 
         // Rewrite a date to string expression from SQL Server and
