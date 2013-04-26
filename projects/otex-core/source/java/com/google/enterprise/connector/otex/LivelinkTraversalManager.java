@@ -122,9 +122,7 @@ class LivelinkTraversalManager
 
     // Workaround LAPI NumberFormatException/NullPointerException bug
     // returning negative longs.
-    list.add(Field.fromExpression(
-        "case when DataSize < 0 then 0 else DataSize end DataSize",
-        "DataSize"));
+    list.add(Field.fromExpression("GoogleDataSize as DataSize", "DataSize"));
 
     list.add(new Field("PermID"));
 
@@ -138,6 +136,11 @@ class LivelinkTraversalManager
 
     DEFAULT_FIELDS = list.toArray(new Field[0]);
   }
+
+  /** The WebNodes derived view to use with the full {@code selectList}. */
+  private static final String WEBNODES_VIEW_RESULTS = "(select b.*, "
+      + "case when DataSize < 0 then 0 else DataSize end as GoogleDataSize "
+      + "from WebNodes b)";
 
   /** The connector contains configuration information. */
   private final LivelinkConnector connector;
@@ -261,8 +264,7 @@ class LivelinkTraversalManager
    */
   private void forgeInitialDeleteCheckpoint(Checkpoint checkpoint) {
     try {
-      ClientValue results = sqlQueries.execute(sysadminClient, null,
-          "LivelinkTraversalManager.forgeInitialDeleteCheckpoint");
+      ClientValue results = getLastAuditEvent();
       if (results.size() > 0) {
         checkpoint.setDeleteCheckpoint(
             dateFormat.parse(results.toString(0, "AuditDate")),
@@ -280,6 +282,16 @@ class LivelinkTraversalManager
         throw new AssertionError();
       }
     }
+  }
+
+  /**
+   * A separate method for testability, because the caller handles all
+   * exceptions, making it hard to test the query for correctness.
+   */
+  @VisibleForTesting
+  ClientValue getLastAuditEvent() throws RepositoryException {
+    return sqlQueries.execute(sysadminClient, null,
+        "LivelinkTraversalManager.getLastAuditEvent");
   }
 
   /**
@@ -552,8 +564,8 @@ class LivelinkTraversalManager
   ClientValue getResults(String candidatesList) throws RepositoryException {
     if (genealogist == null) {
       // We're either using DTreeAncestors, or we don't need it.
-      return getMatching(candidatesList, true, "WebNodes", selectList,
-          traversalClient);
+      return getMatching(candidatesList, true, WEBNODES_VIEW_RESULTS,
+          selectList, traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
       // If there's a SQL WHERE condition, we need to consistently
@@ -632,7 +644,8 @@ class LivelinkTraversalManager
     if (descendants != null) {
       String query = sqlQueries.getWhere(null,
           "LivelinkTraversalManager.getMatchingDescendants", descendants);
-      return traversalClient.ListNodes(query, "WebNodes", selectList);
+      return traversalClient.ListNodes(query, WEBNODES_VIEW_RESULTS,
+          selectList);
     } else {
       return null;
     }
@@ -645,10 +658,12 @@ class LivelinkTraversalManager
    */
   private ClientValue getCandidates(Checkpoint checkpoint,
       int batchsz) throws RepositoryException {
-    return sqlQueries.executeLimit(sysadminClient, "CANDIDATES QUERY",
+    String insertDate = (checkpoint.insertDate != null)
+        ? dateFormat.toSqlString(checkpoint.insertDate) : null;
+    return sqlQueries.execute(sysadminClient, "CANDIDATES QUERY",
         "LivelinkTraversalManager.getCandidates",
-        batchsz, choice(checkpoint.insertDate != null),
-        dateFormat.toSqlString(checkpoint.insertDate), checkpoint.insertDataId);
+        choice(checkpoint.insertDate != null), insertDate,
+        checkpoint.insertDataId, batchsz);
   }
 
   /** Fetches the list of Deleted Items candidates for SQL Server. */
@@ -672,9 +687,10 @@ class LivelinkTraversalManager
         ? dateFormat.toSqlMillisString(checkpoint.deleteDate)
         : dateFormat.toSqlString(checkpoint.deleteDate);
     String excludedNodeTypes = connector.getExcludedNodeTypes();
-    return sqlQueries.executeLimit(sysadminClient, "DELETE CANDIDATES QUERY",
-        "LivelinkTraversalManager.getDeletes", batchsz,
+    return sqlQueries.execute(sysadminClient, "DELETE CANDIDATES QUERY",
+        "LivelinkTraversalManager.getDeletes",
         deleteDate, checkpoint.deleteEventId,
-        choice(!Strings.isNullOrEmpty(excludedNodeTypes)), excludedNodeTypes);
+        choice(!Strings.isNullOrEmpty(excludedNodeTypes)), excludedNodeTypes,
+        batchsz);
   }
 }

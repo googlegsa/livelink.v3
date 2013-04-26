@@ -103,8 +103,7 @@ class LivelinkRetriever implements Retriever {
     list.add(new Field("SubType", "SubType"));
     // Workaround LAPI NumberFormatException/NullPointerException bug
     // returning negative longs.
-    list.add(Field.fromExpression(
-        "case when DataSize < 0 then 0 else DataSize end DataSize",
+    list.add(Field.fromExpression("GoogleDataSize as DataSize",
         "DataSize", "DataSize" ));
     FIELDS = list.toArray(new Field[0]);
 
@@ -150,8 +149,11 @@ class LivelinkRetriever implements Retriever {
       if (doc != null) {
         return doc;
       }
+      String view = "(select b.*, "
+          + "case when DataSize < 0 then 0 else DataSize end as GoogleDataSize "
+          + "from WebNodes b)";
       ClientValue node = traversalClient.ListNodes("DataID = " + docid,
-                                                   "WebNodes", SELECT_LIST);
+                                                   view, SELECT_LIST);
       if (node == null || node.size() == 0) {
         throw new RepositoryDocumentException("Not found: " + docid);
       }

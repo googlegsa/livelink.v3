@@ -51,6 +51,15 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
     jdbcFixture.setUp();
     jdbcFixture.executeUpdate(
+        // Try inserting the DAuditNew entries out of date order, in
+        // case that influences the natural order returned by the DB,
+        // since we want an ORDER BY to pick the latest date.
+        "insert into DAuditNew(EventID, AuditDate) "
+        + "values(17, timestamp'2001-01-01 00:00:00')",
+        "insert into DAuditNew(EventID, AuditDate) "
+        + "values(42, timestamp'2013-04-24 08:00:00')",
+        "insert into DAuditNew(EventID, AuditDate) "
+        + "values(24, timestamp'2005-10-06 12:34:56')",
         "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
         + "values(24, 6, 0, 0, sysdate)",
         "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
@@ -81,6 +90,20 @@ public class LivelinkTraversalManagerTest extends TestCase {
   private void assertExcludedEmpty(String excluded) {
     assertFalse(excluded, excluded.contains("and SubType not in"));
     assertFalse(excluded, excluded.contains("and not"));
+  }
+
+  public void testGetLastAuditEvent() throws RepositoryException {
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+
+    ClientValue results = ltm.getLastAuditEvent();
+    assertEquals(1, results.size());
+    // toInteger works with H2 (we check the type in the production code).
+    assertEquals(42, results.toInteger(0, "EventID"));
+    // The fractional seconds are OK, because LivelinkDateFormat.parse
+    // handles multiple variations in the timestamp strings.
+    assertEquals("2013-04-24 08:00:00.0", results.toString(0, "AuditDate"));
   }
 
     public void testExcludedNodes1() throws RepositoryException {
@@ -349,6 +372,14 @@ public class LivelinkTraversalManagerTest extends TestCase {
         new MockClient(), conn.getContentHandler(traversalClient));
   }
 
+  /** Smoke test of the first traversal query. */
+  public void testStartTraversal() throws RepositoryException {
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
+
+    DocumentList list = ltm.startTraversal();
+    assertNotNull(list);
+  }
+
   /** Positive test to set a baseline for testResumeTraversalPingError. */
   public void testResumeTraversal() throws RepositoryException {
     LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
@@ -393,17 +424,14 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
     Client client = new MockClient();
     return new LivelinkTraversalManager(conn, client, "Admin", client,
-        conn.getContentHandler(client)) {
-      /** Slimmer select list to avoid having to mock extra columns. */
-      @Override String[] getSelectList() { return new String[] { "DataID" }; }
-    };
+        conn.getContentHandler(client));
   }
 
   private void testSqlWhereCondition(boolean useDTreeAncestors,
       String sqlWhereCondition, int expectedRows) throws Exception {
     LivelinkTraversalManager ltm =
         getObjectUnderTest(useDTreeAncestors, sqlWhereCondition);
-    ClientValue results = ltm.getResults("24, 42");
+    ClientValue results = ltm.getResults("24,42");
 
     if (expectedRows == 0) {
       assertNullOrEmpty(results);

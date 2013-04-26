@@ -59,27 +59,6 @@ class SqlQueries {
     return client.ListNodesNoThrow(query, view, columns);
   }
 
-  /**
-   * TODO(jlacey): Temporary method to support TOP in the select list
-   * with SQL Server. It works with ROWNUM queries in Oracle, too, so
-   * that a single call can support both variations easily. The
-   * parameter in the select list goes away when we support OTCS 10, but
-   * we still need to reconcile the positions of the TOP and rownum
-   * parameters.
-   */
-  public ClientValue executeLimit(Client client, String logPrefix, String key,
-      int limit, Object... parameters) throws RepositoryException {
-    String[] columns = resources.getStringArray(key + ".select");
-    if (columns[0].contains("{0")) {
-      columns[0] = MessageFormat.format(columns[0], limit);
-    } else {
-      parameters = ObjectArrays.concat(parameters, limit);
-    }
-    String view = resources.getString(key + ".from");
-    String query = getWhere(logPrefix, key, parameters);
-    return client.ListNodes(query, view, columns);
-  }
-
   public String getWhere(String logPrefix, String key, Object... parameters) {
     String pattern = resources.getString(key + ".where");
     String query = MessageFormat.format(pattern, parameters);
@@ -105,24 +84,27 @@ class SqlQueries {
 
   /** Select list column for AuditDate; Oracle still lacks milliseconds. */
   private static final String AUDIT_DATE_ORACLE =
-      "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as AuditDate";
+      "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate";
 
   /** Select list column for AuditDate with milliseconds for SQL Server. */
   private static final String AUDIT_DATE_SQL_SERVER =
-      "CONVERT(VARCHAR(23), AuditDate, 121) as AuditDate";
+      "CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate";
+
+  /** The ordered, derived view for DTree on Oracle. */
+  private static final String DTREE_VIEW_ORACLE =
+      "(select * from DTree" + ORDER_BY + ")";
+
+  /** The ordered, derived view for DAuditNew on Oracle. */
+  private static final String DAUDITNEW_VIEW_ORACLE = "(select b.*, "
+      + AUDIT_DATE_ORACLE + " from DAuditNew b" + DELETE_ORDER_BY + ")";
+
+  /** The derived view for DAuditNew on SQL Server. */
+  private static final String DAUDITNEW_VIEW_SQL_SERVER = "(select b.*, "
+      + AUDIT_DATE_SQL_SERVER + " from DAuditNew b)";
 
   public static class Resources extends ListResourceBundle {
     protected Object[][] getContents() {
       return new Object[][] {
-        { "LivelinkConnector.validateIncludedLocationStartDate.select",
-          new String[] {
-            "min(ModifyDate) as minModifyDate" } },
-        { "LivelinkConnector.validateIncludedLocationStartDate.from",
-          "DTree" },
-        { "LivelinkConnector.validateIncludedLocationStartDate.where",
-          "DataID in (select DataID from DTreeAncestors "
-          + "where AncestorID in ({0})) or DataID in ({1})" },
-
         { "Genealogist.getParent.select",
           new String[] {
             "ParentID" } },
@@ -132,16 +114,16 @@ class SqlQueries {
           "DataID in ({0,number,#},{1,number,#})" },
 
         { "HybridGenealogist.getParents.select",
-          // The StepParent column uses a correlated subquery (using
-          // the implicit "a" range variable over DTree added by LAPI)
-          // to lookup the parent object ID for volumes.
           new String[] {
             "DataID",
             "ParentID",
-            "(select ParentID from DTree b where -a.DataID = b.DataID "
-            + "and b.ParentID <> -1) as StepParentID" } },
+            "StepParentID" } },
         { "HybridGenealogist.getParents.from",
-          "DTree" },
+          // The StepParentID column uses a correlated subquery
+          // to lookup the parent object ID for volumes.
+          "(select b.*, (select ParentID from DTree c "
+          + "where -b.DataID = c.DataID and c.ParentID <> -1) "
+          + "as StepParentID from DTree b)" },
         { "HybridGenealogist.getParents.where",
           "DataID in ({0})" },
 
@@ -230,76 +212,102 @@ class SqlQueries {
   public static class Resources_mssql extends ListResourceBundle {
     protected Object[][] getContents() {
       return new Object[][] {
+        // These validation queries are not optimal, but they are so
+        // fast that it's not worth whitelisting additional views to
+        // optimize them.
         { "LivelinkConnector.validateDTreeAncestors.select",
           new String[] {
-            "TOP 1 DataID" } },
+            "DataID" } },
         { "LivelinkConnector.validateDTreeAncestors.from",
           "DTreeAncestors" },
         { "LivelinkConnector.validateDTreeAncestors.where",
-          "1=1" },
+          "DataID in (select TOP 1 DataID from DTreeAncestors)" },
 
-        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.select",
+        { "LivelinkConnector.validateIncludedLocationStartDate.select",
           new String[] {
-            "TOP 1 DataID" } },
-        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.from",
+            "ModifyDate as minModifyDate" } },
+        { "LivelinkConnector.validateIncludedLocationStartDate.from",
           "DTree" },
-        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.where",
-          // For the correlated subquery to work, we have to refer to
-          // DTree using the "a" range variable that LAPI adds behind
+        { "LivelinkConnector.validateIncludedLocationStartDate.where",
+          // Select the min ModifyDate using TOP 1 with ORDER BY
+          // ModifyDate -- which avoids selecting multiple rows where
+          // ModifyDate = min(ModifyDate) -- among items that
+          // DTreeAncestors says are in the Items to Index.
+          "DataID in (select top 1 DataID from DTree where "
+          + "DataID in (select DataID from DTreeAncestors "
+          + "where AncestorID in ({0})) or DataID in ({1}) "
+          + "order by ModifyDate)" },
+
+        { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.select",
+          new String[] {
+            "DataID" } },
+        { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.from",
+          "DTree" },
+        { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.where",
+          // The correlated subquery runs against the inner DTree, not
+          // the outer DTree, so we use "b" to refer to it, rather than
+          // using the "a" range variable that LAPI adds behind
           // the scenes. This query is designed to be very fast and
           // avoid table scans. For performance reasons, we don't
           // restrict this query by subtype.
-          "not exists (select DataID from DTreeAncestors "
-          + "where DataID = a.DataID and AncestorID = {0}) "
-          + "and OwnerID = {1} and DataID <> {0}" },
+          "DataID in (select DataID from DTree b where "
+          + "not exists (select DataID from DTreeAncestors "
+          + "where DataID = b.DataID and AncestorID = {0,number,#}) "
+          + "and OwnerID = {1,number,#} and DataID <> {0,number,#})" },
 
         { "LivelinkConnector.validateSqlWhereCondition.select",
           new String[] {
-            "TOP 1 DataID",
+            "DataID",
             "PermID" } },
         { "LivelinkConnector.validateSqlWhereCondition.from",
           "WebNodes" },
         { "LivelinkConnector.validateSqlWhereCondition.where",
-          "{0}" },
+          "DataID in (select TOP 1 DataID from WebNodes where {0})" },
 
-        { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.select",
+        { "LivelinkTraversalManager.getLastAuditEvent.select",
           new String[] {
-            AUDIT_DATE_SQL_SERVER,
+            "GoogleAuditDate as AuditDate",
             "EventID" } },
-        { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.from",
-          "DAuditNew" },
-        { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.where",
+        { "LivelinkTraversalManager.getLastAuditEvent.from",
+          DAUDITNEW_VIEW_SQL_SERVER },
+        { "LivelinkTraversalManager.getLastAuditEvent.where",
+          // Using a descending order by with top 1 is no faster.
           "EventID in (select max(EventID) from DAuditNew)" },
 
         { "LivelinkTraversalManager.getCandidates.select",
           new String[] {
-            "top {0,number,#} ModifyDate",
+            "ModifyDate",
             "DataID" } },
         { "LivelinkTraversalManager.getCandidates.from",
           "DTree" },
         { "LivelinkTraversalManager.getCandidates.where",
-          "{0,choice,0#1=1|1#'"
+          // The double ORDER_BY is required because the first applies
+          // to the subquery using TOP, and the second ensures that the
+          // returned results are sorted (for accurate checkpoints).
+          "DataID in (select top {3,number,#} DataID from DTree"
+          + "{0,choice,0#|1#' where "
           + "(ModifyDate > ''''{1}'''' or (ModifyDate = ''''{1}'''' "
           + "and DataID > {2,number,#}))'}"
-          + ORDER_BY },
+          + ORDER_BY + ")" + ORDER_BY },
 
         { "LivelinkTraversalManager.getDeletes.select",
           new String[] {
-            "top {0,number,#} " + AUDIT_DATE_SQL_SERVER,
+            "GoogleAuditDate as AuditDate",
             "EventID",
             "DataID" } },
         { "LivelinkTraversalManager.getDeletes.from",
-          "DAuditNew" },
+          DAUDITNEW_VIEW_SQL_SERVER },
         { "LivelinkTraversalManager.getDeletes.where",
           // AuditID = 2 is the same as "AuditStr = 'Delete'", except
           // that as of the July 2008 monthly patch for Livelink 9.7.1,
           // "Delete" would run afoul of the ListNodesQueryBlackList.
           // Only include delete events after the checkpoint.
           // Exclude items with a SubType we know we excluded when indexing.
-          "AuditID = 2 and (AuditDate > ''{0}'' or "
+          "EventID in (select top {4,number,#} EventID from DAuditNew where "
+          + "AuditID = 2 and (AuditDate > ''{0}'' or "
           + "(AuditDate = ''{0}'' and EventID > {1,number,#}))"
           + "{2,choice,0#|1 and SubType not in ({3})}"
-          + DELETE_ORDER_BY },
+          + DELETE_ORDER_BY + ")" + DELETE_ORDER_BY},
       };
     }
   }
@@ -315,21 +323,33 @@ class SqlQueries {
         { "LivelinkConnector.validateDTreeAncestors.where",
           "rownum = 1" },
 
-        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.select",
+        { "LivelinkConnector.validateIncludedLocationStartDate.select",
+          new String[] {
+            "ModifyDate as minModifyDate" } },
+        { "LivelinkConnector.validateIncludedLocationStartDate.from",
+          DTREE_VIEW_ORACLE },
+        { "LivelinkConnector.validateIncludedLocationStartDate.where",
+          // This works because the view is ordered by ModifyDate, so
+          // the first matching row is the min ModifyDate.
+          "(DataID in (select DataID from DTreeAncestors "
+          + "where AncestorID in ({0})) or DataID in ({1})) "
+          + "and rownum = 1" },
+
+        { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.select",
           new String[] {
             "DataID" } },
-        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.from",
+        { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.from",
           "DTree" },
-        { "LivelinkConnector.validateEnterpriseWorkspaceAncestors.where",
+        { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.where",
           // For the correlated subquery to work, we have to refer to
           // DTree using the "a" range variable that LAPI adds behind
           // the scenes. This query is designed to be very fast and
           // avoid table scans. For performance reasons, we don't
           // restrict this query by subtype.
           "not exists (select DataID from DTreeAncestors "
-          + "where DataID = a.DataID and AncestorID = {0}) "
-          + "and OwnerID = {1} and DataID <> {0}"
-          + " and rownum = 1" },
+          + "where DataID = a.DataID and AncestorID = {0,number,#}) "
+          + "and OwnerID = {1,number,#} and DataID <> {0,number,#} "
+          + "and rownum = 1" },
 
         { "LivelinkConnector.validateSqlWhereCondition.select",
           new String[] {
@@ -340,13 +360,15 @@ class SqlQueries {
         { "LivelinkConnector.validateSqlWhereCondition.where",
           "({0}) and rownum = 1" },
 
-        { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.select",
+        { "LivelinkTraversalManager.getLastAuditEvent.select",
           new String[] {
-            AUDIT_DATE_ORACLE,
+            "GoogleAuditDate as AuditDate",
             "EventID" } },
-        { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.from",
-          "DAuditNew" },
-        { "LivelinkTraversalManager.forgeInitialDeleteCheckpoint.where",
+        { "LivelinkTraversalManager.getLastAuditEvent.from",
+          DAUDITNEW_VIEW_ORACLE },
+        { "LivelinkTraversalManager.getLastAuditEvent.where",
+          // Using a descending order by with rownum = 1 is a little
+          // faster, but that would required whitelisting another view.
           "EventID in (select max(EventID) from DAuditNew)" },
 
         { "LivelinkTraversalManager.getCandidates.select",
@@ -354,23 +376,24 @@ class SqlQueries {
             "ModifyDate",
             "DataID" } },
         { "LivelinkTraversalManager.getCandidates.from",
-          "(select * from DTree" + ORDER_BY + ")" },
+          DTREE_VIEW_ORACLE },
         { "LivelinkTraversalManager.getCandidates.where",
           // The inner format containing a # avoids thousands separators
           // in the DataID value, but that requires quoting the choice
           // subformat, which triggers some crazy quoting rules.
           "{0,choice,0#|1#'"
           + "(ModifyDate > TIMESTAMP''''{1}'''' or "
-          + "(ModifyDate = TIMESTAMP''''{1}'''' and DataID > {2,number,#}))'} "
-          + "and rownum <= {3,number,#}" },
+          + "(ModifyDate = TIMESTAMP''''{1}'''' and DataID > {2,number,#})) "
+          + "and '}"
+          + "rownum <= {3,number,#}" },
 
         { "LivelinkTraversalManager.getDeletes.select",
           new String[] {
-            AUDIT_DATE_ORACLE,
+            "GoogleAuditDate as AuditDate",
             "EventID",
             "DataID", } },
         { "LivelinkTraversalManager.getDeletes.from",
-          "(select * from DAuditNew" + DELETE_ORDER_BY + ")" },
+          DAUDITNEW_VIEW_ORACLE },
         { "LivelinkTraversalManager.getDeletes.where",
           // AuditID = 2 is the same as "AuditStr = 'Delete'", except
           // that as of the July 2008 monthly patch for Livelink 9.7.1,

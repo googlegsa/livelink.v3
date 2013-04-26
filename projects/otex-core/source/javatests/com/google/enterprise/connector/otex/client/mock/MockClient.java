@@ -136,17 +136,24 @@ public class MockClient implements Client {
     public ClientValue ListNodes(String query, String view, String[] columns)
             throws RepositoryException {
         LOGGER.fine("Entering MockClient.ListNodes");
+        // This is an attempt to match the SQL injection protections in
+        // recent updates (6 or 7) of Livelink 9.7.1 and OTCS 10. We're
+        // actually a little more strict: columns names must be
+        // alphabetic, not alphanumeric, and column aliases require the
+        // AS keyword (just to help enforce a consistent coding style).
+        for (String column : columns) {
+          // Using case-insensitive regexp matching with (?i:...).
+          if (!column.matches("(?i:[a-z]+( as ([a-z]+))?)")) {
+            throw new RepositoryException("Invalid SQL column: " + column);
+          }
+        }
 
         // Rewrite a date to string expression from SQL Server and
         // Oracle syntax to H2 syntax.
         String sqlServer = "CONVERT(VARCHAR(23), AuditDate, 121)";
         String oracle = "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS')";
         String h2 = "CONVERT(AuditDate, VARCHAR(23))";
-        String[] newColumns = new String[columns.length];
-        for (int i = 0; i < columns.length; i++) {
-          newColumns[i] = columns[i].replace(sqlServer, h2).replace(oracle, h2);
-        }
-        columns = newColumns;
+        view = view.replace(sqlServer, h2).replace(oracle, h2);
 
         String[] fields;
         Object[][] values;
@@ -208,8 +215,10 @@ public class MockClient implements Client {
       String[] columns = new String[count];
       // This is a bit hacky, but all our select expressions have an alias.
       for (int i = 0; i < count; i++) {
-        // Correct for the uppercasing of column names in H2.
-        String columnName = rsmd.getColumnName(i + 1);
+        // Correct for the uppercasing of column names in H2. Note that
+        // H2 follows the JDBC 4.0 madness that the SQL column names are
+        // returned by getColumnLabel instead of getColumnName.
+        String columnName = rsmd.getColumnLabel(i + 1);
         for (String origName : origColumns) {
           // Extract the column name or alias from the select expression.
           int index = origName.lastIndexOf(' ');

@@ -16,8 +16,11 @@ package com.google.enterprise.connector.otex;
 
 import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.ConfigurationException;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
+
 import junit.framework.TestCase;
 
 import java.sql.SQLException;
@@ -35,8 +38,18 @@ public class LivelinkConnectorTest extends TestCase {
     // TODO: Move this fixture and its tests to a separate test class.
     jdbcFixture.setUp();
     jdbcFixture.executeUpdate(
+        "insert into DTree(DataID, ParentID, OwnerID) "
+        + "values(2000, -1, -2000)",
+        "insert into DTree(DataID, ParentID, OwnerID) "
+        + "values(2002, 2000, -2000)",
+        "insert into DTree(DataID, ParentID, OwnerID) "
+        + "values(4104, 2002, -2000)",
         "insert into DTreeAncestors(DataID, AncestorID) "
-        + "values(4104, 2002)", // The values do not matter.
+        + "values(2002, 2000)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(4104, 2000)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(4104, 2002)",
         "insert into KDual values(104 /* does not matter */)",
         "insert into WebNodes(DataID, PermID, MimeType) "
         + "values(42, 0, 'text/xml')");
@@ -428,6 +441,31 @@ public class LivelinkConnectorTest extends TestCase {
     } catch (IllegalArgumentException e) {
       assertEquals(missingValue, e.getMessage());
     }
+  }
+
+  public void testGetMissingEnterpriseWorkspaceAncestors_success()
+      throws RepositoryException {
+    connector.login();
+    Client client = connector.getClientFactory().createClient();
+    ClientValue results = connector.getMissingEnterpriseWorkspaceAncestors(
+        client, 2000, -2000);
+    if (results.size() > 0) {
+      fail("Found " + results.size() + " results; first one is "
+          + results.toString(0, "DataID"));
+    }
+  }
+
+  public void testGetMissingEnterpriseWorkspaceAncestors_missing()
+      throws Exception {
+    jdbcFixture.executeUpdate(
+        "delete from DTreeAncestors where DataID = 4104 and AncestorID = 2000");
+
+    connector.login();
+    Client client = connector.getClientFactory().createClient();
+    ClientValue results = connector.getMissingEnterpriseWorkspaceAncestors(
+        client, 2000, -2000);
+    assertEquals(1, results.size());
+    assertEquals(4104, results.toInteger(0, "DataID"));
   }
 
   public void testSqlWhereCondition_empty() throws RepositoryException {

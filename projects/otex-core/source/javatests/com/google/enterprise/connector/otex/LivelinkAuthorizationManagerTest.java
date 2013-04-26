@@ -107,6 +107,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     // The third request has none left.
     assertNull(lam.getDocids(it));
   }
+
   /**
    * Tests that showing hidden items doesn't include a query restriction.
    *

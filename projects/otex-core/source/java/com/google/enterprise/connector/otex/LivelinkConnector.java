@@ -2137,14 +2137,13 @@ public class LivelinkConnector implements Connector {
       return;
 
     ClientValue info = client.AccessEnterpriseWS();
-    String id = info.toString("ID");
-    String volumeId = info.toString("VolumeID");
+    int id = info.toInteger("ID");
+    int volumeId = info.toInteger("VolumeID");
 
     // FIXME: We don't want to log the exception as an error, but it
     // would be nice to be able to log it as a warning.
-    ClientValue missing = sqlQueries.executeNoThrow(client, null,
-        "LivelinkConnector.validateEnterpriseWorkspaceAncestors",
-        id, volumeId);
+    ClientValue missing =
+        getMissingEnterpriseWorkspaceAncestors(client, id, volumeId);
     if (missing == null) {
       LOGGER.warning("Unable to check for missing entries in the " +
           "Livelink DTreeAncestors table.");
@@ -2156,6 +2155,19 @@ public class LivelinkConnector implements Connector {
       LOGGER.finest("The Livelink DTreeAncestors table " +
           "passed the Enterprise workspace check.");
     }
+  }
+
+  /**
+   * A separate method for testability, because the caller has no
+   * output except log messages, making it hard to test the query for
+   * correctness.
+   */
+  @VisibleForTesting
+  ClientValue getMissingEnterpriseWorkspaceAncestors(Client client,
+      int id, int volumeId) throws RepositoryException {
+    return sqlQueries.execute(client, null,
+        "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors",
+        id, volumeId);
   }
 
   /**
