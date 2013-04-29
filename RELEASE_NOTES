@@ -21,6 +21,11 @@ whether to upgrade.
 
 Summary of Changes
 ------------------
+  * OpenText Livelink versions 9.5 SP1 and 9.6 are no longer
+    supported with the connector.
+
+  * Java SE 5.0 is no longer supported. Java 6 or later is required.
+
   * Fixed issue 8610278: Use DTree instead of WebNodes for the
     connector authorization queries. Using DTree is faster than using
     the WebNodes joined view.
@@ -36,8 +41,8 @@ Connector instances created using versions 1.0.3 through 3.0.6 may be
 used with this version. This version works with Connector Manager
 version 3.0.0 or later. Earlier versions of the Connector Manager will
 not work correctly with this version of the connector. This product is
-designed to function with OpenText Livelink versions 9.5 SP1, 9.6,
-9.7, and 9.7.1, and OpenText Content Server 10.
+designed to function with OpenText Livelink versions 9.7, and 9.7.1,
+and OpenText Content Server 10.
 
 Customers running OpenText Content Server 10, or Livelink 9.7.1 with
 the July 2008 or later monthly patch, must update the ListNodes white
