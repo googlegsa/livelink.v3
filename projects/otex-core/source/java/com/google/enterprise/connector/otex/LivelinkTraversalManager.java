@@ -36,17 +36,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * This implementation of <code>TraversalManager</code> requires
- * the <code>LAPI_DOCUMENTS.ListNodes</code> method, which
- * is an undocumented LAPI method.
- *
- * The SQL queries used here are designed to work with SQL Server 7.0
- * or later, and with Oracle 8i Release 2 (8.1.6). This enables the
- * code to work with Livelink 9.0 or later. The exception to this is
- * that Sybase, which is supported by Livelink 9.2.0.1 and earlier, is
- * not supported here.
- */
+/** Implements a TraversalManager for the Livelink connector. */
 class LivelinkTraversalManager
     implements TraversalManager, TraversalContextAware {
   /** The logger for this class. */
@@ -443,10 +433,10 @@ class LivelinkTraversalManager
    * For Oracle, we use ROWNUM, and for SQL
    * Server, we use TOP, which requires SQL Server 7.0. The
    * <code>ROW_NUMBER()</code> function is supported by Oracle and
-   * also by SQL Server 2005, but that's too limiting, and it's
+   * also by SQL Server 2005, but it's
    * likely to be much slower than TOP or ROWNUM. The standard SQL
    * <code>SET ROWCOUNT</em> statement is supported by SQL Server
-   * 6.5 and by Sybase, but not by Oracle, and I don't know of a way
+   * 6.5, but not by Oracle, and I don't know of a way
    * to execute it from LAPI. A final complication is that ROWNUM
    * limits the rows before the ORDER BY clause is applied, so a
    * subquery is needed to do the ordering before the limit is
@@ -610,19 +600,30 @@ class LivelinkTraversalManager
     String excludedLocationNodes = connector.getExcludedLocationNodes();
     String sqlWhereCondition = connector.getSqlWhereCondition();
 
+    String startDescendants;
+    String excludedDescendants;
+    if (connector.getUseDTreeAncestors()) {
+      startDescendants = getDescendants(startNodes, candidatesList);
+      excludedDescendants = (Strings.isNullOrEmpty(excludedLocationNodes))
+          ? null : getDescendants(excludedLocationNodes, candidatesList);
+    } else {
+      startDescendants = null;
+      excludedDescendants = null;
+    }
+
     return sqlQueries.getWhere("RESULTS QUERY",
         "LivelinkTraversalManager.getMatching",
         /* 0 */ candidatesList,
         /* 1 */ choice(Strings.isNullOrEmpty(startNodes)), // [sic]
         /* 2 */ choice(connector.getUseDTreeAncestors()),
-        /* 3 */ getDescendants(startNodes, candidatesList),
+        /* 3 */ startDescendants,
         /* 4 */ choice(!Strings.isNullOrEmpty(excludedVolumes)),
         /* 5 */ excludedVolumes,
         /* 6 */ choice(!Strings.isNullOrEmpty(excludedNodeTypes)),
         /* 7 */ excludedNodeTypes,
         /* 8 */ choice(connector.getUseDTreeAncestors()
             && !Strings.isNullOrEmpty(excludedLocationNodes)),
-        /* 9 */ getDescendants(excludedLocationNodes, candidatesList),
+        /* 9 */ excludedDescendants,
         /* 10 */ choice(!Strings.isNullOrEmpty(sqlWhereCondition)),
         /* 11 */ sqlWhereCondition,
         /* 12 */ choice(sortResults));
