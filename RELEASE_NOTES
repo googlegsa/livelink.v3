@@ -10,8 +10,8 @@ supplements the main documentation.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
-Release 3.2.0, Apr 30, 2013
-===========================
+Release 3.2.0, May 5, 2013
+==========================
 
 Introduction
 ------------
@@ -29,6 +29,9 @@ Summary of Changes
   * Fixed issue 8610278: Use DTree instead of WebNodes for the
     connector authorization queries. Using DTree is faster than using
     the WebNodes joined view.
+
+  * Fixed issue 8608029: Validate the traversal username, rather than
+    failing during the traversal.
 
   * Fixed issues 8054421, 7005056, 6032685: Support OpenText Content
     Server 10. This also applies to the latest updates of Livelink
