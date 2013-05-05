@@ -146,7 +146,8 @@ class SqlQueries {
           // just avoid the excluded volume types.
           // FIXME: I think this else is wrong. The excludedVolumeTypes
           // should always be applied. For example, you might exclude
-          // everything in projects.
+          // everything in projects. We should not exclude the start
+          // nodes themselves, though.
           + "|1#'{4,choice,0#|1# and -OwnerID not in (select DataID from DTree "
           + "where SubType in ({5}))}'}"
 

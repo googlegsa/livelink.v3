@@ -60,22 +60,26 @@ public class LivelinkTraversalManagerTest extends TestCase {
         + "values(42, timestamp'2013-04-24 08:00:00')",
         "insert into DAuditNew(EventID, AuditDate) "
         + "values(24, timestamp'2005-10-06 12:34:56')",
-        "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
-        + "values(24, 6, 0, 0, sysdate)",
-        "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
-        + "values(42, 6, 0, 144, sysdate)",
-        "insert into DTree(DataID, ParentID, PermID, SubType, ModifyDate) "
-        + "values(2000, -1, 0, 0, sysdate)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
+        + "values(24, 6, -2000, 0, sysdate)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
+        + "values(42, 6, -2000, 144, sysdate)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
+        + "values(2000, -1, -2000, 141, sysdate)",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
+        + "values(2901, -1, -2901, 901, sysdate)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(24, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(42, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(4104, 2000)", // DataID value does not matter.
-        "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
-        + "values(24, 6, 0, 0, null)",
-        "insert into WebNodes(DataID, ParentID, PermID, SubType, MimeType) "
-        + "values(42, 6, 0, 144, 'text/xml')");
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, MimeType) "
+        + "values(24, 6, -2000, 0, null)",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, MimeType) "
+        + "values(42, 6, -2000, 144, 'text/xml')",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, MimeType) "
+        + "values(2901, -1, -2901, 901, null)");
   }
 
   protected void tearDown() throws SQLException {
@@ -299,6 +303,21 @@ public class LivelinkTraversalManagerTest extends TestCase {
             + "and AncestorID in (2000,-2000)))") != -1);
     }
 
+    /** Test the default exclusions. */
+    public void testExcludedNodes12() throws RepositoryException {
+        Session sess = conn.login();
+        LivelinkTraversalManager lqtm =
+            (LivelinkTraversalManager) sess.getTraversalManager();
+        String query = lqtm.getMatchingQuery(null, false);
+
+        assertTrue(query, query.indexOf("and SubType not in "
+            + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
+            + "345,346,361,374,431,441,3030004,3030201)") != -1);
+        assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
+        assertTrue(query,
+            query.indexOf("SubType in (148,161,162,901)") != -1);
+    }
+
     /** Tests a null select expressions map. */
     public void testIncludedSelectExpressions_null()
             throws RepositoryException {
@@ -363,6 +382,17 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
         String[] selectList = ltm.getSelectList();
         assertEquals(fields.length, selectList.length);
+  }
+
+  public void testGetResults() throws RepositoryException {
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+
+    // Not sure why, but 6 and 2000 are not in the WebNodes data.
+    // 2901 is, but it's an excluded volume type.
+    ClientValue results = ltm.getResults("6,24,42,2000,2901");
+    assertEquals(2, results.size());
   }
 
   private LivelinkTraversalManager getObjectUnderTest(Client traversalClient)
