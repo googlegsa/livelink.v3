@@ -318,6 +318,41 @@ public class LivelinkTraversalManagerTest extends TestCase {
             query.indexOf("SubType in (148,161,162,901)") != -1);
     }
 
+  public void testUseDTreeAncestors_true() throws RepositoryException {
+    conn.setExcludedLocationNodes("13832");
+    conn.setIncludedLocationNodes("2000");
+    conn.setUseDTreeAncestors(true);
+
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+    String query = ltm.getMatchingQuery(null, false);
+
+    // The included and excluded conditions are nearly identical, but
+    // the excluded portion starts with "and NOT".
+    assertTrue(query, query.contains(
+        "and not (DataID in (13832) or DataID in (select DataID from "
+        + "DTreeAncestors where DataID in (null) "
+        + "and AncestorID in (13832,-13832)))"));
+    assertTrue(query, query.contains(
+        " and (DataID in (2000) or DataID in (select DataID from "
+        + "DTreeAncestors where DataID in (null) "
+        + "and AncestorID in (2000,-2000)))"));
+  }
+
+  public void testUseDTreeAncestors_false() throws RepositoryException {
+    conn.setExcludedLocationNodes("13832");
+    conn.setIncludedLocationNodes("2000");
+    conn.setUseDTreeAncestors(false);
+
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+    String query = ltm.getMatchingQuery(null, false);
+
+    assertFalse(query, query.contains("DTreeAncestors"));
+  }
+
     /** Tests a null select expressions map. */
     public void testIncludedSelectExpressions_null()
             throws RepositoryException {
