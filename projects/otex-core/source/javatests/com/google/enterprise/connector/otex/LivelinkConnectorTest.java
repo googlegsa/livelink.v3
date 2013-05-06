@@ -468,6 +468,25 @@ public class LivelinkConnectorTest extends TestCase {
     assertEquals(4104, results.toInteger(0, "DataID"));
   }
 
+  public void testTraversalUsername_empty() throws RepositoryException {
+    // This case is tested everywhere, but it's a useful baseline here.
+    connector.login();
+  }
+
+  public void testTraversalUsername_success() throws RepositoryException {
+    connector.setTraversalUsername("Admin");
+    connector.login();
+  }
+
+  public void testTraversalUsername_failure() throws RepositoryException {
+    connector.setTraversalUsername("2000");
+    try {
+      connector.login();
+      fail("Expected a ConfigurationException");
+    } catch (ConfigurationException expected) {
+    }
+  }
+
   public void testSqlWhereCondition_empty() throws RepositoryException {
     connector.setSqlWhereCondition("DataID = 0");
     try {

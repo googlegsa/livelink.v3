@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableList;
 
 import org.h2.jdbcx.JdbcDataSource;
 
@@ -45,6 +46,10 @@ public class MockClient implements Client {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
+
+  /** A list of valid usernames, used by GetUserInfo. */
+  private static final ImmutableList<String> VALID_USERNAMES =
+      ImmutableList.of("Admin", "llglobal");
 
     private final Connection jdbcConnection;
 
@@ -114,6 +119,10 @@ public class MockClient implements Client {
     /** {@inheritDoc} */
     public ClientValue GetUserInfo(String username)
             throws RepositoryException {
+        if (!VALID_USERNAMES.contains(username)) {
+            throw new RepositoryException(
+                "Could not get the specified user or group.");
+        }
         int privileges;
         if (username.equals("Admin"))
             privileges = PRIV_PERM_BYPASS;
