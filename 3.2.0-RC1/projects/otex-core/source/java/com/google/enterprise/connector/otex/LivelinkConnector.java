@@ -2171,6 +2171,22 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Ensures that the configured traversal username is valid.
+   *
+   * @param client the client to use to access the server
+   */
+  private void validateTraversalUsername(Client client) {
+    try {
+      ClientValue userInfo = client.GetUserInfo(traversalUsername);
+    } catch (RepositoryException e) {
+      throw new ConfigurationException("Traversal username "
+          + traversalUsername + " could not be verified."
+          + e.getMessage(), "invalidTraversalUsername",
+          new String[] { traversalUsername, e.getMessage() });
+    }
+  }
+
+  /**
    * Validates the additional SQL WHERE clause condition.
    *
    * @param client the client to use for the query
@@ -2283,6 +2299,10 @@ public class LivelinkConnector implements Connector {
       validateDTreeAncestors(client);
       validateIncludedLocationStartDate(client);
       validateEnterpriseWorkspaceAncestors(client);
+    }
+
+    if (!Strings.isNullOrEmpty(traversalUsername)) {
+      validateTraversalUsername(client);
     }
 
     if (!Strings.isNullOrEmpty(sqlWhereCondition)) {
