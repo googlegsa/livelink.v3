@@ -1,0 +1,43 @@
+Welcome to the Google Search Appliance Connector for Livelink!
+
+The Google Search Appliance connector framework enables Google search
+appliances to search and serve documents stored in non-Web
+repositories, such as enterprise content management systems. An
+enterprise content management (ECM) system provides a central
+repository for large numbers of documents.
+
+This connector for Open Text Livelink provides access to documents
+and document meta-data stored in the Livelink ECM - Enterprise
+Server developed by the Open Text Corporation.
+
+The connector communicates with the Livelink Server using the Java
+language Livelink Application Programming Interface (LAPI). To
+properly build this connector you will need access to certain
+components of the Open Text Livelink ECM - Enterprise Server SDK,
+specifically lapi.jar. The Livelink SDK is a commercial product
+offered by the Open Text Corporation and is not included in this
+distribution.
+
+
+Documentation Links
+
+    * Documentation for the Google Search Appliance Connectors
+      http://code.google.com/apis/searchappliance/documentation/connectors/index.html
+
+    * Google Search Appliance Connector for Livelink
+      http://code.google.com/p/google-enterprise-connector-otex/
+
+    * Google Search Appliance
+      http://code.google.com/apis/searchappliance/documentation/index.html
+
+    * Open Text Livelink SDK and LAPI
+      Livelink SDK and Livelink API information is available on
+      the Open Text corporate web site: http://www.opentext.com
+      [Registration is required to view most relevant content.]
+
+Licensing
+
+      This product includes software developed by
+      The Apache Software Foundation (http://www.apache.org/).
+
+      A copy of the licensing terms is available in a file called COPYING.
