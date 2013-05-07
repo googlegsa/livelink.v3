@@ -95,6 +95,35 @@ ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors',
 
 Note: The derived view with 'YYYY-MM-DD HH24:MI:SS' uses double quotes.
 
+Using Items to Index with this Release
+--------------------------------------
+When using Items to Index or the excludedLocationNodes advanced
+configuration property, the connector uses one of two mechanisms for
+information about the hierarchy: the DTreeAncestors database table, or
+the genealogist algorithms in the connector. The DTreeAncestors table
+is faster, but has required Livelink monthly patches and the
+Recommender agent. The genealogists require more queries but do not
+rely on the DTreeAncestors table. The choice is controlled with the
+useDTreeAncestors advanced configuration property, which is true by
+default.
+
+Setting the showHiddenItems advanced configuration property to false
+requires the DTreeAncestors table and is not supported by the
+genealogists.
+
+The useDTreeAncestors property was added in version 2.6.10, but the
+OpenText Content Server requirements and recommended use vary. In
+OpenText Content Server 10, the DTreeAncestors table is enabled by
+default. In Livelink 9.7.1, the DTreeAncestors table depended on the
+Recommender agent. In earlier versions of Livelink, the DTreeAncestors
+table was enabled by default, but often incomplete.
+
+Depending on your specific environment, it may be better to use
+DTreeAncestors or not. Generally, Google recommends not using
+DTreeAncestors with Livelink 9.x, especially for large or older
+Livelink installations. Google suggests using the DTreeAncestors table
+with OpenText Content Server 10, for better performance.
+
 
 Release 3.0.6, Jan 14, 2013
 ===========================
