@@ -127,10 +127,28 @@ class LivelinkTraversalManager
     DEFAULT_FIELDS = list.toArray(new Field[0]);
   }
 
-  /** The WebNodes derived view to use with the full {@code selectList}. */
-  private static final String WEBNODES_VIEW_RESULTS = "(select b.*, "
+  /**
+   * The WebNodes derived view to use with the full {@code selectList}
+   * on Oracle. The cast is necessary or Livelink treats the
+   * GoogleDataSize column as a SQL INTEGER that overflows at 2 GB. The
+   * underlying DataSize column is a NUMBER(19) on OTCS 9.7.1 and 10.
+   */
+  private static final String WEBNODES_VIEW_RESULTS_ORACLE = "(select b.*, "
+      + "cast(case when DataSize < 0 then 0 else DataSize end as number(19)) "
+      + "as GoogleDataSize "
+      + "from WebNodes b)";
+
+  /**
+   * The WebNodes derived view to use with the full {@code selectList}
+   * on SQL Server.
+   */
+  private static final String WEBNODES_VIEW_RESULTS_SQL_SERVER = "(select b.*, "
       + "case when DataSize < 0 then 0 else DataSize end as GoogleDataSize "
       + "from WebNodes b)";
+
+  /** The WebNodes derived view to use with the full {@code selectList}. */
+  /* TODO(jlacey): Maybe push this and the select list to SqlQueries? */
+  private final String webnodesViewResults;
 
   /** The connector contains configuration information. */
   private final LivelinkConnector connector;
@@ -190,6 +208,8 @@ class LivelinkTraversalManager
 
     this.isSqlServer = connector.isSqlServer();
     this.sqlQueries = new SqlQueries(this.isSqlServer);
+    this.webnodesViewResults = (this.isSqlServer)
+        ? WEBNODES_VIEW_RESULTS_SQL_SERVER : WEBNODES_VIEW_RESULTS_ORACLE;
 
     // Check to see if we will track Deleted Documents.
     this.deleteSupported = connector.getTrackDeletedItems();
@@ -556,7 +576,7 @@ class LivelinkTraversalManager
   ClientValue getResults(String candidatesList) throws RepositoryException {
     if (genealogist == null) {
       // We're either using DTreeAncestors, or we don't need it.
-      return getMatching(candidatesList, true, WEBNODES_VIEW_RESULTS,
+      return getMatching(candidatesList, true, webnodesViewResults,
           selectList, traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
@@ -647,8 +667,7 @@ class LivelinkTraversalManager
     if (descendants != null) {
       String query = sqlQueries.getWhere(null,
           "LivelinkTraversalManager.getMatchingDescendants", descendants);
-      return traversalClient.ListNodes(query, WEBNODES_VIEW_RESULTS,
-          selectList);
+      return traversalClient.ListNodes(query, webnodesViewResults, selectList);
     } else {
       return null;
     }
