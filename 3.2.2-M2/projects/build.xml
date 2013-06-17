@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="google-enterprise-connector-otex" default="everything" basedir=".">
+
+  <!-- ========================= PROPERTIES ============================= -->
+  <property file="version.properties"/>
+  <property file="${user.home}/google-enterprise-connector-otex.properties"/>
+
+  <!-- Define Directories. -->
+  <property name="otex-core.dir" value="otex-core" />
+  <property name="install.dir" value="install" />
+  <property name="otex-lapi.dir" value="otex-lapi" />
+  <property name="downloads.dir" value="downloads" />
+  <property name="build.dir" value="build" />
+  <property name="trunk.dir" value=".." />
+
+  <property name="connector-manager-projects.dir"
+            location="${build.connector.manager.home}/projects" />
+
+  <!-- =========================== TASKS =============================== -->
+  <include file="${connector-manager-projects.dir}/svnbuild.xml" as="svn"/>
+
+  <target name="clean-all">
+    <ant dir="${otex-core.dir}" target="clean" />
+    <ant dir="${otex-lapi.dir}" target="clean" />
+    <delete dir="${build.dir}" />
+    <delete dir="${install.dir}" />
+    <delete dir="${downloads.dir}" />
+  </target>
+
+  <target name="prebuild">
+    <mkdir dir="${build.dir}" />
+  </target>
+
+  <target name="otex-core" depends="prebuild">
+    <ant dir="${otex-core.dir}" />
+  </target>
+
+  <target name="otex-lapi" depends="otex-core">
+    <ant dir="${otex-lapi.dir}" />
+  </target>
+
+  <target name="build-all" depends="prebuild,otex-core,otex-lapi"/>
+
+  <target name="make-install-dir">
+    <mkdir dir="${install.dir}" />
+  </target>
+
+  <target name="install-otex-core" depends="otex-core,make-install-dir">
+    <mkdir dir="${install.dir}/otex-core" />
+    <copy todir="${install.dir}/otex-core" >
+      <fileset dir="${otex-core.dir}/dist"/>
+    </copy>
+  </target>
+
+  <target name="install-otex-lapi" depends="otex-lapi,make-install-dir">
+    <mkdir dir="${install.dir}/otex-lapi" />
+    <copy todir="${install.dir}/otex-lapi" >
+      <fileset dir="${otex-lapi.dir}/dist"/>
+    </copy>
+  </target>
+
+  <target name="install-all" depends="bin-archive">
+      <copy todir="${install.dir}" >
+        <fileset dir="${build.dir}">
+          <include name="${bin.archive}.zip"/>
+        </fileset>
+      </copy>
+    </target>
+
+  <target name="init-package" depends="svn.svn-branch">
+    <property name="downloads.prefix" value="connector-otex-${svn.branch}" />
+    <property name="repackage.prefix" value="connector-otex-${version}"/>
+  </target>
+
+  <target name="bin-archive" 
+    depends="prebuild,init-package,install-otex-core,install-otex-lapi">
+    <property name="bin.archive" value="${downloads.prefix}" />
+    <zip destfile="${build.dir}/${bin.archive}.zip">
+      <zipfileset dir="${install.dir}/otex-lapi/jar" 
+        prefix="${bin.archive}" />
+      <zipfileset file="../README" prefix="${bin.archive}" />
+      <zipfileset file="../RELEASE_NOTES" 
+        prefix="${bin.archive}" />
+      <zipfileset file="otex-core/config/logging.properties"
+        prefix="${bin.archive}/Config" />
+      <zipfileset file="../COPYING" 
+        prefix="${bin.archive}/License" />
+    </zip>
+  </target>
+
+  <target name="src-archive" depends="prebuild,svn.svn-branch">
+    <property name="src.archive" value="${downloads.prefix}-src" />
+
+    <!-- Use 'svn export' to create a clean version of the source tree
+         in the build dir.  You can adjust the behaviour of this by setting
+         some properties when invoking ant:
+
+         svn.export.revision - the revision of the tree to pull from svn.
+         svn.export.source - the source of the tree, either a svn repository
+                             URL, or a pathname of a working directory tree.
+
+         Note: you cannot specify both svn.export.revision and point
+         svn.export.source at a local working tree.
+         TODO: Make this work with svn.branch in src.archive value.
+    -->
+    <condition property="svn.export.revision.arg"
+               value="-r ${svn.export.revision}" 
+               else="" >
+      <isset property="svn.export.revision"/>
+    </condition>
+    <property name="svn.export.source" value=".." />
+    <property name="svn.export.dir" value="${build.dir}/${src.archive}" />
+
+    <delete dir="${svn.export.dir}" quiet="true" /> 
+    <exec executable="svn">
+      <arg line="export ${svn.export.revision.arg} ${svn.export.source} ${svn.export.dir}" />
+    </exec>
+
+    <!-- Create .zip archives of the exported source tree. -->
+    <zip destfile="${build.dir}/${src.archive}.zip">
+          <zipfileset dir="${svn.export.dir}" prefix="${src.archive}" />
+    </zip>
+    <delete dir="${svn.export.dir}" quiet="true" />
+  </target>
+
+  <target name="make-downloads-dir">
+    <mkdir dir="${downloads.dir}" />
+  </target>
+
+  <target name="downloads-all"
+            depends="bin-archive,src-archive,make-downloads-dir">
+    <copy todir="${downloads.dir}" preservelastmodified="true">
+          <fileset dir="${build.dir}">
+            <include name="${src.archive}.zip"/>
+            <include name="${bin.archive}.zip"/>
+          </fileset>
+        </copy>
+    <checksum algorithm="SHA-1" file="${downloads.dir}/${src.archive}.zip"/>
+    <checksum algorithm="SHA-1" file="${downloads.dir}/${bin.archive}.zip"/>
+    </target>
+
+  <target name="repackage" depends="init-package"
+          description="Repackage release candidate files for release.">
+    <repackage-downloads downloads.dir="${downloads.dir}"
+                         downloads.prefix="${downloads.prefix}"
+                         repackage.prefix="${repackage.prefix}" />
+  </target>
+
+  <target name="everything" depends="clean-all,build-all,install-all,downloads-all"/>
+
+</project>
