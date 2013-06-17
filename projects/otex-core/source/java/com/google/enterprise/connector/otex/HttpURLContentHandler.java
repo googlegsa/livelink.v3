@@ -43,9 +43,6 @@ class HttpURLContentHandler implements ContentHandler {
     static final String DEFAULT_URL_PATH =
         "?func=ll&objAction=download&objId=";
 
-    /** The connector contains configuration information. */
-    private LivelinkConnector connector;
-
     /** The client provides access to the server. */
     private Client client;
 
@@ -53,10 +50,16 @@ class HttpURLContentHandler implements ContentHandler {
     private String llCookie;
 
     /** The Livelink base URL. The default is the configured Livelink URL. */
-    String urlBase;
+    private String urlBase;
 
     /** The document URL path. */
-    String urlPath = DEFAULT_URL_PATH;
+    private String urlPath = DEFAULT_URL_PATH;
+
+    /** The connect timeout in milliseconds. */
+    private int connectTimeout = 0;
+
+    /** The read timeout in milliseconds. */
+    private int readTimeout = 0;
 
     HttpURLContentHandler() {
     }
@@ -64,7 +67,6 @@ class HttpURLContentHandler implements ContentHandler {
     /** {@inheritDoc} */
     public void initialize(LivelinkConnector connector, Client client)
             throws RepositoryException {
-        this.connector = connector;
         this.client = client;
 
         llCookie = getLLCookie();
@@ -125,6 +127,42 @@ class HttpURLContentHandler implements ContentHandler {
         throw new RepositoryException("Missing LLCookie");
     }
 
+    /**
+     * Sets the connect timeout in seconds. The default timeout is
+     * zero, which means timeouts are disabled.
+     *
+     * @param seconds the requested connect timeout in seconds
+     * @see URLConnection@setConnectTimeout
+     * @since 3.2.2
+     */
+    public void setConnectTimeout(int seconds) {
+      connectTimeout = seconds * 1000;
+    }
+
+    /** Gets the connect timeout in milliseconds, for testability. */
+    @VisibleForTesting
+    int getConnectTimeout() {
+      return connectTimeout;
+    }
+
+    /**
+     * Sets the read timeout in seconds. The default timeout is zero,
+     * which means timeouts are disabled.
+     *
+     * @param seconds the requested read timeout in seconds
+     * @see URLConnection@setReadTimeout
+     * @since 3.2.2
+     */
+    public void setReadTimeout(int seconds) {
+      readTimeout = seconds * 1000;
+    }
+
+    /** Gets the read timeout in milliseconds, for testability. */
+    @VisibleForTesting
+    int getReadTimeout() {
+      return readTimeout;
+    }
+
     /** {@inheritDoc} */
     public InputStream getInputStream(int volumeId, int objectId,
             int versionNumber, int size) throws RepositoryException {
@@ -134,6 +172,8 @@ class HttpURLContentHandler implements ContentHandler {
                 LOGGER.fine("DOWNLOAD URL: " + downloadUrl);
             URLConnection download = downloadUrl.openConnection();
             download.addRequestProperty("Cookie", "LLCookie=" + llCookie);
+            download.setConnectTimeout(connectTimeout);
+            download.setReadTimeout(readTimeout);
 
             // XXX: Does the BufferedInputStream help at all?
             return new BufferedInputStream(download.getInputStream(), 32768);
