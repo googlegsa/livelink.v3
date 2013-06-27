@@ -96,7 +96,7 @@ public class HttpURLContentHandlerTest extends TestCase {
     server.start();
 
     try {
-      out.getInputStream(0, 0, 0, 0);
+      out.getInputStream(0, 0, 0, 0).close();
       fail("Expected a SocketTimeoutException");
     } catch (LivelinkException expected) {
       assertNotNull(expected.toString(), expected.getCause());
@@ -124,8 +124,27 @@ public class HttpURLContentHandlerTest extends TestCase {
       fail("Expected a SocketTimeoutException");
     } catch (SocketTimeoutException expected) {
     } finally {
+      in.close();
       server.stop(0);
     }
+  }
+
+  /** Tests that refresh gets a new cookie value. */
+  public void testRefresh() throws RepositoryException, IOException {
+    CookieHandler handler = new CookieHandler();
+    HttpServer server = createServer(handler);
+    server.start();
+
+    out.getInputStream(0, 0, 0, 0).close();
+    String cookie = handler.getCookie();
+    assertTrue(cookie, cookie.startsWith("LLCookie="));
+
+    out.getInputStream(0, 0, 0, 0).close();
+    assertEquals(cookie, handler.getCookie());
+
+    out.refresh();
+    out.getInputStream(0, 0, 0, 0).close();
+    assertFalse(handler.getCookie(), cookie.equals(handler.getCookie()));
   }
 
   public enum SleepyLocation { HEADERS, BODY };
@@ -135,6 +154,15 @@ public class HttpURLContentHandlerTest extends TestCase {
    * talk to it.
    */
   private HttpServer createSleepyServer(int sleepSeconds, SleepyLocation where)
+      throws RepositoryException, IOException {
+    return createServer(new SleepyHandler(sleepSeconds, where));
+  }
+
+  /**
+   * Creates an HttpServer and configures the object under test to
+   * talk to it.
+   */
+  private HttpServer createServer(HttpHandler handler)
       throws RepositoryException, IOException {
     // TODO(jlacey): Get an unused port.
     String host = "localhost";
@@ -146,7 +174,7 @@ public class HttpURLContentHandlerTest extends TestCase {
     out.initialize(connector, client);
 
     HttpServer server = HttpServer.create(new InetSocketAddress(host, port), 0);
-    server.createContext(path, new SleepyHandler(sleepSeconds, where));
+    server.createContext(path, handler);
     return server;
   }
 
@@ -171,7 +199,7 @@ public class HttpURLContentHandlerTest extends TestCase {
         sleep();
       }
       body.write(response);
-      body.close();
+      exchange.close();
     }
 
     private void sleep() {
@@ -180,6 +208,24 @@ public class HttpURLContentHandlerTest extends TestCase {
       } catch (InterruptedException e) {
         // TODO(jlacey): Rethrow as an InterruptedIOException?
       }
+    }
+  }
+
+  static class CookieHandler implements HttpHandler {
+    private String cookie;
+
+    public String getCookie() {
+      return cookie;
+    }
+
+    public void handle(HttpExchange exchange) throws IOException {
+      cookie = exchange.getRequestHeaders().getFirst("Cookie");
+
+      byte[] response = "hello, world".getBytes();
+      exchange.sendResponseHeaders(200, response.length);
+      OutputStream body = exchange.getResponseBody();
+      body.write(response);
+      exchange.close();
     }
   }
 }

@@ -29,6 +29,7 @@ import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
@@ -97,15 +98,19 @@ public class MockClient implements Client {
         return 1000;
     }
 
+    private final AtomicInteger cookieCount = new AtomicInteger();
+
     /**
      * {@inheritDoc}
      * <p>
      * This implementation returns an LLCookie with an invalid value.
+     * A distinct value is returned on each call.
      */
     public ClientValue GetCookieInfo() throws RepositoryException {
+      String value = "llcookie value goes here" + cookieCount.getAndIncrement();
       ClientValue llcookie = new MockClientValue(
           new String[] { "Name", "Value" },
-          new Object[] { "LLCookie", "llcookie value goes here" });
+          new Object[] { "LLCookie", value });
       return new MockClientValue(new Object[] { llcookie });
     }
 

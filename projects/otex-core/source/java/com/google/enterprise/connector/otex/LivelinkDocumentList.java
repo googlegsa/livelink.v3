@@ -135,6 +135,10 @@ class LivelinkDocumentList implements DocumentList {
     this.traversalContext = traversalContext;
     this.checkpoint = checkpoint;
 
+    if (contentHandler instanceof RefreshableContentHandler) {
+      ((RefreshableContentHandler) contentHandler).refresh();
+    }
+
     // Subset the docIds in the recArray into Public and Private Docs.
     findPublicContent(currentUsername);
 
