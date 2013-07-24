@@ -14,13 +14,17 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
+import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.Value;
 
 import junit.framework.TestCase;
 
@@ -28,7 +32,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -61,25 +67,36 @@ public class LivelinkTraversalManagerTest extends TestCase {
         "insert into DAuditNew(EventID, AuditDate) "
         + "values(24, timestamp'2005-10-06 12:34:56')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
-        + "values(24, 6, -2000, 0, sysdate)",
+        + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
-        + "values(42, 6, -2000, 144, sysdate)",
+        + "values(42, 6, -2000, 144, timestamp'2001-01-01 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
-        + "values(2000, -1, -2000, 141, sysdate)",
+        + "values(66, 6, -2000, 144, timestamp'2002-02-02 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
-        + "values(2901, -1, -2901, 901, sysdate)",
+        + "values(2000, -1, -2000, 141, timestamp'2001-01-01 00:00:00')",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
+        + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00')",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(24, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(42, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(66, 6)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(4104, 2000)", // DataID value does not matter.
-        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, MimeType) "
-        + "values(24, 6, -2000, 0, null)",
-        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, MimeType) "
-        + "values(42, 6, -2000, 144, 'text/xml')",
-        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, MimeType) "
-        + "values(2901, -1, -2901, 901, null)");
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
+        + "MimeType) "
+        + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00', null)",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
+        + "MimeType, DataSize) "
+        + "values(42, 6, -2000, 144, timestamp'2001-01-01 00:00:00', "
+        + "'text/xml', 1729)",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
+        + "MimeType, DataSize) "
+        + "values(66, 6, -2000, 144, sysdate, 'text/xml', 1729)",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
+        + "MimeType) "
+        + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00', null)");
   }
 
   protected void tearDown() throws SQLException {
@@ -110,13 +127,18 @@ public class LivelinkTraversalManagerTest extends TestCase {
     assertEquals("2013-04-24 08:00:00.0", results.toString(0, "AuditDate"));
   }
 
+  /** Calls the like-named method under test. */
+  private String getMatchingQuery() throws RepositoryException {
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+    return ltm.getMatchingQuery(null, new Date(), false);
+  }
+
     public void testExcludedNodes1() throws RepositoryException {
         // No excluded nodes configured.
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertTrue(query, query.indexOf("and SubType not in "
                 + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
@@ -128,10 +150,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertExcludedEmpty(query);
     }
@@ -141,10 +160,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertExcludedEmpty(query);
     }
@@ -155,10 +171,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
         conn.setExcludedLocationNodes("");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
@@ -169,10 +182,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertExcludedEmpty(query);
         assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
@@ -185,10 +195,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("13832");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         String expectedExcluded = "and not (DataID in (13832) or " +
             "DataID in (select DataID from DTreeAncestors where " +
@@ -198,11 +205,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedVolumeTypes("2001,4104");
         conn.setExcludedLocationNodes("13832");
 
-        sess = conn.login();
-        lqtm = (LivelinkTraversalManager) sess.getTraversalManager();
-        String query2 = lqtm.getMatchingQuery(null, false);
+        String query2 = getMatchingQuery();
 
-        assertTrue(query2, query2.endsWith(expectedExcluded));
+        assertTrue(query2, query2.indexOf(expectedExcluded) != -1);
     }
 
     public void testExcludedNodes7() throws RepositoryException {
@@ -211,10 +216,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
         conn.setExcludedLocationNodes("");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211)") != -1);
@@ -228,10 +230,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedNodeTypes("");
         conn.setExcludedLocationNodes("13832");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertTrue(query, query.indexOf("and not (DataID in (13832) or " +
             "DataID in (select DataID from DTreeAncestors where " +
@@ -247,10 +246,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
         conn.setExcludedLocationNodes("13832");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertIncludedEmpty(query);
         assertTrue(query, query.indexOf("and SubType not in " +
@@ -266,10 +262,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
             "137,142,143,148,150,154,161,162,201,203,209,210,211");
         conn.setExcludedLocationNodes("13832");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertTrue(query, query.indexOf("and SubType not in " +
             "(137,142,143,148,150,154,161,162,201,203,209,210,211) and " +
@@ -291,10 +284,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.setExcludedLocationNodes("");
         conn.setIncludedLocationNodes("2000");
 
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertExcludedEmpty(query);
         assertTrue(query, query.indexOf(
@@ -305,10 +295,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
     /** Test the default exclusions. */
     public void testExcludedNodes12() throws RepositoryException {
-        Session sess = conn.login();
-        LivelinkTraversalManager lqtm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
-        String query = lqtm.getMatchingQuery(null, false);
+        String query = getMatchingQuery();
 
         assertTrue(query, query.indexOf("and SubType not in "
             + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
@@ -323,10 +310,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
     conn.setIncludedLocationNodes("2000");
     conn.setUseDTreeAncestors(true);
 
-    Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
-    String query = ltm.getMatchingQuery(null, false);
+    String query = getMatchingQuery();
 
     // The included and excluded conditions are nearly identical, but
     // the excluded portion starts with "and NOT".
@@ -345,10 +329,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
     conn.setIncludedLocationNodes("2000");
     conn.setUseDTreeAncestors(false);
 
-    Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
-    String query = ltm.getMatchingQuery(null, false);
+    String query = getMatchingQuery();
 
     assertFalse(query, query.contains("DTreeAncestors"));
   }
@@ -426,7 +407,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
     // Not sure why, but 6 and 2000 are not in the WebNodes data.
     // 2901 is, but it's an excluded volume type.
-    ClientValue results = ltm.getResults("6,24,42,2000,2901");
+    ClientValue results = ltm.getResults("6,24,42,2000,2901", new Date());
     assertEquals(2, results.size());
   }
 
@@ -437,12 +418,58 @@ public class LivelinkTraversalManagerTest extends TestCase {
         new MockClient(), conn.getContentHandler(traversalClient));
   }
 
-  /** Smoke test of the first traversal query. */
-  public void testStartTraversal() throws RepositoryException {
-    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
-
-    DocumentList list = ltm.startTraversal();
+  /**
+   * Asserts that the given DocumentList contains exactly the expected
+   * documents and nothing else.
+   */
+  private void assertDocumentListEquals(List<String> expectedDocids,
+      DocumentList list) throws RepositoryException {
     assertNotNull(list);
+    for (String docid : expectedDocids) {
+      Document doc = list.nextDocument();
+      assertNotNull(doc);
+      assertEquals(docid,
+          Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
+    }
+    assertNull(list.nextDocument());
+  }
+
+  /**
+   * Checks the first traversal query with a single batch repository,
+   * including asserting that the checkpoint is the expected value
+   * after the entire list is retrieved (i.e., nextDocument has
+   * returned null). This test is here rather than in
+   * LivelinkDocumentListTest because it's the
+   * LivelinkTraversalManager that creates the underlying recarray and
+   * checkpoint.
+   */
+  private void testStartTraversal(boolean useDTreeAncestors)
+      throws SQLException, RepositoryException {
+    LivelinkTraversalManager ltm = getObjectUnderTest(useDTreeAncestors, null);
+
+    // 66 is modified later, and appears in the candidates, but appears
+    // updated because of its current date in WebNodes, so it's left
+    // out of the results.
+    DocumentList list = ltm.startTraversal();
+    assertDocumentListEquals(ImmutableList.of("24", "42"), list);
+
+    // When nextDocument returns null, the advance checkpoint is used,
+    // which includes 66 with its original ModifyDate, since that was
+    // in the candidates.
+    // TODO(jlacey): We could query these values as the max(ModifyDate)
+    // from DTree when it matches WebNodes, and from DAuditNew.
+    assertEquals("2002-02-02 00:00:00,66,2013-04-24 08:00:00.000,9999999999",
+        list.checkpoint());
+  }
+
+  public void testStartTraversalWithDTreeAncestors()
+      throws SQLException, RepositoryException {
+    testStartTraversal(true);
+  }
+
+  public void testStartTraversalWithGenealogist()
+      throws SQLException, RepositoryException {
+    testStartTraversal(false);
   }
 
   /** Positive test to set a baseline for testResumeTraversalPingError. */
@@ -451,6 +478,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
     DocumentList list = ltm.resumeTraversal("2011-10-16 14:13:52,12345");
     assertNotNull(list);
+    assertNull(list.nextDocument());
   }
 
   /**
@@ -496,7 +524,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
       String sqlWhereCondition, int expectedRows) throws Exception {
     LivelinkTraversalManager ltm =
         getObjectUnderTest(useDTreeAncestors, sqlWhereCondition);
-    ClientValue results = ltm.getResults("24,42");
+    ClientValue results = ltm.getResults("24,42", new Date());
 
     if (expectedRows == 0) {
       assertNullOrEmpty(results);

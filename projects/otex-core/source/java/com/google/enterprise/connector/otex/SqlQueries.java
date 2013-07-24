@@ -159,10 +159,16 @@ class SqlQueries {
           // sqlWhereCondition
           + "{10,choice,0#|1# and ({11})}"
 
-          + "{12,choice,0#|1#" + ORDER_BY + "}" },
+          // highestModifyDate: The correct timestamp literal syntax
+          // must be supplied by the caller.
+          + " and ModifyDate <= {12}"
+
+          + "{13,choice,0#|1#" + ORDER_BY + "}" },
 
         { "LivelinkTraversalManager.getMatchingDescendants.where",
-          "DataID in ({0})" + ORDER_BY },
+          // The correct timestamp literal syntax must be supplied by
+          // the caller.
+          "DataID in ({0}) and ModifyDate <= {1}" + ORDER_BY },
 
         { "LivelinkAuthorizationManager.getExcludedVolumeId.select",
           new String[] {

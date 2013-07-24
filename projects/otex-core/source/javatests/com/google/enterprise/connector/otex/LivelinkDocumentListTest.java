@@ -187,7 +187,7 @@ public class LivelinkDocumentListTest extends TestCase {
     }
     Checkpoint checkpoint = new Checkpoint();
 
-   return new LivelinkDocumentList(connector, client,
+    return new LivelinkDocumentList(connector, client,
         contentHandler, recArray, fields, null, null, checkpoint,
         connector.getUsername());
   }
