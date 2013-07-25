@@ -1,10 +1,10 @@
-// Copyright (C) 2007-2009 Google Inc.
+// Copyright 2008 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import java.util.Date;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -61,11 +62,9 @@ class Checkpoint {
     private long oldDeleteEventId;
     private Date oldDeleteDate;
 
-
     /** Generic Constructor */
     Checkpoint() {
     }
-
 
     /**
      * Constructor given a checkpoint string.  Checkpoints are passed
@@ -115,6 +114,20 @@ class Checkpoint {
         }
     }
 
+  /**
+   * Logs the given checkpoint portion.
+   *
+   * @param portion the name of the checkpoint portion for the log message
+   * @param date the ModifyDate of the item
+   * @param dataId the DataID of the item
+   */
+  private void log(String portion, Date date, long dataId) {
+    if (LOGGER.isLoggable(Level.FINER)) {
+      // Use String.valueOf to avoid locale-specific formatting of the DataID.
+      LOGGER.log(Level.FINER, "{0}: {1},{2}", new Object[] {
+          portion, dateFmt.toSqlString(date), String.valueOf(dataId) });
+    }
+  }
 
     /**
      * Set the Inserted Items portion of the checkpoint.
@@ -130,8 +143,8 @@ class Checkpoint {
         // Set the new insert checkpoint.
         insertDate = date;
         insertDataId = dataId;
+        log("INSERT CHECKPOINT", date, dataId);
     }
-
 
     /**
      * Sets the Deleted Items portion of the checkpoint. Livelink
@@ -159,7 +172,7 @@ class Checkpoint {
             deleteEventId = 0;
             return;
         }
-        
+
         switch (eventId.type()) {
         case ClientValue.INTEGER:
             // Oracle, Livelink 9.7 and earlier.
@@ -187,8 +200,8 @@ class Checkpoint {
             deleteEventId = 9999999999L;
             break;
         }
+        log("DELETE CHECKPOINT", date, deleteEventId);
     }
-
 
     /**
      * Set the checkpoint for the last Inserted Items Candidate.
@@ -200,8 +213,8 @@ class Checkpoint {
         // Set the final insert candidate checkpoint.
         advInsertDate = date;
         advInsertDataId = dataId;
+        log("ADVANCE CHECKPOINT", date, dataId);
     }
-
 
     /**
      * Advance the checkpoint passed the last candidates
@@ -217,7 +230,6 @@ class Checkpoint {
         }
     }
 
-
     /**
      * Checks to see if this checkpoint is the older style.
      * @param checkpoint a checkpoint string
@@ -227,7 +239,6 @@ class Checkpoint {
         return (checkpoint == null) ||
                (checkpoint.indexOf(',') == checkpoint.lastIndexOf(','));
     }
-
 
     /**
      * Returns true if some component of the checkpoint has changed.
@@ -240,7 +251,6 @@ class Checkpoint {
                 deleteEventId != oldDeleteEventId);
     }
 
-
     /**
      * Restores the checkpoint to its previous state.  This is used when
      * we wish to retry an item that seems to have failed.
@@ -251,7 +261,6 @@ class Checkpoint {
         deleteDate = oldDeleteDate;
         deleteEventId = oldDeleteEventId;
     }
-
 
     /**
      * @returns the Checkpoint as a String.
