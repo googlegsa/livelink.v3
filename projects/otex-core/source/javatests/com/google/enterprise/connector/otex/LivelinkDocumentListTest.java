@@ -14,6 +14,11 @@
 
 package com.google.enterprise.connector.otex;
 
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.isA;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
+
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -100,6 +105,20 @@ public class LivelinkDocumentListTest extends TestCase {
       throws RepositoryException {
     LivelinkConnector connector = getConnector();
 
+    return getObjectUnderTest(connector, docInfo);
+  }
+
+  /**
+   * Creates a LivelinkDocumentList containing documents for the tests.
+   *
+   * @param connector the connector to use, instead of instantiating a
+   *     generic one automatically
+   * @param docInfo the object IDs (DataID) for the returned documents,
+   *     usually one of the values from MockConstants, alternating with
+   *     the file sizes (DataSize) for the returned documents
+   */
+  private DocumentList getObjectUnderTest(LivelinkConnector connector,
+      int... docInfo) throws RepositoryException {
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
 
@@ -121,10 +140,33 @@ public class LivelinkDocumentListTest extends TestCase {
     return getObjectUnderTest(connector, client, docInfo);
   }
 
-  /** Helper method for the other two overloads. */
+  /** Helper method for two of the other overloads. */
   private DocumentList getObjectUnderTest(LivelinkConnector connector,
       Client client, int... docInfo) throws RepositoryException {
     ContentHandler contentHandler = new FileContentHandler();
+    return getObjectUnderTest(connector, client, contentHandler, docInfo);
+  }
+
+  /**
+   * Creates a LivelinkDocumentList containing documents for the tests.
+   *
+   * @param contentHandler the content handler to use, instead of
+   *     {@code FileContentHandler}
+   */
+  private DocumentList getObjectUnderTest(ContentHandler contentHandler)
+      throws RepositoryException {
+    LivelinkConnector connector = getConnector();
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+
+    return getObjectUnderTest(connector, client, contentHandler,
+        MockConstants.IO_OBJECT_ID, 0);
+  }
+
+  /** Helper method for the other overloads. */
+  private DocumentList getObjectUnderTest(LivelinkConnector connector,
+      Client client, ContentHandler contentHandler, int... docInfo)
+      throws RepositoryException {
     contentHandler.initialize(connector, client);
 
     final String[] FIELDS = {
@@ -145,9 +187,27 @@ public class LivelinkDocumentListTest extends TestCase {
     }
     Checkpoint checkpoint = new Checkpoint();
 
-   return new LivelinkDocumentList(connector, client,
+    return new LivelinkDocumentList(connector, client,
         contentHandler, recArray, fields, null, null, checkpoint,
         connector.getUsername());
+  }
+
+  public void testContentHandler() throws RepositoryException {
+    ContentHandler contentHandler = createMock(ContentHandler.class);
+    contentHandler.initialize(isA(LivelinkConnector.class), isA(Client.class));
+    replay(contentHandler);
+    DocumentList list = getObjectUnderTest(contentHandler);
+    verify(contentHandler);
+  }
+
+  public void testRefreshableContentHandler() throws RepositoryException {
+    RefreshableContentHandler contentHandler =
+        createMock(RefreshableContentHandler.class);
+    contentHandler.initialize(isA(LivelinkConnector.class), isA(Client.class));
+    contentHandler.refresh();
+    replay(contentHandler);
+    DocumentList list = getObjectUnderTest(contentHandler);
+    verify(contentHandler);
   }
 
   /**
@@ -187,10 +247,8 @@ public class LivelinkDocumentListTest extends TestCase {
       throws RepositoryException {
     LivelinkConnector connector =
         getConnector("unsupportedFetchVersionTypes", "144");
-    ClientFactory clientFactory = connector.getClientFactory();
-    Client client = clientFactory.createClient();
     DocumentList list =
-        getObjectUnderTest(connector, client, MockConstants.IO_OBJECT_ID, 1);
+        getObjectUnderTest(connector, MockConstants.IO_OBJECT_ID, 1);
 
     Document doc = list.nextDocument();
     assertNotNull(doc);

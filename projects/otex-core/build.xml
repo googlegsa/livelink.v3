@@ -112,7 +112,7 @@
       <classpath>
         <fileset dir="${thirdparty.jar.dir}">
           <include name="prod/*.jar" />
-          <include name="tests/junit.jar" />
+          <include name="tests/*.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector-tests.jar" />
@@ -137,7 +137,7 @@
     <pathelement location="${spi.jar.dir}/connector-tests.jar" />
     <fileset dir="${thirdparty.jar.dir}">
       <include name="prod/*.jar" />
-      <include name="tests/junit.jar" />
+      <include name="tests/*.jar" />
     </fileset>
   </path>
 

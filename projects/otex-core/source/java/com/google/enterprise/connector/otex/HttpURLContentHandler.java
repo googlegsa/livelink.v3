@@ -29,12 +29,11 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * This content handler implementation uses a Livelink download URL.
- * It depends on the LAPI client, so it can't be used in deployments
- * with the mock client.
  *
  * @see ContentHandler
+ * @see RefreshableContentHandler
  */
-class HttpURLContentHandler implements ContentHandler {
+class HttpURLContentHandler implements RefreshableContentHandler {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(HttpURLContentHandler.class.getName());
@@ -75,6 +74,16 @@ class HttpURLContentHandler implements ContentHandler {
         if (urlBase == null) {
           urlBase = connector.getDisplayUrl();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 3.2.2
+     */
+    @Override
+    public synchronized void refresh() throws RepositoryException {
+      llCookie = getLLCookie();
     }
 
     /**

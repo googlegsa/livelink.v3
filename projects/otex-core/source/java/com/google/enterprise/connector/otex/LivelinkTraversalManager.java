@@ -520,9 +520,10 @@ class LivelinkTraversalManager
           LOGGER.fine("CANDIDATES SET: " + numInserts + " rows.");
 
         // Remember the last insert candidate, so we may advance
-        // passed all the candidates for the next batch.
-        checkpoint.setAdvanceCheckpoint(
-            candidates.toDate(numInserts - 1, "ModifyDate"),
+        // past all the candidates for the next batch.
+        Date highestModifyDate =
+            candidates.toDate(numInserts - 1, "ModifyDate");
+        checkpoint.setAdvanceCheckpoint(highestModifyDate,
             candidates.toInteger(numInserts - 1, "DataID"));
 
         StringBuilder buffer = new StringBuilder();
@@ -531,7 +532,7 @@ class LivelinkTraversalManager
           buffer.append(',');
         }
         buffer.deleteCharAt(buffer.length() - 1);
-        results = getResults(buffer.toString());
+        results = getResults(buffer.toString(), highestModifyDate);
         numInserts = (results == null) ? 0 : results.size();
       }
 
@@ -570,14 +571,16 @@ class LivelinkTraversalManager
    * for the DocumentList.
    *
    * @param candidatesList a comma-separated string of candidate object IDs
+   * @param highestModifyDate the latest ModifyDate among the candidates
    * @return the main query results
    */
   @VisibleForTesting
-  ClientValue getResults(String candidatesList) throws RepositoryException {
+  ClientValue getResults(String candidatesList, Date highestModifyDate)
+      throws RepositoryException {
     if (genealogist == null) {
       // We're either using DTreeAncestors, or we don't need it.
-      return getMatching(candidatesList, true, webnodesViewResults,
-          selectList, traversalClient);
+      return getMatching(candidatesList, highestModifyDate, true,
+          webnodesViewResults, selectList, traversalClient);
     } else {
       // We're not using DTreeAncestors but we need the ancestors.
       // If there's a SQL WHERE condition, we need to consistently
@@ -585,9 +588,10 @@ class LivelinkTraversalManager
       String sqlWhereCondition = connector.getSqlWhereCondition();
       String view =
           (Strings.isNullOrEmpty(sqlWhereCondition)) ? "DTree" : "WebNodes";
-      ClientValue matching = getMatching(candidatesList, false, view,
-          new String[] { "DataID" }, sysadminClient);
-      return (matching.size() == 0) ? null : getMatchingDescendants(matching);
+      ClientValue matching = getMatching(candidatesList, highestModifyDate,
+          false, view, new String[] { "DataID" }, sysadminClient);
+      return (matching.size() == 0)
+          ? null : getMatchingDescendants(matching, highestModifyDate);
     }
   }
 
@@ -597,6 +601,7 @@ class LivelinkTraversalManager
    * results by hierarchy without DTreeAncestors.
    *
    * @param candidatesList a comma-separated string of candidate object IDs
+   * @param highestModifyDate the latest ModifyDate among the candidates
    * @param sortResults {@code true} to use an ORDER BY clause on the query,
    *     or {@code false} to let the database use any order
    * @param view the database view to select from
@@ -605,15 +610,17 @@ class LivelinkTraversalManager
    * @return the matching results, which may be the main query results,
    *     or which may need to have the hierarchical filtering applied
    */
-  private ClientValue getMatching(String candidatesList,
+  private ClientValue getMatching(String candidatesList, Date highestModifyDate,
       boolean sortResults, String view, String[] columns, Client client)
       throws RepositoryException {
-    return client.ListNodes(getMatchingQuery(candidatesList, sortResults),
+    return client.ListNodes(
+        getMatchingQuery(candidatesList, highestModifyDate, sortResults),
         view, columns);
   }
 
   @VisibleForTesting
-  String getMatchingQuery(String candidatesList, boolean sortResults) {
+  String getMatchingQuery(String candidatesList, Date highestModifyDate,
+      boolean sortResults) {
     String startNodes = connector.getIncludedLocationNodes();
     String excludedVolumes = connector.getExcludedVolumeTypes();
     String excludedNodeTypes = connector.getExcludedNodeTypes();
@@ -646,7 +653,8 @@ class LivelinkTraversalManager
         /* 9 */ excludedDescendants,
         /* 10 */ choice(!Strings.isNullOrEmpty(sqlWhereCondition)),
         /* 11 */ sqlWhereCondition,
-        /* 12 */ choice(sortResults));
+        /* 12 */ getTimestampLiteral(highestModifyDate),
+        /* 13 */ choice(sortResults));
   }
 
   /**
@@ -654,10 +662,11 @@ class LivelinkTraversalManager
    * use of DTreeAncestors.
    *
    * @param matching the candidates matching the non-hierarchical filters
+   * @param highestModifyDate the latest ModifyDate among the candidates
    * @return the main query results
    */
-  private ClientValue getMatchingDescendants(ClientValue matching)
-      throws RepositoryException {
+  private ClientValue getMatchingDescendants(ClientValue matching,
+      Date highestModifyDate) throws RepositoryException {
     String descendants;
     // We are using the same genealogist for multiple traversal batches, which
     // might be done from different threads (although never concurrently).
@@ -666,11 +675,21 @@ class LivelinkTraversalManager
     }
     if (descendants != null) {
       String query = sqlQueries.getWhere(null,
-          "LivelinkTraversalManager.getMatchingDescendants", descendants);
+          "LivelinkTraversalManager.getMatchingDescendants", descendants,
+          getTimestampLiteral(highestModifyDate));
       return traversalClient.ListNodes(query, webnodesViewResults, selectList);
     } else {
       return null;
     }
+  }
+
+  /**
+   * This is a hack to avoid splitting queries between Oracle and SQL Server
+   * in SqlQueries just to handle different timestamp literal formats.
+   */
+  private String getTimestampLiteral(Date value) {
+    return ((isSqlServer) ? "" : "TIMESTAMP")
+        + '\'' + dateFormat.toSqlString(value) + '\'';
   }
 
   /*
