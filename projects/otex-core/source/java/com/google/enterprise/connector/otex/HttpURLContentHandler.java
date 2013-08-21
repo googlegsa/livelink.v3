@@ -94,6 +94,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
      * @since 3.0
      */
     public void setUrlBase(String urlBase) {
+        LOGGER.log(Level.CONFIG, "CONTENT HANDLER URL BASE: {0}", urlBase);
         this.urlBase = urlBase;
     }
 
@@ -111,6 +112,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
      * @since 3.0
      */
     public void setUrlPath(String urlPath) {
+        LOGGER.log(Level.CONFIG, "CONTENT HANDLER URL PATH: {0}", urlPath);
         this.urlPath = urlPath;
     }
 
@@ -145,6 +147,8 @@ class HttpURLContentHandler implements RefreshableContentHandler {
      * @since 3.2.2
      */
     public void setConnectTimeout(int seconds) {
+      LOGGER.log(Level.CONFIG, "CONTENT HANDLER CONNECT TIMEOUT: {0} seconds",
+          seconds);
       connectTimeout = seconds * 1000;
     }
 
@@ -163,6 +167,8 @@ class HttpURLContentHandler implements RefreshableContentHandler {
      * @since 3.2.2
      */
     public void setReadTimeout(int seconds) {
+      LOGGER.log(Level.CONFIG, "CONTENT HANDLER READ TIMEOUT: {0} seconds",
+          seconds);
       readTimeout = seconds * 1000;
     }
 
@@ -177,8 +183,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
             int versionNumber, int size) throws RepositoryException {
         try {
             URL downloadUrl = new URL(urlBase + urlPath + objectId);
-            if (LOGGER.isLoggable(Level.FINEST))
-                LOGGER.fine("DOWNLOAD URL: " + downloadUrl);
+            LOGGER.log(Level.FINEST, "DOWNLOAD URL: {0}", downloadUrl);
             URLConnection download = downloadUrl.openConnection();
             download.addRequestProperty("Cookie", "LLCookie=" + llCookie);
             download.setConnectTimeout(connectTimeout);
