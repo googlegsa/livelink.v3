@@ -52,8 +52,7 @@ public class PushOneDocumentTest extends TestCase {
         client = sess.getFactory().createClient();
         pusher = new DocPusher(
             new GsaFeedConnection(null, feedServer, feedPort, -1),
-            "livelink", new FileSizeLimitInfo(), new DocumentFilterChain(),
-            null);
+            "livelink", new FileSizeLimitInfo(), new DocumentFilterChain());
 
         // Iinitialize the Context for DocPusher.take.
         // FIXME: This code is duplicated in LivelinkQueryTraverserTest..

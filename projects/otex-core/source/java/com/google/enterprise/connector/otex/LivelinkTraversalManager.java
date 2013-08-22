@@ -519,6 +519,19 @@ class LivelinkTraversalManager
         if (LOGGER.isLoggable(Level.FINE))
           LOGGER.fine("CANDIDATES SET: " + numInserts + " rows.");
 
+        // Check for bad results from the candidates query.
+        // TODO(jlacey): Advanced property to disable this check by default.
+        // TODO(jlacey): When this happens, retry the candidates query
+        // and/or throw a RepositoryException to retry the batch.
+        Date nextModifyDate = candidates.toDate(0, "ModifyDate");
+        if (checkpoint.insertDate != null
+            && nextModifyDate.before(checkpoint.insertDate)) {
+          LOGGER.warning("CANDIDATES TIME WARP: Next row "
+              + dateFormat.toSqlString(nextModifyDate)
+              + " is older than the checkpoint "
+              + dateFormat.toSqlString(checkpoint.insertDate));
+        }
+
         // Remember the last insert candidate, so we may advance
         // past all the candidates for the next batch.
         Date highestModifyDate =
