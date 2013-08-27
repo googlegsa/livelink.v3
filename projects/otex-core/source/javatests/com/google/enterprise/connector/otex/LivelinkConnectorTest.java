@@ -208,6 +208,17 @@ public class LivelinkConnectorTest extends TestCase {
     assertEquals(null, connector.getStartDate());
   }
 
+  public void testCandidatesTimeWarpFuzz_default() throws RepositoryException  {
+    connector.login();
+    assertEquals(-1, connector.getCandidatesTimeWarpFuzz());
+  }
+
+  public void testCandidatesTimeWarpFuzz_explicit() throws RepositoryException {
+    connector.setCandidatesTimeWarpFuzz(42);
+    connector.login();
+    assertEquals(42, connector.getCandidatesTimeWarpFuzz());
+  }
+
   /**
    * A simple test that verifies that at least one of the connecion
    * properties is being correctly assigned in the client factory.

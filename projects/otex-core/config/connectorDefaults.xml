@@ -29,6 +29,7 @@
 
         <!-- Indexing properties. -->
         <property name="startDate" value=""/>
+        <property name="candidatesTimeWarpFuzz" value="-1"/>
         <property name="publicContentUsername" value=""/>
         <property name="publicContentDisplayUrl" value=""/>
         <property name="feedType" value="content"/>

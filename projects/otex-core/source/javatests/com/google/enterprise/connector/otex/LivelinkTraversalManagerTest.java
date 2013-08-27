@@ -19,6 +19,7 @@ import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
+import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -51,6 +52,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
     private LivelinkConnector conn;
 
   private final JdbcFixture jdbcFixture = new JdbcFixture();
+
+  private final LivelinkDateFormat dateFormat =
+      LivelinkDateFormat.getInstance();
 
   public void setUp() throws RepositoryException, SQLException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
@@ -125,6 +129,127 @@ public class LivelinkTraversalManagerTest extends TestCase {
     // The fractional seconds are OK, because LivelinkDateFormat.parse
     // handles multiple variations in the timestamp strings.
     assertEquals("2013-04-24 08:00:00.0", results.toString(0, "AuditDate"));
+  }
+
+  /**
+   * A helper method for the tests. The checkCandidatesTimeWarp method
+   * was intentionally left with higher-level arguments to test the
+   * extraction of the necessary dates. So the tests cover a little
+   * more code, at the cost of this extra helper method to make the
+   * tests simpler again.
+   *
+   * @param firstCandidateDate the ModifyDate of the first result row
+   * @param lastCandidateDate the ModifyDate of the last result row,
+   *     usually valid or invalid in opposition to {@code
+   *     firstCandidateDate}, to make sure the check isn't using this
+   *     value
+   * @param checkpointDate the supposed starting point for the batch
+   */
+  private void checkCandidatesTimeWarp(Date firstCandidateDate,
+      int firstCandidateId, Date lastCandidateDate, int lastCandidateId,
+      String checkpoint) throws RepositoryException {
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+    ClientValue candidates = new MockClientValue(
+        new String[] { "ModifyDate", "DataID" },
+        new Object[][] { { firstCandidateDate, firstCandidateId },
+                         { lastCandidateDate, lastCandidateId } });
+    ltm.checkCandidatesTimeWarp(candidates, new Checkpoint(checkpoint));
+  }
+
+  private void failCandidatesTimeWarp(Date firstCandidateDate,
+      int firstCandidateId, Date lastCandidateDate, int lastCandidateId,
+      String checkpoint) throws RepositoryException {
+    try {
+      checkCandidatesTimeWarp(firstCandidateDate, firstCandidateId,
+          lastCandidateDate, lastCandidateId, checkpoint);
+      fail("Expected a RepositoryException");
+    } catch (RepositoryException expected) {
+      assertTrue(expected.getMessage(),
+          expected.getMessage().contains("CANDIDATES TIME WARP"));
+    }
+  }
+
+  /** Checking time warp is disabled by default. */
+  public void testCandidatesTimeWarp_default() throws RepositoryException {
+    Date first = dateFormat.parse("2013-08-26 16:31:00");
+    checkCandidatesTimeWarp(first, 0, first, 0, "2014-01-01 00:00:00,0");
+  }
+
+  public void testCandidatesTimeWarp_disabled() throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(-1);
+
+    Date first = dateFormat.parse("2013-08-26 16:31:00");
+    checkCandidatesTimeWarp(first, 0, first, 0, "2014-01-01 00:00:00,0");
+  }
+
+  public void testCandidatesTimeWarp_enabledBadDate()
+      throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(0);
+
+    Date first = dateFormat.parse("2013-08-26 16:31:00");
+    Date last = dateFormat.parse("2014-08-26 16:31:00");
+    failCandidatesTimeWarp(first, 0, last, 0, "2014-01-01 00:00:00,0");
+  }
+
+  public void testCandidatesTimeWarp_enabledBadId() throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(0);
+
+    Date first = dateFormat.parse("2014-01-01 00:00:00");
+    failCandidatesTimeWarp(first, 0, first, 1000, "2014-01-01 00:00:00,999");
+  }
+
+  /**
+   * The last candidate is impossibly set before the first candidate
+   * and the checkpoint.
+   */
+  public void testCandidatesTimeWarp_enabledGoodDate()
+      throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(0);
+
+    Date first = dateFormat.parse("2014-01-26 16:31:00");
+    Date last = dateFormat.parse("2013-08-26 16:31:00");
+    checkCandidatesTimeWarp(first, 0, last, 0, "2014-01-01 00:00:00,0");
+  }
+
+  /**
+   * The last candidate is impossibly set before the first candidate
+   * and the checkpoint.
+   */
+  public void testCandidatesTimeWarp_enabledGoodId()
+      throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(0);
+
+    Date first = dateFormat.parse("2014-01-01 00:00:00");
+    checkCandidatesTimeWarp(first, 1000, first, 0, "2014-01-01 00:00:00,999");
+  }
+
+  /**
+   * Sets the fuzz to 30 days and test an even later candidate. The
+   * last candidate is impossibly set before the first candidate,
+   * inside the 30 day fuzz.
+   */
+  public void testCandidatesTimeWarp_futureFailure()
+      throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(30);
+
+    Date first = dateFormat.parse("2014-08-26 16:31:00");
+    Date last = dateFormat.parse("2014-01-26 16:31:00");
+    failCandidatesTimeWarp(first, 0, last, 0, "2014-01-01 00:00:00,0");
+  }
+
+  /**
+   * Sets the first candidate inside the 30 day fuzz, and the last
+   * candidate outside it (which is fine).
+   */
+  public void testCandidatesTimeWarp_futureSuccess()
+      throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(30);
+
+    Date first = dateFormat.parse("2014-01-26 16:31:00");
+    Date last = dateFormat.parse("2014-08-26 16:31:00");
+    checkCandidatesTimeWarp(first, 0, last, 0, "2014-01-01 00:00:00,0");
   }
 
   /** Calls the like-named method under test. */
