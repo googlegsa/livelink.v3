@@ -226,6 +226,20 @@ public class LivelinkTraversalManagerTest extends TestCase {
   }
 
   /**
+   * Livelink only stores timestamps to the nearest second, but LAPI
+   * 9.7 and earlier constructs a Date object that includes
+   * milliseconds, which are taken from the current time.
+   */
+  public void testCandidatesTimeWarp_enabledMilliseconds()
+      throws RepositoryException {
+    conn.setCandidatesTimeWarpFuzz(0);
+
+    Date first = dateFormat.parse("2014-01-01 00:00:00.999");
+    Date last = dateFormat.parse("2014-01-01 00:00:01.999");
+    failCandidatesTimeWarp(first, 999, last, 999, "2014-01-01 00:00:00,1000");
+  }
+
+  /**
    * Sets the fuzz to 30 days and test an even later candidate. The
    * last candidate is impossibly set before the first candidate,
    * inside the 30 day fuzz.

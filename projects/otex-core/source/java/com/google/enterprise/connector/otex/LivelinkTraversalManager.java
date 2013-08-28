@@ -575,12 +575,18 @@ class LivelinkTraversalManager
       throws RepositoryException {
     int candidatesTimeWarpFuzz = connector.getCandidatesTimeWarpFuzz();
     if (candidatesTimeWarpFuzz >= 0 && checkpoint.insertDate != null) {
+      // Livelink only stores timestamps to the nearest second, but
+      // LAPI 9.7 and earlier constructs a Date object that includes
+      // milliseconds, which are taken from the current time. So we
+      // need to avoid using the milliseconds in the Livelink date.
       Date firstCandidateDate = candidates.toDate(0, "ModifyDate");
-      int dateComparison = firstCandidateDate.compareTo(checkpoint.insertDate);
-      if (dateComparison < 0) {
+      long firstCandidateMillis =
+          (firstCandidateDate.getTime() / 1000L) * 1000L;
+      long checkpointMillis = checkpoint.insertDate.getTime();
+      if (firstCandidateMillis < checkpointMillis) {
         throw newCandidatesTimeWarpException(firstCandidateDate, "older",
             checkpoint.insertDate);
-      } else if (dateComparison == 0) {
+      } else if (firstCandidateMillis == checkpointMillis) {
         // Check for matching dates but the same or smaller object ID.
         int firstCandidateId = candidates.toInteger(0, "DataID");
         if (firstCandidateId <= checkpoint.insertDataId) {
@@ -590,9 +596,7 @@ class LivelinkTraversalManager
       } else if (candidatesTimeWarpFuzz > 0) {
         // Check for dates newer than the checkpoint + fuzz.
         long fuzzMillis = candidatesTimeWarpFuzz * 86400L * 1000L;
-        Date checkpointPlusFuzz =
-            new Date(checkpoint.insertDate.getTime() + fuzzMillis);
-        if (firstCandidateDate.after(checkpointPlusFuzz)) {
+        if (firstCandidateMillis > checkpointMillis + fuzzMillis) {
           throw newCandidatesTimeWarpException(firstCandidateDate, "much newer",
             checkpoint.insertDate);
         }
