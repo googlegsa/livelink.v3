@@ -146,9 +146,10 @@ class LivelinkDocument implements Document {
           Calendar c = Calendar.getInstance();
           c.setTime(clientValue.toDate());
           // Livelink only stores timestamps to the nearest second,
-          // but LAPI constructs a Date object that includes milli-
-          // seconds, which are taken from the current time.  So we
-          // need to avoid using the milliseconds in the parameter.
+          // but LAPI 9.7 and earlier constructs a Date object that
+          // includes milliseconds, which are taken from the current
+          // time. So we need to avoid using the milliseconds in the
+          // parameter.
           c.clear(Calendar.MILLISECOND);
           return Value.getDateValue(c);
         case ClientValue.DOUBLE:

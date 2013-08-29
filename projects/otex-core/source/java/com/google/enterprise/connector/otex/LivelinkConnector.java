@@ -243,6 +243,15 @@ public class LivelinkConnector implements Connector {
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
 
+  /**
+   * The configuration for checking for a time warp (that is,
+   * incorrect results) in the candidates query results. The default
+   * is {@code -1} to disable the check.
+   *
+   * @see #setCandidatesTimeWarpFuzz
+   */
+  private int candidatesTimeWarpFuzz = -1;
+
   /** Whether to track deleted items, sending delete notification to GSA. */
   private boolean trackDeletedItems = true;
 
@@ -896,6 +905,33 @@ public class LivelinkConnector implements Connector {
    */
   Date getStartDate() {
     return startDate;
+  }
+
+  /**
+   * Sets the configuration for checking for a time warp (that is,
+   * incorrect results) in the candidates query results.
+   *
+   * @param fuzz one of {@code -1} to disable the check for incorrect
+   *     results, {@code 0}, to check only for candidates older than
+   *     the checkpoint date in the query, or a positive integer to
+   *     also check for candidates more than the given number of days
+   *     newer than the checkpoint date
+   */
+  public void setCandidatesTimeWarpFuzz(int fuzz) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("CANDIDATES TIME WARP FUZZ: " + fuzz);
+    this.candidatesTimeWarpFuzz = fuzz;
+  }
+
+  /**
+   * Gets the configuration for checking for a time warp (that is,
+   * incorrect results) in the candidates query results.
+   *
+   * @return the fuzz value, see {@link #setCandidatesTimeWarpFuzz} for
+   *     possible values
+   */
+  int getCandidatesTimeWarpFuzz() {
+    return candidatesTimeWarpFuzz;
   }
 
   /**

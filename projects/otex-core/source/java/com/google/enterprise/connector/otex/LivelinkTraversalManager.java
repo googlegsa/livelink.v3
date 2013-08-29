@@ -520,17 +520,7 @@ class LivelinkTraversalManager
           LOGGER.fine("CANDIDATES SET: " + numInserts + " rows.");
 
         // Check for bad results from the candidates query.
-        // TODO(jlacey): Advanced property to disable this check by default.
-        // TODO(jlacey): When this happens, retry the candidates query
-        // and/or throw a RepositoryException to retry the batch.
-        Date nextModifyDate = candidates.toDate(0, "ModifyDate");
-        if (checkpoint.insertDate != null
-            && nextModifyDate.before(checkpoint.insertDate)) {
-          LOGGER.warning("CANDIDATES TIME WARP: Next row "
-              + dateFormat.toSqlString(nextModifyDate)
-              + " is older than the checkpoint "
-              + dateFormat.toSqlString(checkpoint.insertDate));
-        }
+        checkCandidatesTimeWarp(candidates, checkpoint);
 
         // Remember the last insert candidate, so we may advance
         // past all the candidates for the next batch.
@@ -577,6 +567,57 @@ class LivelinkTraversalManager
     // has no documents, but to reschedule us immediately to keep looking.
     LOGGER.fine("RESULTSET: 0 rows, so far.");
     return new EmptyDocumentList(checkpoint.toString());
+  }
+
+  /** Check for bad results from the candidates query. */
+  @VisibleForTesting
+  void checkCandidatesTimeWarp(ClientValue candidates, Checkpoint checkpoint)
+      throws RepositoryException {
+    int candidatesTimeWarpFuzz = connector.getCandidatesTimeWarpFuzz();
+    if (candidatesTimeWarpFuzz >= 0 && checkpoint.insertDate != null) {
+      // Livelink only stores timestamps to the nearest second, but
+      // LAPI 9.7 and earlier constructs a Date object that includes
+      // milliseconds, which are taken from the current time. So we
+      // need to avoid using the milliseconds in the Livelink date.
+      Date firstCandidateDate = candidates.toDate(0, "ModifyDate");
+      long firstCandidateMillis =
+          (firstCandidateDate.getTime() / 1000L) * 1000L;
+      long checkpointMillis = checkpoint.insertDate.getTime();
+      if (firstCandidateMillis < checkpointMillis) {
+        throw newCandidatesTimeWarpException(firstCandidateDate, "older",
+            checkpoint.insertDate);
+      } else if (firstCandidateMillis == checkpointMillis) {
+        // Check for matching dates but the same or smaller object ID.
+        int firstCandidateId = candidates.toInteger(0, "DataID");
+        if (firstCandidateId <= checkpoint.insertDataId) {
+          throw newCandidatesTimeWarpException(firstCandidateId, "less",
+            checkpoint.insertDataId);
+        }
+      } else if (candidatesTimeWarpFuzz > 0) {
+        // Check for dates newer than the checkpoint + fuzz.
+        long fuzzMillis = candidatesTimeWarpFuzz * 86400L * 1000L;
+        if (firstCandidateMillis > checkpointMillis + fuzzMillis) {
+          throw newCandidatesTimeWarpException(firstCandidateDate, "much newer",
+            checkpoint.insertDate);
+        }
+      }
+    }
+  }
+
+  private RepositoryException newCandidatesTimeWarpException(
+      Date firstCandidateDate, String relation, Date checkpointDate) {
+    return new RepositoryException("CANDIDATES TIME WARP: "
+        + "First candidate date " + dateFormat.toSqlString(firstCandidateDate)
+        + " is " + relation + " than the checkpoint date "
+        + dateFormat.toSqlString(checkpointDate));
+  }
+
+  private RepositoryException newCandidatesTimeWarpException(
+      int firstCandidateId, String relation, int checkpointId) {
+    return new RepositoryException("CANDIDATES TIME WARP: "
+        + "First candidate ID " + firstCandidateId
+        + " is " + relation + " than the checkpoint ID "
+        + checkpointId);
   }
 
   /**

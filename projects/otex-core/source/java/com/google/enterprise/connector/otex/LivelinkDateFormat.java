@@ -92,9 +92,9 @@ class LivelinkDateFormat {
 
     /**
      * Livelink only stores timestamps to the nearest second, but LAPI
-     * constructs a Date object that includes milliseconds, which are
-     * taken from the current time. So we need to avoid using the
-     * milliseconds in the parameter.
+     * 9.7 and earlier constructs a Date object that includes milli-
+     * seconds, which are taken from the current time. So we need to
+     * avoid using the milliseconds in the parameter.
      *
      * @param value a Livelink date
      * @return an ISO 8601 formatted string representation,
