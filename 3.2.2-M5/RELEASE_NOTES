@@ -3,11 +3,73 @@
                             Release Notes
 
 This document contains the release notes for Google Search Appliance
-Connector for Open Text Livelink ECM - Enterprise Server. The following
+Connector for Livelink. This connector supports OpenText Livelink ECM -
+Enterprise Server and OpenText Content Server. The following
 sections describe the release in detail and provide information that
 supplements the main documentation.
 
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
+
+
+Release 3.2.2, October 30, 2013
+===============================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. Users of previous releases are encouraged to review
+the changes below to determine whether to upgrade.
+
+Issues Fixed Since 3.2.0
+------------------------
+10610518 - Add a retry for an incorrect database result set. Under load,
+           in some circumstances, Oracle can return the wrong result
+           set once every few thousand executions of the same query.
+           The check for a bad result set is disabled by default.
+
+9923703 - Livelink connector may skip documents when documents are
+          updated in Livelink while the connector is processing a batch
+          and transient errors occur.
+
+9580681 - Handle cookie expiration in HttpURLContentHandler. A new
+          LLCookie is now obtained for each batch.
+
+9444414 - HttpURLContentHandler should support timeouts. Added
+          connectTimeout and readTimeout properties to the
+          HttpURLContentHandler bean.
+
+9380415 - DataSize over 2 GB triggers a Livelink server bug on Oracle
+          and prevents traversal.
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 3.2.0 may be
+used with this version. This version works with Connector Manager
+version 3.2.0 or later. Earlier versions of the Connector Manager will
+not work correctly with this version of the connector. This product is
+designed to function with OpenText Livelink versions 9.7, and 9.7.1,
+and OpenText Content Server 10.
+
+Java SE 5.0 is no longer supported. Java 6 or later is required.
+
+Customers running OpenText Content Server 10, or Livelink 9.7.1 with
+the July 2008 or later monthly patch, must configure the ListNodes white
+list in opentext.ini as described in the Release 3.2.0 sections below.
+
+Customers upgrading from version 3.0.0 or earlier must update the
+ListNodes white list in opentext.ini as described in the Release 3.2.0
+sections below.
+
+Customers upgrading from version 2.6.12 or earlier who have edited the
+authenticationManager definition in connectorInstance.xml must update
+those files. The authenticationManager property is now overridable.
+Please see the Advanced Configuration wiki page for details, and
+contact Google Enterprise Support if you need assistance.
 
 
 Release 3.2.0, May 5, 2013
@@ -219,7 +281,8 @@ Summary of Changes
 
 Advanced Configuration Properties
 ---------------------------------
-For more details on these properties, see http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
 
 Version Compatibility
 ---------------------
@@ -261,7 +324,8 @@ Summary of Changes
 
 Advanced Configuration Properties
 ---------------------------------
-For more details on these properties, see http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
 
 Version Compatibility
 ---------------------
@@ -310,7 +374,8 @@ whether to upgrade.
 
 Summary of Changes
 ------------------
-For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.6.10
+For the latest details on the changes, see
+http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.6.10
 
   * Fixed issue 25: Provide an indexing option that does not use
     DTreeAncestors. Added the useDTreeAncestors advanced configuration
@@ -334,7 +399,8 @@ For the latest details on the changes, see http://code.google.com/p/google-enter
 
 Advanced Configuration Properties
 ---------------------------------
-For more details on these properties, see http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
 
 Version Compatibility
 ---------------------
@@ -363,7 +429,8 @@ upgrade. See the product website for a complete description.
 
 Summary of Changes
 ------------------
-For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.6.6
+For the latest details on the changes, see
+http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.6.6
 
   * Fixed issue 56: Treat LAPI I/O exceptions as transient. In
     previous releases, transient I/O-related exceptions, such as
@@ -409,7 +476,6 @@ website for a complete description.
 
 Summary of Changes
 ------------------
-
   * Updated the tests to work with Connector Manager version 2.6.0.
 
 Version Compatibility
@@ -433,15 +499,14 @@ upgrade. See the product website for a complete description.
 
 Summary of Changes
 ------------------
-
-For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.4
+For the latest details on the changes, see
+http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.4
 
   * Fixed issue 51, logging the actual error in three cases, instead of
     ignoring the error or logging a masking error.
 
 Version Compatibility
 ---------------------
-
 Connector instances created using versions 1.0.3 through 2.4.0 may be
 used with this version. This version works with Connector Manager
 version 2.4.0 through 2.4.4. Earlier versions of the Connector Manager
@@ -461,8 +526,8 @@ complete description.
 
 Summary of Changes
 ------------------
-
-For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.0
+For the latest details on the changes, see
+http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.4.0
 
   * Fixed issue 42, allowing easier customization of
     connectorInstance.xml for some properties.
@@ -477,7 +542,6 @@ For the latest details on the changes, see http://code.google.com/p/google-enter
 
 Version Compatibility
 ---------------------
-
 Connector instances created using versions 1.0.0 through 2.0.0 may be
 used with this version. This version works with Connector Manager
 version 2.4.0. Earlier versions of the Connector Manager will not work
@@ -507,8 +571,8 @@ complete description.
 
 Summary of Changes
 ------------------
-
-For the latest details on the changes, see http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.0.0
+For the latest details on the changes, see
+http://code.google.com/p/google-enterprise-connector-otex/issues/list?can=0&q=label%3AMilestone-Release_2.0.0
 
   * Fixed issue 13, with better support for doc.Fetch URLs.
   * Fixed issue 35 by allowing URLs in the Host parameter on the
@@ -523,7 +587,6 @@ For the latest details on the changes, see http://code.google.com/p/google-enter
 
 Version Compatibility
 ---------------------
-
 Connector instances created using versions 1.0.0 through 1.3.2 may be
 used with this version. This version works with Connector Manager
 version 2.0.0. Earlier versions of the Connector Manager will not work
@@ -560,7 +623,6 @@ Summary of Changes
 
 Version Compatibility
 ---------------------
-
 Connector instances created using versions 1.0.0 through 1.3.0 may be
 used with this version. This version works with Connector Manager
 version 1.3.2. Earlier versions of the Connector Manager will not work
@@ -591,7 +653,6 @@ Summary of Changes
 
 Version Compatibility
 ---------------------
-
 Connector instances created using versions 1.0.0 through 1.1.1 may be
 used with this version. This version works with Connector Manager
 version 1.3.0. Earlier versions of the Connector Manager will not work
