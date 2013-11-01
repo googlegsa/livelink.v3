@@ -54,7 +54,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
     public void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
 
-        // Iinitialize the Context for DocPusher.take.
+        // Initialize the Context for DocPusher.take.
         // FIXME: This code is duplicated in PushOneDocument.
         String cmDir = System.getProperty("connector-manager.dir");
         if (cmDir == null)
@@ -74,7 +74,6 @@ public class LivelinkQueryTraverserTest extends TestCase {
     public final void testRunBatch() throws IOException,
             RepositoryLoginException, RepositoryException,
             InterruptedException, ConnectorNotFoundException {
-
         runTestBatches(1);
         runTestBatches(5);
         runTestBatches(25);
@@ -82,11 +81,9 @@ public class LivelinkQueryTraverserTest extends TestCase {
         runTestBatches(625);
     }
 
-
     private void runTestBatches(int batchHint) throws IOException,
             RepositoryLoginException, RepositoryException,
             InterruptedException, ConnectorNotFoundException {
-
         Session sess = conn.login();
         TraversalManager qtm = sess.getTraversalManager();
 
@@ -103,7 +100,7 @@ public class LivelinkQueryTraverserTest extends TestCase {
 
         Traverser traverser = new QueryTraverser(pusherFactory, qtm,
             instantiator.getTraversalStateStore(connectorName),
-            connectorName, null, new SystemClock(), null);
+            connectorName, null, new SystemClock());
 
         instantiator.setupTraverser(connectorName, traverser);
 
