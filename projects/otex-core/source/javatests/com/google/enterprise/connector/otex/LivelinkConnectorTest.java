@@ -34,16 +34,21 @@ public class LivelinkConnectorTest extends TestCase {
 
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
+  private final LivelinkDateFormat dateFormat =
+      LivelinkDateFormat.getInstance();
+
   protected void setUp() throws SQLException {
     // TODO: Move this fixture and its tests to a separate test class.
     jdbcFixture.setUp();
     jdbcFixture.executeUpdate(
-        "insert into DTree(DataID, ParentID, OwnerID) "
-        + "values(2000, -1, -2000)",
-        "insert into DTree(DataID, ParentID, OwnerID) "
-        + "values(2002, 2000, -2000)",
-        "insert into DTree(DataID, ParentID, OwnerID) "
-        + "values(4104, 2002, -2000)",
+        "insert into DTree(DataID, ParentID, OwnerID, ModifyDate) "
+        + "values(2000, -1, -2000, timestamp'2001-01-01 00:00:00')",
+        "insert into DTree(DataID, ParentID, OwnerID, ModifyDate) "
+        + "values(2002, 2000, -2000, timestamp'2002-01-01 00:00:00')",
+        "insert into DTree(DataID, ParentID, OwnerID, ModifyDate) "
+        + "values(4104, 2002, -2000, timestamp'2003-01-01 00:00:00')",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(2000, -1)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(2002, 2000)",
         "insert into DTreeAncestors(DataID, AncestorID) "
@@ -155,19 +160,21 @@ public class LivelinkConnectorTest extends TestCase {
   }
 
   public void testStartDate1() throws Exception {
-    connector.setStartDate("2007-09-27 01:12:13");
+    String expected = "2007-09-27 01:12:13";
+    connector.setStartDate(expected);
     connector.login();
     Date startDate = connector.getStartDate();
     assertNotNull(startDate);
-    assertEquals("Thu Sep 27 01:12:13 PDT 2007", startDate.toString());
+    assertEquals(dateFormat.parse(expected), startDate);
   }
 
+  /** Tests that a time of midnight is used when only a date is given. */
   public void testStartDate2() throws Exception {
     connector.setStartDate("2007-09-27");
     connector.login();
     Date startDate = connector.getStartDate();
     assertNotNull(startDate);
-    assertEquals("Thu Sep 27 00:00:00 PDT 2007", startDate.toString());
+    assertEquals(dateFormat.parse("2007-09-27 00:00:00"), startDate);
   }
 
   public void testStartDate3() throws Exception {
@@ -189,15 +196,16 @@ public class LivelinkConnectorTest extends TestCase {
   }
 
   public void testStartDate6() throws Exception {
-    connector.setStartDate("2007-09-27 01:12:13");
+    String expected = "2007-09-27 01:12:13";
+    connector.setStartDate(expected);
     connector.login();
     Date startDate = connector.getStartDate();
     assertNotNull(startDate);
-    assertEquals("Thu Sep 27 01:12:13 PDT 2007", startDate.toString());
+    assertEquals(dateFormat.parse(expected), startDate);
     connector.login();
     startDate = connector.getStartDate();
     assertNotNull(startDate);
-    assertEquals("Thu Sep 27 01:12:13 PDT 2007", startDate.toString());
+    assertEquals(dateFormat.parse(expected), startDate);
   }
 
   public void testStartDate7() throws Exception {
@@ -206,6 +214,20 @@ public class LivelinkConnectorTest extends TestCase {
     assertEquals(null, connector.getStartDate());
     connector.login();
     assertEquals(null, connector.getStartDate());
+  }
+
+  /**
+   * Tests that the start date is assigned from the min(ModifyDate) of
+   * the included nodes.
+   */
+  public void testValidateIncludedLocationStartDate()
+  throws RepositoryException {
+    connector.setUseDTreeAncestors(true);
+    connector.setIncludedLocationNodes("2000");
+    assertEquals(null, connector.getStartDate());
+    connector.login();
+    assertEquals(dateFormat.parse("2001-01-01 00:00:00"),
+        connector.getStartDate());
   }
 
   public void testCandidatesTimeWarpFuzz_default() throws RepositoryException  {

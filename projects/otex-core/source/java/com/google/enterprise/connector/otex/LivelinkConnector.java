@@ -2081,7 +2081,7 @@ public class LivelinkConnector implements Connector {
    * The client must be a sysadmin client because this method uses
    * <code>ListNodes</code> but we don't want a lack of permissions
    * to give a false positive. Also, this method does not select
-   * either DataID or PermID, or even use the DTree table at all.
+   * PermID, or even use the DTree table at all.
    */
   private void validateDTreeAncestors(Client client)
       throws RepositoryException {
@@ -2113,7 +2113,7 @@ public class LivelinkConnector implements Connector {
    * The client must be a sysadmin client because this methods uses
    * <code>ListNodes</code> but we don't want a lack of permissions
    * to give a false positive. Also, this method does not select
-   * either DataID or PermID.
+   * PermID, although it could.
    */
   private void validateIncludedLocationStartDate(Client client)
       throws RepositoryException {
