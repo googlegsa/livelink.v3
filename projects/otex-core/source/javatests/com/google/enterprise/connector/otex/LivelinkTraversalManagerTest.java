@@ -77,6 +77,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
         + "values(66, 6, -2000, 144, timestamp'2002-02-02 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
+        + "values(6, 2000, -2000, 0, timestamp'2002-02-02 00:00:00')",
+        "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
         + "values(2000, -1, -2000, 141, timestamp'2001-01-01 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
         + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00')",
@@ -87,7 +89,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(66, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
-        + "values(4104, 2000)", // DataID value does not matter.
+        + "values(6, 2000)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(2000, -1)",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
         + "MimeType) "
         + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00', null)",

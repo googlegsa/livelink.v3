@@ -339,12 +339,11 @@ class SqlQueries {
             "ModifyDate as minModifyDate",
             "DataID" } },
         { "LivelinkConnector.validateIncludedLocationStartDate.from",
-          DTREE_VIEW_ORACLE },
+          "DTree" },
         { "LivelinkConnector.validateIncludedLocationStartDate.where",
-          // This works because the view is ordered by ModifyDate, so
-          // the first matching row is the min ModifyDate.
-          "(DataID in (select DataID from DTreeAncestors "
-          + "where AncestorID in ({0})) or DataID in ({1})) "
+          "ModifyDate in (select min(T.ModifyDate) from DTree T join "
+          + "DTreeAncestors Anc on T.DataID = Anc.DataID where "
+          + "Anc.AncestorID in ({0}) or T.DataID in ({1})) "
           + "and rownum = 1" },
 
         { "LivelinkConnector.getMissingEnterpriseWorkspaceAncestors.select",
