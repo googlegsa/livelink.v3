@@ -198,7 +198,7 @@ class LivelinkRetriever implements Retriever {
   // LivelinkDocumentList.collectContentProperty().  Changes here
   // should probably be reflected there, and vice-versa.
   // TODO: Extract the common logic out into a shared utility method.
-  /* @Override */
+  @Override
   public InputStream getContent(String docid) throws RepositoryException {
     try {
       int objid = getObjectId(docid);
