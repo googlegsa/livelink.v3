@@ -67,6 +67,7 @@ class LivelinkSession implements Session, RetrieverAware {
    * @return a TraversalManager
    * @throws RepositoryException
    */
+  @Override
   public TraversalManager getTraversalManager() throws RepositoryException {
     Client traversalClient = clientFactory.createClient();
 
@@ -99,6 +100,7 @@ class LivelinkSession implements Session, RetrieverAware {
      * @return an AuthenticationManager
      * @throws RepositoryException
      */
+    @Override
     public AuthenticationManager getAuthenticationManager() {
         // XXX: Should we ever return null, indicating that
         // authentication is handled by the GSA?
@@ -111,6 +113,7 @@ class LivelinkSession implements Session, RetrieverAware {
      * @return an AuthorizationManager
      * @throws RepositoryException
      */
+    @Override
     public AuthorizationManager getAuthorizationManager()
             throws RepositoryException {
         return authorizationManager;
@@ -122,6 +125,7 @@ class LivelinkSession implements Session, RetrieverAware {
    * @return a Retriever
    * @throws RepositoryException
    */
+  @Override
   public synchronized Retriever getRetriever() throws RepositoryException {
     if (retriever == null) {
       Client traversalClient = clientFactory.createClient();

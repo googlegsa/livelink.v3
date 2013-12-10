@@ -64,6 +64,7 @@ class AuthenticationManagerChain
      * called after the bean initialization has called
      * setAuthenticationManagers.
      */
+    @Override
     public void setConnector(Connector connector) throws RepositoryException {
         for (AuthenticationManager authn : authenticationManagers) {
             if (authn instanceof ConnectorAware)
@@ -72,6 +73,7 @@ class AuthenticationManagerChain
     }
 
     /** {@inheritDoc} */
+    @Override
     public AuthenticationResponse authenticate(AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
         if (LOGGER.isLoggable(Level.FINE))

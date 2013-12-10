@@ -39,10 +39,12 @@ import java.util.Date;
 public class LivelinkDocumentListTest extends TestCase {
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
+  @Override
   protected void setUp() throws SQLException {
     jdbcFixture.setUp();
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
   }

@@ -100,6 +100,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.defaultValue = defaultValue;
     }
 
+    @Override
     public final String toString() {
       StringBuilder buffer = new StringBuilder();
       addToBuffer(buffer, "", "", null, null);
@@ -285,6 +286,7 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /** Writes a table row with a two-column label and no form control. */
+    @Override
     public void addToBuffer(StringBuilder buffer, String labelPrefix,
         String labelSuffix, String value, ResourceBundle labels) {
       String label = getLabel(name, labels);
@@ -301,6 +303,7 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /* This is never called, but it is abstract in our superclass. */
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
     }
@@ -315,6 +318,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.messages = new String[] { left, right };
     }
 
+    @Override
     public void addToBuffer(StringBuilder buffer, String labelPrefix,
         String labelSuffix, String value, ResourceBundle labels) {
       buffer.append("<tr>\r\n");
@@ -365,6 +369,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.type = type;
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
 
@@ -416,6 +421,7 @@ public class LivelinkConnectorType implements ConnectorType {
       super(prop.name, prop.defaultValue, "hidden");
     }
 
+    @Override
     public void addToBuffer(StringBuilder buffer, String labelPrefix,
         String labelSuffix, String value, ResourceBundle labels) {
       buffer.append("<tr style='display:none'>\r\n").
@@ -434,6 +440,7 @@ public class LivelinkConnectorType implements ConnectorType {
       super(name);
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
       buffer.append("<textarea ");
@@ -460,6 +467,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.buttonNames = buttonNames;
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
       if (value == null)
@@ -506,6 +514,7 @@ public class LivelinkConnectorType implements ConnectorType {
       super(name, defaultValue);
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
       if (value == null)
@@ -795,6 +804,7 @@ public class LivelinkConnectorType implements ConnectorType {
   /**
    * {@inheritDoc}
    */
+  @Override
   public ConfigureResponse getConfigForm(Locale locale) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("getConfigForm locale: " + locale);
@@ -810,6 +820,7 @@ public class LivelinkConnectorType implements ConnectorType {
   /**
    * {@inheritDoc}
    */
+  @Override
   public ConfigureResponse getPopulatedConfigForm(
       Map<String, String> configData, Locale locale) {
     if (LOGGER.isLoggable(Level.CONFIG)) {
@@ -872,6 +883,7 @@ public class LivelinkConnectorType implements ConnectorType {
    * TODO: Add init method and parameter validation to
    * LivelinkConnector.
    */
+  @Override
   public ConfigureResponse validateConfig(Map<String, String> configData,
       Locale locale, ConnectorFactory connectorFactory) {
     if (LOGGER.isLoggable(Level.CONFIG)) {

@@ -100,6 +100,7 @@ public class LivelinkAuthorizationManager
    * because initialization (via this method) and other method calls
    * happen in different threads, and we do not control the threads.
    */
+  @Override
   public synchronized void setConnector(Connector connector)
       throws RepositoryException {
     this.connector = (LivelinkConnector) connector;
@@ -122,6 +123,7 @@ public class LivelinkAuthorizationManager
    * @param identity the user identity for which to check authorization
    * @throws RepositoryException if an error occurs
    */
+  @Override
   public synchronized Collection<AuthorizationResponse> authorizeDocids(
       Collection<String> docids, AuthenticationIdentity identity)
       throws RepositoryException {
@@ -287,14 +289,14 @@ public class LivelinkAuthorizationManager
 
   /** A factory interface for strings. */
   private static class StringCreator implements Creator<String> {
-    public String fromString(String value) {
+    @Override public String fromString(String value) {
       return value;
     }
   }
 
   /** A factory interface for <code>AuthorizationResponse</code> objects. */
   private static class AuthzCreator implements Creator<AuthorizationResponse> {
-    public AuthorizationResponse fromString(String value) {
+    @Override public AuthorizationResponse fromString(String value) {
       return new AuthorizationResponse(true, value);
     }
   }

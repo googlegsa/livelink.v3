@@ -31,7 +31,8 @@ import com.google.enterprise.connector.spiimpl.BinaryValue;
 public class NonDocumentTest extends TestCase {
   private LivelinkConnector conn;
 
-  public void setUp() throws RepositoryException {
+  @Override
+  protected void setUp() throws RepositoryException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
   }
 

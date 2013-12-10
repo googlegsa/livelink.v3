@@ -64,6 +64,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
     }
 
     /** {@inheritDoc} */
+    @Override
     public void initialize(LivelinkConnector connector, Client client)
             throws RepositoryException {
         this.client = client;
@@ -179,6 +180,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
     }
 
     /** {@inheritDoc} */
+    @Override
     public InputStream getInputStream(int volumeId, int objectId,
             int versionNumber, int size) throws RepositoryException {
         try {

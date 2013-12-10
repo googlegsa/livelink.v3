@@ -46,13 +46,15 @@ class ByteArrayContentHandler implements ContentHandler {
     }
 
     /** {@inheritDoc} */
+    @Override
     public void initialize(LivelinkConnector connector, Client client)
             throws RepositoryException {
         this.connector = connector;
         this.client = client;
     }
-    
+
     /** {@inheritDoc} */
+    @Override
     public InputStream getInputStream(int volumeId, int objectId,
             int versionNumber, int size) throws RepositoryException {
         try {
@@ -64,7 +66,6 @@ class ByteArrayContentHandler implements ContentHandler {
             throw new LivelinkException(e, LOGGER);
         }
     }
-
 
     /**
      * This implementation adds a {@link #getInputStream} method that
@@ -85,6 +86,7 @@ class ByteArrayContentHandler implements ContentHandler {
         private boolean isOpen = true;
 
         /** Marks this output stream as closed. */
+        @Override
         public void close() throws IOException {
             isOpen = false;
             super.close();

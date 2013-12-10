@@ -73,7 +73,8 @@ public class LivelinkTest extends TestCase {
     }
   }
 
-  public void setUp() throws RepositoryException {
+  @Override
+  protected void setUp() throws RepositoryException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
   }
 

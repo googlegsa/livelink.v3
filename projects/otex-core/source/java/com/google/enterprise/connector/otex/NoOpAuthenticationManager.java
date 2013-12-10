@@ -55,8 +55,9 @@ class NoOpAuthenticationManager implements AuthenticationManager {
             LOGGER.config("SHARED PASSWORD: ...");
         this.sharedPassword = sharedPassword;
     }
-    
+
     /** {@inheritDoc} */
+    @Override
     public AuthenticationResponse authenticate(AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
         boolean isValid = sharedPassword == null ||

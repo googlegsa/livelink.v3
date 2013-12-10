@@ -56,7 +56,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
   private final LivelinkDateFormat dateFormat =
       LivelinkDateFormat.getInstance();
 
-  public void setUp() throws RepositoryException, SQLException {
+  @Override
+  protected void setUp() throws RepositoryException, SQLException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
 
     jdbcFixture.setUp();
@@ -107,6 +108,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00', null)");
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
   }

@@ -163,6 +163,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
       }
     }
 
+    @Override
     public void handleText(char[] data, int pos) {
       if (currentText != null) {
         currentText.append(data);
@@ -170,16 +171,19 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
       }
     }
 
+    @Override
     public void handleStartTag(HTML.Tag tag,
         MutableAttributeSet attrs, int pos) {
       doTag(tag, attrs);
     }
 
+    @Override
     public void handleSimpleTag(HTML.Tag tag,
         MutableAttributeSet attrs, int pos) {
       doTag(tag, attrs);
     }
 
+    @Override
     public void handleEndTag(HTML.Tag tag, int pos) {
       if (tag == HTML.Tag.SELECT) {
         currentProperty.put("options", currentOptions);
@@ -190,6 +194,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
       }
     }
 
+    @Override
     public String toString() {
       return properties.toString();
     }
@@ -203,15 +208,18 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
    * throws the <code>SAXParseException</code>.
    */
   public static class ThrowingErrorHandler implements ErrorHandler {
+    @Override
     public void error(SAXParseException exception) throws SAXException {
       throw exception;
     }
 
+    @Override
     public void fatalError(SAXParseException exception)
         throws SAXException {
       throw exception;
     }
 
+    @Override
     public void warning(SAXParseException exception) throws SAXException {
       throw exception;
     }
@@ -307,12 +315,14 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
 
   protected LivelinkConnectorType connectorType;
 
+  @Override
   protected void setUp() throws SQLException {
     jdbcFixture.setUp();
 
     connectorType = new LivelinkConnectorType();
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
   }

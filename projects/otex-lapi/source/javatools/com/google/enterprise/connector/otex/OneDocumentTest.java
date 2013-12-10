@@ -38,7 +38,8 @@ public class OneDocumentTest extends TestCase {
   private LivelinkSession sess;
   private Client client;
 
-  public void setUp() throws RepositoryException {
+  @Override
+  protected void setUp() throws RepositoryException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
     sess = (LivelinkSession) conn.login();
     client = sess.getFactory().createClient();

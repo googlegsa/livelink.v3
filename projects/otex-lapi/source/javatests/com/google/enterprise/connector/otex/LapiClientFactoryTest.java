@@ -39,7 +39,8 @@ public class LapiClientFactoryTest extends TestCase {
    *
    * @throws RepositoryException if login fails
    */
-  public void setUp() throws Exception {
+  @Override
+  protected void setUp() throws Exception {
     factory = new LapiClientFactory(); 
     factory.setServer(getName()); 
     factory.setPort(1111);

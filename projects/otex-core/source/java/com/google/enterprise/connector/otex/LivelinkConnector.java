@@ -2244,6 +2244,7 @@ public class LivelinkConnector implements Connector {
   }
 
   /** {@inheritDoc} */
+  @Override
   public Session login()
       throws RepositoryLoginException, RepositoryException {
     LOGGER.fine("LOGIN");

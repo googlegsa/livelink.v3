@@ -142,6 +142,7 @@ class LivelinkRetriever implements Retriever {
    * @throws RepositoryException if there was a problem accessing the document
    *         repository
    */
+  @Override
   public Document getMetaData(String docid) throws RepositoryException {
     try {
       int objid = getObjectId(docid);

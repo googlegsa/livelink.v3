@@ -86,6 +86,7 @@ class LivelinkAuthenticationManager
      * @throws RepositoryException if an exception occurred during
      *     authentication
      */
+    @Override
     public synchronized AuthenticationResponse authenticate(
             AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {

@@ -56,7 +56,8 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
    *
    * @throws RepositoryException if login fails
    */
-  public void setUp() throws RepositoryException {
+  @Override
+  protected void setUp() throws RepositoryException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
     session = (LivelinkSession) conn.login();
     authManager = (LivelinkAuthorizationManager) session.

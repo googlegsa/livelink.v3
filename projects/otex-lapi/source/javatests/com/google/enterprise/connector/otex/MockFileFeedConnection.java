@@ -29,6 +29,7 @@ public class MockFileFeedConnection implements FeedConnection {
     outputStream = os;
   }
 
+  @Override
   public String sendData(FeedData feedData)
     throws FeedException {
     try {

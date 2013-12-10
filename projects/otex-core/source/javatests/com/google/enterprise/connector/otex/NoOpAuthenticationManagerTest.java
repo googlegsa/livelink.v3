@@ -28,7 +28,8 @@ public class NoOpAuthenticationManagerTest extends TestCase {
 
     private AuthenticationIdentity identity;
 
-    public void setUp() {
+    @Override
+    protected void setUp() {
         manager = new NoOpAuthenticationManager();
         identity = new SimpleAuthenticationIdentity("nobody", "goodPassword");
     }

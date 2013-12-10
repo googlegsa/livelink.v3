@@ -150,6 +150,7 @@ class LivelinkDocumentList implements DocumentList {
   /**
    * {@inheritDoc}
    */
+  @Override
   public Document nextDocument() throws RepositoryException {
     if (docIterator.hasNext()) {
       // If processing a document throws an exception, we will try to
@@ -220,6 +221,7 @@ class LivelinkDocumentList implements DocumentList {
   /**
    * {@inheritDoc}
    */
+  @Override
   public String checkpoint() throws RepositoryException {
     String cp = checkpoint.toString();
 
@@ -276,10 +278,12 @@ class LivelinkDocumentList implements DocumentList {
       this.size = (recArray == null) ? 0 : recArray.size();
     }
 
+    @Override
     public boolean hasNext() {
       return row < size;
     }
 
+    @Override
     public String next() {
       if (row < size) {
         try {
@@ -295,6 +299,7 @@ class LivelinkDocumentList implements DocumentList {
       return null;
     }
 
+    @Override
     public void remove() {
       throw new UnsupportedOperationException();
     }

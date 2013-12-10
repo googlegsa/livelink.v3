@@ -64,6 +64,7 @@ class LivelinkDocument implements Document {
   /**
    * {@inheritDoc}
    */
+  @Override
   public Set<String> getPropertyNames() {
     return properties.keySet();
   }
@@ -71,6 +72,7 @@ class LivelinkDocument implements Document {
   /**
    * {@inheritDoc}
    */
+  @Override
   public Property findProperty(String name) throws RepositoryException {
     List<Value> values = properties.get(name);
     if (values == null)

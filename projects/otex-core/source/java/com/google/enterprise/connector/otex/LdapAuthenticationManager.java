@@ -114,6 +114,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
    * TODO: accept a map of environment properties for greater
    * configurability.
    */
+  @Override
   public AuthenticationResponse authenticate(AuthenticationIdentity identity)
       throws RepositoryLoginException, RepositoryException {
     if (LOGGER.isLoggable(Level.FINE))

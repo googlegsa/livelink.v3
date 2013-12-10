@@ -52,6 +52,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
   Client client;
 
+  @Override
   protected void setUp() throws SQLException, RepositoryException {
     jdbcFixture.setUp();
     jdbcFixture.executeUpdate(
@@ -78,6 +79,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     conn = LivelinkConnectorFactory.getConnector("connector.");
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
   }
@@ -295,7 +297,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
    */
   public void testPlainAuthorizationManager() throws RepositoryException {
     AuthorizationManager pluggable = new AuthorizationManager() {
-        public Collection<AuthorizationResponse> authorizeDocids(
+        @Override public Collection<AuthorizationResponse> authorizeDocids(
             Collection<String> docids, AuthenticationIdentity identity) {
           return Collections.<AuthorizationResponse>emptySet();
         }

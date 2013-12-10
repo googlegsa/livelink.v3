@@ -46,7 +46,8 @@ public class PushOneDocumentTest extends TestCase {
     private String feedServer = "gogol";
     private int feedPort = 19900;
 
-    public void setUp() throws Exception {
+    @Override
+    protected void setUp() throws Exception {
         conn = LivelinkConnectorFactory.getConnector("connector.");
         sess = (LivelinkSession) conn.login();
         client = sess.getFactory().createClient();

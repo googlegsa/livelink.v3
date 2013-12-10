@@ -49,86 +49,103 @@ public class MockClientFactory implements ClientFactory {
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setServer(String value) {
     values.put("setServer", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setPort(int value) {
     values.put("setPort", new Integer(value));
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setUsername(String value) {
     values.put("setUsername", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setPassword(String value) {
     values.put("setPassword", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setConnection(String value) {
     values.put("setConnection", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setDomainName(String value) {
     values.put("setDomainName", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setEncoding(String value) {
     values.put("setEncoding", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setLivelinkCgi(String value) {
     values.put("setLivelinkCgi", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setHttps(boolean value) {
     values.put("setHttps", new Boolean(value));
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setHttpUsername(String value) {
     values.put("setHttpUsername", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setHttpPassword(String value) {
     values.put("setHttpPassword", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setVerifyServer(boolean value) {
     values.put("setVerifyServer", new Boolean(value));
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setCaRootCerts(List<String> value) {
     values.put("setCaRootCerts", value);
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setEnableNtlm(boolean value) {
     values.put("setEnableNtlm", new Boolean(value));
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setUseUsernamePasswordWithWebServer(boolean value) {
     values.put("setUseUsernamePasswordWithWebServer", new Boolean(value));
   }
 
   /** {@inheritDoc} */
+  @Override
   public Client createClient() {
     return new MockClient();
   }
 
   /** {@inheritDoc} */
+  @Override
   public Client createClient(String username, String password) {
     this.username = username;
     return new MockClient();

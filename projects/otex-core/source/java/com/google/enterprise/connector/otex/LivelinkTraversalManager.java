@@ -368,6 +368,7 @@ class LivelinkTraversalManager
    * @param hint the new batch size
    * @throws IllegalArgumentException if the hint is less than zero
    */
+  @Override
   public void setBatchHint(int hint) {
     if (hint < 0)
       throw new IllegalArgumentException();
@@ -380,6 +381,7 @@ class LivelinkTraversalManager
   }
 
   /** {@inheritDoc} */
+  @Override
   public DocumentList startTraversal() throws RepositoryException {
     // startCheckpoint will either be an initial checkpoint or null
     String startCheckpoint = getStartCheckpoint();
@@ -392,6 +394,7 @@ class LivelinkTraversalManager
   }
 
   /** {@inheritDoc} */
+  @Override
   public DocumentList resumeTraversal(String checkpoint)
       throws RepositoryException {
     // Resume with no checkpoint is the same as Start.
@@ -412,6 +415,7 @@ class LivelinkTraversalManager
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setTraversalContext(TraversalContext traversalContext) {
     this.traversalContext = traversalContext;
   }

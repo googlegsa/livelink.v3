@@ -71,6 +71,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValueFactory getClientValueFactory()
             throws RepositoryException {
         return new MockClientValueFactory();
@@ -83,6 +84,7 @@ public class MockClient implements Client {
      * CharacterEncoding of CHARACTER_ENCODING_NONE and a
      * ServerVersion of "9.5.0".
      */
+    @Override
     public ClientValue GetServerInfo() {
         return new MockClientValue(
             new String[] { "CharacterEncoding", "ServerVersion" },
@@ -94,6 +96,7 @@ public class MockClient implements Client {
      * <p>
      * This implementation returns 1000, the user ID of Admin.
      */
+    @Override
     public int GetCurrentUserID() throws RepositoryException {
         return 1000;
     }
@@ -106,6 +109,7 @@ public class MockClient implements Client {
      * This implementation returns an LLCookie with an invalid value.
      * A distinct value is returned on each call.
      */
+    @Override
     public ClientValue GetCookieInfo() throws RepositoryException {
       String value = "llcookie value goes here" + cookieCount.getAndIncrement();
       ClientValue llcookie = new MockClientValue(
@@ -115,6 +119,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue GetUserOrGroupByIDNoThrow(int id)
             throws RepositoryException {
         return new MockClientValue(
@@ -122,6 +127,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue GetUserInfo(String username)
             throws RepositoryException {
         if (!VALID_USERNAMES.contains(username)) {
@@ -139,6 +145,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue AccessEnterpriseWS() throws RepositoryException {
         return new MockClientValue(new String[] { "ID", "VolumeID" },
             new Integer[] { new Integer(2000), new Integer(-2000) });
@@ -149,6 +156,7 @@ public class MockClient implements Client {
      * <p>
      * This implementation returns an empty <code>ClientValue</code>.
      */
+    @Override
     public ClientValue ListNodes(String query, String view, String[] columns)
             throws RepositoryException {
         LOGGER.fine("Entering MockClient.ListNodes");
@@ -287,6 +295,7 @@ public class MockClient implements Client {
      * <p>
      * Version of ListNodes() that does not throw exceptions.
      */
+    @Override
     public ClientValue ListNodesNoThrow(String query, String view,
             String[] columns) {
         try {
@@ -301,11 +310,13 @@ public class MockClient implements Client {
      * <p>
      * This implementation returns an empty assoc.
      */
+    @Override
     public ClientValue GetObjectInfo(int volumeId, int objectId) {
         return new MockClientValue(new String[0], new Object[0]);
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue GetObjectAttributesEx(ClientValue objectIdAssoc,
             ClientValue categoryIdAssoc) throws RepositoryException {
         try {
@@ -316,6 +327,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue AttrListNames(ClientValue categoryVersion,
             ClientValue attributeSetPath) throws RepositoryException {
         try {
@@ -326,6 +338,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue AttrGetInfo(ClientValue categoryVersion,
             String attributeName, ClientValue attributeSetPath)
             throws RepositoryException {
@@ -337,6 +350,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue AttrGetValues(ClientValue categoryVersion,
             String attributeName, ClientValue attributeSetPath)
             throws RepositoryException {
@@ -348,6 +362,7 @@ public class MockClient implements Client {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue ListObjectCategoryIDs(ClientValue objectIdAssoc)
             throws RepositoryException {
         try {
@@ -363,6 +378,7 @@ public class MockClient implements Client {
      * This implementation simulates problems accessing content for
      * some "special" docids; otherwise it does nothing.
      */
+    @Override
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             File path) throws RepositoryException {
         LOGGER.fine("Entering MockClient.FetchVersion");
@@ -377,6 +393,7 @@ public class MockClient implements Client {
      * This implementation simulates problems accessing content for
      * some "special" docids, otherwise it simply closes the output stream.
      */
+    @Override
     public void FetchVersion(int volumeId, int objectId, int versionNumber,
             OutputStream out) throws RepositoryException {
         LOGGER.fine("Entering MockClient.FetchVersion");
@@ -408,6 +425,7 @@ public class MockClient implements Client {
   }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue GetVersionInfo(int volumeId, int objectId,
             int versionNumber) throws RepositoryException {
         LOGGER.fine("Entering MockClient.GetVersionInfo");
@@ -419,6 +437,7 @@ public class MockClient implements Client {
      * <p>
      * This implementation has no effect.
      */
+    @Override
     public void ImpersonateUser(String username) throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUser");
     }
@@ -428,6 +447,7 @@ public class MockClient implements Client {
      * <p>
      * This implementation has no effect.
      */
+    @Override
     public void ImpersonateUserEx(String username, String domain)
         throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUserEx");

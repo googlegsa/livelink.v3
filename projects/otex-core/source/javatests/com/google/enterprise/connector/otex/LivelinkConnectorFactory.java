@@ -130,6 +130,7 @@ class LivelinkConnectorFactory implements ConnectorFactory {
    *
    * @param config Map of configuration properties
    */
+  @Override
   public Connector makeConnector(Map<String, String> config)
       throws RepositoryException {
     try {

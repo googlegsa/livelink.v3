@@ -104,6 +104,7 @@ class SqlQueries {
       + AUDIT_DATE_SQL_SERVER + " from DAuditNew b)";
 
   public static class Resources extends ListResourceBundle {
+    @Override
     protected Object[][] getContents() {
       return new Object[][] {
         { "Genealogist.getParent.select",
@@ -219,6 +220,7 @@ class SqlQueries {
   }
 
   public static class Resources_mssql extends ListResourceBundle {
+    @Override
     protected Object[][] getContents() {
       return new Object[][] {
         // These validation queries are not optimal, but they are so
@@ -324,6 +326,7 @@ class SqlQueries {
   }
 
   public static class Resources_oracle extends ListResourceBundle {
+    @Override
     protected Object[][] getContents() {
       return new Object[][] {
         { "LivelinkConnector.validateDTreeAncestors.select",

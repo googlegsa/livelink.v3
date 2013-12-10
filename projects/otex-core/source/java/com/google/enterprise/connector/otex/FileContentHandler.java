@@ -47,13 +47,15 @@ class FileContentHandler implements ContentHandler {
   }
 
   /** {@inheritDoc} */
+  @Override
   public void initialize(LivelinkConnector connector, Client client)
       throws RepositoryException {
     this.connector = connector;
     this.client = client;
   }
-    
+
   /** {@inheritDoc} */
+  @Override
   public InputStream getInputStream(int volumeId, int objectId,
       int versionNumber, int size) throws RepositoryException {
     try {

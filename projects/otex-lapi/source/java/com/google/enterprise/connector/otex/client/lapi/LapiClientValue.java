@@ -60,12 +60,10 @@ public final class LapiClientValue implements ClientValue {
         assert TABLE == LLValue.LL_TABLE : LLValue.LL_TABLE;
         assert UNDEFINED == LLValue.LL_UNDEFINED : LLValue.LL_UNDEFINED;
     }
-    
 
     /** The Actual LAPI Value object encapsulated by this ClientValue */
     private final LLValue value;
 
-    
     /**
      * Wraps an <code>LLValue</code>.
      *
@@ -74,7 +72,6 @@ public final class LapiClientValue implements ClientValue {
     LapiClientValue(LLValue value) {
         this.value = value;
     }
-    
 
     /**
      * Quick way to get the LLValue from a ClientValue.
@@ -86,11 +83,13 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int size() {
         return value.size();
     }
 
     /** {@inheritDoc} */
+    @Override
     public void setSize(int size) throws RepositoryException {
         try {
             value.setSize(size);
@@ -103,6 +102,7 @@ public final class LapiClientValue implements ClientValue {
 
 
     /** {@inheritDoc} */
+    @Override
     public void setInteger(int index, int val) throws RepositoryException {
         try {
             value.setInteger(index, val);
@@ -114,10 +114,11 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int type() {
         return value.type();
     }
-    
+
     public String typeByName(int type) {
         switch (type) {
         case ASSOC: return "ASSOC";
@@ -137,19 +138,21 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public Enumeration<String> enumerateNames() {
         final Enumeration<?> names = value.enumerateNames();
         return new Enumeration<String>() {
-                public boolean hasMoreElements() {
+                @Override public boolean hasMoreElements() {
                     return names.hasMoreElements();
                 }
-                public String nextElement() {
+                @Override public String nextElement() {
                     return names.nextElement().toString();
                 }
             };
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean isDefined(int row, String field)
             throws RepositoryException {
         try {
@@ -162,6 +165,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean hasValue() {
         try {
             if (this.value == null)
@@ -176,9 +180,9 @@ public final class LapiClientValue implements ClientValue {
             return false;
         }
     }
-    
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue stringToValue() throws RepositoryException {
         String s = value.toString();
         try {
@@ -197,8 +201,9 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
-    
+
     /** {@inheritDoc} */
+    @Override
     public ClientValue toValue(int row, String field)
             throws RepositoryException {
         try {
@@ -211,6 +216,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean toBoolean(int row, String field)
             throws RepositoryException {
         try {
@@ -223,6 +229,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public Date toDate(int row, String field) throws RepositoryException {
         try {
             return value.toDate(row, field);
@@ -234,6 +241,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public double toDouble(int row, String field) throws RepositoryException {
         try {
             return value.toDouble(row, field);
@@ -245,6 +253,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int toInteger(int row, String field) throws RepositoryException {
         try {
             return value.toInteger(row, field);
@@ -256,6 +265,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public String toString(int row, String field) throws RepositoryException {
         try {
             return value.toString(row, field);
@@ -267,6 +277,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean isDefined(String field)
             throws RepositoryException {
         try {
@@ -279,6 +290,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue toValue(String field) throws RepositoryException {
         try {
             return new LapiClientValue(value.toValue(field));
@@ -290,6 +302,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean toBoolean(String field) throws RepositoryException {
         try {
             return value.toBoolean(field);
@@ -301,6 +314,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public Date toDate(String field) throws RepositoryException {
         try {
             return value.toDate(field);
@@ -312,6 +326,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public double toDouble(String field) throws RepositoryException {
         try {
             return value.toDouble(field);
@@ -323,6 +338,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int toInteger(String field) throws RepositoryException {
         try {
             return value.toInteger(field);
@@ -334,6 +350,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public String toString(String field) throws RepositoryException {
         try {
             return value.toString(field);
@@ -345,6 +362,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean isDefined(int index) throws RepositoryException {
         try {
             return value.toValue(index).isDefined();
@@ -356,6 +374,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public ClientValue toValue(int index) throws RepositoryException {
         try {
             return new LapiClientValue(value.toValue(index));
@@ -367,6 +386,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean toBoolean(int index) throws RepositoryException {
         try {
             return value.toBoolean(index);
@@ -378,6 +398,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public Date toDate(int index) throws RepositoryException {
         try {
             return value.toDate(index);
@@ -389,6 +410,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public double toDouble(int index) throws RepositoryException {
         try {
             return value.toDouble(index);
@@ -400,6 +422,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int toInteger(int index) throws RepositoryException {
         try {
             return value.toInteger(index);
@@ -411,6 +434,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public String toString(int index) throws RepositoryException {
         try {
             return value.toString(index);
@@ -422,6 +446,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean isDefined() throws RepositoryException {
         try {
             return value.isDefined();
@@ -433,6 +458,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean toBoolean() throws RepositoryException {
         try {
             return value.toBoolean();
@@ -444,6 +470,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public Date toDate() throws RepositoryException {
         try {
             return value.toDate();
@@ -455,6 +482,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public double toDouble() throws RepositoryException {
         try {
             return value.toDouble();
@@ -466,6 +494,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int toInteger() throws RepositoryException {
         try {
             return value.toInteger();
@@ -491,6 +520,7 @@ public final class LapiClientValue implements ClientValue {
      * 
      * The format is well-defined, "L-?[0-9]+", so we're opting for #4.
      */
+    @Override
     public long toLong() throws RepositoryException {
         try {
             String s = value.toString();
@@ -506,6 +536,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public String toString2() throws RepositoryException {
         try {
             return value.toString(); // + " (type = " + typeByName(value.type()) + ")";
@@ -517,6 +548,7 @@ public final class LapiClientValue implements ClientValue {
     }
 
     /** {@inheritDoc} */
+    @Override
     public int add(String key, boolean obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -526,6 +558,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, char obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -535,6 +569,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, int obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -544,6 +580,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, long obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -553,6 +591,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, float obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -562,6 +602,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, double obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -571,6 +613,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, Boolean obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -580,6 +624,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, Double obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -589,6 +635,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, Float obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -598,6 +646,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, Integer obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -607,6 +657,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, Long obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -616,6 +668,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, String obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -625,6 +679,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String key, java.util.Date obj) throws RepositoryException {
         try {
             return this.value.add(key, obj);
@@ -635,8 +691,8 @@ public final class LapiClientValue implements ClientValue {
         }
     }
 
-
     /** {@inheritDoc} */
+    @Override
     public int add(boolean obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -646,6 +702,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(char obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -655,6 +713,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(int obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -664,6 +724,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(long obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -673,6 +735,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(float obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -682,6 +746,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(double obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -691,6 +757,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(Boolean obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -700,6 +768,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(Double obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -709,6 +779,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(Float obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -718,6 +790,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(Integer obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -727,6 +801,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(Long obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -736,6 +812,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(String obj) throws RepositoryException {
         try {
             return this.value.add(obj);
@@ -745,6 +823,8 @@ public final class LapiClientValue implements ClientValue {
             throw new LivelinkException(e, LOGGER);
         }
     }
+
+    @Override
     public int add(java.util.Date obj) throws RepositoryException {
         try {
             return this.value.add(obj);

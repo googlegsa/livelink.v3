@@ -85,7 +85,8 @@ public class BigCacheTest extends TestCase {
       return new TestSuite();
   }
 
-  public void setUp() throws RepositoryException, SQLException {
+  @Override
+  protected void setUp() throws RepositoryException, SQLException {
     LOGGER.info("Start test " + getName());
 
     jdbcFixture = new JdbcFixture();
@@ -101,6 +102,7 @@ public class BigCacheTest extends TestCase {
         + "values (?,?,?,?,?)");
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
     LOGGER.info("End test " + getName());
@@ -261,6 +263,8 @@ public class BigCacheTest extends TestCase {
   /** A DateProvider that returns dates incrementing by 1 second. */
   private static class IncrementalDateProvider implements DateProvider {
     static long date = 20000;
+
+    @Override
     public long getDate(long ignored) {
       return date += 1000;
     }
@@ -269,6 +273,8 @@ public class BigCacheTest extends TestCase {
   /** A DateProvider that returns random dates. */
   private static class RandomDateProvider implements DateProvider {
     Random random = new Random();
+
+    @Override
     public long getDate(long ignored) {
       // Scrub milliseconds.
       return random.nextInt() * 1000L;
@@ -282,6 +288,8 @@ public class BigCacheTest extends TestCase {
   private static class FolderClusteredDateProvider implements DateProvider {
     Random random = new Random();
     int counter = 0;
+
+    @Override
     public long getDate(long anchor) {
       int sign = 1;
       if ((++counter & 1) == 0) {
@@ -302,6 +310,7 @@ public class BigCacheTest extends TestCase {
     Random random = new Random();
     int counter = 0;
 
+    @Override
     @SuppressWarnings("fallthrough")
     public long getDate(long anchor) {
       int sign = 1;
