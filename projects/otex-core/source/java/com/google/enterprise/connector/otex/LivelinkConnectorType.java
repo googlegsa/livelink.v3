@@ -14,6 +14,16 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.enterprise.connector.spi.ConfigureResponse;
+import com.google.enterprise.connector.spi.ConnectorFactory;
+import com.google.enterprise.connector.spi.ConnectorType;
+import com.google.enterprise.connector.util.UrlValidator;
+import com.google.enterprise.connector.util.UrlValidatorException;
+
+import org.springframework.beans.PropertyAccessException;
+import org.springframework.beans.PropertyBatchUpdateException;
+
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
@@ -27,14 +37,6 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.ConfigureResponse;
-import com.google.enterprise.connector.spi.ConnectorFactory;
-import com.google.enterprise.connector.spi.ConnectorType;
-import com.google.enterprise.connector.util.UrlValidator;
-import com.google.enterprise.connector.util.UrlValidatorException;
-import org.springframework.beans.PropertyAccessException;
-import org.springframework.beans.PropertyBatchUpdateException;
 
 /**
  * Supports the configuration properties used by the Livelink Connector.
@@ -1135,6 +1137,7 @@ public class LivelinkConnectorType implements ConnectorType {
    * code so that it can be unit tested. A return value of 0 is
    * arbitrary and unused by the tests.
    */
+  @VisibleForTesting
   int validateUrl(String urlString, ResourceBundle bundle)
       throws UrlConfigurationException {
     try {

@@ -14,6 +14,13 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.enterprise.connector.spi.AuthenticationIdentity;
+import com.google.enterprise.connector.spi.AuthenticationManager;
+import com.google.enterprise.connector.spi.AuthenticationResponse;
+import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.RepositoryLoginException;
+
 import java.text.MessageFormat;
 import java.util.Hashtable;
 import java.util.logging.Level;
@@ -22,12 +29,6 @@ import javax.naming.Context;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.DirContext;
 import javax.naming.NamingException;
-
-import com.google.enterprise.connector.spi.AuthenticationIdentity;
-import com.google.enterprise.connector.spi.AuthenticationManager;
-import com.google.enterprise.connector.spi.AuthenticationResponse;
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.RepositoryLoginException;
 
 /**
  * Implements an AuthenticationManager that authenticates against
@@ -155,7 +156,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
    * @param username the username
    * @return the escaped username; see RFC 4514
    */
-  /* Package access for testing. */
+  @VisibleForTesting
   String escapeUsername(String username) {
     StringBuilder buffer = new StringBuilder();
     int start = 0;

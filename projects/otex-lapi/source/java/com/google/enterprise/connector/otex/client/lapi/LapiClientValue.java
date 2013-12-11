@@ -14,20 +14,21 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.io.ByteArrayInputStream;
-import java.io.PushbackInputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import com.google.common.base.Charsets;
+import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.otex.LivelinkException;
+import com.google.enterprise.connector.otex.client.ClientValue;
 
 import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLInputStream;
 import com.opentext.api.LLValue;
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.LivelinkException;
-import com.google.enterprise.connector.otex.client.ClientValue;
+
+import java.io.ByteArrayInputStream;
+import java.io.PushbackInputStream;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A wrapper implementation on an <code>LLValue</code>.
@@ -189,14 +190,11 @@ public final class LapiClientValue implements ClientValue {
             LLValue sv = LLValue.crack(
                 new LLInputStream(
                     new PushbackInputStream(
-                        new ByteArrayInputStream(s.getBytes("UTF-8"))),
+                        new ByteArrayInputStream(s.getBytes(Charsets.UTF_8))),
                     "UTF-8"));
             if (LOGGER.isLoggable(Level.FINEST))
                 LOGGER.finest("Converted: " + s + " to: " + sv);
             return new LapiClientValue(sv);
-        } catch (UnsupportedEncodingException e) {
-            // This can't happen.
-            throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
             throw new LivelinkException(e, LOGGER);
         }

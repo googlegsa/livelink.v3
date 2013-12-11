@@ -14,12 +14,24 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.base.Charsets;
+import com.google.enterprise.connector.spi.ConfigureResponse;
+
+import org.xml.sax.EntityResolver;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+
+import junit.framework.TestCase;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -28,22 +40,13 @@ import java.util.logging.Logger;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
+
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
 import javax.swing.text.MutableAttributeSet;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import org.xml.sax.EntityResolver;
-import org.xml.sax.ErrorHandler;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
-
-import com.google.enterprise.connector.spi.ConfigureResponse;
-import junit.framework.TestCase;
-
-import java.sql.SQLException;
 
 /**
  * Tests the LivelinkConnectorType implementation.
@@ -308,7 +311,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     builder.setEntityResolver(new LocalEntityResolver());
 
     String html = HTML_PREFIX + formSnippet + HTML_SUFFIX;
-    builder.parse(new ByteArrayInputStream(html.getBytes("UTF-8")));
+    builder.parse(new ByteArrayInputStream(html.getBytes(Charsets.UTF_8)));
   }
 
   private final JdbcFixture jdbcFixture = new JdbcFixture();
