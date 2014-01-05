@@ -14,39 +14,29 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.common.base.Charsets;
 import com.google.enterprise.connector.spi.ConfigureResponse;
-
-import org.xml.sax.EntityResolver;
-import org.xml.sax.ErrorHandler;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
+import com.google.enterprise.connector.util.XmlParseUtil;
 
 import junit.framework.TestCase;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URI;
-import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.logging.Logger;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.logging.Logger;
 
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
 import javax.swing.text.MutableAttributeSet;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
  * Tests the LivelinkConnectorType implementation.
@@ -206,114 +196,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
   protected static final Map<String, String> emptyProperties =
       LivelinkConnectorFactory.emptyProperties;
 
-  /**
-   * A simple <code>ErrorHandler</code> implementation that always
-   * throws the <code>SAXParseException</code>.
-   */
-  public static class ThrowingErrorHandler implements ErrorHandler {
-    @Override
-    public void error(SAXParseException exception) throws SAXException {
-      throw exception;
-    }
-
-    @Override
-    public void fatalError(SAXParseException exception)
-        throws SAXException {
-      throw exception;
-    }
-
-    @Override
-    public void warning(SAXParseException exception) throws SAXException {
-      throw exception;
-    }
-  }
-
-  // These fields and the LocalEntityResolver are copied from the
-  // connector manager's ServletUtil class. The only change is to use
-  // the XHTML-1.0-Strict DTD rather than the XHTML-1.0-Transitional
-  // DTD.
-  private static final String XHTML_DTD_URL =
-      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd";
-  private static final String XHTML_DTD_FILE = "/xhtml1-strict.dtd";
-  private static final String HTML_LAT1_URL =
-      "http://www.w3.org/TR/xhtml1/DTD/xhtml-lat1.ent";
-  private static final String HTML_LAT1_FILE = "/xhtml-lat1.ent";
-  private static final String HTML_SYMBOL_URL =
-      "http://www.w3.org/TR/xhtml1/DTD/xhtml-symbol.ent";
-  private static final String HTML_SYMBOL_FILE = "/xhtml-symbol.ent";
-  private static final String HTML_SPECIAL_URL =
-      "http://www.w3.org/TR/xhtml1/DTD/xhtml-special.ent";
-  private static final String HTML_SPECIAL_FILE = "/xhtml-special.ent";
-
-  private static class LocalEntityResolver implements EntityResolver {
-    public InputSource resolveEntity(String publicId, String systemId) {
-      URL url;
-      if (XHTML_DTD_URL.equals(systemId)) {
-        LOGGER.fine("publicId=" + publicId + "; systemId=" + systemId);
-        url = getClass().getResource(XHTML_DTD_FILE);
-        if (url != null) {
-          // Go with local resource.
-          LOGGER.fine("Resolving " + XHTML_DTD_URL + " to local entity");
-          return new InputSource(url.toString());
-        } else {
-          // Go with the HTTP URL.
-          LOGGER.fine("Unable to resolve " + XHTML_DTD_URL + " to local entity");
-          return null;
-        }
-      } else if (HTML_LAT1_URL.equals(systemId)) {
-        url = getClass().getResource(HTML_LAT1_FILE);
-        if (url != null) {
-          return new InputSource(url.toString());
-        } else {
-          return null;
-        }
-      } else if (HTML_SYMBOL_URL.equals(systemId)) {
-        url = getClass().getResource(HTML_SYMBOL_FILE);
-        if (url != null) {
-          return new InputSource(url.toString());
-        } else {
-          return null;
-        }
-      } else if (HTML_SPECIAL_URL.equals(systemId)) {
-        url = getClass().getResource(HTML_SPECIAL_FILE);
-        if (url != null) {
-          return new InputSource(url.toString());
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
-    }
-  }
-
-  private static final String HTML_PREFIX =
-      "<!DOCTYPE html PUBLIC "
-      + "\"-//W3C//DTD XHTML 1.0 Strict//EN\" "
-      + "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">"
-      + "<html xmlns=\"http://www.w3.org/1999/xhtml\">"
-      + "<head><title/></head><body><table>";
-
-  private static final String HTML_SUFFIX = "</table></body></html>";
-
-  /**
-   * Parses the form snippet using the XHTML Strict DTD, the
-   * appropriate HTML context, and a validating parser.
-   *
-   * @param formSnippet the form snippet
-   * @throws Exception if an unexpected error occrs
-   */
-  private void validateXhtml(String formSnippet) throws Exception {
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-    factory.setValidating(true);
-    DocumentBuilder builder = factory.newDocumentBuilder();
-    builder.setErrorHandler(new ThrowingErrorHandler());
-    builder.setEntityResolver(new LocalEntityResolver());
-
-    String html = HTML_PREFIX + formSnippet + HTML_SUFFIX;
-    builder.parse(new ByteArrayInputStream(html.getBytes(Charsets.UTF_8)));
-  }
-
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
   protected LivelinkConnectorType connectorType;
@@ -423,7 +305,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     assertIsHidden(form, "authenticationServer");
 
     String formSnippet = response.getFormSnippet();
-    validateXhtml(formSnippet);
+    XmlParseUtil.validateXhtml(formSnippet);
   }
 
   /* Tests an expanded empty config form for valid XHTML. */
@@ -439,7 +321,7 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     assertIsNotHidden(form, "authenticationServer");
 
     String formSnippet = response.getFormSnippet();
-    validateXhtml(formSnippet);
+    XmlParseUtil.validateXhtml(formSnippet);
   }
 
   /**
