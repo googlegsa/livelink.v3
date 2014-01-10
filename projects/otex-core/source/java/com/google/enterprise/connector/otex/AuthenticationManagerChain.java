@@ -14,15 +14,16 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
+
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Wraps a list of AuthenticationManager instances and tries each

@@ -14,15 +14,14 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.ArrayList;
-import java.util.Set;
-
-import junit.framework.TestCase;
-
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
+
+import junit.framework.TestCase;
+
+import java.util.ArrayList;
 
 /**
  * Tests the LivelinkAuthenticationManager.

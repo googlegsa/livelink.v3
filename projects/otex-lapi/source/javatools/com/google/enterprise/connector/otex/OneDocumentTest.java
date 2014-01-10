@@ -14,21 +14,20 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.InputStream;
-import java.io.IOException;
-
-import junit.framework.TestCase;
-
-import com.google.enterprise.connector.spi.Property;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
+import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spiimpl.BinaryValue;
 
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
+import junit.framework.TestCase;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Pushes a single document (DocID) to the GSA

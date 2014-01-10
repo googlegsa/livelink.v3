@@ -14,15 +14,15 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.client.Client;
 
 /**
  * This content handler implementation uses <code>FetchVersion</code>

@@ -14,17 +14,17 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.io.File;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 
 import com.opentext.api.LLNameEnumeration;
 import com.opentext.api.LLSession;
 import com.opentext.api.LLValue;
+
+import java.io.File;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A direct LAPI client factory implementation.

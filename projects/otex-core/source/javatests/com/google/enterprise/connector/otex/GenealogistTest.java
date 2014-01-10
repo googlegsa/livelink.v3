@@ -15,15 +15,14 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 import junit.framework.TestCase;
 
-import java.util.Arrays;
 import java.sql.SQLException;
+import java.util.Arrays;
 
 /**
  * Constructs a mock database hierarchy and runs the tests using the

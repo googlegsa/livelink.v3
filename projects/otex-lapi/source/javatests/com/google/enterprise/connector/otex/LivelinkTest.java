@@ -14,27 +14,26 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.InputStream;
+import com.google.enterprise.connector.otex.LivelinkDocumentList;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.Property;
+import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.Session;
+import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.TraversalManager;
+import com.google.enterprise.connector.spi.Value;
+import com.google.enterprise.connector.spiimpl.BinaryValue;
+
+import junit.framework.TestCase;
+
 import java.io.IOException;
-import java.text.ParseException;
+import java.io.InputStream;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
-
-import junit.framework.TestCase;
-
-import com.google.enterprise.connector.otex.LivelinkDocumentList;
-
-import com.google.enterprise.connector.spi.Property;
-import com.google.enterprise.connector.spi.Document;
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Session;
-import com.google.enterprise.connector.spi.TraversalManager;
-import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.spiimpl.BinaryValue;
 
 public class LivelinkTest extends TestCase {
   private LivelinkConnector conn;

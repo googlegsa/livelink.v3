@@ -14,10 +14,10 @@
 
 package com.google.enterprise.connector.otex.client;
 
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.io.File;
 import java.io.OutputStream;
-
-import com.google.enterprise.connector.spi.RepositoryException;
 
 /**
  * A facade interface that encapsulates the Livelink API, as it is

@@ -14,24 +14,24 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.File;
-
-import junit.framework.TestCase;
-
+import com.google.enterprise.connector.manager.Context;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.pusher.DocPusher;
+import com.google.enterprise.connector.pusher.FeedException;
+import com.google.enterprise.connector.pusher.GsaFeedConnection;
+import com.google.enterprise.connector.pusher.PushException;
+import com.google.enterprise.connector.pusher.Pusher;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.TraversalManager;
-import com.google.enterprise.connector.manager.Context;
-import com.google.enterprise.connector.pusher.FeedException;
-import com.google.enterprise.connector.pusher.Pusher;
-import com.google.enterprise.connector.pusher.PushException;
-import com.google.enterprise.connector.pusher.DocPusher;
-import com.google.enterprise.connector.pusher.GsaFeedConnection;
 import com.google.enterprise.connector.traversal.FileSizeLimitInfo;
 import com.google.enterprise.connector.util.filter.DocumentFilterChain;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
+
+import junit.framework.TestCase;
+
+import java.io.File;
 
 /**
  * Pushes a single document (DocID) to the GSA

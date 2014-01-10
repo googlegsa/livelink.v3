@@ -14,13 +14,11 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.Set;
-
-import junit.framework.TestCase;
-
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
+
+import junit.framework.TestCase;
 
 public class LdapAuthenticationManagerTest extends TestCase {
     private LdapAuthenticationManager manager;

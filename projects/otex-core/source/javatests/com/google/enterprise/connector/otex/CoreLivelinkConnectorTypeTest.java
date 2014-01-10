@@ -33,10 +33,10 @@ import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
+import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
-import javax.swing.text.MutableAttributeSet;
 
 /**
  * Tests the LivelinkConnectorType implementation.

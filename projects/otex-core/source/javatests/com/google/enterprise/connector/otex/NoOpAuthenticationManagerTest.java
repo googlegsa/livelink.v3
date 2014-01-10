@@ -14,8 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.Set;
-
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;

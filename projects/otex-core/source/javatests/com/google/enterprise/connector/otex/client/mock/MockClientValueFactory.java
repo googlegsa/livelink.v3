@@ -14,10 +14,9 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
-
+import com.google.enterprise.connector.spi.RepositoryException;
 
 /**
  * A direct Mock ClientValue factory implementation.

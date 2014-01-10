@@ -24,9 +24,8 @@ import com.google.enterprise.connector.util.UrlValidatorException;
 import org.springframework.beans.PropertyAccessException;
 import org.springframework.beans.PropertyBatchUpdateException;
 
-import java.net.URL;
 import java.net.MalformedURLException;
-import java.security.GeneralSecurityException;
+import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;

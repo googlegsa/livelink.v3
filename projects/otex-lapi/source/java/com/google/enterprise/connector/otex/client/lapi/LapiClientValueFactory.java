@@ -14,14 +14,15 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLValue;
+
+import java.util.logging.Logger;
 
 /**
  * A direct LAPI ClientValue factory implementation.

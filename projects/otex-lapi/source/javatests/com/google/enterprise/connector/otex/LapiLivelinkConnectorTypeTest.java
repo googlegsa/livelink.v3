@@ -14,9 +14,10 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.spi.ConfigureResponse;
+
 import java.util.HashMap;
 import java.util.Map;
-import com.google.enterprise.connector.spi.ConfigureResponse;
 
 /**
  * Tests the LivelinkConnectorType implementation.

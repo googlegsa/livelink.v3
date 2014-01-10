@@ -18,7 +18,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
-import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
@@ -29,7 +28,6 @@ import com.google.enterprise.connector.spi.Value;
 
 import junit.framework.TestCase;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;

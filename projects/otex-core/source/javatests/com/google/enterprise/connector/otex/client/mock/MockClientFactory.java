@@ -14,14 +14,12 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
-import java.lang.ref.WeakReference;
-import java.sql.Connection;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
 
 /**
  * A mock factory for the facade interface that encapsulates the Livelink API.

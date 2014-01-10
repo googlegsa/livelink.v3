@@ -27,11 +27,9 @@ import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 import junit.framework.TestCase;
 
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * Tests the construction of the queries for authorizing documents.

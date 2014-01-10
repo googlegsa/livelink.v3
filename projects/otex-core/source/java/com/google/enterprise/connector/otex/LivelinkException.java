@@ -14,13 +14,13 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.text.MessageFormat;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
-
-import com.google.enterprise.connector.spi.RepositoryException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Extends <code>RepositoryException</code> to include logging all

@@ -14,13 +14,13 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 class UserNameHandler {
   /** The logger for this class. */

@@ -14,11 +14,6 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.io.File;
-import java.io.OutputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
@@ -26,6 +21,7 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
+
 import com.opentext.api.GoogleThunk;
 import com.opentext.api.LAPI_ATTRIBUTES;
 import com.opentext.api.LAPI_DOCUMENTS;
@@ -48,6 +44,11 @@ import com.opentext.api.LLUnknownFieldException;
 import com.opentext.api.LLUnsupportedAuthMethodException;
 import com.opentext.api.LLValue;
 import com.opentext.api.LLWebAuthInitException;
+
+import java.io.File;
+import java.io.OutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A direct LAPI client implementation.

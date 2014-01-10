@@ -23,13 +23,12 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.TraversalContextAware;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.util.EmptyDocumentList;
 import com.google.enterprise.connector.util.TraversalTimer;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;

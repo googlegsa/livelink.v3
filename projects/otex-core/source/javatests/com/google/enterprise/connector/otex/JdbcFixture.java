@@ -16,11 +16,9 @@ package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 
-import org.h2.jdbcx.JdbcDataSource;
-
 import java.sql.Connection;
-import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 /** Manages an in-memory H2 database modeling the Livelink database. */
 class JdbcFixture {

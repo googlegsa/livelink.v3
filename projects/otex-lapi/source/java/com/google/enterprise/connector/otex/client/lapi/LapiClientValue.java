@@ -15,9 +15,9 @@
 package com.google.enterprise.connector.otex.client.lapi;
 
 import com.google.common.base.Charsets;
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.RepositoryException;
 
 import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLInputStream;

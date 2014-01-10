@@ -16,6 +16,13 @@ package com.google.enterprise.connector.otex.client.mock;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.enterprise.connector.otex.LivelinkException;
+import com.google.enterprise.connector.otex.LivelinkIOException;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.otex.client.ClientValueFactory;
+import com.google.enterprise.connector.spi.RepositoryDocumentException;
+import com.google.enterprise.connector.spi.RepositoryException;
 
 import org.h2.jdbcx.JdbcDataSource;
 
@@ -25,20 +32,11 @@ import java.io.OutputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryDocumentException;
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.LivelinkException;
-import com.google.enterprise.connector.otex.LivelinkIOException;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
-import com.google.enterprise.connector.otex.client.ClientValueFactory;
 
 /**
  * A mock client implementation.

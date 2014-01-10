@@ -14,7 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.common.collect.ObjectArrays;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;

@@ -14,9 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.otex.CacheMap.CacheStatistics;
-
 import com.google.common.annotations.VisibleForTesting;
+import com.google.enterprise.connector.otex.CacheMap.CacheStatistics;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;

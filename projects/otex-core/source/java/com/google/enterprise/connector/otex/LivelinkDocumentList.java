@@ -14,6 +14,20 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
+import com.google.enterprise.connector.spi.RepositoryDocumentException;
+import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.SkippedDocumentException;
+import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.SpiConstants.ActionType;
+import com.google.enterprise.connector.spi.SpiConstants.FeedType;
+import com.google.enterprise.connector.spi.TraversalContext;
+import com.google.enterprise.connector.spi.Value;
+
 import java.io.InputStream;
 import java.util.Calendar;
 import java.util.Date;
@@ -23,20 +37,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.enterprise.connector.spi.Document;
-import com.google.enterprise.connector.spi.DocumentList;
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.RepositoryDocumentException;
-import com.google.enterprise.connector.spi.SkippedDocumentException;
-import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.SpiConstants.ActionType;
-import com.google.enterprise.connector.spi.SpiConstants.FeedType;
-import com.google.enterprise.connector.spi.TraversalContext;
-import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 /*
  * We use inner classes here to share the recarray and other fields in
