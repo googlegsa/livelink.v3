@@ -39,7 +39,14 @@ Issues Fixed Since 3.2.0
           HttpURLContentHandler bean.
 
 9380415 - DataSize over 2 GB triggers a Livelink server bug on Oracle
-          and prevents traversal.
+          and prevents traversal. This fix changed the list of views
+          that need to be added to the white list. Please see the
+          sections below for details. For Oracle, the last view in the
+          list is now:
+
+          (select b.*, cast(case when DataSize < 0 then 0 else DataSize end
+                            as number(19))
+                       as GoogleDataSize from WebNodes b)
 
 Advanced Configuration Properties
 ---------------------------------
@@ -59,17 +66,57 @@ Java SE 5.0 is no longer supported. Java 6 or later is required.
 
 Customers running OpenText Content Server 10, or Livelink 9.7.1 with
 the July 2008 or later monthly patch, must configure the ListNodes white
-list in opentext.ini as described in the Release 3.2.0 sections below.
+list in opentext.ini as described in the section below.
 
-Customers upgrading from version 3.0.0 or earlier must update the
-ListNodes white list in opentext.ini as described in the Release 3.2.0
-sections below.
+Customers upgrading from version 3.2.0 or earlier must update the
+ListNodes white list in opentext.ini as described in the section below.
 
 Customers upgrading from version 2.6.12 or earlier who have edited the
 authenticationManager definition in connectorInstance.xml must update
 those files. The authenticationManager property is now overridable.
 Please see the Advanced Configuration wiki page for details, and
 contact Google Enterprise Support if you need assistance.
+
+Enabling ListNodes with this Release
+------------------------------------
+The list of views that need to be added to the white list has changed.
+Only the list for Oracle has changed for customers upgrading from
+version 3.2.0, but customers upgrading from version 3.0.0 or earlier
+will need these updates for SQL Server or Oracle.
+
+http://www.google.com/support/enterprise/static/gsa/docs/admin/connector_30/livelink/livelink.html#1083570
+
+For SQL Server-based installations, you must now add the following
+tables and derived views to the white list:
+
+DTreeAncestors
+(select b.*, (select ParentID from DTree c 
+              where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID
+    from DTree b)
+(select b.*, CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate
+    from DAuditNew b)
+(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize
+    from WebNodes b)
+
+ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)','(select b.*, CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate from DAuditNew b)','(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize from WebNodes b)'}
+
+For Oracle-based installations, you must now add the following tables
+and derived views to the white list:
+
+DTreeAncestors
+(select * from DTree order by ModifyDate, DataID)
+(select b.*, (select ParentID from DTree c
+              where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID
+    from DTree b)
+(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate
+    from DAuditNew b
+    order by AuditDate, EventID)
+(select b.*, cast(case when DataSize < 0 then 0 else DataSize end as number(19))
+    as GoogleDataSize from WebNodes b)
+
+ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select * from DTree order by ModifyDate, DataID)','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)',"(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate from DAuditNew b order by AuditDate, EventID)",'(select b.*, cast(case when DataSize < 0 then 0 else DataSize end as number(19)) as GoogleDataSize from WebNodes b)'}
+
+Note: The derived view with 'YYYY-MM-DD HH24:MI:SS' uses double quotes.
 
 
 Release 3.2.0, May 5, 2013
