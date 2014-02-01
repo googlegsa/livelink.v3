@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -217,14 +219,15 @@ class BatchGenealogist extends HybridGenealogist {
      */
     public void merge(int objectId, int parentId, Tree target) {
       Node old = map.get(objectId);
-      assert old != null;
+      checkState(old != null, "Missing tree entry for %s", objectId);
       Node n = target.map.get(parentId);
       if (n == null) {
         n = old;
         n.addPossible(parentId);
         target.map.put(parentId, n);
       } else {
-        assert n.getPossibles().contains(parentId);
+        checkState(n.getPossibles().contains(parentId),
+            "Merge target does not contain parent %s", parentId);
         n.addPossibles(old.getPossibles());
         n.addMatches(old.getMatches());
       }
