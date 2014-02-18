@@ -60,7 +60,7 @@ public interface Client
     /** Database permission bypass privilege. */
     int PRIV_PERM_BYPASS = 256;
 
-    /** Constants corresponding to LAPI_ATTRIBUTES.* */
+    /** Constants corresponding to LAPI_ATTRIBUTES. */
     int ATTR_DATAVALUES = 0;
     int ATTR_DEFAULTVALUES = 1;
     int ATTR_TYPE_BOOL = 5;
@@ -78,6 +78,21 @@ public interface Client
     int CATEGORY_TYPE_LIBRARY = 0;
     int CATEGORY_TYPE_WORKFLOW = 2;
 
+    /** Constants for rights. */
+    int RIGHT_WORLD = -1;
+    int RIGHT_SYSTEM = -2;
+    int RIGHT_OWNER = -3;
+    int RIGHT_GROUP = -4;
+
+    /** Constants for content permissions */
+    int PERM_SEE = 2;
+    int PERM_SEECONTENTS = 36865;
+    int PERM_MODIFY = 65536;
+    int PERM_FULL = 16777215;
+
+    /** Constants for user type. */
+    int USER = 0;
+    int GROUP = 1;
 
     /**
      * Get a Factory for the ClientValue concrete implementation used
@@ -317,6 +332,15 @@ public interface Client
         throws RepositoryException;
 
     /**
+     * Wraps the <code>LAPI_DOCUMENTS.GetObjectRights</code> method.
+     * 
+     * @param objectId the object ID of the object
+     * @return a ClientValue RecArray object containing the object rights info
+     * @throws RepositoryException if an error occurs
+     */
+    ClientValue GetObjectRights(int objectId) throws RepositoryException;
+
+    /**
      * Wraps the <code>LLSession.ImpersonateUser</code>
      * method. The initial session must have been created with a
      * user who has Livelink system administration privileges in
@@ -326,7 +350,6 @@ public interface Client
      * @throws RepositoryException if an error occurs
      */
     void ImpersonateUser(String username) throws RepositoryException;
-
 
     /**
      * Wraps the (undocumented) <code>LLSession.ImpersonateUserEx</code>

@@ -104,6 +104,23 @@ class LivelinkDocument implements Document {
   }
 
   /**
+   * Adds a multi-value property to the property map. If the property
+   * already exists in the map, the given values are added to the
+   * list of values in the property.
+   *
+   * @param name a property name
+   * @param valueList a List of property values
+   */
+  public void addProperty(String name, List<Value> valueList) {
+    List<Value> values = properties.get(name);
+    if (values == null) {
+      properties.put(name, new LinkedList<Value>(valueList));
+    } else {
+      values.addAll(valueList);
+    }
+  }
+
+  /**
    * Adds a property to the property map. If the property
    * already exists in the map, the given value is added to the
    * list of values in the property.

@@ -76,6 +76,8 @@ class LivelinkConnectorFactory implements ConnectorFactory {
         "false");
     emptyProperties.put("traversalUsername", "");
     emptyProperties.put("includedLocationNodes", "");
+    emptyProperties.put("googleGlobalNamespace", "");
+    emptyProperties.put("googleLocalNamespace", "");
   }
 
   // Prevent public instantiation

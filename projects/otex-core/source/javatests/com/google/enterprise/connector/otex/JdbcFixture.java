@@ -32,11 +32,18 @@ class JdbcFixture {
       + "DComment varchar, CreateDate timestamp, CreatedBy int, "
       + "OwnerID int, UserID int, Catalog int default 0)";
 
+  private static final String CREATE_TABLE_DTREEACL =
+      "create table DTreeACL (DataID int, RightID int, "
+          + "Name varchar, Permissions int, See int)";
+
   private static final String CREATE_TABLE_DTREEANCESTORS =
       "create table DTreeAncestors (DataID int, AncestorID int)";
 
   private static final String CREATE_TABLE_KDUAL =
       "create table KDual (dummy int primary key)";
+
+  private static final String CREATE_TABLE_KUAF =
+      "create table KUAF (ID int, Name varchar, Type int, GroupID int)";
 
   // TODO(jlacey): Turn this into a joined view on DTree and DVersData.
   private static final String CREATE_TABLE_WEBNODES =
@@ -59,8 +66,10 @@ class JdbcFixture {
     executeUpdate(
         CREATE_TABLE_DAUDITNEW,
         CREATE_TABLE_DTREE,
+        CREATE_TABLE_DTREEACL,
         CREATE_TABLE_DTREEANCESTORS,
         CREATE_TABLE_KDUAL,
+        CREATE_TABLE_KUAF,
         CREATE_TABLE_WEBNODES);
   }
 

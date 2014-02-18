@@ -259,8 +259,8 @@ public final class MockClientValue implements ClientValue {
   }
 
   @Override
-  public ClientValue toValue(String field) {
-    throw new IllegalArgumentException();
+  public ClientValue toValue(String field) throws RepositoryException {
+    return new MockClientValue(getValue(field));
   }
 
   @Override
@@ -358,7 +358,15 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public int toInteger() {
-    throw new IllegalArgumentException();
+    if (atomicValue != null)
+      if (atomicValue instanceof Integer) {
+        return ((Integer) atomicValue).intValue();
+      } else {
+        return Integer.parseInt(atomicValue.toString());
+      }
+    else {
+      throw new IllegalArgumentException("ClientValue is not an integer.");
+    }
   }
 
   @Override
