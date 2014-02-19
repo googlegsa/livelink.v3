@@ -265,10 +265,7 @@ class PipedContentHandler implements ContentHandler, Runnable {
 
     private void checkException() throws IOException {
       if (throwable != null) {
-        // IOException didn't have a constructor that takes a
-        // cause until Java 6.
-        IOException e = new IOException(throwable.getMessage());
-        e.initCause(throwable);
+        IOException e = new IOException(throwable.getMessage(), throwable);
         throwable = null;
         throw e;
       }
