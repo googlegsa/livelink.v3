@@ -437,9 +437,6 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
   /*
    * Tests the validateConfig method with HTTP tunneling disabled
    * and NTLM authentication enabled.
-   *
-   * The enableNtlm property has been removed from the form. It
-   * must be set by editing the xml file.
    */
   public void testValidateConfigIgnoredEnableNtlm() throws Exception {
     Map<String, String> props = getValidProperties();

@@ -604,6 +604,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * to "true".
      */
     private static final ArrayList<FormProperty> authenticationEntries;
+
     /** Label for the Indexing Traversal properties. */
     private static final FormProperty indexingLabel;
 
@@ -1018,7 +1019,7 @@ public class LivelinkConnectorType implements ConnectorType {
       }
     }
 
-    // TODO: Story 2888
+    // TODO: Use the displayUrl property to set the tunneling properties.
   }
 
 

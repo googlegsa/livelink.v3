@@ -49,14 +49,6 @@ class LivelinkAuthenticationManager
         super();
     }
 
-    /** Direct instantiation for the tests. */
-    LivelinkAuthenticationManager(ClientFactory clientFactory,
-            DomainAndName domainAndName, String windowsDomain) {
-        this.clientFactory = clientFactory;
-        this.identityResolver =
-            new IdentityResolver(domainAndName, windowsDomain);
-    }
-  
     /**
      * Provides the current connector instance to this
      * authentication manager for configuration purposes.
