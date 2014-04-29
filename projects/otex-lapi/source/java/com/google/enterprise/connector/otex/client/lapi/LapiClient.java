@@ -14,11 +14,6 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.io.File;
-import java.io.OutputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
@@ -26,6 +21,7 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
+
 import com.opentext.api.GoogleThunk;
 import com.opentext.api.LAPI_ATTRIBUTES;
 import com.opentext.api.LAPI_DOCUMENTS;
@@ -48,6 +44,11 @@ import com.opentext.api.LLUnknownFieldException;
 import com.opentext.api.LLUnsupportedAuthMethodException;
 import com.opentext.api.LLValue;
 import com.opentext.api.LLWebAuthInitException;
+
+import java.io.File;
+import java.io.OutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A direct LAPI client implementation.
@@ -190,12 +191,14 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public ClientValueFactory getClientValueFactory()
       throws RepositoryException {
     return new LapiClientValueFactory();
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetServerInfo() throws RepositoryException {
     LLValue value = new LLValue();
     try {
@@ -208,6 +211,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized int GetCurrentUserID() throws RepositoryException {
     LLValue id = new LLValue();
     try {
@@ -220,6 +224,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetCookieInfo()
       throws RepositoryException {
     LLValue cookies = new LLValue();
@@ -233,6 +238,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetUserOrGroupByIDNoThrow(int id)
       throws RepositoryException {
     LLValue userInfo = new LLValue();
@@ -249,6 +255,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetUserInfo(String username)
       throws RepositoryException {
     LLValue userInfo = new LLValue();
@@ -262,6 +269,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue AccessEnterpriseWS()
       throws RepositoryException {
     LLValue info = new LLValue();
@@ -275,6 +283,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue ListNodes(String query, String view,
       String[] columns) throws RepositoryException {
     ClientValue recArray = listNodesHelper(query, view, columns);
@@ -295,6 +304,7 @@ final class LapiClient implements Client {
    * http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=4
    * http://code.google.com/p/google-enterprise-connector-otex/issues/detail?id=51
    */
+  @Override
   public synchronized ClientValue ListNodesNoThrow(String query, String view,
       String[] columns) throws RepositoryException {
     ClientValue recArray = listNodesHelper(query, view, columns);
@@ -346,6 +356,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetObjectInfo(int volumeId, int objectId)
       throws RepositoryException {
     LLValue objectInfo = new LLValue();
@@ -360,6 +371,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetObjectAttributesEx(
       ClientValue objectIdAssoc, ClientValue categoryIdAssoc)
       throws RepositoryException {
@@ -378,6 +390,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue AttrListNames(ClientValue categoryVersion,
       ClientValue attributeSetPath) throws RepositoryException {
     LLValue attrNames = new LLValue();
@@ -400,6 +413,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue AttrGetInfo(ClientValue categoryVersion,
       String attributeName, ClientValue attributeSetPath)
       throws RepositoryException {
@@ -423,6 +437,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue AttrGetValues(ClientValue categoryVersion,
       String attributeName, ClientValue attributeSetPath)
       throws RepositoryException {
@@ -447,6 +462,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue ListObjectCategoryIDs(
       ClientValue objectIdAssoc) throws RepositoryException {
     LLValue categoryIds = new LLValue();
@@ -461,6 +477,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized void FetchVersion(int volumeId, int objectId,
       int versionNumber, File path) throws RepositoryException {
     try {
@@ -489,6 +506,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized void FetchVersion(int volumeId, int objectId,
       int versionNumber, OutputStream out) throws RepositoryException {
     try {
@@ -520,6 +538,7 @@ final class LapiClient implements Client {
   }
 
   /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue GetVersionInfo(int volumeId, int objectId,
       int versionNumber) throws RepositoryException {
     LLValue versionInfo = new LLValue();
@@ -537,6 +556,7 @@ final class LapiClient implements Client {
   /**
    * {@inheritDoc}
    */
+  @Override
   public synchronized void ImpersonateUser(String username) {
     session.ImpersonateUser(username);
   }
@@ -544,6 +564,7 @@ final class LapiClient implements Client {
   /**
    * {@inheritDoc}
    */
+  @Override
   public synchronized void ImpersonateUserEx(String username, String domain) {
     if ((domain == null) || (domain.length() == 0))
       session.ImpersonateUser(username);

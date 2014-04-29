@@ -14,14 +14,15 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import com.opentext.api.LLIllegalOperationException;
 import com.opentext.api.LLValue;
+
+import java.util.logging.Logger;
 
 /**
  * A direct LAPI ClientValue factory implementation.
@@ -34,6 +35,7 @@ public final class LapiClientValueFactory implements ClientValueFactory {
     /**
      * Factory method creates a ClientValue without underlying LLValue
      */
+    @Override
     public ClientValue createValue() throws RepositoryException {
         try {
             return new LapiClientValue((LLValue) null);
@@ -47,6 +49,7 @@ public final class LapiClientValueFactory implements ClientValueFactory {
     /**
      * Factory method creates a ClientValue with an underlying Assoc.
      */
+    @Override
     public ClientValue createAssoc() throws RepositoryException {
         try {
             return new LapiClientValue(new LLValue().setAssoc());
@@ -60,6 +63,7 @@ public final class LapiClientValueFactory implements ClientValueFactory {
     /**
      * Factory method creates a ClientValue with an underlying List.
      */
+    @Override
     public ClientValue createList() throws RepositoryException {
         try {
             return new LapiClientValue(new LLValue().setList());

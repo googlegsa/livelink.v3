@@ -14,12 +14,12 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 /**
  * Create and parse the checkpoint strings passed back and forth between

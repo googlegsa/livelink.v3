@@ -14,18 +14,18 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.BufferedInputStream;
-import java.io.InputStream;
-import java.io.IOException;
-import java.net.URLConnection;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.common.annotations.VisibleForTesting;
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.RepositoryException;
+
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * This content handler implementation uses a Livelink download URL.
@@ -64,6 +64,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
     }
 
     /** {@inheritDoc} */
+    @Override
     public void initialize(LivelinkConnector connector, Client client)
             throws RepositoryException {
         this.client = client;
@@ -179,6 +180,7 @@ class HttpURLContentHandler implements RefreshableContentHandler {
     }
 
     /** {@inheritDoc} */
+    @Override
     public InputStream getInputStream(int volumeId, int objectId,
             int versionNumber, int size) throws RepositoryException {
         try {

@@ -14,9 +14,18 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.net.URL;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.enterprise.connector.spi.ConfigureResponse;
+import com.google.enterprise.connector.spi.ConnectorFactory;
+import com.google.enterprise.connector.spi.ConnectorType;
+import com.google.enterprise.connector.util.UrlValidator;
+import com.google.enterprise.connector.util.UrlValidatorException;
+
+import org.springframework.beans.PropertyAccessException;
+import org.springframework.beans.PropertyBatchUpdateException;
+
 import java.net.MalformedURLException;
-import java.security.GeneralSecurityException;
+import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,14 +36,6 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.ConfigureResponse;
-import com.google.enterprise.connector.spi.ConnectorFactory;
-import com.google.enterprise.connector.spi.ConnectorType;
-import com.google.enterprise.connector.util.UrlValidator;
-import com.google.enterprise.connector.util.UrlValidatorException;
-import org.springframework.beans.PropertyAccessException;
-import org.springframework.beans.PropertyBatchUpdateException;
 
 /**
  * Supports the configuration properties used by the Livelink Connector.
@@ -100,6 +101,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.defaultValue = defaultValue;
     }
 
+    @Override
     public final String toString() {
       StringBuilder buffer = new StringBuilder();
       addToBuffer(buffer, "", "", null, null);
@@ -285,6 +287,7 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /** Writes a table row with a two-column label and no form control. */
+    @Override
     public void addToBuffer(StringBuilder buffer, String labelPrefix,
         String labelSuffix, String value, ResourceBundle labels) {
       String label = getLabel(name, labels);
@@ -301,6 +304,7 @@ public class LivelinkConnectorType implements ConnectorType {
     }
 
     /* This is never called, but it is abstract in our superclass. */
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
     }
@@ -315,6 +319,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.messages = new String[] { left, right };
     }
 
+    @Override
     public void addToBuffer(StringBuilder buffer, String labelPrefix,
         String labelSuffix, String value, ResourceBundle labels) {
       buffer.append("<tr>\r\n");
@@ -365,6 +370,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.type = type;
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
 
@@ -416,6 +422,7 @@ public class LivelinkConnectorType implements ConnectorType {
       super(prop.name, prop.defaultValue, "hidden");
     }
 
+    @Override
     public void addToBuffer(StringBuilder buffer, String labelPrefix,
         String labelSuffix, String value, ResourceBundle labels) {
       buffer.append("<tr style='display:none'>\r\n").
@@ -434,6 +441,7 @@ public class LivelinkConnectorType implements ConnectorType {
       super(name);
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
       buffer.append("<textarea ");
@@ -460,6 +468,7 @@ public class LivelinkConnectorType implements ConnectorType {
       this.buttonNames = buttonNames;
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
       if (value == null)
@@ -506,6 +515,7 @@ public class LivelinkConnectorType implements ConnectorType {
       super(name, defaultValue);
     }
 
+    @Override
     protected void addFormControl(StringBuilder buffer, String value,
         ResourceBundle labels) {
       if (value == null)
@@ -594,6 +604,7 @@ public class LivelinkConnectorType implements ConnectorType {
      * to "true".
      */
     private static final ArrayList<FormProperty> authenticationEntries;
+
     /** Label for the Indexing Traversal properties. */
     private static final FormProperty indexingLabel;
 
@@ -795,6 +806,7 @@ public class LivelinkConnectorType implements ConnectorType {
   /**
    * {@inheritDoc}
    */
+  @Override
   public ConfigureResponse getConfigForm(Locale locale) {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("getConfigForm locale: " + locale);
@@ -810,6 +822,7 @@ public class LivelinkConnectorType implements ConnectorType {
   /**
    * {@inheritDoc}
    */
+  @Override
   public ConfigureResponse getPopulatedConfigForm(
       Map<String, String> configData, Locale locale) {
     if (LOGGER.isLoggable(Level.CONFIG)) {
@@ -872,6 +885,7 @@ public class LivelinkConnectorType implements ConnectorType {
    * TODO: Add init method and parameter validation to
    * LivelinkConnector.
    */
+  @Override
   public ConfigureResponse validateConfig(Map<String, String> configData,
       Locale locale, ConnectorFactory connectorFactory) {
     if (LOGGER.isLoggable(Level.CONFIG)) {
@@ -1005,7 +1019,7 @@ public class LivelinkConnectorType implements ConnectorType {
       }
     }
 
-    // TODO: Story 2888
+    // TODO: Use the displayUrl property to set the tunneling properties.
   }
 
 
@@ -1123,6 +1137,7 @@ public class LivelinkConnectorType implements ConnectorType {
    * code so that it can be unit tested. A return value of 0 is
    * arbitrary and unused by the tests.
    */
+  @VisibleForTesting
   int validateUrl(String urlString, ResourceBundle bundle)
       throws UrlConfigurationException {
     try {

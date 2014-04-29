@@ -14,11 +14,11 @@
 
 package com.google.enterprise.connector.otex.client.lapi;
 
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.otex.LivelinkException;
 
 import com.opentext.api.LLSession;
+
+import java.util.logging.Logger;
 
 /**
  * Extends <code>LivelinkException</code> to implement retrieving

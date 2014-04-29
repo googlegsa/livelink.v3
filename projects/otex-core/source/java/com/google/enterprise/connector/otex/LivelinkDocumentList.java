@@ -14,6 +14,20 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
+import com.google.enterprise.connector.spi.Document;
+import com.google.enterprise.connector.spi.DocumentList;
+import com.google.enterprise.connector.spi.RepositoryDocumentException;
+import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.SkippedDocumentException;
+import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.SpiConstants.ActionType;
+import com.google.enterprise.connector.spi.SpiConstants.FeedType;
+import com.google.enterprise.connector.spi.TraversalContext;
+import com.google.enterprise.connector.spi.Value;
+
 import java.io.InputStream;
 import java.util.Calendar;
 import java.util.Date;
@@ -23,20 +37,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.enterprise.connector.spi.Document;
-import com.google.enterprise.connector.spi.DocumentList;
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.RepositoryDocumentException;
-import com.google.enterprise.connector.spi.SkippedDocumentException;
-import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.SpiConstants.ActionType;
-import com.google.enterprise.connector.spi.SpiConstants.FeedType;
-import com.google.enterprise.connector.spi.TraversalContext;
-import com.google.enterprise.connector.spi.Value;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 /*
  * We use inner classes here to share the recarray and other fields in
@@ -150,6 +150,7 @@ class LivelinkDocumentList implements DocumentList {
   /**
    * {@inheritDoc}
    */
+  @Override
   public Document nextDocument() throws RepositoryException {
     if (docIterator.hasNext()) {
       // If processing a document throws an exception, we will try to
@@ -220,6 +221,7 @@ class LivelinkDocumentList implements DocumentList {
   /**
    * {@inheritDoc}
    */
+  @Override
   public String checkpoint() throws RepositoryException {
     String cp = checkpoint.toString();
 
@@ -276,10 +278,12 @@ class LivelinkDocumentList implements DocumentList {
       this.size = (recArray == null) ? 0 : recArray.size();
     }
 
+    @Override
     public boolean hasNext() {
       return row < size;
     }
 
+    @Override
     public String next() {
       if (row < size) {
         try {
@@ -295,6 +299,7 @@ class LivelinkDocumentList implements DocumentList {
       return null;
     }
 
+    @Override
     public void remove() {
       throw new UnsupportedOperationException();
     }

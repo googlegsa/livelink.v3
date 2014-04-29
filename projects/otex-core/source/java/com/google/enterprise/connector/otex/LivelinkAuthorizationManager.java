@@ -18,14 +18,14 @@ import static com.google.enterprise.connector.otex.SqlQueries.choice;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -100,6 +100,7 @@ public class LivelinkAuthorizationManager
    * because initialization (via this method) and other method calls
    * happen in different threads, and we do not control the threads.
    */
+  @Override
   public synchronized void setConnector(Connector connector)
       throws RepositoryException {
     this.connector = (LivelinkConnector) connector;
@@ -122,6 +123,7 @@ public class LivelinkAuthorizationManager
    * @param identity the user identity for which to check authorization
    * @throws RepositoryException if an error occurs
    */
+  @Override
   public synchronized Collection<AuthorizationResponse> authorizeDocids(
       Collection<String> docids, AuthenticationIdentity identity)
       throws RepositoryException {
@@ -287,14 +289,14 @@ public class LivelinkAuthorizationManager
 
   /** A factory interface for strings. */
   private static class StringCreator implements Creator<String> {
-    public String fromString(String value) {
+    @Override public String fromString(String value) {
       return value;
     }
   }
 
   /** A factory interface for <code>AuthorizationResponse</code> objects. */
   private static class AuthzCreator implements Creator<AuthorizationResponse> {
-    public AuthorizationResponse fromString(String value) {
+    @Override public AuthorizationResponse fromString(String value) {
       return new AuthorizationResponse(true, value);
     }
   }

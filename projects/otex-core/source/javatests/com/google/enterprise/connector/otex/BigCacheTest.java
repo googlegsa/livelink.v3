@@ -15,12 +15,9 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
-import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Session;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -33,15 +30,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Random;
-import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -85,7 +75,8 @@ public class BigCacheTest extends TestCase {
       return new TestSuite();
   }
 
-  public void setUp() throws RepositoryException, SQLException {
+  @Override
+  protected void setUp() throws RepositoryException, SQLException {
     LOGGER.info("Start test " + getName());
 
     jdbcFixture = new JdbcFixture();
@@ -101,6 +92,7 @@ public class BigCacheTest extends TestCase {
         + "values (?,?,?,?,?)");
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
     LOGGER.info("End test " + getName());
@@ -261,6 +253,8 @@ public class BigCacheTest extends TestCase {
   /** A DateProvider that returns dates incrementing by 1 second. */
   private static class IncrementalDateProvider implements DateProvider {
     static long date = 20000;
+
+    @Override
     public long getDate(long ignored) {
       return date += 1000;
     }
@@ -269,6 +263,8 @@ public class BigCacheTest extends TestCase {
   /** A DateProvider that returns random dates. */
   private static class RandomDateProvider implements DateProvider {
     Random random = new Random();
+
+    @Override
     public long getDate(long ignored) {
       // Scrub milliseconds.
       return random.nextInt() * 1000L;
@@ -282,6 +278,8 @@ public class BigCacheTest extends TestCase {
   private static class FolderClusteredDateProvider implements DateProvider {
     Random random = new Random();
     int counter = 0;
+
+    @Override
     public long getDate(long anchor) {
       int sign = 1;
       if ((++counter & 1) == 0) {
@@ -302,6 +300,7 @@ public class BigCacheTest extends TestCase {
     Random random = new Random();
     int counter = 0;
 
+    @Override
     @SuppressWarnings("fallthrough")
     public long getDate(long anchor) {
       int sign = 1;

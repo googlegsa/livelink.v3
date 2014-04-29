@@ -14,22 +14,21 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.Document;
-import com.google.enterprise.connector.spi.Retriever;
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
+import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.Retriever;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.util.Clock;
 import com.google.enterprise.connector.util.SystemClock;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -142,6 +141,7 @@ class LivelinkRetriever implements Retriever {
    * @throws RepositoryException if there was a problem accessing the document
    *         repository
    */
+  @Override
   public Document getMetaData(String docid) throws RepositoryException {
     try {
       int objid = getObjectId(docid);
@@ -198,7 +198,7 @@ class LivelinkRetriever implements Retriever {
   // LivelinkDocumentList.collectContentProperty().  Changes here
   // should probably be reflected there, and vice-versa.
   // TODO: Extract the common logic out into a shared utility method.
-  /* @Override */
+  @Override
   public InputStream getContent(String docid) throws RepositoryException {
     try {
       int objid = getObjectId(docid);

@@ -25,9 +25,9 @@ import junit.framework.TestCase;
 
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Date;
 
 public class LivelinkConnectorTest extends TestCase {
   private LivelinkConnector connector;

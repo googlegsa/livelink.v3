@@ -134,6 +134,7 @@ public final class MockClientValue implements ClientValue {
     return listValues.get(index);
   }
 
+  @Override
   public int size() {
     switch (type) {
       case TABLE:
@@ -154,6 +155,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   /** This implementation only works on empty values. */
+  @Override
   public void setSize(int size) {
     switch (type) {
       case TABLE:
@@ -175,46 +177,55 @@ public final class MockClientValue implements ClientValue {
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setInteger(int index, int value) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int type() {
     return type;
   }
 
+  @Override
   public Enumeration<String> enumerateNames() {
     return new Enumeration<String>() {
       private int i = 0;
-      public boolean hasMoreElements() {
+      @Override public boolean hasMoreElements() {
         return i < fieldNames.size();
       }
-      public String nextElement() {
+      @Override public String nextElement() {
         return fieldNames.get(i++);
       }
     };
   }
 
+  @Override
   public ClientValue stringToValue() {
     return this;
   }
 
+  @Override
   public boolean isDefined(int row, String field) throws RepositoryException {
     return getValue(row, field) != null;
   }
 
+  @Override
   public boolean hasValue() {
     return type != UNDEFINED;
   }
 
+  @Override
   public ClientValue toValue(int row, String field) throws RepositoryException {
     return new MockClientValue(getValue(row, field));
   }
 
+  @Override
   public boolean toBoolean(int row, String field) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public Date toDate(int row, String field) throws RepositoryException {
     Object v = getValue(row, field);
     if (v instanceof Date)
@@ -223,10 +234,12 @@ public final class MockClientValue implements ClientValue {
       throw new IllegalArgumentException();
   }
 
+  @Override
   public double toDouble(int row, String field) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int toInteger(int row, String field) throws RepositoryException {
     Object v = getValue(row, field);
     if (v instanceof Integer)
@@ -235,18 +248,22 @@ public final class MockClientValue implements ClientValue {
       return Integer.parseInt(v.toString());
   }
 
+  @Override
   public String toString(int row, String field) throws RepositoryException {
     return getValue(row, field).toString();
   }
 
+  @Override
   public boolean isDefined(String field) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public ClientValue toValue(String field) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public boolean toBoolean(String field) throws RepositoryException {
     Object v = getValue(field);
     if (v instanceof Boolean)
@@ -255,14 +272,17 @@ public final class MockClientValue implements ClientValue {
       return Boolean.parseBoolean(v.toString());
   }
 
+  @Override
   public Date toDate(String field) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public double toDouble(String field) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int toInteger(String field) throws RepositoryException {
     Object v = getValue(field);
     if (v instanceof Integer)
@@ -271,14 +291,17 @@ public final class MockClientValue implements ClientValue {
       return Integer.parseInt(v.toString());
   }
 
+  @Override
   public String toString(String field) throws RepositoryException {
     return getValue(field).toString();
   }
 
+  @Override
   public boolean isDefined(int index) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public ClientValue toValue(int index) throws RepositoryException {
     Object value = getValue(index);
     if (value instanceof ClientValue) {
@@ -288,50 +311,62 @@ public final class MockClientValue implements ClientValue {
     }
   }
 
+  @Override
   public boolean toBoolean(int index) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public Date toDate(int index) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public double toDouble(int index) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int toInteger(int index) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public String toString(int index) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public boolean isDefined() {
     return type != UNDEFINED;
   }
 
+  @Override
   public boolean toBoolean() {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public Date toDate() {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public double toDouble() {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int toInteger() {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public long toLong() {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public String toString2() {
     return (type == UNDEFINED) ? "?" : atomicValue.toString();
   }
@@ -349,114 +384,132 @@ public final class MockClientValue implements ClientValue {
     return assocValues.size();
   }
 
+  @Override
   public int add(String key, boolean obj) {
     return addField(key, Boolean.valueOf(obj));
   }
 
+  @Override
   public int add(String key, char obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, int obj) {
     return addField(key, new Integer(obj));
   }
 
+  @Override
   public int add(String key, long obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, float obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, double obj) {
     throw new IllegalArgumentException();
   }
 
-  public int add(String key, Object obj) {
-    throw new IllegalArgumentException();
-  }
-
+  @Override
   public int add(String key, Boolean obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, Double obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, Float obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, Integer obj) {
     return addField(key, obj);
   }
 
+  @Override
   public int add(String key, Long obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String key, String obj) {
     return addField(key, obj);
   }
 
+  @Override
   public int add(String key, java.util.Date obj) {
     return addField(key, obj);
   }
 
-  public int add(Object obj) {
-    throw new IllegalArgumentException();
-  }
-
+  @Override
   public int add(boolean obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(char obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(int obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(long obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(float obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(double obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(Boolean obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(Double obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(Float obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(Integer obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(Long obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(String obj) {
     throw new IllegalArgumentException();
   }
 
+  @Override
   public int add(java.util.Date obj) {
     throw new IllegalArgumentException();
   }

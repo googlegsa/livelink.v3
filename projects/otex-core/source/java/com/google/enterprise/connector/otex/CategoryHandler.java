@@ -14,14 +14,15 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.HashSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
+import com.google.enterprise.connector.spi.RepositoryException;
+
+import java.util.HashSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Collects the category attribute values for an object. Each
@@ -67,7 +68,7 @@ class CategoryHandler {
    * whether this attributes are searchable, so we assume that they
    * should be indexed.
    */
-  /* @VisibleForTesting */
+  @VisibleForTesting
   HashSet<Integer> searchableCache = null;
 
   /**
@@ -266,7 +267,7 @@ class CategoryHandler {
    *     null
    * throws RepositoryException if an error occurs
    */
-  /* @VisibleForTesting */
+  @VisibleForTesting
   void getAttributeValue(UserNameHandler nameHandler,
       LivelinkDocument props, Integer id, ClientValue categoryVersion,
       String attrName, int attrType, ClientValue attrSetPath,

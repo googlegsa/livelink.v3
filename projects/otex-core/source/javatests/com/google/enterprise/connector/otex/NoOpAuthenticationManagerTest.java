@@ -14,8 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.Set;
-
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -28,7 +26,8 @@ public class NoOpAuthenticationManagerTest extends TestCase {
 
     private AuthenticationIdentity identity;
 
-    public void setUp() {
+    @Override
+    protected void setUp() {
         manager = new NoOpAuthenticationManager();
         identity = new SimpleAuthenticationIdentity("nobody", "goodPassword");
     }

@@ -14,10 +14,10 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.InputStream;
-
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.spi.RepositoryException;
+
+import java.io.InputStream;
 
 /**
  * Retrieves the item content as an <code>InputStream</code>.

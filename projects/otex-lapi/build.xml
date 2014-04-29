@@ -107,6 +107,9 @@
         <pathelement location="${spi.jarfile}" />
         <pathelement location="${core.classes}" />
         <pathelement location="${lapi.jarfile}" />
+        <fileset dir="${thirdparty.jar.dir}">
+          <include name="prod/*.jar" />
+        </fileset>
       </classpath>
     </javac>
   </target>

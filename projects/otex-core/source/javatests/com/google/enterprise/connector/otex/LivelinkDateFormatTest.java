@@ -62,7 +62,7 @@ public class LivelinkDateFormatTest extends TestCase {
       // won't fail.
       final int tt = t;
       threads[t] = new Thread() {
-          public void run() {
+          @Override public void run() {
             try {
               for (int i = 0; i < iterations; i++) {
                 body.test(millis, seconds, sqlMillis);
@@ -107,6 +107,7 @@ public class LivelinkDateFormatTest extends TestCase {
   /** Tests only calls to parse with different date strings. */
   public void testParse() throws InterruptedException {
     testThreads(new Testable() {
+        @Override
         public void test(Date millis, Date seconds, String sqlMillis) {
           assertEquals(millis, dateFormat.parse(sqlMillis));
         }

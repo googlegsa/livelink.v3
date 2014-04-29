@@ -11,6 +11,53 @@ supplements the main documentation.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 3.2.6, April 26, 2014
+=============================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. Users of previous releases are encouraged to review
+the changes below to determine whether to upgrade.
+
+Issues Fixed Since 3.2.0
+------------------------
+11484159 - A validation query was found to be excessively slow using
+           Oracle in a customer environment, executing a full table
+           scan. This query is used with the Items to Index
+           configuration property or the excludedLocationNodes or
+           showHiddenItems advanced configuraton properties. The slow
+           performance could lead to admin console timeouts, connector
+           instances without a schedule, and slow startup times when
+           restarting Tomcat. No changes to the ListNodes white list
+           are required for this release. See the 3.2.2 release notes
+           for configuration info.
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 3.2.2 may be
+used with this version. This version works with Connector Manager
+version 3.2.0 or later. Earlier versions of the Connector Manager will
+not work correctly with this version of the connector. This product is
+designed to function with OpenText Livelink versions 9.7, and 9.7.1,
+and OpenText Content Server 10.
+
+Java SE 5.0 is no longer supported. Java 6 or later is required.
+
+Customers running OpenText Content Server 10, or Livelink 9.7.1 with
+the July 2008 or later monthly patch, must configure the ListNodes white
+list in opentext.ini as described in the 3.2.2 release notes below.
+
+Customers upgrading from version 3.2.0 or earlier must update the
+ListNodes white list in opentext.ini as described in the 3.2.2 release
+notes below.
+
+
 Release 3.2.2, October 30, 2013
 ===============================
 

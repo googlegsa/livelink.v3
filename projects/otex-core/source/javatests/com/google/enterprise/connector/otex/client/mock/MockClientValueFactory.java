@@ -14,10 +14,9 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
-import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.ClientValueFactory;
-
+import com.google.enterprise.connector.spi.RepositoryException;
 
 /**
  * A direct Mock ClientValue factory implementation.
@@ -26,6 +25,7 @@ public final class MockClientValueFactory implements ClientValueFactory {
     /**
      * Factory method creates a ClientValue without underlying LLValue
      */
+    @Override
     public ClientValue createValue() throws RepositoryException {
         try {
             return new MockClientValue(null, null);
@@ -37,6 +37,7 @@ public final class MockClientValueFactory implements ClientValueFactory {
     /**
      * Factory method creates a ClientValue with an underlying Assoc.
      */
+    @Override
     public ClientValue createAssoc() throws RepositoryException {
         try {
             return new MockClientValue(new String[0], new Object[0]);
@@ -48,6 +49,7 @@ public final class MockClientValueFactory implements ClientValueFactory {
     /**
      * Factory method creates a ClientValue with an underlying List.
      */
+    @Override
     public ClientValue createList() throws RepositoryException {
         try {
             return new MockClientValue(new Object[0]);

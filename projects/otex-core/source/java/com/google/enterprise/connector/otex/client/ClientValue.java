@@ -14,10 +14,10 @@
 
 package com.google.enterprise.connector.otex.client;
 
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.util.Date;
 import java.util.Enumeration;
-
-import com.google.enterprise.connector.spi.RepositoryException;
 
 /**
  * A generic value interface for primitive types, lists, associative

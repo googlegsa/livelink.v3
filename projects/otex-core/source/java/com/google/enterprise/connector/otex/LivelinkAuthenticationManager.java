@@ -14,18 +14,18 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.ClientValue;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implements an AuthenticationManager for the Livelink connector.
@@ -49,14 +49,6 @@ class LivelinkAuthenticationManager
         super();
     }
 
-    /** Direct instantiation for the tests. */
-    LivelinkAuthenticationManager(ClientFactory clientFactory,
-            DomainAndName domainAndName, String windowsDomain) {
-        this.clientFactory = clientFactory;
-        this.identityResolver =
-            new IdentityResolver(domainAndName, windowsDomain);
-    }
-  
     /**
      * Provides the current connector instance to this
      * authentication manager for configuration purposes.
@@ -86,6 +78,7 @@ class LivelinkAuthenticationManager
      * @throws RepositoryException if an exception occurred during
      *     authentication
      */
+    @Override
     public synchronized AuthenticationResponse authenticate(
             AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {

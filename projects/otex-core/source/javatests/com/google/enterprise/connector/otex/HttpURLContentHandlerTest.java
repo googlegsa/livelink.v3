@@ -35,7 +35,8 @@ public class HttpURLContentHandlerTest extends TestCase {
   private Client client;
   private HttpURLContentHandler out;
 
-  public void setUp() throws RepositoryException {
+  @Override
+  protected void setUp() throws RepositoryException {
     connector = LivelinkConnectorFactory.getConnector("connector.");
     ClientFactory clientFactory = connector.getClientFactory();
     client = clientFactory.createClient();
@@ -187,6 +188,7 @@ public class HttpURLContentHandlerTest extends TestCase {
       this.where = where;
     }
 
+    @Override
     public void handle(HttpExchange exchange) throws IOException {
       if (where == SleepyLocation.HEADERS) {
         sleep();
@@ -218,6 +220,7 @@ public class HttpURLContentHandlerTest extends TestCase {
       return cookie;
     }
 
+    @Override
     public void handle(HttpExchange exchange) throws IOException {
       cookie = exchange.getRequestHeaders().getFirst("Cookie");
 

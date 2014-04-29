@@ -14,14 +14,14 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implements an no-op AuthenticationManager that authenticates every
@@ -55,8 +55,9 @@ class NoOpAuthenticationManager implements AuthenticationManager {
             LOGGER.config("SHARED PASSWORD: ...");
         this.sharedPassword = sharedPassword;
     }
-    
+
     /** {@inheritDoc} */
+    @Override
     public AuthenticationResponse authenticate(AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
         boolean isValid = sharedPassword == null ||

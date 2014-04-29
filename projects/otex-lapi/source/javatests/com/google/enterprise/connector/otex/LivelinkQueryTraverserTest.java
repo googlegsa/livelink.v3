@@ -14,20 +14,14 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-
-import com.google.enterprise.connector.manager.Context;
 import com.google.enterprise.connector.instantiator.MockInstantiator;
 import com.google.enterprise.connector.instantiator.ThreadPool;
+import com.google.enterprise.connector.manager.Context;
 import com.google.enterprise.connector.persist.ConnectorNotFoundException;
 import com.google.enterprise.connector.pusher.DocPusherFactory;
 import com.google.enterprise.connector.pusher.PusherFactory;
-import com.google.enterprise.connector.pusher.MockFeedConnection;
-import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.traversal.BatchResult;
@@ -39,6 +33,11 @@ import com.google.enterprise.connector.util.SystemClock;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * This is a copy of the QueryTraverserTest class with modifications

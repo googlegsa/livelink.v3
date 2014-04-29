@@ -23,13 +23,12 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.DocumentList;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.TraversalContextAware;
+import com.google.enterprise.connector.spi.TraversalManager;
 import com.google.enterprise.connector.util.EmptyDocumentList;
 import com.google.enterprise.connector.util.TraversalTimer;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
@@ -368,6 +367,7 @@ class LivelinkTraversalManager
    * @param hint the new batch size
    * @throws IllegalArgumentException if the hint is less than zero
    */
+  @Override
   public void setBatchHint(int hint) {
     if (hint < 0)
       throw new IllegalArgumentException();
@@ -380,6 +380,7 @@ class LivelinkTraversalManager
   }
 
   /** {@inheritDoc} */
+  @Override
   public DocumentList startTraversal() throws RepositoryException {
     // startCheckpoint will either be an initial checkpoint or null
     String startCheckpoint = getStartCheckpoint();
@@ -392,6 +393,7 @@ class LivelinkTraversalManager
   }
 
   /** {@inheritDoc} */
+  @Override
   public DocumentList resumeTraversal(String checkpoint)
       throws RepositoryException {
     // Resume with no checkpoint is the same as Start.
@@ -412,6 +414,7 @@ class LivelinkTraversalManager
   }
 
   /** {@inheritDoc} */
+  @Override
   public void setTraversalContext(TraversalContext traversalContext) {
     this.traversalContext = traversalContext;
   }

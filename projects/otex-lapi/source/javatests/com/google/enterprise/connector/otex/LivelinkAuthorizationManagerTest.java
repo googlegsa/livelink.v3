@@ -14,13 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-
-import junit.framework.TestCase;
-
 import com.google.enterprise.connector.spi.AuthorizationResponse;
 import com.google.enterprise.connector.spi.Connector;
 import com.google.enterprise.connector.spi.Document;
@@ -31,7 +24,12 @@ import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.TraversalManager;
-import com.google.enterprise.connector.spi.Value;
+
+import junit.framework.TestCase;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Tests the LivelinkAuthorizationManager.
@@ -56,7 +54,8 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
    *
    * @throws RepositoryException if login fails
    */
-  public void setUp() throws RepositoryException {
+  @Override
+  protected void setUp() throws RepositoryException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
     session = (LivelinkSession) conn.login();
     authManager = (LivelinkAuthorizationManager) session.

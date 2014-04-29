@@ -18,7 +18,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
-import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
 import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
@@ -29,7 +28,6 @@ import com.google.enterprise.connector.spi.Value;
 
 import junit.framework.TestCase;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,7 +54,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
   private final LivelinkDateFormat dateFormat =
       LivelinkDateFormat.getInstance();
 
-  public void setUp() throws RepositoryException, SQLException {
+  @Override
+  protected void setUp() throws RepositoryException, SQLException {
     conn = LivelinkConnectorFactory.getConnector("connector.");
 
     jdbcFixture.setUp();
@@ -107,6 +106,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
         + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00', null)");
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
   }

@@ -14,20 +14,22 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.text.MessageFormat;
-import java.util.Hashtable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.naming.Context;
-import javax.naming.directory.InitialDirContext;
-import javax.naming.directory.DirContext;
-import javax.naming.NamingException;
-
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
+
+import java.text.MessageFormat;
+import java.util.Hashtable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.naming.Context;
+import javax.naming.NamingException;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.InitialDirContext;
 
 /**
  * Implements an AuthenticationManager that authenticates against
@@ -114,6 +116,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
    * TODO: accept a map of environment properties for greater
    * configurability.
    */
+  @Override
   public AuthenticationResponse authenticate(AuthenticationIdentity identity)
       throws RepositoryLoginException, RepositoryException {
     if (LOGGER.isLoggable(Level.FINE))
@@ -154,7 +157,7 @@ class LdapAuthenticationManager implements AuthenticationManager {
    * @param username the username
    * @return the escaped username; see RFC 4514
    */
-  /* Package access for testing. */
+  @VisibleForTesting
   String escapeUsername(String username) {
     StringBuilder buffer = new StringBuilder();
     int start = 0;

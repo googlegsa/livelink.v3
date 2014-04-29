@@ -14,12 +14,9 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.otex.client.mock.MockConstants;
-
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Session;
 
 import junit.framework.TestCase;
 

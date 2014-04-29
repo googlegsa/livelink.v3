@@ -14,6 +14,9 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -21,9 +24,6 @@ import com.google.enterprise.connector.spi.Retriever;
 import com.google.enterprise.connector.spi.RetrieverAware;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.ClientValue;
 
 class LivelinkSession implements Session, RetrieverAware {
     /** The connector instance. */
@@ -67,6 +67,7 @@ class LivelinkSession implements Session, RetrieverAware {
    * @return a TraversalManager
    * @throws RepositoryException
    */
+  @Override
   public TraversalManager getTraversalManager() throws RepositoryException {
     Client traversalClient = clientFactory.createClient();
 
@@ -99,6 +100,7 @@ class LivelinkSession implements Session, RetrieverAware {
      * @return an AuthenticationManager
      * @throws RepositoryException
      */
+    @Override
     public AuthenticationManager getAuthenticationManager() {
         // XXX: Should we ever return null, indicating that
         // authentication is handled by the GSA?
@@ -111,6 +113,7 @@ class LivelinkSession implements Session, RetrieverAware {
      * @return an AuthorizationManager
      * @throws RepositoryException
      */
+    @Override
     public AuthorizationManager getAuthorizationManager()
             throws RepositoryException {
         return authorizationManager;
@@ -122,6 +125,7 @@ class LivelinkSession implements Session, RetrieverAware {
    * @return a Retriever
    * @throws RepositoryException
    */
+  @Override
   public synchronized Retriever getRetriever() throws RepositoryException {
     if (retriever == null) {
       Client traversalClient = clientFactory.createClient();

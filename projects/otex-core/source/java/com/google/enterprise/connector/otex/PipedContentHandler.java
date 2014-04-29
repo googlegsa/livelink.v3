@@ -14,16 +14,16 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.io.InputStream;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.spi.RepositoryException;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.otex.client.Client;
 
 /**
  * This content handler implementation uses <code>FetchVersion</code>
@@ -99,6 +99,7 @@ class PipedContentHandler implements ContentHandler, Runnable {
    * <p>
    * This implementation starts the producer thread.
    */
+  @Override
   public void initialize(LivelinkConnector connector, Client client)
       throws RepositoryException {
     this.connector = connector;
@@ -110,13 +111,14 @@ class PipedContentHandler implements ContentHandler, Runnable {
     if (LOGGER.isLoggable(Level.FINE))
       LOGGER.fine("PIPED CONTENT HANDLER THREAD STARTED: " + t);
   }
-    
+
   /** {@inheritDoc} */
+  @Override
   public InputStream getInputStream(int volumeId, int objectId,
       int versionNumber, int size) throws RepositoryException {
     if (!isRunning)
       throw new LivelinkException("No producer thread.", LOGGER);
-        
+
     try {
       SafePipedInputStream in = new SafePipedInputStream(PIPE_SIZE);
       PipedOutputStream out = new PipedOutputStream(in);
@@ -128,6 +130,7 @@ class PipedContentHandler implements ContentHandler, Runnable {
   }
 
   /** The producer thread processes requests for item content. */
+  @Override
   public void run() {
     // TODO: We need some way of stopping this thread
     // gracefully, although at the moment we have no lifecycle
@@ -221,10 +224,12 @@ class PipedContentHandler implements ContentHandler, Runnable {
       return b;
     }
 
+    @Override
     public int read(byte[] buffer) throws IOException {
       return read(buffer, 0, buffer.length);
     }
 
+    @Override
     public synchronized int read(byte[] buffer, int offset, int length)
         throws IOException {
       checkException();
@@ -260,10 +265,7 @@ class PipedContentHandler implements ContentHandler, Runnable {
 
     private void checkException() throws IOException {
       if (throwable != null) {
-        // IOException didn't have a constructor that takes a
-        // cause until Java 6.
-        IOException e = new IOException(throwable.getMessage());
-        e.initCause(throwable);
+        IOException e = new IOException(throwable.getMessage(), throwable);
         throwable = null;
         throw e;
       }

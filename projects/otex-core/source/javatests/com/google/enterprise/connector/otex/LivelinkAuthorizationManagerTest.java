@@ -27,11 +27,9 @@ import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 import junit.framework.TestCase;
 
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * Tests the construction of the queries for authorizing documents.
@@ -52,6 +50,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
 
   Client client;
 
+  @Override
   protected void setUp() throws SQLException, RepositoryException {
     jdbcFixture.setUp();
     jdbcFixture.executeUpdate(
@@ -78,6 +77,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     conn = LivelinkConnectorFactory.getConnector("connector.");
   }
 
+  @Override
   protected void tearDown() throws SQLException {
     jdbcFixture.tearDown();
   }
@@ -295,7 +295,7 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
    */
   public void testPlainAuthorizationManager() throws RepositoryException {
     AuthorizationManager pluggable = new AuthorizationManager() {
-        public Collection<AuthorizationResponse> authorizeDocids(
+        @Override public Collection<AuthorizationResponse> authorizeDocids(
             Collection<String> docids, AuthenticationIdentity identity) {
           return Collections.<AuthorizationResponse>emptySet();
         }

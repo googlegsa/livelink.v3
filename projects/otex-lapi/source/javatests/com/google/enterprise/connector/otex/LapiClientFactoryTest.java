@@ -14,10 +14,11 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.ArrayList;
+import com.google.enterprise.connector.otex.client.lapi.LapiClientFactory;
+
 import junit.framework.TestCase;
 
-import com.google.enterprise.connector.otex.client.lapi.LapiClientFactory;
+import java.util.ArrayList;
 
 /**
  * Tests some properties of the LapiClientFactory with various
@@ -39,7 +40,8 @@ public class LapiClientFactoryTest extends TestCase {
    *
    * @throws RepositoryException if login fails
    */
-  public void setUp() throws Exception {
+  @Override
+  protected void setUp() throws Exception {
     factory = new LapiClientFactory(); 
     factory.setServer(getName()); 
     factory.setPort(1111);

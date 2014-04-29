@@ -14,27 +14,11 @@
 
 package com.google.enterprise.connector.otex;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Date;
-import java.text.Format;
-import java.text.MessageFormat;
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.Set;
-
-import com.google.common.base.Strings;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
+import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Connector;
@@ -43,9 +27,25 @@ import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.SpiConstants.FeedType;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
-import com.google.enterprise.connector.otex.client.ClientValue;
+
+import java.text.Format;
+import java.text.MessageFormat;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class LivelinkConnector implements Connector {
   /** The logger for this class. */
@@ -94,7 +94,7 @@ public class LivelinkConnector implements Connector {
    * @throws IllegalArgumentException if the list contains anything
    * but whitespace, digits, or commas
    */
-  /* This method has package access so that it can be unit tested. */
+  @VisibleForTesting
   static String sanitizeListOfIntegers(String list) {
     if (LIST_OF_INTEGERS_PATTERN.matcher(list).matches())
       return list.replaceAll("[\\s{}]", "");
@@ -115,7 +115,7 @@ public class LivelinkConnector implements Connector {
    * @param list a list of comma-separated strings
    * @return the list with surrounding whitespace characters removed
    */
-  /* This method has package access so that it can be unit tested. */
+  @VisibleForTesting
   static String sanitizeListOfStrings(String list) {
     Matcher matcher = LIST_OF_STRINGS_PATTERN.matcher(list);
     if (matcher.matches()) {
@@ -2244,6 +2244,7 @@ public class LivelinkConnector implements Connector {
   }
 
   /** {@inheritDoc} */
+  @Override
   public Session login()
       throws RepositoryLoginException, RepositoryException {
     LOGGER.fine("LOGIN");

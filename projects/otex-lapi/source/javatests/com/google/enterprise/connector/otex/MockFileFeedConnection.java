@@ -16,8 +16,8 @@ package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.connector.pusher.FeedConnection;
 import com.google.enterprise.connector.pusher.FeedData;
-import com.google.enterprise.connector.pusher.XmlFeed;
 import com.google.enterprise.connector.pusher.FeedException;
+import com.google.enterprise.connector.pusher.XmlFeed;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,6 +29,7 @@ public class MockFileFeedConnection implements FeedConnection {
     outputStream = os;
   }
 
+  @Override
   public String sendData(FeedData feedData)
     throws FeedException {
     try {
