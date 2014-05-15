@@ -150,10 +150,6 @@
                   value="${traversalUsername}"/>
         <property name="includedLocationNodes"
                   value="${includedLocationNodes}"/>
-
-        <property name="googleGlobalNamespace"
-                  value="${googleGlobalNamespace}"/>
-        <property name="googleLocalNamespace" value="${googleLocalNamespace}"/>
         @constructor-arg@
     </bean>
 

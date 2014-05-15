@@ -309,12 +309,6 @@ public class LivelinkConnector implements Connector {
   /** Lowercase usernames hack. */
   private boolean tryLowercaseUsernames;
 
-  /** The global namespace. */
-  private String globalNamespace;
-
-  /** The local namespace. */
-  private String localNamespace;
-
   /** A list of PropertyValidator instances. */
   private List<PropertyValidator> propertyValidators =
       new ArrayList<PropertyValidator>();
@@ -2005,48 +1999,6 @@ public class LivelinkConnector implements Connector {
    */
   boolean isTryLowercaseUsernames() {
     return tryLowercaseUsernames;
-  }
-
-  /**
-   * Sets globalNamespace.
-   *
-   * @param globalNamespace global namespace
-   */
-  public void setGoogleGlobalNamespace(String globalNamespace) {
-    if (LOGGER.isLoggable(Level.CONFIG)) {
-      LOGGER.config("globalNamespace: " + globalNamespace);
-    }
-    this.globalNamespace = globalNamespace;
-  }
-
-  /**
-   * Gets globalNamespace.
-   *
-   * @return global namespace
-   */
-  String getGoogleGlobalNamespace() {
-    return globalNamespace;
-  }
-
-  /**
-   * Sets localNamespace.
-   *
-   * @param localNamespace local namespace
-   */
-  public void setGoogleLocalNamespace(String localNamespace) {
-    if (LOGGER.isLoggable(Level.CONFIG)) {
-      LOGGER.config("localNamespace: " + localNamespace);
-    }
-    this.localNamespace = localNamespace;
-  }
-
-  /**
-   * Gets localNamespace.
-   *
-   * @return local namespace
-   */
-  String getGoogleLocalNamespace() {
-    return localNamespace;
   }
 
   /**

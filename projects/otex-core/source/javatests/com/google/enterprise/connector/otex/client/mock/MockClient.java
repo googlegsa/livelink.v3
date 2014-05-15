@@ -120,21 +120,8 @@ public class MockClient implements Client {
     @Override
     public ClientValue GetUserOrGroupByIDNoThrow(int id)
             throws RepositoryException {
-      String query = "ID=" + id;
-      String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID"};
-      ClientValue user = executeQuery(query, view, columns);
-
-      if (user.size() > 0) {
-        // Need to return a Assoc LLValue, whereas the above is a table.
-        String name = user.toString(0, "Name");
-        int type = user.toInteger(0, "Type");
-        int groupId = user.toInteger(0, "GroupID");
-        return new MockClientValue(new String[] {"Name", "Type", "GroupID"},
-            new Object[] {name, type, groupId});
-      } else {
-        return null;
-      }
+        return new MockClientValue(
+            new String[] { "Name" }, new String[] { "Admin" });
     }
 
     /** {@inheritDoc} */
@@ -207,28 +194,23 @@ public class MockClient implements Client {
         String h2 = "CONVERT(AuditDate, VARCHAR(23))";
         view = view.replace(sqlServer, h2).replace(oracle, h2);
 
-        return executeQuery(query, view, columns);
-    }
-
-    private ClientValue executeQuery(String query, String view,
-        String[] columns) throws RepositoryException {
-      String[] fields;
-      Object[][] values;
-      try {
-          Statement stmt = jdbcConnection.createStatement();
-          try {
-              ResultSet rs =
-                  stmt.executeQuery(getSqlQuery(query, view, columns));
-              ResultSetMetaData rsmd = rs.getMetaData();
-              fields = getResultSetColumns(rsmd, columns);
-              values = getResultSetValues(rs, rsmd);
-          } finally {
-              stmt.close();
-          }
-      } catch (SQLException e) {
-          throw new RepositoryException("Database error", e);
-      }
-      return new MockClientValue(fields, values);
+        String[] fields;
+        Object[][] values;
+        try {
+            Statement stmt = jdbcConnection.createStatement();
+            try {
+                ResultSet rs =
+                    stmt.executeQuery(getSqlQuery(query, view, columns));
+                ResultSetMetaData rsmd = rs.getMetaData();
+                fields = getResultSetColumns(rsmd, columns);
+                values = getResultSetValues(rs, rsmd);
+            } finally {
+                stmt.close();
+            }
+        } catch (SQLException e) {
+            throw new RepositoryException("Database error", e);
+        }
+        return new MockClientValue(fields, values);
     }
 
     /** Extracts field names from any select expressions. */
@@ -468,12 +450,4 @@ public class MockClient implements Client {
         throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUserEx");
     }
-
-  @Override
-  public ClientValue GetObjectRights(int objectId) throws RepositoryException {
-    String query = "DataID=" + objectId;
-    String view = "DTreeACL";
-    String[] columns = new String[] {"DataID as ID", "RightID", "Permissions"};
-    return executeQuery(query, view, columns);
-  }
 }
