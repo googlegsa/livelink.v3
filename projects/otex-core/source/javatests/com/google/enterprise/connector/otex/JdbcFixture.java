@@ -43,7 +43,8 @@ class JdbcFixture {
       "create table KDual (dummy int primary key)";
 
   private static final String CREATE_TABLE_KUAF =
-      "create table KUAF (ID int, Name varchar, Type int, GroupID int)";
+      "create table KUAF "
+      + "(ID int, Name varchar, Type int, GroupID int, UserData varchar)";
 
   // TODO(jlacey): Turn this into a joined view on DTree and DVersData.
   private static final String CREATE_TABLE_WEBNODES =

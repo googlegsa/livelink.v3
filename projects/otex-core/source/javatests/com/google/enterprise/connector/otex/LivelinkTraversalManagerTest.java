@@ -91,19 +91,22 @@ public class LivelinkTraversalManagerTest extends TestCase {
         + "values(6, 2000)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(2000, -1)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+        + " values(1001, 'user1', 0, 2001, 'ExternalAuthentication=true' )",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
-        + "MimeType) "
-        + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00', null)",
+        + "MimeType, UserID) "
+        + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00', null, 1001)",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
-        + "MimeType, DataSize) "
+        + "MimeType, DataSize, UserID) "
         + "values(42, 6, -2000, 144, timestamp'2001-01-01 00:00:00', "
-        + "'text/xml', 1729)",
+        + "'text/xml', 1729, 1001)",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
-        + "MimeType, DataSize) "
-        + "values(66, 6, -2000, 144, sysdate, 'text/xml', 1729)",
+        + "MimeType, DataSize, UserID) "
+        + "values(66, 6, -2000, 144, sysdate, 'text/xml', 1729, 1001)",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
-        + "MimeType) "
-        + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00', null)");
+        + "MimeType, UserID) "
+        + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00', null,"
+        + " 1001)");
   }
 
   @Override

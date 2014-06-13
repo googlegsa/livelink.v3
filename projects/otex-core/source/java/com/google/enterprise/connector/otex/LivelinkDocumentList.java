@@ -840,6 +840,9 @@ class LivelinkDocumentList implements DocumentList {
         LOGGER.finest("ACE Info for id: " + objectId);
       }
 
+      int ownerId = recArray.toInteger(insRow, "UserID");
+      ClientValue ownerInfo =
+          client.GetUserOrGroupByIDNoThrow(ownerId);
       ClientValue objectRightsInfo = client.GetObjectRights(objectId);
       for (int i = 0; i < objectRightsInfo.size(); i++) {
         int userId = objectRightsInfo.toInteger(i, "RightID");
@@ -847,39 +850,12 @@ class LivelinkDocumentList implements DocumentList {
         boolean canRead = ((userPermissions & Client.PERM_SEECONTENTS) 
             == Client.PERM_SEECONTENTS);
 
-        String userName;
-        int userType;
-        if (userId < 0) {
-          userName =
-              getSpecialUserOrGroup(userId, userPrincipals, groupPrincipals);
-          userType =
-              (userId == Client.RIGHT_OWNER) ? Client.USER : Client.GROUP;
-        } else {
-          ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
-          if (userInfo != null) {
-            userName = userInfo.toString("Name");
-            userType = userInfo.toInteger("Type");
-          } else {
-            userName = null;
-            userType = -1;
-          }
+        if (canRead) {
+          getPrincipals(userId, ownerInfo, userPrincipals, groupPrincipals);
         }
-
         if (LOGGER.isLoggable(Level.FINEST)) {
-          LOGGER.finest("ACE Info: UserID " + userId + ", Name " + userName
-              + ", Permissions " + userPermissions + ", Type " + userType
-              + ", SeeContents " + canRead);
-        }
-
-        // TODO: need to fix namespace
-        if (canRead && !Strings.isNullOrEmpty(userName)) {
-          if (userType == Client.USER) {
-            userPrincipals.add(asPrincipalValue(userName,
-                connector.getGoogleGlobalNamespace()));
-          } else if (userType == Client.GROUP) {
-            groupPrincipals.add(asPrincipalValue(userName,
-                connector.getGoogleGlobalNamespace()));
-          }
+          LOGGER.finest("ACE Info: UserID " + userId + ", Permissions "
+              + userPermissions + ", SeeContents " + canRead);
         }
       }
 
@@ -888,39 +864,94 @@ class LivelinkDocumentList implements DocumentList {
       props.addProperty(SpiConstants.PROPNAME_ACLGROUPS, groupPrincipals);
     }
 
-    private String getSpecialUserOrGroup(int id,
+    private void getPrincipals(int userId, ClientValue ownerInfo,
         List<Value> userPrincipals, List<Value> groupPrincipals)
         throws RepositoryException {
-      switch (id) {
-        case Client.RIGHT_WORLD:
-          return "Public Access";
-        case Client.RIGHT_SYSTEM:
-          // Ignore this case, which Livelink does not implement.
-          return null;
-        case Client.RIGHT_OWNER:
-          return getDocumentOwnerName();
-        case Client.RIGHT_GROUP:
-          return getDocumentPrimaryGroupName();
-        default:
-          if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.finest("Unexpected user or group id:" + id);
+      String name;
+      String namespace;
+      if (userId < 0) {
+        switch (userId) {
+          case Client.RIGHT_WORLD:
+            name = "Public Access";
+            namespace = connector.getGoogleLocalNamespace();
+            groupPrincipals.add(asPrincipalValue(name, namespace));
+            break;
+          case Client.RIGHT_SYSTEM:
+            // Ignore this case, which Livelink does not implement.
+            break;
+          case Client.RIGHT_OWNER:
+            name = ownerInfo.toString("Name");
+            namespace = getUserGroupNamespace(ownerInfo);
+            userPrincipals.add(asPrincipalValue(name, namespace));
+            break;
+          case Client.RIGHT_GROUP:
+            ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(
+                ownerInfo.toInteger("GroupID"));
+            name = userInfo.toString("Name");
+            namespace = getUserGroupNamespace(userInfo);
+            groupPrincipals.add(asPrincipalValue(name, namespace));
+            break;
+          default:
+            if (LOGGER.isLoggable(Level.FINEST)) {
+              LOGGER.finest("Unexpected user or group id: " + userId);
+            }
+        }
+      } else {
+        ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
+        if (userInfo != null) {
+          name = userInfo.toString("Name");
+          namespace = getUserGroupNamespace(userInfo);
+          if (!Strings.isNullOrEmpty(name)) {
+            switch (userInfo.toInteger("Type")) {
+              case Client.USER:
+                userPrincipals.add(asPrincipalValue(name, namespace));
+                break;
+              case Client.GROUP:
+                groupPrincipals.add(asPrincipalValue(name, namespace));
+            }
           }
-          return null;
+        }
       }
     }
 
-    private String getDocumentOwnerName() throws RepositoryException {
-      int userId = recArray.toInteger(insRow, "UserID");
-      ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
-      return userInfo.toString("Name");
+    private String getUserGroupNamespace(ClientValue userInfo)
+        throws RepositoryException {
+      ClientValue userData;
+      String namespace;
+      if (userInfo != null && userInfo.hasValue()) {
+        userData = userInfo.toValue("UserData");
+        if (userData != null && userData.hasValue()) {
+          LOGGER.log(Level.FINEST,
+              "ACE Info: UserData {0}", userData.toString());
+          if (isExternalAuthentication(userData)) {
+            namespace = connector.getGoogleGlobalNamespace();
+          } else {
+            namespace = connector.getGoogleLocalNamespace();
+          }
+        } else {
+          namespace = connector.getGoogleLocalNamespace();
+        }
+      } else {
+        namespace = null;
+      }
+      return namespace;
     }
 
-    private String getDocumentPrimaryGroupName() throws RepositoryException {
-      int userId = recArray.toInteger(insRow, "UserID");
-      ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
-      int groupId = userInfo.toInteger("GroupID");
-      ClientValue groupInfo = client.GetUserOrGroupByIDNoThrow(groupId);
-      return groupInfo.toString("Name");
+    private boolean isExternalAuthentication(ClientValue userData)
+        throws RepositoryException {
+      Enumeration<String> fieldNames = userData.enumerateNames();
+      while (fieldNames.hasMoreElements()) {
+        String name = fieldNames.nextElement();
+        if (name.contains("ExternalAuthentication")) {
+          if (userData.toBoolean("ExternalAuthentication")) {
+            return true;
+          }
+        } else if (name.equalsIgnoreCase("ldap")
+            || name.equalsIgnoreCase("ntlm")) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private Value asPrincipalValue(String name, String namespace)

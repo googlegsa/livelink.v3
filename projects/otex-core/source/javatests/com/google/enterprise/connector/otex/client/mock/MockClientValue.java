@@ -250,7 +250,10 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public String toString(int row, String field) throws RepositoryException {
-    return getValue(row, field).toString();
+    if (isDefined(row, field))
+      return getValue(row, field).toString();
+    else
+      return "?";
   }
 
   @Override
@@ -260,7 +263,12 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public ClientValue toValue(String field) throws RepositoryException {
-    return new MockClientValue(getValue(field));
+    Object obj = getValue(field);
+    if (obj instanceof ClientValue) {
+      return (ClientValue) obj;
+    } else {
+      return new MockClientValue(obj);
+    }
   }
 
   @Override

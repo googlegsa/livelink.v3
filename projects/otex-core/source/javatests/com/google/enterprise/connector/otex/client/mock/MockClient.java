@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
@@ -35,6 +36,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -122,7 +124,7 @@ public class MockClient implements Client {
             throws RepositoryException {
       String query = "ID=" + id;
       String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID"};
+      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
       ClientValue user = executeQuery(query, view, columns);
 
       if (user.size() > 0) {
@@ -130,10 +132,40 @@ public class MockClient implements Client {
         String name = user.toString(0, "Name");
         int type = user.toInteger(0, "Type");
         int groupId = user.toInteger(0, "GroupID");
-        return new MockClientValue(new String[] {"Name", "Type", "GroupID"},
-            new Object[] {name, type, groupId});
+        ClientValue userData = toAssoc(user.toString(0, "UserData"));
+        return new MockClientValue(
+            new String[] {"Name", "Type", "GroupID", "UserData"},
+            new Object[] {name, type, groupId, userData});
       } else {
         return null;
+      }
+    }
+
+    public ClientValue toAssoc(String fieldData)
+        throws RepositoryException {
+      if (Strings.isNullOrEmpty(fieldData)) {
+        return new MockClientValue();
+      }
+
+      String[] data = fieldData.split(",");
+      String[] names = new String[data.length];
+      String[] values = new String[data.length];
+      int i = 0;
+      for (String value : data) {
+        int index = value.indexOf("=");
+        if (index > 0) {
+          names[i] = value.substring(0, index);
+          values[i] = value.substring(index + 1);
+          i++;
+        }
+      }
+
+      if (i > 0) {
+        return new MockClientValue(
+            Arrays.copyOf(names, i),
+            Arrays.copyOf(values, i));
+      } else {
+        return new MockClientValue();
       }
     }
 

@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.enterprise.connector.spi.SpiConstants.CaseSensitivityType.EVERYTHING_CASE_SENSITIVE;
+import static com.google.enterprise.connector.spi.SpiConstants.PrincipalType.UNKNOWN;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.isA;
 import static org.easymock.EasyMock.replay;
@@ -28,6 +30,7 @@ import com.google.enterprise.connector.otex.client.mock.MockClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockConstants;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
+import com.google.enterprise.connector.spi.Principal;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -44,6 +47,10 @@ import java.util.Set;
 
 public class LivelinkDocumentListTest extends TestCase {
   private static final int USER_ID = 1999;
+  private static final int GROUP_ID = 2999;
+
+  private static final String GLOBAL_NAMESPACE = "globalNS";
+  private static final String LOCAL_NAMESPACE = "localNS";
 
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
@@ -55,18 +62,20 @@ public class LivelinkDocumentListTest extends TestCase {
     // user id - 1000 to 1999 
     // group id - 2000 to 2999 
     jdbcFixture.executeUpdate(
-        "insert into KUAF(ID, Name, Type, GroupID) "
-            + "values(1001, 'user1', 0, 2001 )",
-        "insert into KUAF(ID, Name, Type, GroupID) "
-            + " values(1002, 'user2', 0, 2001 )",
-        "insert into KUAF(ID, Name, Type, GroupID) "
-            + " values(1003, 'user3', 0, 2002 )",
-        "insert into KUAF(ID, Name, Type, GroupID) "
-            + " values(1666, '', 0, 0 )",
-        "insert into KUAF(ID, Name, Type, GroupID) "
-            + " values(2001, 'group1', 1, 0 )",
-        "insert into KUAF(ID, Name, Type, GroupID) "
-            + " values(2002, 'group2', 1, 0 )");
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+            + " values(1001, 'user1', 0, 2001, "
+            + "'ExternalAuthentication=true' )",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+            + " values(1002, 'user2', 0, 2001, "
+            + "'ExternalAuthentication=true' )",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+            + " values(1003, 'user3', 0, 2002, NULL )",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+            + " values(1666, '', 0, 0, NULL )",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+            + " values(2001, 'group1', 1, 0, NULL )",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
+            + " values(2002, 'group2', 1, 0, NULL )");
   }
 
   @Override
@@ -106,7 +115,8 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setExcludedCategories("none");
     connector.setFeedType("content");
     connector.setUnsupportedFetchVersionTypes("");
-    connector.setGoogleGlobalNamespace("globalNS");
+    connector.setGoogleGlobalNamespace(GLOBAL_NAMESPACE);
+    connector.setGoogleLocalNamespace(LOCAL_NAMESPACE);
 
     if (property != null) {
       if (property.equals("publicContentUsername")) {
@@ -199,7 +209,7 @@ public class LivelinkDocumentListTest extends TestCase {
 
     final String[] FIELDS = {
       "ModifyDate", "DataID", "OwnerID", "SubType", "MimeType", "DataSize",
-      "UserID" };
+      "UserID", "UserData" };
     assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 3);
     Object[][] values = new Object[docInfo.length / 3][];
     for (int i = 0; i < docInfo.length / 3; i++) {
@@ -207,7 +217,7 @@ public class LivelinkDocumentListTest extends TestCase {
       int dataSize = docInfo[3 * i + 1];
       int userId = docInfo[3 * i + 2];
       values[i] = new Object[] {
-        new Date(), objectId, 2000, 144, "text/plain", dataSize, userId };
+        new Date(), objectId, 2000, 144, "text/plain", dataSize, userId, null };
     }
     ClientValue recArray = new MockClientValue(FIELDS, values);
 
@@ -467,7 +477,7 @@ public class LivelinkDocumentListTest extends TestCase {
     return names;
   }
 
-  public void testAcl_usersAndGroups() 
+  public void testAcl_usersAndGroups()
       throws RepositoryException, SQLException {
     insertDTreeAcl(21, 1002, Client.PERM_MODIFY);
     insertDTreeAcl(21, 1003, Client.PERM_SEECONTENTS);
@@ -612,5 +622,166 @@ public class LivelinkDocumentListTest extends TestCase {
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+  }
+
+  private void setUserData(int userId, String userData)
+      throws SQLException {
+    jdbcFixture.executeUpdate("UPDATE KUAF SET UserData = '" + userData
+        + "' where ID = " + userId);
+  }
+
+  private Principal getAclPrincipal(Document doc, String prop, String name)
+      throws RepositoryException {
+    Principal aclPrincipal = null;
+    PrincipalValue prValue;
+    Property property = doc.findProperty(prop);
+    while ((prValue = (PrincipalValue) property.nextValue()) != null) {
+      if (prValue.getPrincipal().getName().equalsIgnoreCase(name)) {
+        aclPrincipal = prValue.getPrincipal();
+        break;
+      }
+    }
+    return aclPrincipal;
+  }
+
+  public void testAcl_userNamespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(31, 1001, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(31, 1002, Client.PERM_SEECONTENTS);
+    setUserData(1001, "ExternalAuthentication=true");
+    setUserData(1002, "ExternalAuthentication=false");
+
+    DocumentList list = getObjectUnderTest(31, 0, 1001);
+    Document doc = list.nextDocument();
+
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "user1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
+    assertEquals(
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, "user2",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user2"));
+  }
+
+  public void testAcl_GroupNamespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(32, 2001, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(32, 2002, Client.PERM_SEECONTENTS);
+    setUserData(2001, "ExternalAuthentication=true");
+    setUserData(2002, "ExternalAuthentication=false");
+
+    DocumentList list = getObjectUnderTest(32, 0, 1001);
+    Document doc = list.nextDocument();
+
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "group1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "group1"));
+    assertEquals(
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, "group2",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "group2"));
+  }
+
+  public void testInvalidUserData_UserNamespace() throws RepositoryException,
+      SQLException {
+    insertDTreeAcl(33, 1001, Client.PERM_SEECONTENTS);
+    setUserData(1001, "invaliddata=");
+
+    DocumentList list = getObjectUnderTest(33, 0, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, "user1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc,
+            SpiConstants.PROPNAME_ACLUSERS, "user1"));
+  }
+
+  public void testNullUserData_UserNamespace() throws RepositoryException,
+      SQLException {
+    insertDTreeAcl(34, 1001, Client.PERM_SEECONTENTS);
+    setUserData(1001, null);
+
+    DocumentList list = getObjectUnderTest(34, 0, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, "user1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
+  }
+
+  public void testPublicAccess_Namespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(35, Client.RIGHT_WORLD, Client.PERM_SEECONTENTS);
+
+    DocumentList list = getObjectUnderTest(35, 0, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, "Public Access",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "Public Access"));
+  }
+
+  public void testOwner_Namespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(36, Client.RIGHT_OWNER, Client.PERM_SEECONTENTS);
+    setUserData(1001, "ExternalAuthentication=false,ldap=vizdom.com");
+
+    DocumentList list = getObjectUnderTest(36, 0, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "user1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
+  }
+
+  public void testGroup_Namespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(37, Client.RIGHT_GROUP, Client.PERM_SEECONTENTS);
+    setUserData(1001, "ExternalAuthentication=true");
+    setUserData(2001, null);
+
+    DocumentList list = getObjectUnderTest(37, 1, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, "group1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "group1"));
+  }
+
+  public void testUserdataLdap_Namespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(38, 1001, Client.PERM_SEECONTENTS);
+    setUserData(1001, "LDAP=vizdom");
+
+    DocumentList list = getObjectUnderTest(38, 0, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "user1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
+  }
+
+  public void testUserdataNtlm_Namespace()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(38, 1001, Client.PERM_SEECONTENTS);
+    setUserData(1001, "ntlm=");
+
+    DocumentList list = getObjectUnderTest(38, 0, 1001);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(
+        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "user1",
+            EVERYTHING_CASE_SENSITIVE),
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
   }
 }
