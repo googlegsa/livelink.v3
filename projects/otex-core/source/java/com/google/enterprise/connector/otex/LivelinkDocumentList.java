@@ -120,6 +120,8 @@ class LivelinkDocumentList implements DocumentList {
   /** Count of documents returned or skipped in this batch. */
   private int docsProcessed;
 
+  private final IdentityUtils identityUtils;
+
   /**
    * Constructor for non-trivial document set.  Iterate over a
    * RecArray of items returned from Livelink.
@@ -139,6 +141,7 @@ class LivelinkDocumentList implements DocumentList {
     this.fields = fields;
     this.traversalContext = traversalContext;
     this.checkpoint = checkpoint;
+    this.identityUtils = new IdentityUtils(connector);
 
     if (contentHandler instanceof RefreshableContentHandler) {
       ((RefreshableContentHandler) contentHandler).refresh();
@@ -923,11 +926,7 @@ class LivelinkDocumentList implements DocumentList {
         if (userData != null && userData.hasValue()) {
           LOGGER.log(Level.FINEST,
               "ACE Info: UserData {0}", userData.toString());
-          if (isExternalAuthentication(userData)) {
-            namespace = connector.getGoogleGlobalNamespace();
-          } else {
-            namespace = connector.getGoogleLocalNamespace();
-          }
+          namespace = identityUtils.getNamespace(userData);
         } else {
           namespace = connector.getGoogleLocalNamespace();
         }
@@ -935,23 +934,6 @@ class LivelinkDocumentList implements DocumentList {
         namespace = null;
       }
       return namespace;
-    }
-
-    private boolean isExternalAuthentication(ClientValue userData)
-        throws RepositoryException {
-      Enumeration<String> fieldNames = userData.enumerateNames();
-      while (fieldNames.hasMoreElements()) {
-        String name = fieldNames.nextElement();
-        if (name.contains("ExternalAuthentication")) {
-          if (userData.toBoolean("ExternalAuthentication")) {
-            return true;
-          }
-        } else if (name.equalsIgnoreCase("ldap")
-            || name.equalsIgnoreCase("ntlm")) {
-          return true;
-        }
-      }
-      return false;
     }
 
     private Value asPrincipalValue(String name, String namespace)

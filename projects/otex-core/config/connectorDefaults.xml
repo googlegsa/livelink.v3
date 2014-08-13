@@ -33,6 +33,7 @@
         <property name="publicContentUsername" value=""/>
         <property name="publicContentDisplayUrl" value=""/>
         <property name="feedType" value="content"/>
+        <property name="groupFeedSchedule" value="0 0 * * *" />
 
         <property name="excludedNodeTypes"
                   value="137,142,143,148,150,154,161,162,201,203,209,210,211,345,346,361,374,431,441,3030004,3030201"/>
@@ -154,6 +155,8 @@
         <property name="googleGlobalNamespace"
                   value="${googleGlobalNamespace}"/>
         <property name="googleLocalNamespace" value="${googleLocalNamespace}"/>
+        <property name="googleFeedHost" value="${googleFeedHost}"/>
+        <property name="googleConnectorName" value="${googleConnectorName}"/>
         @constructor-arg@
     </bean>
 

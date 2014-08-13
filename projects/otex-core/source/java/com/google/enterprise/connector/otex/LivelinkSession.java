@@ -19,13 +19,15 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
+import com.google.enterprise.connector.spi.Lister;
+import com.google.enterprise.connector.spi.ListerAware;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Retriever;
 import com.google.enterprise.connector.spi.RetrieverAware;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 
-class LivelinkSession implements Session, RetrieverAware {
+class LivelinkSession implements Session, ListerAware, RetrieverAware {
     /** The connector instance. */
     private final LivelinkConnector connector;
 
@@ -37,6 +39,9 @@ class LivelinkSession implements Session, RetrieverAware {
 
     /** The authorization manager. */
     private final AuthorizationManager authorizationManager;
+
+    /** The Lister. */
+    private Lister lister;
 
     /** The Retriever. */
     private Retriever retriever;
@@ -59,6 +64,9 @@ class LivelinkSession implements Session, RetrieverAware {
         this.authenticationManager = authenticationManager;
         this.authorizationManager = authorizationManager;
         this.retriever = null;
+        GroupAdaptor groupAdaptor =
+            new GroupAdaptor(connector, clientFactory.createClient());
+        this.lister = new GroupLister(connector, groupAdaptor);
     }
 
   /**
@@ -117,6 +125,11 @@ class LivelinkSession implements Session, RetrieverAware {
     public AuthorizationManager getAuthorizationManager()
             throws RepositoryException {
         return authorizationManager;
+    }
+
+    @Override
+    public Lister getLister() throws RepositoryException {
+      return lister;
     }
 
   /**

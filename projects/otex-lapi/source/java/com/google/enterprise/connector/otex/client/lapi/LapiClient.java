@@ -290,6 +290,35 @@ final class LapiClient implements Client {
 
   /** {@inheritDoc} */
   @Override
+  public ClientValue ListGroups() throws RepositoryException {
+    LLValue groupInfo = new LLValue();
+    try {
+      if (users.ListGroups(Client.GROUP, groupInfo) != 0) {
+        throw new LapiException(session, LOGGER);
+      }
+    } catch (RuntimeException e) {
+      throw getLivelinkException(e);
+    }
+    return new LapiClientValue(groupInfo);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public ClientValue ListMembers(String groupName)
+      throws RepositoryException {
+    LLValue memberInfo = new LLValue();
+    try {
+      if (users.ListMembers(Client.GROUP, groupName, memberInfo) != 0) {
+        throw new LapiException(session, LOGGER);
+      }
+    } catch (RuntimeException e) {
+      throw getLivelinkException(e);
+    }
+    return new LapiClientValue(memberInfo);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public synchronized ClientValue AccessEnterpriseWS()
       throws RepositoryException {
     LLValue info = new LLValue();

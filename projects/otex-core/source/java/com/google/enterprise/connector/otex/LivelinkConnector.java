@@ -243,6 +243,8 @@ public class LivelinkConnector implements Connector {
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
 
+  private String groupFeedSchedule;
+
   /**
    * The configuration for checking for a time warp (that is,
    * incorrect results) in the candidates query results. The default
@@ -314,6 +316,10 @@ public class LivelinkConnector implements Connector {
 
   /** The local namespace. */
   private String localNamespace;
+
+  private String googleFeedHost;
+
+  private String googleConnectorName;
 
   /** A list of PropertyValidator instances. */
   private List<PropertyValidator> propertyValidators =
@@ -1934,6 +1940,14 @@ public class LivelinkConnector implements Connector {
     return feedType;
   }
 
+  public void setGroupFeedSchedule(String groupFeedSchedule) {
+    this.groupFeedSchedule = groupFeedSchedule;
+  }
+
+  String getGroupFeedSchedule() {
+    return groupFeedSchedule;
+  }
+
   /**
    * Sets the AuthenticationManager implementation to use.
    *
@@ -2047,6 +2061,22 @@ public class LivelinkConnector implements Connector {
    */
   String getGoogleLocalNamespace() {
     return localNamespace;
+  }
+
+  public void setGoogleFeedHost(String googleFeedHost) {
+    this.googleFeedHost = googleFeedHost;
+  }
+
+  String getGoogleFeedHost() {
+    return googleFeedHost;
+  }
+
+  public void setGoogleConnectorName(String googleConnectorName) {
+    this.googleConnectorName = googleConnectorName;
+  }
+
+  String getGoogleConnectorName() {
+    return googleConnectorName;
   }
 
   /**

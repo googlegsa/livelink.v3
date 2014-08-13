@@ -148,6 +148,29 @@ public interface Client
      */
     ClientValue GetUserInfo(String username) throws RepositoryException;
 
+
+    /**
+     * Wraps the <code>LAPI_USERS.ListGroups</code> method.
+     * Not all of the arguments of that method are exposed here.
+     * 
+     * @returns a ClientValue RecArray object containing information about
+     * all groups
+     * @throws RepositoryException if an error occurs
+     */
+    ClientValue ListGroups() throws RepositoryException;
+
+    /**
+     * Wraps the <code>LAPI_USERS.ListGroups</code> method.
+     * Not all of the arguments of that method are exposed here.
+     * 
+     * @param groupName
+     * @returns a ClientValue RecArray object containing information about
+     * all members of the group specified by name.
+     * @throws RepositoryException if an error occurs
+     */
+    ClientValue ListMembers(String groupName)
+        throws RepositoryException;
+
     /**
      * Wraps the <code>LAPI_DOCUMENTS.AccessEnterpriseWS</code> method.
      * 
