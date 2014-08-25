@@ -388,6 +388,8 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     props.put("port", "123");
     props.put("username", "Admin");
     props.put("password", "pw");
+    props.put("googleConnectorName", "llconnector");
+    props.put("googleFeedHost", "localhost");
     ConfigureResponse response =
         connectorType.validateConfig(props, defaultLocale,
             LivelinkConnectorFactory.getInstance());
@@ -538,6 +540,9 @@ public class CoreLivelinkConnectorTypeTest extends TestCase {
     props.put("port", System.getProperty("connector.port"));
     props.put("username", System.getProperty("connector.username"));
     props.put("Password", System.getProperty("connector.Password"));
+    props.put("googleConnectorName",
+        System.getProperty("connector.googleConnectorName"));
+    props.put("googleFeedHost", System.getProperty("connector.googleFeedHost"));
     return props;
   }
 

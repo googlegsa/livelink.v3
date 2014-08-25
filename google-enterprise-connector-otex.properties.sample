@@ -41,3 +41,4 @@ javatest.connector.username = Admin
 javatest.connector.Password = livelink
 javatest.connector.displayUrl = http://www.google.com
 javatest.connector.servtype = MSSQL
+javatest.tests.httpServerPort = 8080

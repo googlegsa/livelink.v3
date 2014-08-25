@@ -193,29 +193,19 @@ public class MockClient implements Client {
       String query = "Type=" + Client.GROUP;
       String view = "KUAF";
       String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
-      ClientValue user = executeQuery(query, view, columns);
-
-      if (user.size() > 0) {
-        // Need to return a Assoc LLValue, whereas the above is a table.
-        String name = user.toString(0, "Name");
-        int type = user.toInteger(0, "Type");
-        int groupId = user.toInteger(0, "GroupID");
-        ClientValue userData = toAssoc(user.toString(0, "UserData"));
-        return new MockClientValue(
-            new String[] {"Name", "Type", "GroupID", "UserData"},
-            new Object[] {name, type, groupId, userData});
-      } else {
-        return new MockClientValue(new String[0], new Object[0]);
-      }
+      return executeQuery(query, view, columns);
     }
 
-    /**
-     * Returns an empty recarray.
-     */
+    /** {@inheritDoc} */
     @Override
     public ClientValue ListMembers(String groupName)
         throws RepositoryException {
-      return new MockClientValue(new String[0], new Object[0]);
+      String query = "KUAF.ID = a.ChildID and a.ID = " 
+          + "(select ID from KUAF where KUAF.Name='" + groupName + "')";
+      String view = "KUAF, KUAFChildren";
+      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
+          "a.ChildID"};
+      return executeQuery(query, view, columns);
     }
 
     /** {@inheritDoc} */

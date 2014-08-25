@@ -16,7 +16,6 @@ package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.adaptor.Application;
 import com.google.enterprise.connector.logging.NDC;
-import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.spi.DocumentAcceptor;
 import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -39,7 +38,7 @@ public class GroupLister implements Lister {
 
   private final GroupAdaptor groupAdaptor;
 
-  private Application adaptorApplication;
+  private volatile Application adaptorApplication;
 
   private final Semaphore shutdownSemaphore = new Semaphore(0);
 
@@ -77,7 +76,8 @@ public class GroupLister implements Lister {
       shutdownSemaphore.acquire();
       LOGGER.log(Level.FINEST, "Acquired semaphore {0}", connectorName);
     } catch (InterruptedException e) {
-      LOGGER.log(Level.INFO, "Interrupted acquiring semaphore: {0}", e);
+      LOGGER.log(Level.INFO, "Interrupted acquiring semaphore: {0}",
+          e.toString());
       adaptorApplication.stop(1000L, TimeUnit.MILLISECONDS);
     } finally {
       NDC.remove();

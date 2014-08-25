@@ -46,6 +46,10 @@ class JdbcFixture {
       "create table KUAF "
       + "(ID int, Name varchar, Type int, GroupID int, UserData varchar)";
 
+  private static final String CREATE_TABLE_KUAFCHILDREN =
+      "create table KUAFChildren "
+      + "(ID int, ChildID int)";
+
   // TODO(jlacey): Turn this into a joined view on DTree and DVersData.
   private static final String CREATE_TABLE_WEBNODES =
       "create table WebNodes "
@@ -71,6 +75,7 @@ class JdbcFixture {
         CREATE_TABLE_DTREEANCESTORS,
         CREATE_TABLE_KDUAL,
         CREATE_TABLE_KUAF,
+        CREATE_TABLE_KUAFCHILDREN,
         CREATE_TABLE_WEBNODES);
   }
 

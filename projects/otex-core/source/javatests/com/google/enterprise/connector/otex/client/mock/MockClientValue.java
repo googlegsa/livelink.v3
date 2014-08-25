@@ -217,7 +217,17 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public ClientValue toValue(int row, String field) throws RepositoryException {
-    return new MockClientValue(getValue(row, field));
+    Object obj = getValue(row, field);
+    if (obj instanceof String && ((String) obj).contains("=")) {
+      //These are fake assoc strings.
+      String strValue = obj.toString();
+      String[] names = strValue.split("=");
+      String fields[] = {names[0]};
+      String values[] = {names[1]};
+      return new MockClientValue(fields, values);
+    } else {
+      return new MockClientValue(obj);
+    }
   }
 
   @Override
