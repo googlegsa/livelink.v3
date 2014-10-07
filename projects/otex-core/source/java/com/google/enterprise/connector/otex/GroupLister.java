@@ -58,8 +58,9 @@ public class GroupLister implements Lister {
     String logfile = System.getProperty("java.util.logging.config.file");
     String[] groupFeederArgs = {
             "-Dgsa.hostname=" + feedHost,
-            "-Dserver.port=" + 0,
-            "-Dserver.dashboardPort=" + 0,
+            "-Dserver.hostname=localhost",
+            "-Dserver.port=0",
+            "-Dserver.dashboardPort=0",
             "-Dfeed.name=" + connectorName,
             "-Djava.util.logging.config.file=" + logfile,
             "-Dadaptor.fullListingSchedule="
