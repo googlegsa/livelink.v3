@@ -215,11 +215,7 @@ public class MockClient implements Client {
             new Integer[] { new Integer(2000), new Integer(-2000) });
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation returns an empty <code>ClientValue</code>.
-     */
+    /** {@inheritDoc} */
     @Override
     public ClientValue ListNodes(String query, String view, String[] columns)
             throws RepositoryException {
@@ -233,12 +229,10 @@ public class MockClient implements Client {
           // protections, which quote the column names (which must
           // therefore be identifiers and not keywords, numbers, or
           // function calls) and which only allow multiple words for
-          // column aliases. We're actually a little more strict:
-          // columns names must be alphabetic, not alphanumeric, and
-          // column aliases require the AS keyword (just to help
-          // enforce a consistent coding style).
+          // column aliases.
           // Using case-insensitive regexp matching with (?i:...).
-          if (!column.matches("(?i:[a-z]+( as ([a-z]+))?)")) {
+          if (!column.matches(
+                  "(?i:[a-z][a-z0-9]*(( as)? ([a-z][a-z0-9]*))?)")) {
             throw new RepositoryException("Invalid SQL column: " + column);
           }
 

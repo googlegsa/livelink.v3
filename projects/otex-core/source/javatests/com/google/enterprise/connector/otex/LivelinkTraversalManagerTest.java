@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
@@ -30,9 +31,7 @@ import junit.framework.TestCase;
 
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,11 +63,11 @@ public class LivelinkTraversalManagerTest extends TestCase {
         // case that influences the natural order returned by the DB,
         // since we want an ORDER BY to pick the latest date.
         "insert into DAuditNew(EventID, AuditDate) "
-        + "values(17, timestamp'2001-01-01 00:00:00')",
+        + "values(10017, timestamp'2001-01-01 00:00:00')",
         "insert into DAuditNew(EventID, AuditDate) "
-        + "values(42, timestamp'2013-04-24 08:00:00')",
+        + "values(10042, timestamp'2013-04-24 08:00:00')",
         "insert into DAuditNew(EventID, AuditDate) "
-        + "values(24, timestamp'2005-10-06 12:34:56')",
+        + "values(10024, timestamp'2005-10-06 12:34:56')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
         + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
@@ -131,8 +130,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
     ClientValue results = ltm.getLastAuditEvent();
     assertEquals(1, results.size());
-    // toInteger works with H2 (we check the type in the production code).
-    assertEquals(42, results.toInteger(0, "EventID"));
+    // toLong works with H2 (we check the type in the production code).
+    assertEquals(10042L, results.toLong(0, "EventID"));
     // The fractional seconds are OK, because LivelinkDateFormat.parse
     // handles multiple variations in the timestamp strings.
     assertEquals("2013-04-24 08:00:00.0", results.toString(0, "AuditDate"));
@@ -489,27 +488,29 @@ public class LivelinkTraversalManagerTest extends TestCase {
     /** Tests an empty select expressions map. */
     public void testIncludedSelectExpressions_empty()
             throws RepositoryException {
-        testIncludedSelectExpressions(Collections.<String, String>emptyMap());
+      Map<String, String> empty = ImmutableMap.of();
+      testIncludedSelectExpressions(empty);
     }
 
     /** Tests a singleton select expressions map. */
     public void testIncludedSelectExpressions_singleton()
             throws RepositoryException {
         testIncludedSelectExpressions(
-            Collections.singletonMap("propname", "'a string literal'"));
+            ImmutableMap.of("propname", "'a string literal'"));
     }
 
     /** Tests a larger select expressions map. */
     public void testIncludedSelectExpressions_multiple()
             throws RepositoryException {
-      Map<String, String> map = new HashMap<String, String>();
+      ImmutableMap.Builder<String, String> map =
+          new ImmutableMap.Builder<String, String>();
       // There is no syntax checking on these values. I'm just giving
       // strange but plausible values.
       map.put("propname", "'a string literal'");
       map.put("siblingCount",
           "(select count(*)-1 from DTree d where d.ParentID = a.ParentID)");
       map.put("google:folder", "storedProcedure(DataID)");
-      testIncludedSelectExpressions(map);
+      testIncludedSelectExpressions(map.build());
     }
 
     /**
@@ -544,6 +545,22 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
         String[] selectList = ltm.getSelectList();
         assertEquals(fields.length, selectList.length);
+  }
+
+  public void testIncludedSelectExpressions_long()
+      throws RepositoryException {
+    // GoogleDataSize is the non-negative alias of DataSize that is
+    // selected in the WebNodes query.
+    conn.setIncludedSelectExpressions(
+        ImmutableMap.of("MyDataSize", "GoogleDataSize"));
+    Session sess = conn.login();
+    LivelinkTraversalManager ltm =
+        (LivelinkTraversalManager) sess.getTraversalManager();
+    DocumentList list = ltm.startTraversal();
+    assertNotNull(list.nextDocument());
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals("1729", Value.getSingleValueString(doc, "MyDataSize"));
   }
 
   public void testGetResults() throws RepositoryException {
@@ -604,7 +621,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
     // in the candidates.
     // TODO(jlacey): We could query these values as the max(ModifyDate)
     // from DTree when it matches WebNodes, and from DAuditNew.
-    assertEquals("2002-02-02 00:00:00,66,2013-04-24 08:00:00.000,9999999999",
+    assertEquals("2002-02-02 00:00:00,66,2013-04-24 08:00:00.000,10042",
         list.checkpoint());
   }
 

@@ -23,7 +23,7 @@ import java.sql.Statement;
 /** Manages an in-memory H2 database modeling the Livelink database. */
 class JdbcFixture {
   private static final String CREATE_TABLE_DAUDITNEW = "create table DAuditNew "
-      + "(EventID int primary key, AuditID int, DataID int, "
+      + "(EventID bigint primary key, AuditID int, DataID int, "
       + "SubType int, AuditDate timestamp)";
 
   private static final String CREATE_TABLE_DTREE = "create table DTree "

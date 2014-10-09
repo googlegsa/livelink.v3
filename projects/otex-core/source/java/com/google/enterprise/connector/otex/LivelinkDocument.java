@@ -129,7 +129,7 @@ class LivelinkDocument implements Document {
    * @param value a property value
    */
   public void addProperty(String name, ClientValue value) {
-    addProperty(name, getValue(value));
+    addProperty(name, getValue(name, value));
   }
 
   /**
@@ -145,18 +145,19 @@ class LivelinkDocument implements Document {
   public void addProperty(Field field, ClientValue value) {
     String[] names = field.propertyNames;
     for (int j = 0; j < names.length; j++)
-      addProperty(names[j], getValue(value));
+      addProperty(names[j], getValue(names[j], value));
   }
 
   /**
    * Creates a <code>Value</code> (of the appropriate type) from
    * a <code>ClientValue</code>. Complex <code>ClientValue</code>
-   * objects (RecArrays or Lists), must be * decomposed into
+   * objects (RecArrays or Lists), must be decomposed into
    * individual atomic components before calling this method.
    *
-   * @param clientValue the value to be represented.
+   * @param name the property name (not the field name)
+   * @param clientValue the value to be represented
    */
-  public Value getValue(ClientValue clientValue) {
+  private Value getValue(String name, ClientValue clientValue) {
     try {
       switch (clientValue.type()) {
         case ClientValue.BOOLEAN:
@@ -175,16 +176,17 @@ class LivelinkDocument implements Document {
           return Value.getDoubleValue(clientValue.toDouble());
         case ClientValue.INTEGER:
           return Value.getLongValue(clientValue.toInteger());
+        case ClientValue.LONG:
+          return Value.getLongValue(clientValue.toLong());
         case ClientValue.STRING:
           return Value.getStringValue(clientValue.toString2());
         default:
-          throw new AssertionError(
-              "The clientValue must have an atomic type.");
+          throw new AssertionError("The value must have an atomic type. "
+              + name + " has type " + clientValue.type());
       }
     } catch (RepositoryException e) {
-      LOGGER.warning("LivelinkValue factory caught exception " +
-          "exctracting value from ClientValue: " +
-          e.getMessage());
+      LOGGER.log(Level.WARNING, "LivelinkDocument caught exception "
+          + "extracting value from " + name, e);
       return Value.getStringValue(e.getMessage());
     }
   }

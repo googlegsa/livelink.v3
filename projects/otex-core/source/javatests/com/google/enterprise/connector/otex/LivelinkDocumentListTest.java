@@ -34,7 +34,10 @@ import com.google.enterprise.connector.spi.Principal;
 import com.google.enterprise.connector.spi.Property;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.SimpleTraversalContext;
 import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.TraversalContext;
+import com.google.enterprise.connector.spi.Value;
 import com.google.enterprise.connector.spiimpl.PrincipalValue;
 
 import junit.framework.TestCase;
@@ -139,7 +142,7 @@ public class LivelinkDocumentListTest extends TestCase {
    *     usually one of the values from MockConstants, alternating with
    *     the file sizes (DataSize) for the returned documents
    */
-  private DocumentList getObjectUnderTest(int... docInfo)
+  private DocumentList getObjectUnderTest(Object... docInfo)
       throws RepositoryException {
     LivelinkConnector connector = getConnector();
 
@@ -156,7 +159,7 @@ public class LivelinkDocumentListTest extends TestCase {
    *     the file sizes (DataSize) for the returned documents
    */
   private DocumentList getObjectUnderTest(LivelinkConnector connector,
-      int... docInfo) throws RepositoryException {
+      Object... docInfo) throws RepositoryException {
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
 
@@ -167,11 +170,12 @@ public class LivelinkDocumentListTest extends TestCase {
    * Creates a LivelinkDocumentList containing documents for the tests.
    *
    * @param client the client to use, instead of getting one from the connector
-   * @param docInfo the object IDs (DataID) for the returned documents,
-   *     usually one of the values from MockConstants, alternating with
-   *     the file sizes (DataSize) for the returned documents
+   * @param docInfo a sequence of triplets containing: the object IDs
+   *     (DataID) for the returned documents, usually one of the
+   *     values from MockConstants, the file sizes (DataSize) for the
+   *     returned documents, and the user ID of the document owner
    */
-  private DocumentList getObjectUnderTest(Client client, int... docInfo)
+  private DocumentList getObjectUnderTest(Client client, Object... docInfo)
       throws RepositoryException {
     LivelinkConnector connector = getConnector();
 
@@ -180,13 +184,14 @@ public class LivelinkDocumentListTest extends TestCase {
 
   /** Helper method for two of the other overloads. */
   private DocumentList getObjectUnderTest(LivelinkConnector connector,
-      Client client, int... docInfo) throws RepositoryException {
+      Client client, Object... docInfo) throws RepositoryException {
     ContentHandler contentHandler = new FileContentHandler();
-    return getObjectUnderTest(connector, client, contentHandler, docInfo);
+    return getObjectUnderTest(connector, client, contentHandler, null, docInfo);
   }
 
   /**
-   * Creates a LivelinkDocumentList containing documents for the tests.
+   * Creates a LivelinkDocumentList containing documents for the tests,
+   * using the given content handler.
    *
    * @param contentHandler the content handler to use, instead of
    *     {@code FileContentHandler}
@@ -197,13 +202,33 @@ public class LivelinkDocumentListTest extends TestCase {
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
 
-    return getObjectUnderTest(connector, client, contentHandler,
+    return getObjectUnderTest(connector, client, contentHandler, null,
         MockConstants.IO_OBJECT_ID, 0, USER_ID);
+  }
+
+  /**
+   * Creates a LivelinkDocumentList containing documents for the tests,
+   * using the given traversal context.
+   *
+   * @param traversalContext the traversal context to use, instead of
+   *     {@code null}
+   * @param dataSize the document content length
+   */
+  private DocumentList getObjectUnderTest(TraversalContext traversalContext,
+      long dataSize) throws RepositoryException {
+    LivelinkConnector connector = getConnector();
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    ContentHandler contentHandler = new FileContentHandler();
+
+    return getObjectUnderTest(connector, client, contentHandler,
+        traversalContext, MockConstants.HARMLESS_OBJECT_ID, dataSize, USER_ID);
   }
 
   /** Helper method for the other overloads. */
   private DocumentList getObjectUnderTest(LivelinkConnector connector,
-      Client client, ContentHandler contentHandler, int... docInfo)
+      Client client, ContentHandler contentHandler,
+      TraversalContext traversalContext, Object... docInfo)
       throws RepositoryException {
     contentHandler.initialize(connector, client);
 
@@ -213,9 +238,9 @@ public class LivelinkDocumentListTest extends TestCase {
     assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 3);
     Object[][] values = new Object[docInfo.length / 3][];
     for (int i = 0; i < docInfo.length / 3; i++) {
-      int objectId = docInfo[3 * i];
-      int dataSize = docInfo[3 * i + 1];
-      int userId = docInfo[3 * i + 2];
+      Object objectId = docInfo[3 * i];
+      Object dataSize = docInfo[3 * i + 1];
+      Object userId = docInfo[3 * i + 2];
       values[i] = new Object[] {
         new Date(), objectId, 2000, 144, "text/plain", dataSize, userId, null };
     }
@@ -228,7 +253,7 @@ public class LivelinkDocumentListTest extends TestCase {
     Checkpoint checkpoint = new Checkpoint();
 
     return new LivelinkDocumentList(connector, client,
-        contentHandler, recArray, fields, null, null, checkpoint,
+        contentHandler, recArray, fields, null, traversalContext, checkpoint,
         connector.getUsername());
   }
 
@@ -261,6 +286,74 @@ public class LivelinkDocumentListTest extends TestCase {
     Document doc = list.nextDocument();
     assertNotNull(doc);
     assertNotNull(list.checkpoint());
+  }
+
+  enum Content { NULL, NON_NULL };
+
+  /**
+   * Tests different sizes of content with different traversal context
+   * settings.
+   */
+  private void testTraversalContext(TraversalContext traversalContext,
+      long dataSize, Content contentState) throws RepositoryException {
+    DocumentList list = getObjectUnderTest(traversalContext, dataSize);
+
+    Document doc = list.nextDocument();
+    Property content = doc.findProperty(SpiConstants.PROPNAME_CONTENT);
+    if (contentState == Content.NULL) {
+      assertNull("Expected null content", content);
+    } else if (contentState == Content.NON_NULL) {
+      assertNotNull("Expected non-null content", content);
+    } else {
+      fail("Invalid Content value: " + contentState);
+    }
+
+    // The DataSize column is mapped to a property by getObjectUnderTest,
+    // so by checking the property value we're also testing the mapping
+    // of long integer properties (as done by includedSelectExpressions,
+    // for example).
+    assertEquals(String.valueOf(dataSize),
+        Value.getSingleValueString(doc, "DataSize"));
+  }
+
+  public void testNextDocument_noTraversalContext_smallDoc()
+      throws RepositoryException {
+    testTraversalContext(null, 30L * 1024 * 1024, Content.NON_NULL);
+  }
+
+  public void testNextDocument_noTraversalContext_largeDoc()
+      throws RepositoryException {
+    testTraversalContext(null, 30L * 1024 * 1024 + 1, Content.NULL);
+  }
+
+  public void testNextDocument_traversalContext_largeDoc()
+      throws RepositoryException {
+    SimpleTraversalContext traversalContext = new SimpleTraversalContext();
+    traversalContext.setMaxDocumentSize(4L * Integer.MAX_VALUE);
+    testTraversalContext(traversalContext, 30L * 1024 * 1024 + 1,
+        Content.NON_NULL);
+  }
+
+  public void testNextDocument_traversalContext_hugeDoc()
+      throws RepositoryException {
+    SimpleTraversalContext traversalContext = new SimpleTraversalContext();
+    traversalContext.setMaxDocumentSize(4L * Integer.MAX_VALUE);
+    testTraversalContext(traversalContext, 2L * Integer.MAX_VALUE,
+        Content.NON_NULL);
+  }
+
+  /**
+   * Tests a data size that is too large as a long, but would allowed
+   * if converted from a long to an int.
+   */
+  public void testNextDocument_traversalContext_overflowDoc()
+      throws RepositoryException {
+    SimpleTraversalContext traversalContext = new SimpleTraversalContext();
+    traversalContext.setMaxDocumentSize(Integer.MAX_VALUE);
+    long dataSize = (1L << 32) + 1;
+    assertTrue(dataSize > Integer.MAX_VALUE);
+    assertEquals(1, (int) dataSize);
+    testTraversalContext(traversalContext, dataSize, Content.NULL);
   }
 
   /**

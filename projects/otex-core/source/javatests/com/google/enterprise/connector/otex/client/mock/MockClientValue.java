@@ -92,10 +92,17 @@ public final class MockClientValue implements ClientValue {
 
   /** Constructs an atomic value. */
   public MockClientValue(Object value) {
-    if (value == null)
+    if (value == null) {
       this.type = UNDEFINED;
-    else
-      this.type = STRING; // FIXME: Should be set to correct type.
+    } else if (value instanceof Date) {
+      this.type = DATE;
+    } else if (value instanceof Integer) {
+      this.type = INTEGER;
+    } else if (value instanceof Long) {
+      this.type = LONG;
+    } else {
+      this.type = STRING;
+    }
     this.fieldNames = null;
     this.tableValues = null;
     this.assocValues = null;
@@ -252,8 +259,17 @@ public final class MockClientValue implements ClientValue {
   @Override
   public int toInteger(int row, String field) throws RepositoryException {
     Object v = getValue(row, field);
-    if (v instanceof Integer)
-      return ((Integer) v).intValue();
+    if (v instanceof Number)
+      return ((Number) v).intValue();
+    else
+      return Integer.parseInt(v.toString());
+  }
+
+  @Override
+  public long toLong(int row, String field) throws RepositoryException {
+    Object v = getValue(row, field);
+    if (v instanceof Number)
+      return ((Number) v).longValue();
     else
       return Integer.parseInt(v.toString());
   }
@@ -303,8 +319,17 @@ public final class MockClientValue implements ClientValue {
   @Override
   public int toInteger(String field) throws RepositoryException {
     Object v = getValue(field);
-    if (v instanceof Integer)
-      return ((Integer) v).intValue();
+    if (v instanceof Number)
+      return ((Number) v).intValue();
+    else
+      return Integer.parseInt(v.toString());
+  }
+
+  @Override
+  public long toLong(String field) throws RepositoryException {
+    Object v = getValue(field);
+    if (v instanceof Number)
+      return ((Number) v).longValue();
     else
       return Integer.parseInt(v.toString());
   }
@@ -350,6 +375,11 @@ public final class MockClientValue implements ClientValue {
   }
 
   @Override
+  public long toLong(int index) {
+    throw new IllegalArgumentException();
+  }
+
+  @Override
   public String toString(int index) {
     throw new IllegalArgumentException();
   }
@@ -366,7 +396,11 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public Date toDate() {
-    throw new IllegalArgumentException();
+    if (atomicValue != null && atomicValue instanceof Date) {
+      return (Date) atomicValue;
+    } else {
+      throw new IllegalArgumentException("ClientValue is not a date.");
+    }
   }
 
   @Override
@@ -377,8 +411,8 @@ public final class MockClientValue implements ClientValue {
   @Override
   public int toInteger() {
     if (atomicValue != null)
-      if (atomicValue instanceof Integer) {
-        return ((Integer) atomicValue).intValue();
+      if (atomicValue instanceof Number) {
+        return ((Number) atomicValue).intValue();
       } else {
         return Integer.parseInt(atomicValue.toString());
       }
@@ -389,7 +423,15 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public long toLong() {
-    throw new IllegalArgumentException();
+    if (atomicValue != null)
+      if (atomicValue instanceof Number) {
+        return ((Number) atomicValue).longValue();
+      } else {
+        return Long.parseLong(atomicValue.toString());
+      }
+    else {
+      throw new IllegalArgumentException("ClientValue is not a long.");
+    }
   }
 
   @Override

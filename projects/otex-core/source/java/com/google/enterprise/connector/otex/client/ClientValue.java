@@ -166,6 +166,16 @@ public interface ClientValue {
     int toInteger(int index) throws RepositoryException;
 
     /**
+     * Gets the ordinal item from this ordered container as a
+     * <code>long</code> value.
+     *
+     * @param index a zero-based item index
+     * @return a <code>long</code> field value
+     * @since 3.2.10
+     */
+    long toLong(int index) throws RepositoryException;
+
+    /**
      * Gets the named field from the given row as a boolean value.
      *
      * @param row a zero-based row index
@@ -201,6 +211,16 @@ public interface ClientValue {
      * @return an integer field value
      */
     int toInteger(int row, String field) throws RepositoryException;
+
+    /**
+     * Gets the named field from the given row as a long value.
+     *
+     * @param row a zero-based row index
+     * @param field a field name
+     * @return a long field value
+     * @since 3.2.10
+     */
+    long toLong(int row, String field) throws RepositoryException;
 
     /**
      * Gets the named field from the given row as a string value.
@@ -259,6 +279,15 @@ public interface ClientValue {
      * @return an integer field value
      */
     int toInteger(String field) throws RepositoryException;
+
+    /**
+     * Gets the named field as a long value.
+     *
+     * @param field a field name
+     * @return a long field value
+     * @since 3.2.10
+     */
+    long toLong(String field) throws RepositoryException;
 
     /**
      * Gets the named field as a string value.
