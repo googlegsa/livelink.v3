@@ -14,28 +14,47 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.common.base.Throwables.propagateIfPossible;
+import static java.net.HttpURLConnection.HTTP_SEE_OTHER;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
+
 import com.sun.net.httpserver.HttpServer;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import junit.framework.TestCase;
+public class GroupListerTest {
+  private static final Logger LOGGER =
+      Logger.getLogger(GroupLister.class.getName());
 
-public class GroupListerTest extends TestCase {
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
-  private GroupLister testLister;
-  private List<RepositoryException> exceptionList;
+  private List<Exception> exceptionList;
   private Thread listerThread;
   private HttpServer httpServer;
-  
-  @Override
-  protected void setUp()
+  private LivelinkConnector connector;
+  private GroupAdaptor adaptor;
+
+  @Before
+  public void setUp()
       throws SQLException, IOException, RepositoryException,
       InterruptedException {
     jdbcFixture.setUp();
@@ -43,19 +62,25 @@ public class GroupListerTest extends TestCase {
     httpServer = SimpleHttpServer.getHttpServer();
     httpServer.start();
 
-    testLister = getGroupLister();
-    exceptionList = new LinkedList<RepositoryException>();
-    listerThread = startListerThread();
-    Thread.sleep(500L);
+    connector = new LivelinkConnector(
+        "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
+    connector.setGoogleFeedHost("localhost");
+    connector.setGroupFeedSchedule("0 1 * * *");
+
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    adaptor = new GroupAdaptor(connector, client);
+
+    exceptionList = new LinkedList<Exception>();
   }
 
-  @Override
-  protected void tearDown() throws SQLException, IOException,
+  @After
+  public void tearDown() throws SQLException, IOException,
       RepositoryException, InterruptedException {
     try {
       listerThread.join();
       if (!exceptionList.isEmpty()) {
-        throw exceptionList.get(0);
+        propagateIfPossible(exceptionList.get(0), RepositoryException.class);
       }
     } finally {
       httpServer.stop(0);
@@ -63,23 +88,16 @@ public class GroupListerTest extends TestCase {
     }
   }
 
-  private GroupLister getGroupLister() throws RepositoryException {
-    LivelinkConnector connector = new LivelinkConnector(
-        "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
-    connector.setGoogleFeedHost("localhost");
-    connector.setGroupFeedSchedule("0 1 * * *");
-
-    ClientFactory clientFactory = connector.getClientFactory();
-    Client client = clientFactory.createClient();
-    return new GroupLister(connector, new GroupAdaptor(connector, client));
-  }
-
-  private Thread startListerThread() {
+  private Thread startListerThread(final GroupLister testLister) {
     Thread t = new Thread() {
       public void run() {
         try {
           testLister.start();
         } catch (RepositoryException e) {
+          LOGGER.log(Level.SEVERE, "Caught exception starting lister", e);
+          exceptionList.add(e);
+        } catch (RuntimeException e) {
+          LOGGER.log(Level.SEVERE, "Caught exception starting lister", e);
           exceptionList.add(e);
         }
       }
@@ -88,13 +106,68 @@ public class GroupListerTest extends TestCase {
     return t;
   }
 
+  @Test
   public void testShutdownLister() throws RepositoryException,
       InterruptedException, IOException {
+    GroupLister testLister = new GroupLister(connector, adaptor);
+    listerThread = startListerThread(testLister);
+    Thread.sleep(500L);
+
     testLister.shutdown();
   }
 
+  @Test
   public void testInterruptLister() throws RepositoryException,
       InterruptedException, IOException {
-    listerThread.interrupt();
+    GroupLister testLister = new GroupLister(connector, adaptor);
+    listerThread = startListerThread(testLister);
+    Thread.sleep(500L);
+
+    try {
+      listerThread.interrupt();
+      assertTrue(listerThread.isInterrupted());
+      assertEquals(Thread.State.WAITING, listerThread.getState());
+    } finally {
+      testLister.shutdown();
+    }
+  }
+
+  @Test
+  public void testRaceCondition() throws Exception {
+    int dashboardPort =
+        Integer.parseInt(System.getProperty("tests.dashboardPort"));
+    GroupLister testLister = new GroupLister(connector, adaptor, dashboardPort);
+
+    // Ready, set, go! The call to shutdown happens first because it's
+    // running in the current thread.
+    listerThread = startListerThread(testLister);
+    testLister.shutdown();
+    Thread second = startListerThread(testLister);
+    listerThread.join();
+
+    // We need more time for the HttpServer to startup.
+    Thread.sleep(1000L);
+
+    URL dashboardUrl = new URL("http", "localhost", dashboardPort, "/");
+    HttpURLConnection dashboard =
+        (HttpURLConnection) dashboardUrl.openConnection();
+    dashboard.setInstanceFollowRedirects(false);
+    assertEquals(HTTP_SEE_OTHER, dashboard.getResponseCode());
+    assertEquals(dashboardUrl + "dashboard",
+        dashboard.getHeaderField("Location"));
+
+    testLister.shutdown();
+    second.join();
+
+    // This is the crucial test, making sure that the dashboard HTTP
+    // server is shutdown.
+    dashboard = (HttpURLConnection) dashboardUrl.openConnection();
+    dashboard.setInstanceFollowRedirects(false);
+    try {
+      dashboard.connect();
+      fail("Expected a ConnectException but got HTTP "
+          + dashboard.getResponseCode());
+    } catch (ConnectException expected) {
+    }
   }
 }

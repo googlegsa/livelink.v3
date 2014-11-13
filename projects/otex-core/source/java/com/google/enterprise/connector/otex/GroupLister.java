@@ -14,14 +14,19 @@
 
 package com.google.enterprise.connector.otex;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.adaptor.Application;
 import com.google.enterprise.connector.logging.NDC;
 import com.google.enterprise.connector.spi.DocumentAcceptor;
 import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.RepositoryException;
 
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,13 +43,26 @@ public class GroupLister implements Lister {
 
   private final GroupAdaptor groupAdaptor;
 
-  private volatile Application adaptorApplication;
+  private final int dashboardPort;
 
-  private final Semaphore shutdownSemaphore = new Semaphore(0);
+  private Application adaptorApplication = null;
+
+  private final Lock lock = new ReentrantLock();
+
+  private final Condition isStarted = lock.newCondition();
+
+  private final Condition isStopped = lock.newCondition();
 
   GroupLister(LivelinkConnector connector, GroupAdaptor groupAdaptor) {
+    this(connector, groupAdaptor, 0);
+  }
+
+  @VisibleForTesting
+  GroupLister(LivelinkConnector connector, GroupAdaptor groupAdaptor,
+      int dashboardPort) {
     this.connector = connector;
     this.groupAdaptor = groupAdaptor;
+    this.dashboardPort = dashboardPort;
   }
 
   @Override
@@ -60,7 +78,7 @@ public class GroupLister implements Lister {
             "-Dgsa.hostname=" + feedHost,
             "-Dserver.hostname=localhost",
             "-Dserver.port=0",
-            "-Dserver.dashboardPort=0",
+            "-Dserver.dashboardPort=" + dashboardPort,
             "-Dfeed.name=" + connectorName,
             "-Djava.util.logging.config.file=" + logfile,
             "-Dadaptor.fullListingSchedule="
@@ -68,18 +86,37 @@ public class GroupLister implements Lister {
 
     NDC.push("GroupFeed " + connectorName);
     try {
-      LOGGER.info("Starting group feed adaptor for " + connectorName);
-      adaptorApplication =
-          groupAdaptor.invokeAdaptor(groupFeederArgs);
+      LOGGER.log(Level.FINEST, "Waiting to start group feed adaptor for {0}",
+          connectorName);
+      lock.lock();
+      try {
+        while (adaptorApplication != null) {
+          if (!isStopped.await(1L, MINUTES)) {
+            throw new RepositoryException(
+                "Timed out waiting for previous lister "
+                + connectorName + " to stop");
+          }
+        }
+        LOGGER.info("Starting group feed adaptor for " + connectorName);
+        adaptorApplication =
+            groupAdaptor.invokeAdaptor(groupFeederArgs);
+        isStarted.signal();
 
-      // This start method needs to be blocked, so that the lister shutdown
-      // method can be invoked.
-      shutdownSemaphore.acquire();
-      LOGGER.log(Level.FINEST, "Acquired semaphore {0}", connectorName);
-    } catch (InterruptedException e) {
-      LOGGER.log(Level.INFO, "Interrupted acquiring semaphore: {0}",
-          e.toString());
-      adaptorApplication.stop(1000L, TimeUnit.MILLISECONDS);
+        // This start method needs to be blocked, so that the lister shutdown
+        // method can be invoked.
+        LOGGER.log(Level.FINEST, "Blocking lister {0} until shutdown",
+            connectorName);
+        while (adaptorApplication != null) {
+          isStopped.awaitUninterruptibly();
+        }
+        LOGGER.log(Level.FINEST, "Exiting lister {0}", connectorName);
+      } catch (InterruptedException e) {
+        LOGGER.log(Level.INFO, "Interrupted waiting for previous lister "
+            + connectorName + " to stop", e);
+        Thread.currentThread().interrupt();
+      } finally {
+        lock.unlock();
+      }
     } finally {
       NDC.remove();
     }
@@ -87,12 +124,34 @@ public class GroupLister implements Lister {
 
   @Override
   public void shutdown() throws RepositoryException {
-    LOGGER.info("Shutting down Livelink group lister "
-        + connector.getGoogleConnectorName());
+    String connectorName = connector.getGoogleConnectorName();
+
+    LOGGER.log(Level.FINEST, "Waiting to shutdown group feed adaptor for {0}",
+        connectorName);
+    lock.lock();
     try {
-      adaptorApplication.stop(1000L, TimeUnit.MILLISECONDS);
+      while (adaptorApplication == null) {
+        if (!isStarted.await(1L, MINUTES)) {
+          throw new RepositoryException(
+              "Timed out waiting for lister " + connectorName + " to start");
+        }
+      }
+      LOGGER.info("Shutting down group feed adaptor for "
+          + connector.getGoogleConnectorName());
+      try {
+        adaptorApplication.stop(1L, SECONDS);
+      } finally {
+        adaptorApplication = null;
+        LOGGER.log(Level.FINEST, "Shutting down lister {0}",
+            connector.getGoogleConnectorName());
+        isStopped.signal();
+      }
+    } catch (InterruptedException e) {
+      LOGGER.log(Level.INFO, "Interrupted waiting for lister "
+          + connectorName + " to start", e);
+      Thread.currentThread().interrupt();
     } finally {
-      shutdownSemaphore.release();
+      lock.unlock();
     }
   }
 }

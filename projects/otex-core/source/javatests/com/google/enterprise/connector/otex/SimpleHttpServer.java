@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.common.base.Charsets.US_ASCII;
+
 import com.google.common.base.Strings;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -51,7 +53,7 @@ public class SimpleHttpServer {
       String version = "7.2.0-74";
       httpExchange.sendResponseHeaders(200, version.length());
       OutputStream os = httpExchange.getResponseBody();
-      os.write(version.getBytes());
+      os.write(version.getBytes(US_ASCII));
       os.close();
     }
   }
