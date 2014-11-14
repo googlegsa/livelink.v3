@@ -21,11 +21,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
-
-import com.sun.net.httpserver.HttpServer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -49,7 +48,6 @@ public class GroupListerTest {
 
   private List<Exception> exceptionList;
   private Thread listerThread;
-  private HttpServer httpServer;
   private LivelinkConnector connector;
   private GroupAdaptor adaptor;
 
@@ -58,9 +56,6 @@ public class GroupListerTest {
       throws SQLException, IOException, RepositoryException,
       InterruptedException {
     jdbcFixture.setUp();
-
-    httpServer = SimpleHttpServer.getHttpServer();
-    httpServer.start();
 
     connector = new LivelinkConnector(
         "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
@@ -83,7 +78,6 @@ public class GroupListerTest {
         propagateIfPossible(exceptionList.get(0), RepositoryException.class);
       }
     } finally {
-      httpServer.stop(0);
       jdbcFixture.tearDown();
     }
   }
@@ -109,7 +103,8 @@ public class GroupListerTest {
   @Test
   public void testShutdownLister() throws RepositoryException,
       InterruptedException, IOException {
-    GroupLister testLister = new GroupLister(connector, adaptor);
+    GroupLister testLister = new GroupLister(connector, adaptor,
+        ImmutableMap.of("gsa.version", "7.2.0-90"));
     listerThread = startListerThread(testLister);
     Thread.sleep(500L);
 
@@ -119,7 +114,8 @@ public class GroupListerTest {
   @Test
   public void testInterruptLister() throws RepositoryException,
       InterruptedException, IOException {
-    GroupLister testLister = new GroupLister(connector, adaptor);
+    GroupLister testLister = new GroupLister(connector, adaptor,
+        ImmutableMap.of("gsa.version", "7.2.0-90"));
     listerThread = startListerThread(testLister);
     Thread.sleep(500L);
 
@@ -132,11 +128,16 @@ public class GroupListerTest {
     }
   }
 
+  /**
+   * When this test fails, it is very likely to hang. Check test.log
+   * for the root cause.
+   */
   @Test
   public void testRaceCondition() throws Exception {
-    int dashboardPort =
-        Integer.parseInt(System.getProperty("tests.dashboardPort"));
-    GroupLister testLister = new GroupLister(connector, adaptor, dashboardPort);
+    String dashboardPort = System.getProperty("tests.dashboardPort");
+    GroupLister testLister = new GroupLister(connector, adaptor,
+        ImmutableMap.of("gsa.version", "7.2.0-90",
+            "server.dashboardPort", dashboardPort));
 
     // Ready, set, go! The call to shutdown happens first because it's
     // running in the current thread.
@@ -148,7 +149,8 @@ public class GroupListerTest {
     // We need more time for the HttpServer to startup.
     Thread.sleep(1000L);
 
-    URL dashboardUrl = new URL("http", "localhost", dashboardPort, "/");
+    URL dashboardUrl =
+        new URL("http", "localhost", Integer.parseInt(dashboardPort), "/");
     HttpURLConnection dashboard =
         (HttpURLConnection) dashboardUrl.openConnection();
     dashboard.setInstanceFollowRedirects(false);

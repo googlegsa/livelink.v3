@@ -46,5 +46,4 @@ javatest.connector.displayUrl = http://www.google.com
 javatest.connector.servtype = MSSQL
 javatest.connector.googleConnectorName = llconnector
 javatest.connector.googleFeedHost = localhost
-javatest.tests.httpServerPort = 8080
 javatest.tests.dashboardPort = 5679

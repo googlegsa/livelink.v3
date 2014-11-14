@@ -24,6 +24,8 @@ import com.google.enterprise.connector.spi.DocumentAcceptor;
 import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.RepositoryException;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -43,7 +45,7 @@ public class GroupLister implements Lister {
 
   private final GroupAdaptor groupAdaptor;
 
-  private final int dashboardPort;
+  private final String[] adaptorArgs;
 
   private Application adaptorApplication = null;
 
@@ -54,15 +56,33 @@ public class GroupLister implements Lister {
   private final Condition isStopped = lock.newCondition();
 
   GroupLister(LivelinkConnector connector, GroupAdaptor groupAdaptor) {
-    this(connector, groupAdaptor, 0);
+    this(connector, groupAdaptor, new HashMap<String, String>());
   }
 
+  /**
+   * @param extraArgs a map of additional adaptor properties. These
+   *     will overwrite the default values if there are duplicate keys.
+   */
   @VisibleForTesting
   GroupLister(LivelinkConnector connector, GroupAdaptor groupAdaptor,
-      int dashboardPort) {
+      Map<String, String> extraArgs) {
     this.connector = connector;
     this.groupAdaptor = groupAdaptor;
-    this.dashboardPort = dashboardPort;
+
+    Map<String, String> argsMap = new HashMap<String, String>();
+    argsMap.put("gsa.hostname", connector.getGoogleFeedHost());
+    argsMap.put("server.hostname", "localhost");
+    argsMap.put("server.port", "0");
+    argsMap.put("server.dashboardPort", "0");
+    argsMap.put("feed.name", connector.getGoogleConnectorName());
+    argsMap.put("adaptor.fullListingSchedule",
+        connector.getGroupFeedSchedule());
+    argsMap.putAll(extraArgs);
+    this.adaptorArgs = new String[argsMap.size()];
+    int i = 0;
+    for (Map.Entry<String, String> entry : argsMap.entrySet()) {
+      this.adaptorArgs[i++] = "-D" + entry.getKey() + "=" + entry.getValue();
+    }
   }
 
   @Override
@@ -71,18 +91,7 @@ public class GroupLister implements Lister {
 
   @Override
   public void start() throws RepositoryException {
-    String feedHost = connector.getGoogleFeedHost();
     String connectorName = connector.getGoogleConnectorName();
-    String logfile = System.getProperty("java.util.logging.config.file");
-    String[] groupFeederArgs = {
-            "-Dgsa.hostname=" + feedHost,
-            "-Dserver.hostname=localhost",
-            "-Dserver.port=0",
-            "-Dserver.dashboardPort=" + dashboardPort,
-            "-Dfeed.name=" + connectorName,
-            "-Djava.util.logging.config.file=" + logfile,
-            "-Dadaptor.fullListingSchedule="
-                + connector.getGroupFeedSchedule()};
 
     NDC.push("GroupFeed " + connectorName);
     try {
@@ -98,8 +107,7 @@ public class GroupLister implements Lister {
           }
         }
         LOGGER.info("Starting group feed adaptor for " + connectorName);
-        adaptorApplication =
-            groupAdaptor.invokeAdaptor(groupFeederArgs);
+        adaptorApplication = groupAdaptor.invokeAdaptor(adaptorArgs);
         isStarted.signal();
 
         // This start method needs to be blocked, so that the lister shutdown
