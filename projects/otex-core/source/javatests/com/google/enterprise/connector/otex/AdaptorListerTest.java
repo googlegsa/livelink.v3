@@ -16,14 +16,20 @@ package com.google.enterprise.connector.otex;
 
 import static com.google.common.base.Throwables.propagateIfPossible;
 import static java.net.HttpURLConnection.HTTP_SEE_OTHER;
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.isA;
+import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.enterprise.connector.otex.client.Client;
-import com.google.enterprise.connector.otex.client.ClientFactory;
+import com.google.enterprise.adaptor.Adaptor;
+import com.google.enterprise.adaptor.AdaptorContext;
+import com.google.enterprise.adaptor.Config;
+import com.google.enterprise.adaptor.DocIdPusher;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 import org.junit.After;
@@ -40,33 +46,52 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class GroupListerTest {
+public class AdaptorListerTest {
   private static final Logger LOGGER =
-      Logger.getLogger(GroupLister.class.getName());
+      Logger.getLogger(AdaptorListerTest.class.getName());
 
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
+  private int dashboardPort;
+  private Adaptor adaptor;
+  private AdaptorLister testLister;
   private List<Exception> exceptionList;
   private Thread listerThread;
-  private LivelinkConnector connector;
-  private GroupAdaptor adaptor;
 
   @Before
-  public void setUp()
-      throws SQLException, IOException, RepositoryException,
-      InterruptedException {
+  public void setUp() throws Exception {
     jdbcFixture.setUp();
 
-    connector = new LivelinkConnector(
-        "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
-    connector.setGoogleFeedHost("localhost");
-    connector.setGroupFeedSchedule("0 1 * * *");
-
-    ClientFactory clientFactory = connector.getClientFactory();
-    Client client = clientFactory.createClient();
-    adaptor = new GroupAdaptor(connector, client);
-
+    dashboardPort =
+        Integer.parseInt(System.getProperty("tests.dashboardPort"));
+    adaptor = getMockAdaptor();
+    String[] adaptorArgs = {
+        "-Dgsa.version=7.2.0-90",
+        "-Dgsa.hostname=localhost",
+        "-Dserver.hostname=localhost",
+        "-Dserver.port=0",
+        "-Dserver.dashboardPort=" + dashboardPort,
+        };
+    testLister = new AdaptorLister(adaptor, adaptorArgs);
     exceptionList = new LinkedList<Exception>();
+  }
+
+  /**
+   * Gets a mock adaptor that expects all methods except getDocContent
+   * to be called at least once.
+   */
+  private Adaptor getMockAdaptor() throws Exception {
+    Adaptor adaptor = createMock(Adaptor.class);
+    adaptor.initConfig(isA(Config.class));
+    expectLastCall().atLeastOnce();
+    adaptor.init(isA(AdaptorContext.class));
+    expectLastCall().atLeastOnce();
+    adaptor.getDocIds(isA(DocIdPusher.class));
+    expectLastCall().atLeastOnce();
+    adaptor.destroy();
+    expectLastCall().atLeastOnce();
+    replay(adaptor);
+    return adaptor;
   }
 
   @After
@@ -77,12 +102,13 @@ public class GroupListerTest {
       if (!exceptionList.isEmpty()) {
         propagateIfPossible(exceptionList.get(0), RepositoryException.class);
       }
+      verify(adaptor);
     } finally {
       jdbcFixture.tearDown();
     }
   }
 
-  private Thread startListerThread(final GroupLister testLister) {
+  private Thread startListerThread(final AdaptorLister testLister) {
     Thread t = new Thread() {
       public void run() {
         try {
@@ -103,8 +129,6 @@ public class GroupListerTest {
   @Test
   public void testShutdownLister() throws RepositoryException,
       InterruptedException, IOException {
-    GroupLister testLister = new GroupLister(connector, adaptor,
-        ImmutableMap.of("gsa.version", "7.2.0-90"));
     listerThread = startListerThread(testLister);
     Thread.sleep(500L);
 
@@ -114,8 +138,6 @@ public class GroupListerTest {
   @Test
   public void testInterruptLister() throws RepositoryException,
       InterruptedException, IOException {
-    GroupLister testLister = new GroupLister(connector, adaptor,
-        ImmutableMap.of("gsa.version", "7.2.0-90"));
     listerThread = startListerThread(testLister);
     Thread.sleep(500L);
 
@@ -134,11 +156,6 @@ public class GroupListerTest {
    */
   @Test
   public void testRaceCondition() throws Exception {
-    String dashboardPort = System.getProperty("tests.dashboardPort");
-    GroupLister testLister = new GroupLister(connector, adaptor,
-        ImmutableMap.of("gsa.version", "7.2.0-90",
-            "server.dashboardPort", dashboardPort));
-
     // Ready, set, go! The call to shutdown happens first because it's
     // running in the current thread.
     listerThread = startListerThread(testLister);
@@ -149,8 +166,7 @@ public class GroupListerTest {
     // We need more time for the HttpServer to startup.
     Thread.sleep(1000L);
 
-    URL dashboardUrl =
-        new URL("http", "localhost", Integer.parseInt(dashboardPort), "/");
+    URL dashboardUrl = new URL("http", "localhost", dashboardPort, "/");
     HttpURLConnection dashboard =
         (HttpURLConnection) dashboardUrl.openConnection();
     dashboard.setInstanceFollowRedirects(false);

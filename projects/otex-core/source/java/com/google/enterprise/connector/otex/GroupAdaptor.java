@@ -15,8 +15,6 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.enterprise.adaptor.AbstractAdaptor;
-import com.google.enterprise.adaptor.Adaptor;
-import com.google.enterprise.adaptor.Application;
 import com.google.enterprise.adaptor.DocIdPusher;
 import com.google.enterprise.adaptor.GroupPrincipal;
 import com.google.enterprise.adaptor.Principal;
@@ -31,7 +29,6 @@ import com.google.enterprise.connector.spi.RepositoryException;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,11 +126,5 @@ class GroupAdaptor extends AbstractAdaptor {
     } finally {
       NDC.remove();
     }
-  }
-
-  public Application invokeAdaptor(String[] args) {
-    LOGGER.log(Level.CONFIG, "Arguments to GroupAdaptor: {0}",
-        Arrays.asList(args));
-    return AbstractAdaptor.main(this, args);
   }
 }
