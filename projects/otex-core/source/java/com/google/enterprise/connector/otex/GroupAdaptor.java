@@ -82,7 +82,13 @@ class GroupAdaptor extends AbstractAdaptor {
       throws RepositoryException {
     Map<GroupPrincipal, List<Principal>> groups =
         new LinkedHashMap<GroupPrincipal, List<Principal>>();
+    getStandardGroups(groups);
+    getSystemAdminAndPublicGroups(groups);
+    return groups;
+  }
 
+  private void getStandardGroups(Map<GroupPrincipal, List<Principal>> groups)
+      throws RepositoryException {
     ClientValue groupsValue = client.ListGroups();
     for (int i = 0; i < groupsValue.size(); i++) {
       String groupName = groupsValue.toString(i, "Name");
@@ -99,8 +105,46 @@ class GroupAdaptor extends AbstractAdaptor {
       LOGGER.log(Level.FINER, "Group principal: {0} ; Member principals: {1}",
           new Object[] {groupPrincipal, memberPrincipals});
     }
+  }
 
-    return groups;
+  private void getSystemAdminAndPublicGroups(
+      Map<GroupPrincipal, List<Principal>> groups)
+          throws RepositoryException {
+    List<Principal> sysAdminMembers = new ArrayList<Principal>();
+    List<Principal> publicAccessMembers = new ArrayList<Principal>();
+
+    ClientValue usersValue = client.ListUsers();
+    for (int i = 0; i < usersValue.size(); i++) {
+      String userName = usersValue.toString(i, "Name");
+      LOGGER.log(Level.FINER, "Fetching groups for {0}", userName);
+      ClientValue userData = usersValue.toValue(i, "UserData");
+      String userNamespace = identityUtils.getNamespace(userData);
+
+      ClientValue usersInfo = client.GetUserInfo(userName);
+      int privs = usersInfo.toInteger("UserPrivileges");
+
+      if ((privs & Client.PRIV_PERM_BYPASS) == Client.PRIV_PERM_BYPASS) {
+        LOGGER.log(Level.FINER, "Admin Privileges for user {0}: {1}",
+            new Object[] {userName, privs});
+        sysAdminMembers.add(new UserPrincipal(userName, userNamespace));
+      }
+
+      if ((privs & Client.PRIV_PERM_WORLD) == Client.PRIV_PERM_WORLD) {
+        LOGGER.log(Level.FINER, "Public Access Privileges for user {0}: {1}",
+            new Object[] {userName, privs});
+        publicAccessMembers.add(new UserPrincipal(userName, userNamespace));
+      }
+    }
+
+    GroupPrincipal sysAdminGroupPrincipal =
+        new GroupPrincipal(Client.SYSADMIN_GROUP,
+            connector.getGoogleLocalNamespace());
+    groups.put(sysAdminGroupPrincipal, sysAdminMembers);
+
+    GroupPrincipal publicAccessGroupPrincipal =
+        new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP,
+            connector.getGoogleLocalNamespace());
+    groups.put(publicAccessGroupPrincipal, publicAccessMembers);
   }
 
   /**

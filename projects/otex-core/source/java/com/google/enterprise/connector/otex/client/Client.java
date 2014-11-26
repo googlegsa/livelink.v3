@@ -60,6 +60,9 @@ public interface Client
     /** Database permission bypass privilege. */
     int PRIV_PERM_BYPASS = 256;
 
+    /** Public access privilege */
+    int PRIV_PERM_WORLD = 2048;
+
     /** Constants corresponding to LAPI_ATTRIBUTES. */
     int ATTR_DATAVALUES = 0;
     int ATTR_DEFAULTVALUES = 1;
@@ -93,6 +96,12 @@ public interface Client
     /** Constants for user type. */
     int USER = 0;
     int GROUP = 1;
+
+    /** System Administration group */
+    final static String SYSADMIN_GROUP = "[System Administration]";
+
+    /** Public Access group */
+    final static String PUBLIC_ACCESS_GROUP = "[Public Access]";
 
     /**
      * Get a Factory for the ClientValue concrete implementation used
@@ -148,6 +157,14 @@ public interface Client
      */
     ClientValue GetUserInfo(String username) throws RepositoryException;
 
+    /**
+     * Wraps the <code>LAPI_USERS.ListUsers</code> method.
+     *  
+     * @returns a ClientValue RecArray object containing information about
+     * all users
+     * @throws RepositoryException
+     */
+    ClientValue ListUsers() throws RepositoryException;
 
     /**
      * Wraps the <code>LAPI_USERS.ListGroups</code> method.

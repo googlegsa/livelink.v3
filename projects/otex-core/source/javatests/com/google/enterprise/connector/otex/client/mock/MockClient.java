@@ -48,10 +48,6 @@ public class MockClient implements Client {
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
 
-  /** A list of valid usernames, used by GetUserInfo. */
-  private static final ImmutableList<String> VALID_USERNAMES =
-      ImmutableList.of("Admin", "llglobal");
-
     private final Connection jdbcConnection;
 
     public static Connection getConnection() {
@@ -124,7 +120,8 @@ public class MockClient implements Client {
             throws RepositoryException {
       String query = "ID=" + id;
       String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
+      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
+          "UserPrivileges"};
       ClientValue user = executeQuery(query, view, columns);
 
       if (user.size() > 0) {
@@ -132,10 +129,12 @@ public class MockClient implements Client {
         String name = user.toString(0, "Name");
         int type = user.toInteger(0, "Type");
         int groupId = user.toInteger(0, "GroupID");
+        int userPrivileges = user.toInteger(0, "UserPrivileges");
         ClientValue userData = toAssoc(user.toString(0, "UserData"));
         return new MockClientValue(
-            new String[] {"Name", "Type", "GroupID", "UserData"},
-            new Object[] {name, type, groupId, userData});
+            new String[] {"Name", "Type", "GroupID", "UserData",
+                "UserPrivileges"},
+            new Object[] {name, type, groupId, userData, userPrivileges});
       } else {
         return null;
       }
@@ -172,19 +171,30 @@ public class MockClient implements Client {
     /** {@inheritDoc} */
     @Override
     public ClientValue GetUserInfo(String username)
-            throws RepositoryException {
-        if (!VALID_USERNAMES.contains(username)) {
-            throw new RepositoryException(
-                "Could not get the specified user or group.");
-        }
-        int privileges;
-        if (username.equals("Admin"))
-            privileges = PRIV_PERM_BYPASS;
-        else
-            privileges = 0;
-        return new MockClientValue(
-            new String[] { "UserPrivileges" },
-            new Integer[] { new Integer(privileges) });
+        throws RepositoryException {
+      String query = "Name='" + username + "'";
+      String view = "KUAF";
+      String[] columns = new String[] {"UserPrivileges"};
+      int privileges;
+      ClientValue user = executeQuery(query, view, columns);
+      if (user.size() > 0) {
+        privileges = user.toInteger(0, "UserPrivileges");;
+      } else {
+        throw new RepositoryException(
+            "Could not get the specified user or group.");
+      }
+      return new MockClientValue(
+          new String[] { "UserPrivileges" },
+          new Integer[] { new Integer(privileges) });
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ClientValue ListUsers() throws RepositoryException {
+      String query = "Type=" + Client.USER;
+      String view = "KUAF";
+      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
+      return executeQuery(query, view, columns);
     }
 
     /** {@inheritDoc} */

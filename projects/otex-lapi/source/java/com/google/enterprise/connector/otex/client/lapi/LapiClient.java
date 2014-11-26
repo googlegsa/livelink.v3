@@ -134,7 +134,7 @@ final class LapiClient implements Client {
     assert USER == LAPI_USERS.USER :
       LAPI_USERS.USER;
     assert GROUP == LAPI_USERS.GROUP :
-      LAPI_USERS.USER;
+      LAPI_USERS.GROUP;
   }
 
   /**
@@ -282,6 +282,19 @@ final class LapiClient implements Client {
     try {
       if (users.GetUserInfo(username, userInfo) != 0)
         throw new LapiException(session, LOGGER);
+    } catch (RuntimeException e) {
+      throw getLivelinkException(e);
+    }
+    return new LapiClientValue(userInfo);
+  }
+
+  /** {@inheritDoc} */
+  public ClientValue ListUsers() throws RepositoryException {
+    LLValue userInfo = new LLValue();
+    try {
+      if (users.ListUsers(userInfo) != 0) {
+        throw new LapiException(session, LOGGER);
+      }
     } catch (RuntimeException e) {
       throw getLivelinkException(e);
     }

@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 
 import java.sql.Connection;
@@ -44,7 +45,8 @@ class JdbcFixture {
 
   private static final String CREATE_TABLE_KUAF =
       "create table KUAF "
-      + "(ID int, Name varchar, Type int, GroupID int, UserData varchar)";
+      + "(ID int, Name varchar, Type int, GroupID int, UserData varchar," +
+      " UserPrivileges int)";
 
   private static final String CREATE_TABLE_KUAFCHILDREN =
       "create table KUAFChildren "
@@ -77,6 +79,11 @@ class JdbcFixture {
         CREATE_TABLE_KUAF,
         CREATE_TABLE_KUAFCHILDREN,
         CREATE_TABLE_WEBNODES);
+
+    executeUpdate(
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + " values(1000, 'Admin', 0, 2001, NULL,"
+            + Client.PRIV_PERM_BYPASS + ")");
   }
 
   protected void tearDown() throws SQLException {

@@ -863,6 +863,9 @@ class LivelinkDocumentList implements DocumentList {
               + userPermissions + ", SeeContents " + canRead);
         }
       }
+      // Always add System Administration group since admins have bypass rights.
+      groupPrincipals.add(asPrincipalValue(Client.SYSADMIN_GROUP,
+          connector.getGoogleLocalNamespace()));
 
       // add users and groups principals to the map
       props.addProperty(SpiConstants.PROPNAME_ACLUSERS, userPrincipals);
@@ -877,7 +880,7 @@ class LivelinkDocumentList implements DocumentList {
       if (userId < 0) {
         switch (userId) {
           case Client.RIGHT_WORLD:
-            name = "Public Access";
+            name = Client.PUBLIC_ACCESS_GROUP;
             namespace = connector.getGoogleLocalNamespace();
             groupPrincipals.add(asPrincipalValue(name, namespace));
             break;

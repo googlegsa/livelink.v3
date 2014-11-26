@@ -66,13 +66,22 @@ public class GroupAdaptorTest extends TestCase {
   }
 
   private void addUser(int userId, String name) throws SQLException {
-    jdbcFixture.executeUpdate("insert into KUAF(ID, Name, Type, UserData)"
-        + " values(" + userId + ",'" + name + "' ,0 , NULL)");
+    // no privileges to user
+    addUser(userId, name, 0);
+  }
+
+  private void addUser(int userId, String name, int privileges)
+      throws SQLException {
+    jdbcFixture.executeUpdate("insert into KUAF(ID, Name, Type, UserData," +
+        " UserPrivileges)"
+        + " values(" + userId + ",'" + name + "' ,0 , NULL, " + privileges +")");
   }
 
   private void addGroup(int userId, String name) throws SQLException {
-    jdbcFixture.executeUpdate("insert into KUAF(ID, Name, Type, UserData)"
-        + " values(" + userId + ",'" + name + "' ,1 , NULL)");
+    // no privileges to the group
+    jdbcFixture.executeUpdate("insert into KUAF(ID, Name, Type, UserData," +
+        " UserPrivileges)"
+        + " values(" + userId + ",'" + name + "' ,1 , NULL, 0)");
   }
 
   private void addGroupMembers(int groupId, int... userIds)
@@ -95,6 +104,17 @@ public class GroupAdaptorTest extends TestCase {
     return fakePusher.getGroupDefinitions();
   }
 
+  public void assertGroupsEquals(Set<GroupPrincipal> expectedGroups,
+      Set<GroupPrincipal> groupSet) throws RepositoryException {
+    ImmutableSet<GroupPrincipal> expectedSet =
+        ImmutableSet.<GroupPrincipal>builder()
+        .addAll(expectedGroups)
+        .add(new GroupPrincipal(Client.SYSADMIN_GROUP, LOCAL_NAMESPACE))
+        .add(new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP, LOCAL_NAMESPACE))
+        .build();
+    assertEquals(expectedSet, groupSet);
+  }
+
   public void testEmptyGroup()
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
@@ -103,12 +123,10 @@ public class GroupAdaptorTest extends TestCase {
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
         getGroupInfo(getGroupsAdaptor());
 
-    assertEquals(1, groups.size());
-
     Set<GroupPrincipal> groupSet = groups.keySet();
     Set<GroupPrincipal> expectedGroupSet =
         ImmutableSet.of(new GroupPrincipal("group1", LOCAL_NAMESPACE));
-    assertEquals(expectedGroupSet, groupSet);
+    assertGroupsEquals(expectedGroupSet, groupSet);
 
     Collection<Principal> users = groups.get(groupSet.iterator().next());
     assertTrue(users.isEmpty());
@@ -125,12 +143,10 @@ public class GroupAdaptorTest extends TestCase {
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
         getGroupInfo(getGroupsAdaptor());
 
-    assertEquals(1, groups.size());
-
     Set<GroupPrincipal> groupSet = groups.keySet();
     Set<GroupPrincipal> expectedGroupSet =
         ImmutableSet.of(new GroupPrincipal("group1", LOCAL_NAMESPACE));
-    assertEquals(expectedGroupSet, groupSet);
+    assertGroupsEquals(expectedGroupSet, groupSet);
 
     Set<UserPrincipal> expectedUserSet =
         ImmutableSet.of(
@@ -158,8 +174,6 @@ public class GroupAdaptorTest extends TestCase {
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
         getGroupInfo(getGroupsAdaptor());
 
-    assertEquals(2, groups.size());
-
     Set<GroupPrincipal> groupSet = groups.keySet();
     GroupPrincipal expectedGroup1 =
         new GroupPrincipal("group1", LOCAL_NAMESPACE);
@@ -167,7 +181,7 @@ public class GroupAdaptorTest extends TestCase {
         new GroupPrincipal("group2", LOCAL_NAMESPACE);
     Set<GroupPrincipal> expectedGroupSet =
         ImmutableSet.of(expectedGroup1, expectedGroup2);
-    assertEquals(expectedGroupSet, groupSet);
+    assertGroupsEquals(expectedGroupSet, groupSet);
 
     Set<UserPrincipal> expectedUserSet1 =
         ImmutableSet.of(
@@ -198,12 +212,10 @@ public class GroupAdaptorTest extends TestCase {
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
         getGroupInfo(getGroupsAdaptor());
 
-    assertEquals(1, groups.size());
-
     Set<GroupPrincipal> groupSet = groups.keySet();
     Set<GroupPrincipal> expectedGroupSet =
         ImmutableSet.of(new GroupPrincipal("group1", LOCAL_NAMESPACE));
-    assertEquals(expectedGroupSet, groupSet);
+    assertGroupsEquals(expectedGroupSet, groupSet);
 
     Set<UserPrincipal> expectedUserSet =
         ImmutableSet.of(
@@ -230,8 +242,6 @@ public class GroupAdaptorTest extends TestCase {
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
         getGroupInfo(getGroupsAdaptor());
 
-    assertEquals(3, groups.size());
-
     Set<GroupPrincipal> groupSet = groups.keySet();
     GroupPrincipal expectedGroup1 =
         new GroupPrincipal("group1", LOCAL_NAMESPACE);
@@ -241,7 +251,7 @@ public class GroupAdaptorTest extends TestCase {
         new GroupPrincipal("group3", GLOBAL_NAMESPACE);
     Set<GroupPrincipal> expectedGroupSet =
         ImmutableSet.of(expectedGroup1, expectedGroup2, expectedGroup3);
-    assertEquals(expectedGroupSet, groupSet);
+    assertGroupsEquals(expectedGroupSet, groupSet);
 
     Set<UserPrincipal> expectedUserSet1 =
         ImmutableSet.of(
@@ -262,5 +272,89 @@ public class GroupAdaptorTest extends TestCase {
 
     Collection<Principal> users3 = groups.get(expectedGroup3);
     assertTrue(users3.isEmpty());
+  }
+
+  private void testGroupsForUserPrivileges(int privileges, String... groupNames)
+      throws RepositoryException, SQLException, IOException,
+      InterruptedException {
+    addUser(1001, "user1", privileges);
+    Set<String> groupNamesSet = ImmutableSet.copyOf(groupNames);
+
+    Map<GroupPrincipal, ? extends Collection<Principal>> groups =
+        getGroupInfo(getGroupsAdaptor());
+
+    Set<GroupPrincipal> groupSet = groups.keySet();
+    for (GroupPrincipal group : groupSet) {
+      Collection<Principal> members = groups.get(group);
+      assertEquals(group.getName() + " - " + members.toString(),
+          groupNamesSet.contains(group.getName()),
+          members.contains(new UserPrincipal("user1", LOCAL_NAMESPACE)));
+    }
+  }
+
+  public void testSysAdminPrivileges() throws SQLException, IOException,
+      InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges(Client.PRIV_PERM_BYPASS, Client.SYSADMIN_GROUP);
+  }
+
+  public void testPublicAccessPrivileges() throws SQLException, IOException,
+      InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges(Client.PRIV_PERM_WORLD,
+        Client.PUBLIC_ACCESS_GROUP);
+  }
+
+  public void testSysAdminAndPublicAccessPrivileges() throws SQLException,
+      IOException, InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges(
+        (Client.PRIV_PERM_BYPASS | Client.PRIV_PERM_WORLD),
+        Client.PUBLIC_ACCESS_GROUP, Client.SYSADMIN_GROUP);
+  }
+
+  public void testNoPublAccessPrivileges() throws SQLException, IOException,
+      InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges((~0 & ~Client.PRIV_PERM_WORLD),
+        Client.SYSADMIN_GROUP);
+  }
+
+  public void testNoSysAdminPrivileges() throws SQLException, IOException,
+      InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges((~0 & ~Client.PRIV_PERM_BYPASS),
+        Client.PUBLIC_ACCESS_GROUP);
+  }
+
+  public void testNoSysAdminOrPublAccessPrivileges() throws SQLException,
+      IOException, InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges(~0 & ~Client.PRIV_PERM_BYPASS
+        & ~Client.PRIV_PERM_WORLD);
+  }
+
+  public void testFullPrivileges() throws SQLException, IOException,
+      InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges(~0, Client.PUBLIC_ACCESS_GROUP,
+        Client.SYSADMIN_GROUP);
+  }
+
+  public void testNoPrivileges() throws SQLException, IOException,
+      InterruptedException, RepositoryException {
+    testGroupsForUserPrivileges(0);
+  }
+
+  public void testForSysAdminPublicAccessGroups() throws IOException,
+      InterruptedException, RepositoryException {
+    Map<GroupPrincipal, ? extends Collection<Principal>> groups =
+        getGroupInfo(getGroupsAdaptor());
+
+    Set<GroupPrincipal> groupSet = groups.keySet();
+    GroupPrincipal pubAccessGroup =
+        new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP, LOCAL_NAMESPACE);
+    GroupPrincipal sysAdminGroup =
+        new GroupPrincipal(Client.SYSADMIN_GROUP, LOCAL_NAMESPACE);
+    assertEquals(groupSet, ImmutableSet.of(sysAdminGroup, pubAccessGroup));
+
+    Collection<Principal> publAccessMembers = groups.get(pubAccessGroup);
+    assertTrue(publAccessMembers.isEmpty());
+    Collection<Principal> sysAdminMembers = groups.get(sysAdminGroup);
+    assertEquals(ImmutableSet.of(new UserPrincipal("Admin", LOCAL_NAMESPACE)),
+        ImmutableSet.copyOf(sysAdminMembers));
   }
 }

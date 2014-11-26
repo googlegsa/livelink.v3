@@ -90,8 +90,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
         + "values(6, 2000)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(2000, -1)",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-        + " values(1001, 'user1', 0, 2001, 'ExternalAuthentication=true' )",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+        + " values(1001, 'user1', 0, 2001, 'ExternalAuthentication=true', 0)",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
         + "MimeType, UserID) "
         + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00', null, 1001)",

@@ -65,20 +65,21 @@ public class LivelinkDocumentListTest extends TestCase {
     // user id - 1000 to 1999 
     // group id - 2000 to 2999 
     jdbcFixture.executeUpdate(
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-            + " values(1001, 'user1', 0, 2001, "
-            + "'ExternalAuthentication=true' )",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-            + " values(1002, 'user2', 0, 2001, "
-            + "'ExternalAuthentication=true' )",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-            + " values(1003, 'user3', 0, 2002, NULL )",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-            + " values(1666, '', 0, 0, NULL )",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-            + " values(2001, 'group1', 1, 0, NULL )",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData) "
-            + " values(2002, 'group2', 1, 0, NULL )");
+        // 2063 is the actual value for non-admin user with public access
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(1001, 'user1', 0, 2001, "
+            + "'ExternalAuthentication=true', 2063)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(1002, 'user2', 0, 2001, "
+            + "'ExternalAuthentication=true', 2063)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(1003, 'user3', 0, 2002, NULL, 0)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(1666, '', 0, 0, NULL, 0)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(2001, 'group1', 1, 0, NULL, 0)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(2002, 'group2', 1, 0, NULL, 0)");
   }
 
   @Override
@@ -570,6 +571,14 @@ public class LivelinkDocumentListTest extends TestCase {
     return names;
   }
 
+  public void assertAclGroupsEquals(Document doc, String... expectedGroups)
+      throws RepositoryException {
+    ImmutableSet.Builder<String> builder = ImmutableSet.builder();
+    builder.add(expectedGroups).add(Client.SYSADMIN_GROUP);
+    assertEquals(builder.build(),
+        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+  }
+
   public void testAcl_usersAndGroups()
       throws RepositoryException, SQLException {
     insertDTreeAcl(21, 1002, Client.PERM_MODIFY);
@@ -585,8 +594,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of("user1", "user3"),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of("group1", "group2"),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc, "group1", "group2");
   }
 
   public void testAcl_groupsOnly() throws RepositoryException,
@@ -602,8 +610,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of("group1", "group2"),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc, "group1", "group2");
   }
 
   public void testAcl_noPublicAccess() throws RepositoryException,
@@ -617,8 +624,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of("user1"),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of(),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc);
   }
 
   public void testAcl_onlyPublicAccess() throws RepositoryException,
@@ -632,8 +638,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of("Public Access"),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc, Client.PUBLIC_ACCESS_GROUP);
   }
 
   public void testAcl_owner() throws RepositoryException, SQLException {
@@ -647,8 +652,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of("user1"),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of(),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc);
   }
 
   public void testAcl_userDefaultGroup() throws RepositoryException,
@@ -661,8 +665,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of("group2"),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc, "group2");
   }
 
   public void testAcl_noRead() throws RepositoryException, SQLException {
@@ -676,8 +679,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of(),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc);
   }
 
   public void testAcl_noAclEntries() throws RepositoryException, SQLException {
@@ -687,8 +689,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of(),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc);
   }
 
   public void testAcl_emptyUserName() throws RepositoryException, SQLException {
@@ -700,8 +701,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of(),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc);
   }
 
   public void testAcl_missingGroup() throws RepositoryException, SQLException {
@@ -713,8 +713,7 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNotNull(doc);
     assertEquals(ImmutableSet.of(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
-    assertEquals(ImmutableSet.of(),
-        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+    assertAclGroupsEquals(doc);
   }
 
   private void setUserData(int userId, String userData)
@@ -816,9 +815,10 @@ public class LivelinkDocumentListTest extends TestCase {
     Document doc = list.nextDocument();
     assertNotNull(doc);
     assertEquals(
-        new Principal(UNKNOWN, LOCAL_NAMESPACE, "Public Access",
+        new Principal(UNKNOWN, LOCAL_NAMESPACE, Client.PUBLIC_ACCESS_GROUP,
             EVERYTHING_CASE_SENSITIVE),
-        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "Public Access"));
+        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS,
+            Client.PUBLIC_ACCESS_GROUP));
   }
 
   public void testOwner_Namespace()
