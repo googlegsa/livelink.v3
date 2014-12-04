@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Ints;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.Document;
@@ -622,7 +623,7 @@ class LivelinkDocumentList implements DocumentList {
       // value. For example, the value returned by
       // GetObjectInfo may be different than the
       // value retrieved from the database.
-      int size = recArray.toInteger(insRow, "DataSize");
+      long size = recArray.toLong(insRow, "DataSize");
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT DATASIZE = " + size);
 
@@ -643,7 +644,7 @@ class LivelinkDocumentList implements DocumentList {
           throw new SkippedDocumentException("Excluded by content type: " + mt);
 
         // Is the content too large?
-        if (((long) size) > traversalContext.maxDocumentSize())
+        if (size > traversalContext.maxDocumentSize())
           return;
       } else {
         // If there is no traversal context, we'll enforce a size
@@ -656,10 +657,11 @@ class LivelinkDocumentList implements DocumentList {
       if (size <= 0)
         return;
 
-      // If we pass the gauntlet, create a content stream property
-      // and add it to the property map.
-      InputStream is =
-          contentHandler.getInputStream(volumeId, objectId, 0, size);
+      // If we pass the gauntlet, create a content stream property and
+      // add it to the property map. The size parameter is an int, but
+      // it is only a hint, so cap the long value at Integer.MAX_VALUE.
+      InputStream is = contentHandler.getInputStream(volumeId, objectId, 0,
+          Ints.saturatedCast(size));
       Value contentValue = Value.getBinaryValue(is);
       props.addProperty(SpiConstants.PROPNAME_CONTENT, contentValue);
     }
