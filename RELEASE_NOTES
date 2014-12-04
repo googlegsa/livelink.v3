@@ -11,6 +11,63 @@ supplements the main documentation.
 Web Site: http://code.google.com/p/google-enterprise-connector-otex/
 
 
+Release 3.2.10, December 2, 2014
+================================
+
+Introduction
+------------
+This is a maintenance release that improves quality without adding any
+new functionality. Users of previous releases are encouraged to review
+the changes below to determine whether to upgrade.
+
+Issues Fixed Since 3.2.6
+------------------------
+17955737 - Documents with DataSize over 2 GB were skipped entirely.
+           Now the metadata is indexed, consistent with files smaller
+           than 2 GB but larger than the configured feed.document.size.limit
+           (30 MB by default).
+
+17633698 - Add support for long integer valued properties. The
+           DataSize property could not be included in the indexed
+           metadata.
+
+           Note: DataSize can be negative (-1), but the Livelink API
+           cannot parse negative long integers. To include DataSize in
+           the indexed metadata, you should use the following advanced
+           property configuration:
+           
+           <property name="includedSelectExpressions"> 
+             <map><entry key="DataSize" value="GoogleDataSize" /></map> 
+           </property> 
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 3.2.6 may be
+used with this version. This version works with Connector Manager
+version 3.2.2 or later. Earlier versions of the Connector Manager will
+not work correctly with this version of the connector. This product is
+designed to function with OpenText Livelink ECM - Enterprise Server 9.7.1
+and OpenText Content Server 10.
+
+OpenText Livelink ECM - Enterprise Server and Livelink API (LAPI)
+version 9.7 are no longer supported. LAPI 9.7.1 is required.
+
+Java SE 5.0 is no longer supported. Java 6 or later is required.
+
+Customers running OpenText Content Server 10, or Livelink 9.7.1 with
+the July 2008 or later monthly patch, must configure the ListNodes white
+list in opentext.ini as described in the 3.2.2 release notes below.
+
+Customers upgrading from version 3.2.0 or earlier must update the
+ListNodes white list in opentext.ini as described in the 3.2.2 release
+notes below.
+
+
 Release 3.2.6, April 26, 2014
 =============================
 
@@ -20,7 +77,7 @@ This is a maintenance release that improves quality without adding any
 new functionality. Users of previous releases are encouraged to review
 the changes below to determine whether to upgrade.
 
-Issues Fixed Since 3.2.0
+Issues Fixed Since 3.2.2
 ------------------------
 11484159 - A validation query was found to be excessively slow using
            Oracle in a customer environment, executing a full table
