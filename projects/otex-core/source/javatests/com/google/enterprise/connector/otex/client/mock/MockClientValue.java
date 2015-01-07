@@ -224,17 +224,7 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public ClientValue toValue(int row, String field) throws RepositoryException {
-    Object obj = getValue(row, field);
-    if (obj instanceof String && ((String) obj).contains("=")) {
-      //These are fake assoc strings.
-      String strValue = obj.toString();
-      String[] names = strValue.split("=");
-      String fields[] = {names[0]};
-      String values[] = {names[1]};
-      return new MockClientValue(fields, values);
-    } else {
-      return new MockClientValue(obj);
-    }
+    return new MockClientValue(getValue(row, field));
   }
 
   @Override
@@ -276,10 +266,7 @@ public final class MockClientValue implements ClientValue {
 
   @Override
   public String toString(int row, String field) throws RepositoryException {
-    if (isDefined(row, field))
-      return getValue(row, field).toString();
-    else
-      return "?";
+    return getValue(row, field).toString();
   }
 
   @Override
@@ -288,13 +275,8 @@ public final class MockClientValue implements ClientValue {
   }
 
   @Override
-  public ClientValue toValue(String field) throws RepositoryException {
-    Object obj = getValue(field);
-    if (obj instanceof ClientValue) {
-      return (ClientValue) obj;
-    } else {
-      return new MockClientValue(obj);
-    }
+  public ClientValue toValue(String field) {
+    throw new IllegalArgumentException();
   }
 
   @Override

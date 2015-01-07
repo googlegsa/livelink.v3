@@ -57,9 +57,7 @@ public class LivelinkConnectorTest extends TestCase {
         + "values(4104, 2002)",
         "insert into KDual values(104 /* does not matter */)",
         "insert into WebNodes(DataID, PermID, MimeType) "
-        + "values(42, 0, 'text/xml')",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
-        + "values(1003, 'llglobal', 0, 2002, NULL, 0)");
+        + "values(42, 0, 'text/xml')");
 
     connector = new LivelinkConnector(new MockClientFactory());
     connector.setServer(System.getProperty("connector.server"));

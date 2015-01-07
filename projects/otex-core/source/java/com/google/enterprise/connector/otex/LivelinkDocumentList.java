@@ -15,26 +15,21 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import com.google.common.primitives.Ints;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.Document;
 import com.google.enterprise.connector.spi.DocumentList;
-import com.google.enterprise.connector.spi.Principal;
 import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SkippedDocumentException;
 import com.google.enterprise.connector.spi.SpiConstants;
 import com.google.enterprise.connector.spi.SpiConstants.ActionType;
-import com.google.enterprise.connector.spi.SpiConstants.CaseSensitivityType;
 import com.google.enterprise.connector.spi.SpiConstants.FeedType;
-import com.google.enterprise.connector.spi.SpiConstants.PrincipalType;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
@@ -121,8 +116,6 @@ class LivelinkDocumentList implements DocumentList {
   /** Count of documents returned or skipped in this batch. */
   private int docsProcessed;
 
-  private final IdentityUtils identityUtils;
-
   /**
    * Constructor for non-trivial document set.  Iterate over a
    * RecArray of items returned from Livelink.
@@ -142,7 +135,6 @@ class LivelinkDocumentList implements DocumentList {
     this.fields = fields;
     this.traversalContext = traversalContext;
     this.checkpoint = checkpoint;
-    this.identityUtils = new IdentityUtils(connector);
 
     if (contentHandler instanceof RefreshableContentHandler) {
       ((RefreshableContentHandler) contentHandler).refresh();
@@ -428,7 +420,6 @@ class LivelinkDocumentList implements DocumentList {
           collectVersionProperties();
           collectCategoryAttributes();
           collectDerivedProperties();
-          collectAclProperties();
         } finally {
           // Establish the checkpoint for this row.
           checkpoint.setInsertCheckpoint(insDate, objectId);
@@ -832,119 +823,6 @@ class LivelinkDocumentList implements DocumentList {
           LOGGER.finest("Ignoring an unimplemented type.");
           break;
       }
-    }
-
-    /**
-     * Collects ACL properties.
-     */
-    private void collectAclProperties() throws RepositoryException {
-      List<Value> userPrincipals = new ArrayList<Value>();
-      List<Value> groupPrincipals = new ArrayList<Value>();
-
-      if (LOGGER.isLoggable(Level.FINEST)) {
-        LOGGER.finest("ACE Info for id: " + objectId);
-      }
-
-      int ownerId = recArray.toInteger(insRow, "UserID");
-      ClientValue ownerInfo =
-          client.GetUserOrGroupByIDNoThrow(ownerId);
-      ClientValue objectRightsInfo = client.GetObjectRights(objectId);
-      for (int i = 0; i < objectRightsInfo.size(); i++) {
-        int userId = objectRightsInfo.toInteger(i, "RightID");
-        int userPermissions = objectRightsInfo.toInteger(i, "Permissions");
-        boolean canRead = ((userPermissions & Client.PERM_SEECONTENTS) 
-            == Client.PERM_SEECONTENTS);
-
-        if (canRead) {
-          getPrincipals(userId, ownerInfo, userPrincipals, groupPrincipals);
-        }
-        if (LOGGER.isLoggable(Level.FINEST)) {
-          LOGGER.finest("ACE Info: UserID " + userId + ", Permissions "
-              + userPermissions + ", SeeContents " + canRead);
-        }
-      }
-      // Always add System Administration group since admins have bypass rights.
-      groupPrincipals.add(asPrincipalValue(Client.SYSADMIN_GROUP,
-          connector.getGoogleLocalNamespace()));
-
-      // add users and groups principals to the map
-      props.addProperty(SpiConstants.PROPNAME_ACLUSERS, userPrincipals);
-      props.addProperty(SpiConstants.PROPNAME_ACLGROUPS, groupPrincipals);
-    }
-
-    private void getPrincipals(int userId, ClientValue ownerInfo,
-        List<Value> userPrincipals, List<Value> groupPrincipals)
-        throws RepositoryException {
-      String name;
-      String namespace;
-      if (userId < 0) {
-        switch (userId) {
-          case Client.RIGHT_WORLD:
-            name = Client.PUBLIC_ACCESS_GROUP;
-            namespace = connector.getGoogleLocalNamespace();
-            groupPrincipals.add(asPrincipalValue(name, namespace));
-            break;
-          case Client.RIGHT_SYSTEM:
-            // Ignore this case, which Livelink does not implement.
-            break;
-          case Client.RIGHT_OWNER:
-            name = ownerInfo.toString("Name");
-            namespace = getUserGroupNamespace(ownerInfo);
-            userPrincipals.add(asPrincipalValue(name, namespace));
-            break;
-          case Client.RIGHT_GROUP:
-            ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(
-                ownerInfo.toInteger("GroupID"));
-            name = userInfo.toString("Name");
-            namespace = getUserGroupNamespace(userInfo);
-            groupPrincipals.add(asPrincipalValue(name, namespace));
-            break;
-          default:
-            if (LOGGER.isLoggable(Level.FINEST)) {
-              LOGGER.finest("Unexpected user or group id: " + userId);
-            }
-        }
-      } else {
-        ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
-        if (userInfo != null) {
-          name = userInfo.toString("Name");
-          namespace = getUserGroupNamespace(userInfo);
-          if (!Strings.isNullOrEmpty(name)) {
-            switch (userInfo.toInteger("Type")) {
-              case Client.USER:
-                userPrincipals.add(asPrincipalValue(name, namespace));
-                break;
-              case Client.GROUP:
-                groupPrincipals.add(asPrincipalValue(name, namespace));
-            }
-          }
-        }
-      }
-    }
-
-    private String getUserGroupNamespace(ClientValue userInfo)
-        throws RepositoryException {
-      ClientValue userData;
-      String namespace;
-      if (userInfo != null && userInfo.hasValue()) {
-        userData = userInfo.toValue("UserData");
-        if (userData != null && userData.hasValue()) {
-          LOGGER.log(Level.FINEST,
-              "ACE Info: UserData {0}", userData.toString());
-          namespace = identityUtils.getNamespace(userData);
-        } else {
-          namespace = connector.getGoogleLocalNamespace();
-        }
-      } else {
-        namespace = null;
-      }
-      return namespace;
-    }
-
-    private Value asPrincipalValue(String name, String namespace)
-        throws RepositoryDocumentException {
-      return Value.getPrincipalValue(new Principal(PrincipalType.UNKNOWN,
-          namespace, name, CaseSensitivityType.EVERYTHING_CASE_SENSITIVE));
     }
 
     /**

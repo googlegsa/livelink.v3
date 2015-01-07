@@ -115,26 +115,6 @@ final class LapiClient implements Client {
     assert CATEGORY_TYPE_WORKFLOW ==
       LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW :
       LAPI_ATTRIBUTES.CATEGORY_TYPE_WORKFLOW;
-    assert RIGHT_WORLD == LAPI_DOCUMENTS.RIGHT_WORLD :
-      LAPI_DOCUMENTS.RIGHT_WORLD;
-    assert RIGHT_SYSTEM == LAPI_DOCUMENTS.RIGHT_SYSTEM :
-      LAPI_DOCUMENTS.RIGHT_SYSTEM;
-    assert RIGHT_OWNER == LAPI_DOCUMENTS.RIGHT_OWNER :
-      LAPI_DOCUMENTS.RIGHT_OWNER;
-    assert RIGHT_GROUP == LAPI_DOCUMENTS.RIGHT_GROUP :
-      LAPI_DOCUMENTS.RIGHT_GROUP;
-    assert PERM_SEE == LAPI_DOCUMENTS.PERM_SEE :
-      LAPI_DOCUMENTS.PERM_SEE;
-    assert PERM_SEECONTENTS == LAPI_DOCUMENTS.PERM_SEECONTENTS :
-      LAPI_DOCUMENTS.PERM_SEECONTENTS;
-    assert PERM_MODIFY == LAPI_DOCUMENTS.PERM_MODIFY :
-      LAPI_DOCUMENTS.PERM_MODIFY;
-    assert PERM_FULL == LAPI_DOCUMENTS.PERM_FULL :
-      LAPI_DOCUMENTS.PERM_FULL;
-    assert USER == LAPI_USERS.USER :
-      LAPI_USERS.USER;
-    assert GROUP == LAPI_USERS.GROUP :
-      LAPI_USERS.GROUP;
   }
 
   /**
@@ -286,48 +266,6 @@ final class LapiClient implements Client {
       throw getLivelinkException(e);
     }
     return new LapiClientValue(userInfo);
-  }
-
-  /** {@inheritDoc} */
-  public ClientValue ListUsers() throws RepositoryException {
-    LLValue userInfo = new LLValue();
-    try {
-      if (users.ListUsers(userInfo) != 0) {
-        throw new LapiException(session, LOGGER);
-      }
-    } catch (RuntimeException e) {
-      throw getLivelinkException(e);
-    }
-    return new LapiClientValue(userInfo);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public ClientValue ListGroups() throws RepositoryException {
-    LLValue groupInfo = new LLValue();
-    try {
-      if (users.ListGroups(Client.GROUP, groupInfo) != 0) {
-        throw new LapiException(session, LOGGER);
-      }
-    } catch (RuntimeException e) {
-      throw getLivelinkException(e);
-    }
-    return new LapiClientValue(groupInfo);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public ClientValue ListMembers(String groupName)
-      throws RepositoryException {
-    LLValue memberInfo = new LLValue();
-    try {
-      if (users.ListMembers(Client.GROUP, groupName, memberInfo) != 0) {
-        throw new LapiException(session, LOGGER);
-      }
-    } catch (RuntimeException e) {
-      throw getLivelinkException(e);
-    }
-    return new LapiClientValue(memberInfo);
   }
 
   /** {@inheritDoc} */
@@ -613,21 +551,6 @@ final class LapiClient implements Client {
       throw getLivelinkException(e);
     }
     return new LapiClientValue(versionInfo);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized ClientValue GetObjectRights(int objectId)
-      throws RepositoryException {
-    LLValue recArray = new LLValue();
-    try {
-      if (documents.GetObjectRights(0, objectId, recArray) != 0) {
-        throw new LapiException(session, LOGGER);
-      }
-    } catch (RuntimeException e) {
-      throw getLivelinkException(e);
-    }
-    return new LapiClientValue(recArray);
   }
 
   /**

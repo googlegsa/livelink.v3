@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
@@ -36,7 +35,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -47,6 +45,10 @@ public class MockClient implements Client {
     /** The logger for this class. */
     private static final Logger LOGGER =
         Logger.getLogger(MockClient.class.getName());
+
+  /** A list of valid usernames, used by GetUserInfo. */
+  private static final ImmutableList<String> VALID_USERNAMES =
+      ImmutableList.of("Admin", "llglobal");
 
     private final Connection jdbcConnection;
 
@@ -118,104 +120,26 @@ public class MockClient implements Client {
     @Override
     public ClientValue GetUserOrGroupByIDNoThrow(int id)
             throws RepositoryException {
-      String query = "ID=" + id;
-      String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
-          "UserPrivileges"};
-      ClientValue user = executeQuery(query, view, columns);
-
-      if (user.size() > 0) {
-        // Need to return a Assoc LLValue, whereas the above is a table.
-        String name = user.toString(0, "Name");
-        int type = user.toInteger(0, "Type");
-        int groupId = user.toInteger(0, "GroupID");
-        int userPrivileges = user.toInteger(0, "UserPrivileges");
-        ClientValue userData = toAssoc(user.toString(0, "UserData"));
         return new MockClientValue(
-            new String[] {"Name", "Type", "GroupID", "UserData",
-                "UserPrivileges"},
-            new Object[] {name, type, groupId, userData, userPrivileges});
-      } else {
-        return null;
-      }
-    }
-
-    public ClientValue toAssoc(String fieldData)
-        throws RepositoryException {
-      if (Strings.isNullOrEmpty(fieldData)) {
-        return new MockClientValue();
-      }
-
-      String[] data = fieldData.split(",");
-      String[] names = new String[data.length];
-      String[] values = new String[data.length];
-      int i = 0;
-      for (String value : data) {
-        int index = value.indexOf("=");
-        if (index > 0) {
-          names[i] = value.substring(0, index);
-          values[i] = value.substring(index + 1);
-          i++;
-        }
-      }
-
-      if (i > 0) {
-        return new MockClientValue(
-            Arrays.copyOf(names, i),
-            Arrays.copyOf(values, i));
-      } else {
-        return new MockClientValue();
-      }
+            new String[] { "Name" }, new String[] { "Admin" });
     }
 
     /** {@inheritDoc} */
     @Override
     public ClientValue GetUserInfo(String username)
-        throws RepositoryException {
-      String query = "Name='" + username + "'";
-      String view = "KUAF";
-      String[] columns = new String[] {"UserPrivileges"};
-      int privileges;
-      ClientValue user = executeQuery(query, view, columns);
-      if (user.size() > 0) {
-        privileges = user.toInteger(0, "UserPrivileges");;
-      } else {
-        throw new RepositoryException(
-            "Could not get the specified user or group.");
-      }
-      return new MockClientValue(
-          new String[] { "UserPrivileges" },
-          new Integer[] { new Integer(privileges) });
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public ClientValue ListUsers() throws RepositoryException {
-      String query = "Type=" + Client.USER;
-      String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
-      return executeQuery(query, view, columns);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public ClientValue ListGroups() throws RepositoryException {
-      String query = "Type=" + Client.GROUP;
-      String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
-      return executeQuery(query, view, columns);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public ClientValue ListMembers(String groupName)
-        throws RepositoryException {
-      String query = "KUAF.ID = a.ChildID and a.ID = " 
-          + "(select ID from KUAF where KUAF.Name='" + groupName + "')";
-      String view = "KUAF, KUAFChildren";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
-          "a.ChildID"};
-      return executeQuery(query, view, columns);
+            throws RepositoryException {
+        if (!VALID_USERNAMES.contains(username)) {
+            throw new RepositoryException(
+                "Could not get the specified user or group.");
+        }
+        int privileges;
+        if (username.equals("Admin"))
+            privileges = PRIV_PERM_BYPASS;
+        else
+            privileges = 0;
+        return new MockClientValue(
+            new String[] { "UserPrivileges" },
+            new Integer[] { new Integer(privileges) });
     }
 
     /** {@inheritDoc} */
@@ -264,28 +188,23 @@ public class MockClient implements Client {
         String h2 = "CONVERT(AuditDate, VARCHAR(23))";
         view = view.replace(sqlServer, h2).replace(oracle, h2);
 
-        return executeQuery(query, view, columns);
-    }
-
-    private ClientValue executeQuery(String query, String view,
-        String[] columns) throws RepositoryException {
-      String[] fields;
-      Object[][] values;
-      try {
-          Statement stmt = jdbcConnection.createStatement();
-          try {
-              ResultSet rs =
-                  stmt.executeQuery(getSqlQuery(query, view, columns));
-              ResultSetMetaData rsmd = rs.getMetaData();
-              fields = getResultSetColumns(rsmd, columns);
-              values = getResultSetValues(rs, rsmd);
-          } finally {
-              stmt.close();
-          }
-      } catch (SQLException e) {
-          throw new RepositoryException("Database error", e);
-      }
-      return new MockClientValue(fields, values);
+        String[] fields;
+        Object[][] values;
+        try {
+            Statement stmt = jdbcConnection.createStatement();
+            try {
+                ResultSet rs =
+                    stmt.executeQuery(getSqlQuery(query, view, columns));
+                ResultSetMetaData rsmd = rs.getMetaData();
+                fields = getResultSetColumns(rsmd, columns);
+                values = getResultSetValues(rs, rsmd);
+            } finally {
+                stmt.close();
+            }
+        } catch (SQLException e) {
+            throw new RepositoryException("Database error", e);
+        }
+        return new MockClientValue(fields, values);
     }
 
     /** Extracts field names from any select expressions. */
@@ -525,12 +444,4 @@ public class MockClient implements Client {
         throws RepositoryException {
         LOGGER.fine("Entering MockClient.ImpersonateUserEx");
     }
-
-  @Override
-  public ClientValue GetObjectRights(int objectId) throws RepositoryException {
-    String query = "DataID=" + objectId;
-    String view = "DTreeACL";
-    String[] columns = new String[] {"DataID as ID", "RightID", "Permissions"};
-    return executeQuery(query, view, columns);
-  }
 }

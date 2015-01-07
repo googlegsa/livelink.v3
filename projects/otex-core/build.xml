@@ -37,15 +37,13 @@
             location="${build.connector.manager.home}/projects" />
   <property name="connector-manager.dir"
             location="${connector-manager-projects.dir}/connector-manager" />
-  <property name="connector-manager.thirdparty.jar.dir"
+  <property name="thirdparty.jar.dir"
             location="${connector-manager-projects.dir}/connector-manager/third-party" />
   <property name="spi.jar.dir" value="${connector-manager.dir}/dist/jarfile" />
   <property name="spi.jarfile" value="${spi.jar.dir}/connector-spi.jar" />
   <property name="connector.jarfile" value="${spi.jar.dir}/connector.jar" />
   <property name="tests.jarfile" value="${spi.jar.dir}/connector-tests.jar" />
-  <property name="logging.jarfile"
-            value="${spi.jar.dir}/connector-logging.jar" />
-  <property name="thirdparty.jar.dir" location="third_party/lib" />
+
   <!-- All reports go into this directory. -->
   <property name="reports.dir" value="reports" />
 
@@ -94,12 +92,8 @@
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
         <pathelement location="${spi.jarfile}" />
-        <pathelement location="${logging.jarfile}" />
-        <fileset dir="${connector-manager.thirdparty.jar.dir}">
-          <include name="prod/*.jar" />
-        </fileset>
         <fileset dir="${thirdparty.jar.dir}">
-          <include name="*.jar" />
+          <include name="prod/*.jar" />
         </fileset>
       </classpath>
     </javac>
@@ -116,12 +110,9 @@
       <compilerarg line="-Xlint -Xlint:-serial -Xlint:-path"/>
       <bootclasspath path="${COMPILE_BOOTCLASSPATH}"/>
       <classpath>
-        <fileset dir="${connector-manager.thirdparty.jar.dir}">
+        <fileset dir="${thirdparty.jar.dir}">
           <include name="prod/*.jar" />
           <include name="tests/*.jar" />
-        </fileset>
-        <fileset dir="${thirdparty.jar.dir}">
-          <include name="*.jar" />
         </fileset>
         <pathelement location="${spi.jar.dir}/connector.jar" />
         <pathelement location="${spi.jar.dir}/connector-tests.jar" />
@@ -144,12 +135,9 @@
     <pathelement location="${spi.jarfile}" />
     <pathelement location="${spi.jar.dir}/connector.jar" />
     <pathelement location="${spi.jar.dir}/connector-tests.jar" />
-    <fileset dir="${connector-manager.thirdparty.jar.dir}">
+    <fileset dir="${thirdparty.jar.dir}">
       <include name="prod/*.jar" />
       <include name="tests/*.jar" />
-    </fileset>
-    <fileset dir="${thirdparty.jar.dir}">
-      <include name="*.jar" />
     </fileset>
   </path>
 
@@ -234,8 +222,7 @@
 
   <!-- Where Cobertura can find itself and its dependencies. -->
   <path id="cobertura.classpath">
-    <fileset dir="${connector-manager.thirdparty.jar.dir}/cobertura"
-             includes="**/*.jar" />
+    <fileset dir="${thirdparty.jar.dir}/cobertura" includes="**/*.jar" />
   </path>
   <taskdef classpathref="cobertura.classpath" resource="tasks.properties" />
 

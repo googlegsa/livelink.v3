@@ -14,7 +14,6 @@
 
 package com.google.enterprise.connector.otex;
 
-import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 
 import java.sql.Connection;
@@ -33,24 +32,11 @@ class JdbcFixture {
       + "DComment varchar, CreateDate timestamp, CreatedBy int, "
       + "OwnerID int, UserID int, Catalog int default 0)";
 
-  private static final String CREATE_TABLE_DTREEACL =
-      "create table DTreeACL (DataID int, RightID int, "
-          + "Name varchar, Permissions int, See int)";
-
   private static final String CREATE_TABLE_DTREEANCESTORS =
       "create table DTreeAncestors (DataID int, AncestorID int)";
 
   private static final String CREATE_TABLE_KDUAL =
       "create table KDual (dummy int primary key)";
-
-  private static final String CREATE_TABLE_KUAF =
-      "create table KUAF "
-      + "(ID int, Name varchar, Type int, GroupID int, UserData varchar," +
-      " UserPrivileges int)";
-
-  private static final String CREATE_TABLE_KUAFCHILDREN =
-      "create table KUAFChildren "
-      + "(ID int, ChildID int)";
 
   // TODO(jlacey): Turn this into a joined view on DTree and DVersData.
   private static final String CREATE_TABLE_WEBNODES =
@@ -73,17 +59,9 @@ class JdbcFixture {
     executeUpdate(
         CREATE_TABLE_DAUDITNEW,
         CREATE_TABLE_DTREE,
-        CREATE_TABLE_DTREEACL,
         CREATE_TABLE_DTREEANCESTORS,
         CREATE_TABLE_KDUAL,
-        CREATE_TABLE_KUAF,
-        CREATE_TABLE_KUAFCHILDREN,
         CREATE_TABLE_WEBNODES);
-
-    executeUpdate(
-        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
-            + " values(1000, 'Admin', 0, 2001, NULL,"
-            + Client.PRIV_PERM_BYPASS + ")");
   }
 
   protected void tearDown() throws SQLException {

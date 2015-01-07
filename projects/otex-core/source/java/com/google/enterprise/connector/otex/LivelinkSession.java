@@ -19,15 +19,13 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
-import com.google.enterprise.connector.spi.Lister;
-import com.google.enterprise.connector.spi.ListerAware;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.Retriever;
 import com.google.enterprise.connector.spi.RetrieverAware;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 
-class LivelinkSession implements Session, ListerAware, RetrieverAware {
+class LivelinkSession implements Session, RetrieverAware {
     /** The connector instance. */
     private final LivelinkConnector connector;
 
@@ -39,9 +37,6 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
 
     /** The authorization manager. */
     private final AuthorizationManager authorizationManager;
-
-    /** The Lister. */
-    private Lister lister;
 
     /** The Retriever. */
     private Retriever retriever;
@@ -64,18 +59,6 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
         this.authenticationManager = authenticationManager;
         this.authorizationManager = authorizationManager;
         this.retriever = null;
-        GroupAdaptor groupAdaptor =
-            new GroupAdaptor(connector, clientFactory.createClient());
-        String[] groupAdaptorArgs = {
-            "-Dgsa.hostname=" + connector.getGoogleFeedHost(),
-            "-Dserver.hostname=localhost",
-            "-Dserver.port=0",
-            "-Dserver.dashboardPort=0",
-            "-Dfeed.name=" + connector.getGoogleConnectorName(),
-            "-Dadaptor.fullListingSchedule="
-            + connector.getGroupFeedSchedule(),
-            };
-        this.lister = new AdaptorLister(groupAdaptor, groupAdaptorArgs);
     }
 
   /**
@@ -134,11 +117,6 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
     public AuthorizationManager getAuthorizationManager()
             throws RepositoryException {
         return authorizationManager;
-    }
-
-    @Override
-    public Lister getLister() throws RepositoryException {
-      return lister;
     }
 
   /**

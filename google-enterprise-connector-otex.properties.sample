@@ -34,9 +34,6 @@ build.bootclasspath = /System/Library/Frameworks/JavaVM.framework/Versions/1.6.0
 #javatest.connector.Password = livelink
 #javatest.connector.displayUrl = http://ll.example.com/Livelink/livelink.exe
 #javatest.connector.servtype = Oracle
-#javatest.connector.googleConnectorName = llconnector
-#javatest.connector.googleFeedHost = localhost
-#javatest.tests.httpServerPort = 8080
 
 javatest.connector.server = localhost
 javatest.connector.port = 2099
@@ -44,6 +41,3 @@ javatest.connector.username = Admin
 javatest.connector.Password = livelink
 javatest.connector.displayUrl = http://www.google.com
 javatest.connector.servtype = MSSQL
-javatest.connector.googleConnectorName = llconnector
-javatest.connector.googleFeedHost = localhost
-javatest.tests.dashboardPort = 5679
