@@ -1,0 +1,1 @@
+There is an Excel spreadsheet, [ContentHandlerPerformance.xls](http://google-enterprise-connector-otex.googlecode.com/svn/wiki/ContentHandlerPerformance.xls) in the wiki Subversion tree. The spreadsheet contains performance data and graphs for the various ContentHandler implementations, over a range of file sizes, up to 35 MB.
