@@ -82,11 +82,12 @@ class LivelinkAuthenticationManager
     public synchronized AuthenticationResponse authenticate(
             AuthenticationIdentity identity)
             throws RepositoryLoginException, RepositoryException {
-        if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.fine("AUTHENTICATE: " + identity.getUsername());
+        if (identity.getPassword() == null) {
+            LOGGER.warning("Group lookup is not supported. " +
+                "The connector feeds groups to the GSA.");
+            return new AuthenticationResponse(false, null);
+        }
 
-        // FIXME: different message text? or assume this can't
-        // happen because we control it in LivelinkConnector?
         if (clientFactory == null) {
             LOGGER.severe("Misconfigured connector; unable to authenticate");
             throw new RepositoryException("Missing Livelink client factory");
@@ -95,7 +96,7 @@ class LivelinkAuthenticationManager
         String username = identityResolver.getAuthenticationIdentity(identity);
         return authenticate(username, identity.getPassword());
     }
-	
+
     /**
      * Authenticates the given user for access to the back-end
      * Livelink. This separate helper method prevents access to the
@@ -112,23 +113,11 @@ class LivelinkAuthenticationManager
      */
     private AuthenticationResponse authenticate(String username,
         String password) throws RepositoryLoginException, RepositoryException {
-        try {
-            Client client = clientFactory.createClient(username, password);
+        Client client = clientFactory.createClient(username, password);
 
-            // Verify connectivity by calling GetServerInfo, just like
-            // LivelinkConnector.login does.
-            // TODO: We will want to use GetCookieInfo when we need to
-            // return the client data. Until then, GetServerInfo is
-            // faster.
-            ClientValue serverInfo = client.GetServerInfo();
-            if (LOGGER.isLoggable(Level.FINE))
-              LOGGER.fine("AUTHENTICATED: " + username + ": " +
-                serverInfo.hasValue());
-            return new AuthenticationResponse(serverInfo.hasValue(), null);
-        } catch (RepositoryException e) {
-            LOGGER.warning("Authentication failed for " +
-                username + "; " + e.getMessage());
-            throw e;
-        }
+        // Verify connectivity by calling GetServerInfo, just like
+        // LivelinkConnector.login does.
+        ClientValue serverInfo = client.GetServerInfo();
+        return new AuthenticationResponse(serverInfo.hasValue(), null);
     }
 }

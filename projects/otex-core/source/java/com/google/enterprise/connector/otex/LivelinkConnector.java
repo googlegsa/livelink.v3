@@ -2113,10 +2113,10 @@ public class LivelinkConnector implements Connector {
    * TODO: Figure out if that is still true.
    */
   private void init() throws RepositoryException {
-    // Make sure we have at least CM v 2.6.6 (google:folder property
-    // first appears in 2.6.6).
+    // Make sure we have at least CM v 3.2.0 (google:fragment property
+    // first appears in 3.2.0).
     try {
-      SpiConstants.class.getDeclaredField("PROPNAME_FOLDER");
+      SpiConstants.class.getDeclaredField("PROPNAME_FRAGMENT");
     } catch (java.lang.NoSuchFieldException e) {
       LOGGER.severe("This connector requires a newer version of the " +
           "Connector Manager");
