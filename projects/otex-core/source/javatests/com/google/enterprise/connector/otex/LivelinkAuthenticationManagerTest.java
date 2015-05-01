@@ -14,23 +14,51 @@
 
 package com.google.enterprise.connector.otex;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.google.enterprise.connector.spi.AuthenticationManager;
+import com.google.enterprise.connector.spi.AuthenticationResponse;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
+import com.google.enterprise.connector.util.testing.Logging;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+
+import java.util.ArrayList;
 
 /** Tests the {@code LivelinkAuthenticationManager}. */
-public class LivelinkAuthenticationManagerTest extends TestCase {
+public class LivelinkAuthenticationManagerTest {
+  @Test
   public void testNullClientFactory() throws RepositoryException {
     try {
       AuthenticationManager lam = new LivelinkAuthenticationManager();
-      lam.authenticate(new SimpleAuthenticationIdentity("fred"));
+      lam.authenticate(new SimpleAuthenticationIdentity("fred", "opensesame"));
       fail();
     } catch (RepositoryException e) {
       if (e.getMessage().indexOf("client factory") == -1) {
         throw e;
       }
     }
+  }
+
+  @Test
+  public void testGroupLookup() throws RepositoryException {
+    String expectedMessage = "Group lookup is not supported";
+    ArrayList<String> logMessages = new ArrayList<String>();
+    Logging.captureLogMessages(LivelinkAuthenticationManager.class,
+        expectedMessage, logMessages);
+
+    AuthenticationManager lam = new LivelinkAuthenticationManager();
+    AuthenticationResponse response =
+        lam.authenticate(new SimpleAuthenticationIdentity("fred"));
+    assertFalse(response.toString(), response.isValid());
+    assertNull(response.toString(), response.getGroups());
+    assertEquals(logMessages.toString(), 1, logMessages.size());
+    assertTrue(logMessages.toString(),
+        logMessages.get(0).contains(expectedMessage));
   }
 }
