@@ -15,21 +15,11 @@
 package com.google.enterprise.connector.otex;
 
 import static com.google.common.base.Throwables.propagateIfPossible;
-import static java.net.HttpURLConnection.HTTP_SEE_OTHER;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.isA;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-import com.google.enterprise.adaptor.Adaptor;
-import com.google.enterprise.adaptor.AdaptorContext;
-import com.google.enterprise.adaptor.Config;
-import com.google.enterprise.adaptor.DocIdPusher;
+import com.google.common.collect.ImmutableList;
+import com.google.enterprise.connector.spi.DocumentAcceptor;
 import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.RepositoryException;
 
@@ -37,56 +27,52 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.ConnectException;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class AdaptorListerTest {
+public class AbstractListerTest {
   private static final Logger LOGGER =
-      Logger.getLogger(AdaptorListerTest.class.getName());
+      Logger.getLogger(AbstractListerTest.class.getName());
 
-  private int dashboardPort;
-  private Adaptor adaptor;
-  private AdaptorLister testLister;
+  private interface TraceableLister extends Lister {
+    List<String> getMethodCalls();
+  }
+
+  private static class MockAbstractLister extends AbstractLister
+      implements TraceableLister {
+    private final List<String> methodCalls = new LinkedList<String>();
+    public List<String> getMethodCalls() { return methodCalls; }
+
+    @Override public void init() { methodCalls.add("init"); }
+    @Override public void run() { methodCalls.add("run"); waitForShutdown(); }
+    @Override public void destroy() { methodCalls.add("destroy"); }
+
+    @Override
+    public void setDocumentAcceptor(DocumentAcceptor documentAcceptor) {}
+  }
+
+  private static class MockLister implements TraceableLister {
+    private final List<String> methodCalls = new LinkedList<String>();
+    public List<String> getMethodCalls() { return methodCalls; }
+
+    @Override public void start() { methodCalls.add("start"); }
+    @Override public void shutdown() { methodCalls.add("shutdown"); }
+
+    @Override
+    public void setDocumentAcceptor(DocumentAcceptor documentAcceptor) {}
+  }
+
+  private TraceableLister testLister;
+  private List<String> expectedCalls;
   private List<Exception> exceptionList;
   private Thread listerThread;
 
   @Before
-  public void setUp() throws Exception {
-    dashboardPort =
-        Integer.parseInt(System.getProperty("tests.dashboardPort"));
-    adaptor = getMockAdaptor();
-    String[] adaptorArgs = {
-        "-Dgsa.version=7.2.0-90",
-        "-Dgsa.hostname=localhost",
-        "-Dserver.hostname=localhost",
-        "-Dserver.port=0",
-        "-Dserver.dashboardPort=" + dashboardPort,
-        };
-    testLister = new AdaptorLister(adaptor, adaptorArgs);
+  public void setUp() {
+    testLister = new MockAbstractLister();
     exceptionList = new LinkedList<Exception>();
-  }
-
-  /**
-   * Gets a mock adaptor that expects all methods except getDocContent
-   * to be called at least once.
-   */
-  private Adaptor getMockAdaptor() throws Exception {
-    Adaptor adaptor = createMock(Adaptor.class);
-    adaptor.initConfig(isA(Config.class));
-    expectLastCall().atLeastOnce();
-    adaptor.init(isA(AdaptorContext.class));
-    expectLastCall().atLeastOnce();
-    adaptor.getDocIds(isA(DocIdPusher.class));
-    expectLastCall().atLeastOnce();
-    adaptor.destroy();
-    expectLastCall().atLeastOnce();
-    replay(adaptor);
-    return adaptor;
   }
 
   @After
@@ -95,7 +81,7 @@ public class AdaptorListerTest {
     if (!exceptionList.isEmpty()) {
       propagateIfPossible(exceptionList.get(0), RepositoryException.class);
     }
-    verify(adaptor);
+    assertEquals(expectedCalls, testLister.getMethodCalls());
   }
 
   private Thread startListerThread(final Lister testLister) {
@@ -119,8 +105,10 @@ public class AdaptorListerTest {
   @Test
   public void testShutdownLister()
       throws RepositoryException, InterruptedException {
+    expectedCalls = ImmutableList.of("init", "run", "destroy");
+
     listerThread = startListerThread(testLister);
-    Thread.sleep(500L);
+    Thread.sleep(100L);
 
     testLister.shutdown();
   }
@@ -128,8 +116,10 @@ public class AdaptorListerTest {
   @Test
   public void testInterruptLister()
       throws RepositoryException, InterruptedException {
+    expectedCalls = ImmutableList.of("init", "run", "destroy");
+
     listerThread = startListerThread(testLister);
-    Thread.sleep(500L);
+    Thread.sleep(100L);
 
     try {
       listerThread.interrupt();
@@ -144,38 +134,31 @@ public class AdaptorListerTest {
    * When this test fails, it is very likely to hang. Check test.log
    * for the root cause.
    */
-  @Test
-  public void testRaceCondition() throws Exception {
+  private void testRaceCondition()
+      throws RepositoryException, InterruptedException {
     // Ready, set, go! The call to shutdown happens first because it's
     // running in the current thread.
     listerThread = startListerThread(testLister);
     testLister.shutdown();
     Thread second = startListerThread(testLister);
+    Thread.sleep(100L);
     listerThread.join();
-
-    // We need more time for the HttpServer to startup.
-    Thread.sleep(1000L);
-
-    URL dashboardUrl = new URL("http", "localhost", dashboardPort, "/");
-    HttpURLConnection dashboard =
-        (HttpURLConnection) dashboardUrl.openConnection();
-    dashboard.setInstanceFollowRedirects(false);
-    assertEquals(HTTP_SEE_OTHER, dashboard.getResponseCode());
-    assertEquals(dashboardUrl + "dashboard",
-        dashboard.getHeaderField("Location"));
 
     testLister.shutdown();
     second.join();
+  }
 
-    // This is the crucial test, making sure that the dashboard HTTP
-    // server is shutdown.
-    dashboard = (HttpURLConnection) dashboardUrl.openConnection();
-    dashboard.setInstanceFollowRedirects(false);
-    try {
-      dashboard.connect();
-      fail("Expected a ConnectException but got HTTP "
-          + dashboard.getResponseCode());
-    } catch (ConnectException expected) {
-    }
+  @Test
+  public void testFixedRaceCondition() throws Exception {
+    expectedCalls =
+        ImmutableList.of("init", "run", "destroy", "init", "run", "destroy");
+    testRaceCondition();
+  }
+
+  @Test
+  public void testBrokenRaceCondition() throws Exception {
+    testLister = new MockLister();
+    expectedCalls = ImmutableList.of("shutdown", "start", "start", "shutdown");
+    testRaceCondition();
   }
 }

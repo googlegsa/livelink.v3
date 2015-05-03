@@ -14,27 +14,22 @@
 
 package com.google.enterprise.connector.otex;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.enterprise.adaptor.AbstractAdaptor;
 import com.google.enterprise.adaptor.Adaptor;
 import com.google.enterprise.adaptor.Application;
 import com.google.enterprise.connector.spi.DocumentAcceptor;
-import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 import java.util.Arrays;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Implementation of {@link Lister} that runs an {@code Adaptor}.
+ * Implementation of {@link AbstractLister} that runs an {@code Adaptor}.
  */
-public class AdaptorLister implements Lister {
+public class AdaptorLister extends AbstractLister {
   private static final Logger LOGGER =
       Logger.getLogger(AdaptorLister.class.getName());
 
@@ -43,12 +38,6 @@ public class AdaptorLister implements Lister {
   private final String[] adaptorArgs;
 
   private Application adaptorApplication = null;
-
-  private final Lock lock = new ReentrantLock();
-
-  private final Condition isStarted = lock.newCondition();
-
-  private final Condition isStopped = lock.newCondition();
 
   public AdaptorLister(Adaptor adaptor, String[] adaptorArgs) {
     this.adaptor = adaptor;
@@ -59,67 +48,22 @@ public class AdaptorLister implements Lister {
   public void setDocumentAcceptor(DocumentAcceptor documentAcceptor) {
   }
 
-  private Application startAdaptor() {
+  @Override
+  public void init() {
     LOGGER.log(Level.CONFIG, "Arguments to Adaptor: {0}",
         Arrays.asList(adaptorArgs));
-    return AbstractAdaptor.main(adaptor, adaptorArgs);
+    adaptorApplication = AbstractAdaptor.main(adaptor, adaptorArgs);
   }
 
   @Override
-  public void start() throws RepositoryException {
-    LOGGER.log(Level.FINEST, "Waiting to start adaptor");
-    lock.lock();
-    try {
-      while (adaptorApplication != null) {
-        if (!isStopped.await(1L, MINUTES)) {
-          throw new RepositoryException(
-              "Timed out waiting for previous lister to stop");
-        }
-      }
-      LOGGER.info("Starting adaptor");
-      adaptorApplication = startAdaptor();
-      isStarted.signal();
-
-      // This start method needs to be blocked, so that the lister shutdown
-      // method can be invoked.
-      LOGGER.log(Level.FINEST, "Blocking lister until shutdown");
-      while (adaptorApplication != null) {
-        isStopped.awaitUninterruptibly();
-      }
-      LOGGER.log(Level.FINEST, "Exiting lister");
-    } catch (InterruptedException e) {
-      LOGGER.log(Level.INFO, "Interrupted waiting for previous lister to stop",
-          e);
-      Thread.currentThread().interrupt();
-    } finally {
-      lock.unlock();
-    }
+  public void run() throws RepositoryException {
+    // This method needs to be blocked, so that the lister shutdown
+    // method can be invoked.
+    waitForShutdown();
   }
 
   @Override
-  public void shutdown() throws RepositoryException {
-    LOGGER.log(Level.FINEST, "Waiting to shutdown adaptor");
-    lock.lock();
-    try {
-      while (adaptorApplication == null) {
-        if (!isStarted.await(1L, MINUTES)) {
-          throw new RepositoryException(
-              "Timed out waiting for lister to start");
-        }
-      }
-      LOGGER.info("Shutting down adaptor");
-      try {
-        adaptorApplication.stop(1L, SECONDS);
-      } finally {
-        adaptorApplication = null;
-        LOGGER.log(Level.FINEST, "Shutting down lister");
-        isStopped.signal();
-      }
-    } catch (InterruptedException e) {
-      LOGGER.log(Level.INFO, "Interrupted waiting for lister to start", e);
-      Thread.currentThread().interrupt();
-    } finally {
-      lock.unlock();
-    }
+  public void destroy() throws RepositoryException {
+    adaptorApplication.stop(1L, SECONDS);
   }
 }
