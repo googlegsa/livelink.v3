@@ -26,13 +26,17 @@
     <ant dir="${otex-lapi.dir}" />
   </target>
 
+  <target name="test">
+    <ant dir="${otex-core.dir}" target="test" />
+  </target>
+
   <target name="init-package" depends="svn.svn-branch">
     <mkdir dir="${downloads.dir}" />
     <property name="downloads.prefix" value="connector-otex-${svn.branch}" />
     <property name="repackage.prefix" value="connector-otex-${version}"/>
   </target>
 
-  <target name="bin-archive" depends="init-package">
+  <target name="downloads" depends="init-package">
     <property name="bin.archive" value="${downloads.prefix}" />
     <zip destfile="${downloads.dir}/${bin.archive}.zip">
       <zipfileset dir="${otex-lapi.dir}/dist/jar"
@@ -47,14 +51,10 @@
         prefix="${bin.archive}/License" />
     </zip>
     <checksum algorithm="SHA-1" file="${downloads.dir}/${bin.archive}.zip"/>
-  </target>
 
-  <target name="src-archive" depends="init-package">
     <archive-source downloads.dir="${downloads.dir}"
                     downloads.prefix="${downloads.prefix}" />
   </target>
-
-  <target name="downloads" depends="bin-archive,src-archive"/>
 
   <target name="repackage" depends="init-package"
           description="Repackage release candidate files for release.">
@@ -63,6 +63,6 @@
                          repackage.prefix="${repackage.prefix}" />
   </target>
 
-  <target name="everything" depends="clean,build,downloads"/>
+  <target name="everything" depends="clean,build,test,downloads"/>
 
 </project>
