@@ -188,23 +188,35 @@ public class MockClient implements Client {
         String h2 = "CONVERT(AuditDate, VARCHAR(23))";
         view = view.replace(sqlServer, h2).replace(oracle, h2);
 
-        String[] fields;
-        Object[][] values;
-        try {
-            Statement stmt = jdbcConnection.createStatement();
-            try {
-                ResultSet rs =
-                    stmt.executeQuery(getSqlQuery(query, view, columns));
-                ResultSetMetaData rsmd = rs.getMetaData();
-                fields = getResultSetColumns(rsmd, columns);
-                values = getResultSetValues(rs, rsmd);
-            } finally {
-                stmt.close();
-            }
-        } catch (SQLException e) {
-            throw new RepositoryException("Database error", e);
-        }
-        return new MockClientValue(fields, values);
+        // Rewrite an Oracle USING join to use ON for H2. USING also
+        // merges the two DataID columns, so we need to mimic that.
+        // See "LivelinkTraversalManager.getCandidates" in SqlQueries.
+        view = view.replace("* from DTree join DTreeAncestors using (DataID)",
+            "DTree.*, AncestorID from DTree join DTreeAncestors "
+            + "on DTree.DataID = DTreeAncestors.DataID");
+
+        return executeQuery(query, view, columns);
+    }
+
+    private ClientValue executeQuery(String query, String view,
+        String[] columns) throws RepositoryException {
+      String[] fields;
+      Object[][] values;
+      try {
+          Statement stmt = jdbcConnection.createStatement();
+          try {
+              ResultSet rs =
+                  stmt.executeQuery(getSqlQuery(query, view, columns));
+              ResultSetMetaData rsmd = rs.getMetaData();
+              fields = getResultSetColumns(rsmd, columns);
+              values = getResultSetValues(rs, rsmd);
+          } finally {
+              stmt.close();
+          }
+      } catch (SQLException e) {
+          throw new RepositoryException("Database error", e);
+      }
+      return new MockClientValue(fields, values);
     }
 
     /** Extracts field names from any select expressions. */
