@@ -260,6 +260,9 @@ public class LivelinkConnector implements Connector {
   /** Whether to use DTreeAncestors table instead of a slower method. */
   private boolean useDTreeAncestors;
 
+  /** Whether to use DTreeAncestors in the initial candidates query. */
+  private boolean useDTreeAncestorsFirst;
+
   /** The <code>Genealogist</code> implementation class name. */
   private String genealogist;
 
@@ -1527,6 +1530,43 @@ public class LivelinkConnector implements Connector {
    */
   public boolean getUseDTreeAncestors() {
     return useDTreeAncestors;
+  }
+
+  /**
+   * Sets whether or not to use the DTreeAncestors table in the initial
+   * candidates query, if needed, rather than waiting and using it in the
+   * results query.
+   *
+   * @param useDTreeAncestorsFirst <code>true</code> to use the
+   * DTreeAncestors table in the candidates query, if needed, or
+   * <code>false</code> to use it in the results query or not at all
+   */
+  public void setUseDTreeAncestorsFirst(final boolean useDTreeAncestorsFirst) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("USE DTREEANCESTORS FIRST: " + useDTreeAncestorsFirst);
+    this.useDTreeAncestorsFirst = useDTreeAncestorsFirst;
+    propertyValidators.add(new PropertyValidator() {
+        void validate() {
+          if (useDTreeAncestorsFirst && !useDTreeAncestors) {
+            throw new ConfigurationException(
+                "useDTreeAncestorsFirst = true is not compatible with "
+                + "useDTreeAncestors = false.",
+                "ancestralConflict", null);
+          }
+        }
+      });
+  }
+
+  /**
+   * Gets whether or not to use the DTreeAncestors table in the candidates
+   * query.
+   *
+   * @return <code>true</code> to use the DTreeAncestors table in the
+   * candidates query, if needed, or <code>false</code> to use it in the
+   * results query or not at all
+   */
+  public boolean getUseDTreeAncestorsFirst() {
+    return useDTreeAncestorsFirst;
   }
 
   /**

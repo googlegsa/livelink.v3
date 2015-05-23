@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.enterprise.connector.otex.client.Client;
@@ -83,9 +84,15 @@ public class LivelinkTraversalManagerTest extends TestCase {
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(24, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(24, 2000)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(42, 6)",
         "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(42, 2000)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(66, 6)",
+        "insert into DTreeAncestors(DataID, AncestorID) "
+        + "values(66, 2000)",
         "insert into DTreeAncestors(DataID, AncestorID) "
         + "values(6, 2000)",
         "insert into DTreeAncestors(DataID, AncestorID) "
@@ -102,6 +109,12 @@ public class LivelinkTraversalManagerTest extends TestCase {
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
         + "MimeType, DataSize, UserID) "
         + "values(66, 6, -2000, 144, sysdate, 'text/xml', 1729, 1001)",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
+        + "UserID) "
+        + "values(6, 2000, -2000, 0, timestamp'2002-02-02 00:00:00', 1001)",
+        "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
+        + "UserID) "
+        + "values(2000, -1, -2000, 0, timestamp'2002-01-01 00:00:00', 1001)",
         "insert into WebNodes(DataID, ParentID, OwnerID, SubType, ModifyDate, "
         + "MimeType, UserID) "
         + "values(2901, -1, -2901, 901, timestamp'2001-01-01 00:00:00', null,"
@@ -563,15 +576,23 @@ public class LivelinkTraversalManagerTest extends TestCase {
     assertEquals("1729", Value.getSingleValueString(doc, "MyDataSize"));
   }
 
+  private List<Integer> getDataIds(ClientValue records)
+      throws RepositoryException {
+    ImmutableList.Builder<Integer> dataIds = ImmutableList.builder();
+    for (int i = 0; i < records.size(); i++) {
+      dataIds.add(records.toInteger(i, "DataID"));
+    }
+    return dataIds.build();
+  }
+
   public void testGetResults() throws RepositoryException {
     Session sess = conn.login();
     LivelinkTraversalManager ltm =
         (LivelinkTraversalManager) sess.getTraversalManager();
 
-    // Not sure why, but 6 and 2000 are not in the WebNodes data.
-    // 2901 is, but it's an excluded volume type.
+    // 2901 is an excluded volume type.
     ClientValue results = ltm.getResults("6,24,42,2000,2901", new Date());
-    assertEquals(2, results.size());
+    assertEquals(ImmutableList.of(24, 42, 2000, 6), getDataIds(results));
   }
 
   private LivelinkTraversalManager getObjectUnderTest(Client traversalClient)
@@ -608,13 +629,14 @@ public class LivelinkTraversalManagerTest extends TestCase {
    */
   private void testStartTraversal(boolean useDTreeAncestors)
       throws SQLException, RepositoryException {
-    LivelinkTraversalManager ltm = getObjectUnderTest(useDTreeAncestors, null);
+    LivelinkTraversalManager ltm =
+        getObjectUnderTest(useDTreeAncestors, false, null);
 
     // 66 is modified later, and appears in the candidates, but appears
     // updated because of its current date in WebNodes, so it's left
     // out of the results.
     DocumentList list = ltm.startTraversal();
-    assertDocumentListEquals(ImmutableList.of("24", "42"), list);
+    assertDocumentListEquals(ImmutableList.of("24", "42", "6"), list);
 
     // When nextDocument returns null, the advance checkpoint is used,
     // which includes 66 with its original ModifyDate, since that was
@@ -667,8 +689,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
   }
 
   private LivelinkTraversalManager getObjectUnderTest(
-      boolean useDTreeAncestors, String sqlWhereCondition)
-      throws RepositoryException, SQLException {
+      boolean useDTreeAncestors, boolean useDTreeAncestorsFirst,
+      String sqlWhereCondition) throws RepositoryException, SQLException {
     // This is a little twisted. We need to call login after setting
     // includedLocationNodes for it to sanitize the value, but we don't
     // want to validate the sqlWhereCondition, since we're explicitly
@@ -676,6 +698,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
     conn.setIncludedLocationNodes("6");
     conn.login();
     conn.setUseDTreeAncestors(useDTreeAncestors);
+    conn.setUseDTreeAncestorsFirst(useDTreeAncestorsFirst);
     conn.setSqlWhereCondition(sqlWhereCondition);
 
     Client client = new MockClient();
@@ -683,56 +706,97 @@ public class LivelinkTraversalManagerTest extends TestCase {
         conn.getContentHandler(client));
   }
 
-  private void testSqlWhereCondition(boolean useDTreeAncestors,
-      String sqlWhereCondition, int expectedRows) throws Exception {
+  private void testGetCandidates(boolean useDTreeAncestors,
+      boolean useDTreeAncestorsFirst, List<Integer> expected)
+      throws RepositoryException, SQLException {
     LivelinkTraversalManager ltm =
-        getObjectUnderTest(useDTreeAncestors, sqlWhereCondition);
-    ClientValue results = ltm.getResults("24,42", new Date());
+        getObjectUnderTest(useDTreeAncestors, useDTreeAncestorsFirst, "");
+    ClientValue candidates = ltm.getCandidates(new Checkpoint(), 100);
+    assertEquals(expected, getDataIds(candidates));
 
-    if (expectedRows == 0) {
-      assertNullOrEmpty(results);
-    } else {      
-      assertEquals(expectedRows, results.size());
-    }
+    // No matter when or how rows are filtered, we should always end up
+    // with the contents of the includedLocationNodes.
+    ClientValue results =
+        ltm.getResults(Joiner.on(',').join(expected), new Date());
+    assertEquals(ImmutableList.of(24, 42, 6), getDataIds(results));
   }
 
-  private void assertNullOrEmpty(ClientValue value) {
-    if (value != null) {
-      assertEquals(0, value.size());
+  public void testGetCandidates_all() throws Exception {
+    testGetCandidates(true, false,
+        ImmutableList.of(24, 42, 2000, 2901, 6, 66));
+  }
+
+  public void testGetCandidates_gen() throws Exception {
+    testGetCandidates(false, false,
+        ImmutableList.of(24, 42, 2000, 2901, 6, 66));
+  }
+
+  public void testGetCandidates_dta() throws Exception {
+    testGetCandidates(true, true, ImmutableList.of(24, 42, 6, 66));
+  }
+
+  /**
+   * Tests getCandidates with a non-null checkpoint, which includes
+   * both the DTreeAncestors and checkpoint conditions in the query.
+   * The current timestamp means we will not find any candidates.
+   */
+  public void testGetCandidates_empty() throws Exception {
+    LivelinkTraversalManager ltm = getObjectUnderTest(true, true, "");
+    Checkpoint checkpoint = new Checkpoint();
+    checkpoint.setInsertCheckpoint(new Date(), 0);
+    ClientValue candidates = ltm.getCandidates(checkpoint, 100);
+    assertEquals(ImmutableList.of(), getDataIds(candidates));
+  }
+
+  /*
+   * TODO(jlacey): new Date() competes with sysdate in the WebNodes
+   * date for object ID 66, so tests using new Date() are flaky. See
+   * the TODO in testStartTraversal.
+   */
+  private void testSqlWhereCondition(boolean useDTreeAncestors,
+      String sqlWhereCondition, List<?> expected) throws Exception {
+    LivelinkTraversalManager ltm =
+        getObjectUnderTest(useDTreeAncestors, false, sqlWhereCondition);
+    ClientValue results = ltm.getResults("2000,6,66,24,42", new Date());
+
+    if (results == null) {
+      assertTrue("Expected empty but got " + expected, expected.size() == 0);
+    } else {
+      assertEquals(expected, getDataIds(results));
     }
   }
 
   public void testSqlWhereCondition_none_dta() throws Exception {
-    testSqlWhereCondition(true, "", 2);
+    testSqlWhereCondition(true, "", ImmutableList.of(24, 42, 6));
   }
 
   public void testSqlWhereCondition_none_gen() throws Exception {
-    testSqlWhereCondition(false, "", 2);
+    testSqlWhereCondition(false, "", ImmutableList.of(24, 42, 6));
   }
 
   public void testSqlWhereCondition_empty_dta() throws Exception {
-    testSqlWhereCondition(true, "DataID = 0", 0);
+    testSqlWhereCondition(true, "DataID = 0", ImmutableList.of());
   }
 
   public void testSqlWhereCondition_empty_gen() throws Exception {
-    testSqlWhereCondition(false, "DataID = 0", 0);
+    testSqlWhereCondition(false, "DataID = 0", ImmutableList.of());
   }
 
   public void testSqlWhereCondition_condition_dta() throws Exception {
-    testSqlWhereCondition(true, "DataID > 40", 1);
+    testSqlWhereCondition(true, "DataID > 40", ImmutableList.of(42));
   }
 
   public void testSqlWhereCondition_condition_gen() throws Exception {
-    testSqlWhereCondition(false, "DataID > 40", 1);
+    testSqlWhereCondition(false, "DataID > 40", ImmutableList.of(42));
   }
 
   /** Tests selecting a column that only exists in WebNodes and not DTree. */
   public void testSqlWhereCondition_webnodes_dta() throws Exception {
-    testSqlWhereCondition(true, "MimeType is not null", 1);
+    testSqlWhereCondition(true, "MimeType is not null", ImmutableList.of(42));
   }
 
   /** Tests selecting a column that only exists in WebNodes and not DTree. */
   public void testSqlWhereCondition_webnodes_gen() throws Exception {
-    testSqlWhereCondition(false, "MimeType is not null", 1);
+    testSqlWhereCondition(false, "MimeType is not null", ImmutableList.of(42));
   }
 }

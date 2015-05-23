@@ -264,6 +264,13 @@ public class MockClient implements Client {
         String h2 = "CONVERT(AuditDate, VARCHAR(23))";
         view = view.replace(sqlServer, h2).replace(oracle, h2);
 
+        // Rewrite an Oracle USING join to use ON for H2. USING also
+        // merges the two DataID columns, so we need to mimic that.
+        // See "LivelinkTraversalManager.getCandidates" in SqlQueries.
+        view = view.replace("* from DTree join DTreeAncestors using (DataID)",
+            "DTree.*, AncestorID from DTree join DTreeAncestors "
+            + "on DTree.DataID = DTreeAncestors.DataID");
+
         return executeQuery(query, view, columns);
     }
 

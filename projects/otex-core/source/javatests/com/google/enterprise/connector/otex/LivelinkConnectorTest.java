@@ -367,7 +367,7 @@ public class LivelinkConnectorTest extends TestCase {
     connector.login();
   }
 
-  /** Tests showHiddenItems = false with useDTreeAncestors = false. */
+  /** Tests showHiddenItems = true with useDTreeAncestors = false. */
   public void testShowHiddenItems_useDTreeAncestorsFalseOK()
       throws RepositoryException {
     connector.setShowHiddenItems("true");
@@ -384,6 +384,34 @@ public class LivelinkConnectorTest extends TestCase {
       connector.login();
       fail("Expected an exception");
     } catch (ConfigurationException e) {
+    }
+  }
+
+  /** Tests useDTreeAncestorsFirst = false with useDTreeAncestors = true. */
+  public void testUseDTreeAncestorsFirst_useDTreeAncestorsTrue()
+      throws RepositoryException {
+    connector.setUseDTreeAncestorsFirst(false);
+    connector.setUseDTreeAncestors(true);
+    connector.login();
+  }
+
+  /** Tests useDTreeAncestorsFirst = false with useDTreeAncestors = false. */
+  public void testUseDTreeAncestorsFirst_useDTreeAncestorsFalseOK()
+      throws RepositoryException {
+    connector.setUseDTreeAncestorsFirst(false);
+    connector.setUseDTreeAncestors(false);
+    connector.login();
+  }
+
+  /** Tests useDTreeAncestorsFirst = true with useDTreeAncestors = false. */
+  public void testUseDTreeAncestorsFirst_useDTreeAncestorsFalseError()
+      throws RepositoryException {
+    connector.setUseDTreeAncestorsFirst(true);
+    connector.setUseDTreeAncestors(false);
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (ConfigurationException expected) {
     }
   }
 

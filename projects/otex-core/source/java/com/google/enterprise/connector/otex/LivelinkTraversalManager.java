@@ -687,7 +687,11 @@ class LivelinkTraversalManager
     String startDescendants;
     String excludedDescendants;
     if (connector.getUseDTreeAncestors()) {
-      startDescendants = getDescendants(startNodes, candidatesList);
+      if (connector.getUseDTreeAncestorsFirst()) {
+        startDescendants = null;
+      } else {
+        startDescendants = getDescendants(startNodes, candidatesList);
+      }
       excludedDescendants = (Strings.isNullOrEmpty(excludedLocationNodes))
           ? null : getDescendants(excludedLocationNodes, candidatesList);
     } else {
@@ -699,14 +703,13 @@ class LivelinkTraversalManager
         "LivelinkTraversalManager.getMatching",
         /* 0 */ candidatesList,
         /* 1 */ choice(Strings.isNullOrEmpty(startNodes)), // [sic]
-        /* 2 */ choice(connector.getUseDTreeAncestors()),
+        /* 2 */ choice(!Strings.isNullOrEmpty(startDescendants)),
         /* 3 */ startDescendants,
         /* 4 */ choice(!Strings.isNullOrEmpty(excludedVolumes)),
         /* 5 */ excludedVolumes,
         /* 6 */ choice(!Strings.isNullOrEmpty(excludedNodeTypes)),
         /* 7 */ excludedNodeTypes,
-        /* 8 */ choice(connector.getUseDTreeAncestors()
-            && !Strings.isNullOrEmpty(excludedLocationNodes)),
+        /* 8 */ choice(!Strings.isNullOrEmpty(excludedDescendants)),
         /* 9 */ excludedDescendants,
         /* 10 */ choice(!Strings.isNullOrEmpty(sqlWhereCondition)),
         /* 11 */ sqlWhereCondition,
@@ -754,14 +757,37 @@ class LivelinkTraversalManager
    * candidates when the traversal user does not have permission for
    * any of the potential candidates.
    */
-  private ClientValue getCandidates(Checkpoint checkpoint,
+  @VisibleForTesting
+  ClientValue getCandidates(Checkpoint checkpoint,
       int batchsz) throws RepositoryException {
+    String startNodes;
+    String ancestorNodes;
+    if (connector.getUseDTreeAncestorsFirst()) {
+      startNodes = connector.getIncludedLocationNodes();
+      if (Strings.isNullOrEmpty(startNodes)) {
+        ancestorNodes = null;
+      } else {
+        ancestorNodes = Genealogist.getAncestorNodes(startNodes);
+      }
+    } else {
+      startNodes = null;
+      ancestorNodes = null;
+    }
+
     String insertDate = (checkpoint.insertDate != null)
         ? dateFormat.toSqlString(checkpoint.insertDate) : null;
-    return sqlQueries.execute(sysadminClient, "CANDIDATES QUERY",
-        "LivelinkTraversalManager.getCandidates",
-        choice(checkpoint.insertDate != null), insertDate,
-        checkpoint.insertDataId, batchsz);
+
+    return sysadminClient.ListNodes(
+        sqlQueries.getWhere("CANDIDATES QUERY",
+            "LivelinkTraversalManager.getCandidates",
+            choice(!Strings.isNullOrEmpty(startNodes)),
+            ancestorNodes, startNodes,
+            choice(checkpoint.insertDate != null), insertDate,
+            checkpoint.insertDataId, batchsz),
+        sqlQueries.getFrom("CANDIDATES VIEW",
+            "LivelinkTraversalManager.getCandidates",
+            choice(!Strings.isNullOrEmpty(startNodes))),
+        sqlQueries.getSelect("LivelinkTraversalManager.getCandidates"));
   }
 
   /** Fetches the list of Deleted Items candidates for SQL Server. */

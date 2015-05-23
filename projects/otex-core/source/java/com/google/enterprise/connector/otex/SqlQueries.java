@@ -58,9 +58,23 @@ class SqlQueries {
     return client.ListNodesNoThrow(query, view, columns);
   }
 
+  public String[] getSelect(String key) {
+    return resources.getStringArray(key + ".select");
+  }
+
+  public String getFrom(String logPrefix, String key, Object... parameters) {
+    String pattern = resources.getString(key + ".from");
+    return getResource(logPrefix, "VIEW KEY", key, pattern, parameters);
+  }
+
   public String getWhere(String logPrefix, String key, Object... parameters) {
     String pattern = resources.getString(key + ".where");
-    LOGGER.log(Level.FINEST, "QUERY KEY: {0}", key);
+    return getResource(logPrefix, "QUERY KEY", key, pattern, parameters);
+  }
+
+  private String getResource(String logPrefix, String logKeyPrefix, String key,
+      String pattern, Object... parameters) {
+    LOGGER.log(Level.FINEST, "{0}: {1}", new Object[] { logKeyPrefix, key });
     String query = MessageFormat.format(pattern, parameters);
     if (logPrefix != null && LOGGER.isLoggable(Level.FINEST))
       LOGGER.finest(logPrefix + ": " + query);
@@ -89,10 +103,6 @@ class SqlQueries {
   /** Select list column for AuditDate with milliseconds for SQL Server. */
   private static final String AUDIT_DATE_SQL_SERVER =
       "CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate";
-
-  /** The ordered, derived view for DTree on Oracle. */
-  private static final String DTREE_VIEW_ORACLE =
-      "(select * from DTree" + ORDER_BY + ")";
 
   /** The ordered, derived view for DAuditNew on Oracle. */
   private static final String DAUDITNEW_VIEW_ORACLE = "(select b.*, "
@@ -293,14 +303,16 @@ class SqlQueries {
         { "LivelinkTraversalManager.getCandidates.from",
           "DTree" },
         { "LivelinkTraversalManager.getCandidates.where",
-          // The double ORDER_BY is required because the first applies
+          // The double ORDER BY is required because the first applies
           // to the subquery using TOP, and the second ensures that the
           // returned results are sorted (for accurate checkpoints).
-          "DataID in (select top {3,number,#} DataID from DTree"
-          + "{0,choice,0#|1#' where "
-          + "(ModifyDate > ''''{1}'''' or (ModifyDate = ''''{1}'''' "
-          + "and DataID > {2,number,#}))'}"
-          + ORDER_BY + ")" + ORDER_BY },
+          "DataID in (select top {6,number,#} T.DataID from DTree T"
+          + "{0,choice,0#|1# join DTreeAncestors Anc on T.DataID = Anc.DataID "
+          + "where (AncestorID in ({1}) or T.DataID in ({2}))}"
+          + "{3,choice,0#|1#'{0,choice,0# where |1# and }"
+          + "(ModifyDate > ''''{4}'''' or (ModifyDate = ''''{4}'''' "
+          + "and T.DataID > {5,number,#}))'}"
+          + " order by ModifyDate, T.DataID)" + ORDER_BY },
 
         { "LivelinkTraversalManager.getDeletes.select",
           new String[] {
@@ -390,16 +402,18 @@ class SqlQueries {
             "ModifyDate",
             "DataID" } },
         { "LivelinkTraversalManager.getCandidates.from",
-          DTREE_VIEW_ORACLE },
+          "(select * from DTree{0,choice,0#|1#" +
+          " join DTreeAncestors using (DataID)}" + ORDER_BY + ")" },
         { "LivelinkTraversalManager.getCandidates.where",
           // The inner format containing a # avoids thousands separators
           // in the DataID value, but that requires quoting the choice
           // subformat, which triggers some crazy quoting rules.
-          "{0,choice,0#|1#'"
-          + "(ModifyDate > TIMESTAMP''''{1}'''' or "
-          + "(ModifyDate = TIMESTAMP''''{1}'''' and DataID > {2,number,#})) "
+          "{0,choice,0#|1#(AncestorID in ({1}) or DataID in ({2})) and }"
+          + "{3,choice,0#|1#'"
+          + "(ModifyDate > TIMESTAMP''''{4}'''' or "
+          + "(ModifyDate = TIMESTAMP''''{4}'''' and DataID > {5,number,#})) "
           + "and '}"
-          + "rownum <= {3,number,#}" },
+          + "rownum <= {6,number,#}" },
 
         { "LivelinkTraversalManager.getDeletes.select",
           new String[] {
