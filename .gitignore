@@ -1,0 +1,6 @@
+build/
+dist/
+downloads/
+reports/
+
+cobertura.ser
