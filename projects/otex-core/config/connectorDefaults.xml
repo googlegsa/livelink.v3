@@ -33,6 +33,7 @@
         <property name="publicContentUsername" value=""/>
         <property name="publicContentDisplayUrl" value=""/>
         <property name="feedType" value="content"/>
+        <property name="pushAcls" value="true" />
         <property name="groupFeedSchedule" value="0 0 * * *" />
 
         <property name="excludedNodeTypes"

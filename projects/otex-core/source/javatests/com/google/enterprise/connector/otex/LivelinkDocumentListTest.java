@@ -119,6 +119,7 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setExcludedCategories("none");
     connector.setFeedType("content");
     connector.setUnsupportedFetchVersionTypes("");
+    connector.setPushAcls(true);
     connector.setGoogleGlobalNamespace(GLOBAL_NAMESPACE);
     connector.setGoogleLocalNamespace(LOCAL_NAMESPACE);
 
@@ -129,6 +130,8 @@ public class LivelinkDocumentListTest extends TestCase {
             new LivelinkAuthorizationManager());
       } else if (property.equals("unsupportedFetchVersionTypes")) {
         connector.setUnsupportedFetchVersionTypes(value);
+      } else if (property.equals("pushAcls")) {
+        connector.setPushAcls(Boolean.parseBoolean(value));
       }
     }
 
@@ -577,6 +580,28 @@ public class LivelinkDocumentListTest extends TestCase {
     builder.add(expectedGroups).add(Client.SYSADMIN_GROUP);
     assertEquals(builder.build(),
         getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLGROUPS));
+  }
+
+  public void testAcl_pushAclsFalse()
+      throws RepositoryException, SQLException {
+    insertDTreeAcl(21, 1002, Client.PERM_MODIFY);
+    insertDTreeAcl(21, 1003, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(21, 2002, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(21, Client.RIGHT_OWNER, Client.PERM_FULL);
+    insertDTreeAcl(21, Client.RIGHT_GROUP, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(21, Client.RIGHT_WORLD, Client.PERM_SEE);
+
+    LivelinkConnector connector = getConnector("pushAcls", "false");
+    DocumentList list = getObjectUnderTest(connector, 21, 0, 1001);
+    Document doc = list.nextDocument();
+
+    assertNotNull(doc);
+    assertFalse(doc.getPropertyNames()
+                .contains(SpiConstants.PROPNAME_ACLUSERS));
+    assertFalse(doc.getPropertyNames()
+                .contains(SpiConstants.PROPNAME_ACLGROUPS));
+    assertNull(doc.findProperty(SpiConstants.PROPNAME_ACLUSERS));
+    assertNull(doc.findProperty(SpiConstants.PROPNAME_ACLGROUPS));
   }
 
   public void testAcl_usersAndGroups()

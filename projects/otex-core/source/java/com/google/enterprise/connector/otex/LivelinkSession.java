@@ -64,18 +64,22 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
         this.authenticationManager = authenticationManager;
         this.authorizationManager = authorizationManager;
         this.retriever = null;
-        GroupAdaptor groupAdaptor =
-            new GroupAdaptor(connector, clientFactory.createClient());
-        String[] groupAdaptorArgs = {
-            "-Dgsa.hostname=" + connector.getGoogleFeedHost(),
-            "-Dserver.hostname=localhost",
-            "-Dserver.port=0",
-            "-Dserver.dashboardPort=0",
-            "-Dfeed.name=" + connector.getGoogleConnectorName(),
-            "-Dadaptor.fullListingSchedule="
-            + connector.getGroupFeedSchedule(),
+        if (connector.getPushAcls()) {
+          GroupAdaptor groupAdaptor =
+              new GroupAdaptor(connector, clientFactory.createClient());
+          String[] groupAdaptorArgs = {
+              "-Dgsa.hostname=" + connector.getGoogleFeedHost(),
+              "-Dserver.hostname=localhost",
+              "-Dserver.port=0",
+              "-Dserver.dashboardPort=0",
+              "-Dfeed.name=" + connector.getGoogleConnectorName(),
+              "-Dadaptor.fullListingSchedule="
+              + connector.getGroupFeedSchedule(),
             };
-        this.lister = new AdaptorLister(groupAdaptor, groupAdaptorArgs);
+          this.lister = new AdaptorLister(groupAdaptor, groupAdaptorArgs);
+        } else {
+          this.lister = null;
+        }
     }
 
   /**

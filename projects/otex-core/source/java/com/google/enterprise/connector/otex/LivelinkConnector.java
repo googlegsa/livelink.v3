@@ -314,6 +314,9 @@ public class LivelinkConnector implements Connector {
   /** Lowercase usernames hack. */
   private boolean tryLowercaseUsernames;
 
+  /** Whether to feed ACLs and return groups, or not. */
+  private boolean pushAcls;
+
   /** The global namespace. */
   private String globalNamespace;
 
@@ -2059,6 +2062,27 @@ public class LivelinkConnector implements Connector {
    */
   boolean isTryLowercaseUsernames() {
     return tryLowercaseUsernames;
+  }
+
+  /**
+   * Sets pushAcls.
+   *
+   * @param pushAcls if true, supply ACL with document and feed groups
+   * @since 3.4
+   */
+  public void setPushAcls(boolean pushAcls) {
+    LOGGER.config("PUSH ACLS: " + pushAcls);
+    this.pushAcls = pushAcls;
+  }
+
+  /**
+   * Gets pushAcls.
+   *
+   * @return <code>true</code> if ACLs are to be supplied with document
+   *     and groups are to be pushed to the GSA
+   */
+  public boolean getPushAcls() {
+    return pushAcls;
   }
 
   /**

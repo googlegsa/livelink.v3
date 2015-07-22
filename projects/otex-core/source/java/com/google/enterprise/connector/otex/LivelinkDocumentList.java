@@ -838,6 +838,10 @@ class LivelinkDocumentList implements DocumentList {
      * Collects ACL properties.
      */
     private void collectAclProperties() throws RepositoryException {
+      if (!connector.getPushAcls()) {
+        return;
+      }
+
       List<Value> userPrincipals = new ArrayList<Value>();
       List<Value> groupPrincipals = new ArrayList<Value>();
 
