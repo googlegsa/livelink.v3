@@ -348,6 +348,9 @@ class LivelinkDocumentList implements DocumentList {
     /** The object Subtype. */
     private int subType;
 
+    /** The user ID of the owner of the current row. */
+    private int ownerId;
+
     /** The ObjectInfo of the current row, [fetch delayed until needed] */
     private ClientValue objectInfo;
 
@@ -418,6 +421,7 @@ class LivelinkDocumentList implements DocumentList {
           objectId = recArray.toInteger(insRow, "DataID");
           volumeId = recArray.toInteger(insRow, "OwnerID");
           subType  = recArray.toInteger(insRow, "SubType");
+          ownerId = recArray.toInteger(insRow, "UserID");
 
           props = new LivelinkDocument(objectId, fields.length*2);
 
@@ -489,7 +493,7 @@ class LivelinkDocumentList implements DocumentList {
             if (isUserIdOrGroupId(fields[i].fieldName)) {
               // FIXME: hack knows that UserID has 1 propertyName
               nameHandler.addUserByName(fields[i].propertyNames[0], value,
-                  props);
+                  ownerId, props);
             } else
               props.addProperty(fields[i], value);
           }
@@ -738,7 +742,7 @@ class LivelinkDocumentList implements DocumentList {
           if ("ExtendedData".equalsIgnoreCase(fields[i]))
             collectValueProperties(fields[i], value);
           else if (isUserIdOrGroupId(fields[i]))
-            nameHandler.addUserByName(fields[i], value, props);
+            nameHandler.addUserByName(fields[i], value, ownerId, props);
           else
             props.addProperty(fields[i], value);
         }
@@ -773,7 +777,7 @@ class LivelinkDocumentList implements DocumentList {
         ClientValue value = versionInfo.toValue(fields[i]);
         if (value != null && value.hasValue()) {
           if (isUserIdOrGroupId(fields[i]))
-            nameHandler.addUserByName(fields[i], value, props);
+            nameHandler.addUserByName(fields[i], value, ownerId, props);
           else
             props.addProperty(fields[i], value);
         }
@@ -837,7 +841,6 @@ class LivelinkDocumentList implements DocumentList {
         LOGGER.finest("ACE Info for id: " + objectId);
       }
 
-      int ownerId = recArray.toInteger(insRow, "UserID");
       ClientValue ownerInfo =
           client.GetUserOrGroupByIDNoThrow(ownerId);
       ClientValue objectRightsInfo = client.GetObjectRights(objectId);

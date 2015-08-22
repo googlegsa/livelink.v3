@@ -77,6 +77,8 @@ public class LivelinkDocumentListTest extends TestCase {
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
             + "values(1666, '', 0, 0, NULL, 0)",
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+            + "values(1999, 'user_name', 0, 2002, NULL, 0)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
             + "values(2001, 'group1', 1, 0, NULL, 0)",
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
             + "values(2002, 'group2', 1, 0, NULL, 0)");
@@ -123,7 +125,9 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setGoogleLocalNamespace(LOCAL_NAMESPACE);
 
     if (property != null) {
-      if (property.equals("publicContentUsername")) {
+      if (property.equals("includedObjectInfo")) {
+        connector.setIncludedObjectInfo(value);
+      } else if (property.equals("publicContentUsername")) {
         connector.setPublicContentUsername(value);
         connector.setPublicContentAuthorizationManager(
             new LivelinkAuthorizationManager());
@@ -498,6 +502,26 @@ public class LivelinkDocumentListTest extends TestCase {
     Document doc = list.nextDocument();
     String checkpoint = list.checkpoint();
     assertTrue(checkpoint, checkpoint.endsWith("," + checkpointId));
+  }
+
+  /**
+   * Tests the mapping of a user ID property with a value of
+   * RIGHT_OWNER to the actual owner user name.
+   */
+  public void testNextDocument_ownerMapping() throws RepositoryException {
+    LivelinkConnector connector =
+        getConnector("includedObjectInfo", "AssignedTo");
+    Client client = new MockClient() {
+        @Override public ClientValue GetObjectInfo(int volumeId, int objectId) {
+          return new MockClientValue(new String[] { "AssignedTo" },
+              new Object[] { Client.RIGHT_OWNER });
+        }
+      };
+    DocumentList list = getObjectUnderTest(connector, client,
+        MockConstants.HARMLESS_OBJECT_ID, 1, USER_ID);
+
+    Document doc = list.nextDocument();
+    assertEquals("user_name", Value.getSingleValueString(doc, "AssignedTo"));
   }
 
   /** Tests that the client must not be null. */

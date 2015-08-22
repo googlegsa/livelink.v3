@@ -324,7 +324,7 @@ class CategoryHandler {
       // System.out.println("getAttributeValue: k = " + k +
       // " ; value = " + value.toString2());
       if (Client.ATTR_TYPE_USER == attrType)
-        nameHandler.addUserByName(attrName, value, props);
+        nameHandler.addUserByName(attrName, value, 0, props);
       else
         props.addProperty(attrName, value);
     }

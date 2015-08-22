@@ -55,7 +55,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   /** Constructs an Assoc. */
-  MockClientValue(String[] fieldNames, Object[] values) {
+  public MockClientValue(String[] fieldNames, Object[] values) {
     if (fieldNames == null || values == null ||
         fieldNames.length != values.length) {
       throw new IllegalArgumentException();

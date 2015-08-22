@@ -46,13 +46,22 @@ class UserNameHandler {
    * to the map.
    * @param idValue ClientValue containing  the UserID or GroupID to
    * resolve to a name.
+   * @param ownerId the owner user ID
+   * @param props the LivelinkDocument to add the property value to
    */
   public void addUserByName(String propertyName, ClientValue idValue,
-      LivelinkDocument props) throws RepositoryException {
-    // If the UserID or GroupID is 0, then ignore it.
-    // For reason why, see ObjectInfo Reserved and ReservedBy fields.
+      int ownerId, LivelinkDocument props) throws RepositoryException {
     int id = idValue.toInteger();
-    if (id == 0)
+
+    // Map the magic value to the actual owner user ID.
+    if (id == Client.RIGHT_OWNER) {
+      id = ownerId;
+    }
+
+    // If the ID is <= 0, then ignore it. Fields such as ReservedBy
+    // are 0 when not active, and the passed in ownerId could be 0 if
+    // it is not available in the caller's context.
+    if (id <= 0)
       return;
 
     // Check the userName cache (if we recently looked up this user).
@@ -63,9 +72,9 @@ class UserNameHandler {
       if (userInfo != null)
         userName = userInfo.toValue("Name");
       if (userName == null || !userName.isDefined()) {
-        if (LOGGER.isLoggable(Level.WARNING)) {
-          LOGGER.warning("No user or group name found for ID " + id);
-        }
+        LOGGER.log(Level.INFO,
+            "No user or group name found for ID {0} in attribute {1}",
+            new Object[] { id, propertyName });
         return;
       }
 
