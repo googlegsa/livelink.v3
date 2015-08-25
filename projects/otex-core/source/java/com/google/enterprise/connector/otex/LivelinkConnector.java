@@ -996,7 +996,6 @@ public class LivelinkConnector implements Connector {
     return publicContentDisplayUrl;
   }
 
-
   /**
    * Sets the Travsersal username.  This user must have sufficient
    * rights to access the content you wish indexed.  Optional.
@@ -1020,7 +1019,6 @@ public class LivelinkConnector implements Connector {
   String getTraversalUsername() {
     return traversalUsername;
   }
-
 
   /**
    * Sets the node types that you want to exclude from traversal.
@@ -1201,7 +1199,6 @@ public class LivelinkConnector implements Connector {
     return (String[]) extendedDataKeys.get(new Integer(subType));
   }
 
-
   /**
    * Sets the fields from ObjectInfo to index.
    *
@@ -1271,7 +1268,6 @@ public class LivelinkConnector implements Connector {
     return this.objectInfoKeys;
   }
 
-
   /**
    * Sets the fields from VersionInfo to index.
    *
@@ -1301,7 +1297,6 @@ public class LivelinkConnector implements Connector {
     return this.versionInfoKeys;
   }
 
-
   /**
    * Sets the Categories to include.  The value is either a comma-separated
    * list of Category ObjectIDs, or the special keywords: "all", "none",
@@ -1328,7 +1323,6 @@ public class LivelinkConnector implements Connector {
     return this.includedCategoryIds;
   }
 
-
   /**
    * Sets the Categories to exclude.  The value is either a comma-separated
    * list of Category ObjectIDs, or the special keywords: "all", "none",
@@ -1354,7 +1348,6 @@ public class LivelinkConnector implements Connector {
   HashSet<Object> getExcludedCategories() {
     return this.excludedCategoryIds;
   }
-
 
   /**
    * Parse the list of Category ObjectIDs or special keyword.  Build up a
@@ -1689,7 +1682,7 @@ public class LivelinkConnector implements Connector {
   /**
    * Gets the additional SQL WHERE clause condition.
    *
-   * @param sqlWhereCondition a valid SQL condition
+   * @return a SQL condition
    */
   String getSqlWhereCondition() {
     return sqlWhereCondition;
@@ -1744,6 +1737,13 @@ public class LivelinkConnector implements Connector {
       });
   }
 
+  /*
+   * Gets the option to include the domain name with the username for
+   * authentication and authorization.
+   *
+   * @return one of the enum values {@code TRUE},
+   *     {@code FALSE}, {@code AUTHENTICATION}, or {@code LEGACY}
+   */
   DomainAndName getDomainAndName() {
     return domainAndName;
   }
@@ -1983,10 +1983,23 @@ public class LivelinkConnector implements Connector {
     return feedType;
   }
 
+  /**
+   * Sets the schedule for sending group feeds.
+   *
+   * @param groupFeedSchedule a string in cron format,
+   *     "minute, hour, day of month, month, day of week"
+  */
   public void setGroupFeedSchedule(String groupFeedSchedule) {
+    LOGGER.log(Level.CONFIG, "GROUP FEED SCHEDULE: {0}", groupFeedSchedule);
     this.groupFeedSchedule = groupFeedSchedule;
   }
 
+  /*
+   * Gets the schedule for sending group feeds.
+   *
+   * @return a string in cron format,
+   *     "minute, hour, day of month, month, day of week"
+   */
   String getGroupFeedSchedule() {
     return groupFeedSchedule;
   }
@@ -2086,56 +2099,74 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
-   * Sets globalNamespace.
+   * Sets the global namespace. This property is set by Connector
+   * Manager.
    *
-   * @param globalNamespace global namespace
+   * @param globalNamespace the global namespace
    */
   public void setGoogleGlobalNamespace(String globalNamespace) {
     if (LOGGER.isLoggable(Level.CONFIG)) {
-      LOGGER.config("globalNamespace: " + globalNamespace);
+      LOGGER.config("GLOBAL NAMESPACE: " + globalNamespace);
     }
     this.globalNamespace = globalNamespace;
   }
 
   /**
-   * Gets globalNamespace.
+   * Gets the global namespace.
    *
-   * @return global namespace
+   * @return the global namespace
    */
   String getGoogleGlobalNamespace() {
     return globalNamespace;
   }
 
   /**
-   * Sets localNamespace.
+   * Sets the local namespace. This property is set by Connector
+   * Manager.
    *
-   * @param localNamespace local namespace
+   * @param localNamespace the local namespace
    */
   public void setGoogleLocalNamespace(String localNamespace) {
     if (LOGGER.isLoggable(Level.CONFIG)) {
-      LOGGER.config("localNamespace: " + localNamespace);
+      LOGGER.config("LOCAL NAMESPACE: " + localNamespace);
     }
     this.localNamespace = localNamespace;
   }
 
   /**
-   * Gets localNamespace.
+   * Gets the local namespace.
    *
-   * @return local namespace
+   * @return the local namespace
    */
   String getGoogleLocalNamespace() {
     return localNamespace;
   }
 
+  /**
+   * Sets the GSA feed host. This property is set by Connector Manager.
+   *
+   * @param googleFeedHost the GSA feed host, usually an IP address
+   */
   public void setGoogleFeedHost(String googleFeedHost) {
+    // This value is not connector-specific and is logged by Connector Manager.
     this.googleFeedHost = googleFeedHost;
   }
 
+  /**
+   * Gets the GSA feed host.
+   *
+   * @return the GSA feed host
+   */
   String getGoogleFeedHost() {
     return googleFeedHost;
   }
 
+  /**
+   * Sets the connector instance name. This property is set by
+   * Connector Manager.
+   */
   public void setGoogleConnectorName(String googleConnectorName) {
+    // This value is logged everywhere by the NDC.
     this.googleConnectorName = googleConnectorName;
   }
 
