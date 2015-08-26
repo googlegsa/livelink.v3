@@ -84,7 +84,6 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setShowHiddenItems("true");
     connector.setIncludedCategories("all,searchable");
     connector.setExcludedCategories("none");
-    connector.setFeedType("content");
     connector.setUnsupportedFetchVersionTypes("");
 
     if (property != null) {

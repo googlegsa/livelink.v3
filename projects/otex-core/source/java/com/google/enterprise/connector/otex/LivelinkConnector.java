@@ -26,7 +26,6 @@ import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.RepositoryLoginException;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.SpiConstants;
-import com.google.enterprise.connector.spi.SpiConstants.FeedType;
 
 import java.text.Format;
 import java.text.MessageFormat;
@@ -236,9 +235,6 @@ public class LivelinkConnector implements Connector {
 
   /** The <code>ContentHandler</code> implementation class. */
   private ContentHandler contentHandler;
-
-  /** True if using content feeds, false for content url feeds. */
-  private FeedType feedType;
 
   /** The earliest modification date that should be indexed. */
   private Date startDate = null;
@@ -1937,35 +1933,14 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
-   * Sets the FeedType.  Supported feed types are CONTENT and CONTENTURL.
+   * Sets the FeedType.
    *
-   * @param feedTypeString the String representation of a
-   *        {@link SpiConstants.FeedType}
+   * @deprecated Support for CONTENTURL feeds has been removed
    */
+  @Deprecated
   public void setFeedType(String feedTypeString) {
-    FeedType type;
-    try {
-      type = Enum.valueOf(FeedType.class, feedTypeString.toUpperCase());
-      if (type != FeedType.CONTENT && type != FeedType.CONTENTURL) {
-        LOGGER.warning("Unsupported FeedType: " + feedTypeString);
-        type = FeedType.CONTENT;
-      }
-    } catch (IllegalArgumentException e) {
-      LOGGER.warning("Unknown FeedType: " + feedTypeString);
-      type = FeedType.CONTENT;
-    }
-    if (LOGGER.isLoggable(Level.CONFIG))
-      LOGGER.config("FEED TYPE: " + type.toString());
-    this.feedType = type;
-  }
-
-  /**
-   * Returns the configured {@link SpiConstants.FeedType} to use for content.
-   *
-   * @return the configured {@link SpiConstants.FeedType}
-   */
-  FeedType getFeedType() {
-    return feedType;
+    LOGGER.warning("Deprecated feedType property, set to " + feedTypeString +
+        ", will be ignored");
   }
 
   /**

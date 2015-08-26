@@ -20,12 +20,10 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.AuthenticationManager;
 import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Retriever;
-import com.google.enterprise.connector.spi.RetrieverAware;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 
-class LivelinkSession implements Session, RetrieverAware {
+class LivelinkSession implements Session {
     /** The connector instance. */
     private final LivelinkConnector connector;
 
@@ -37,9 +35,6 @@ class LivelinkSession implements Session, RetrieverAware {
 
     /** The authorization manager. */
     private final AuthorizationManager authorizationManager;
-
-    /** The Retriever. */
-    private Retriever retriever;
 
     /**
      *
@@ -58,7 +53,6 @@ class LivelinkSession implements Session, RetrieverAware {
         this.clientFactory = clientFactory;
         this.authenticationManager = authenticationManager;
         this.authorizationManager = authorizationManager;
-        this.retriever = null;
     }
 
   /**
@@ -119,25 +113,6 @@ class LivelinkSession implements Session, RetrieverAware {
         return authorizationManager;
     }
 
-  /**
-   * Gets the Retriever to implement Content URL Web feed.
-   *
-   * @return a Retriever
-   * @throws RepositoryException
-   */
-  @Override
-  public synchronized Retriever getRetriever() throws RepositoryException {
-    if (retriever == null) {
-      Client traversalClient = clientFactory.createClient();
-      String username = getCurrentUsername(traversalClient);
-      String traversalUsername = connector.getTraversalUsername();
-      impersonateUser(traversalClient, username, traversalUsername);
-      retriever = new LivelinkRetriever(connector, traversalClient,
-          connector.getContentHandler(traversalClient));
-    }
-    return retriever;
-  }
-
   private String getCurrentUsername(Client client) {
     String username = null;
     try {
@@ -152,7 +127,7 @@ class LivelinkSession implements Session, RetrieverAware {
     }
     return username;
   }
-  
+
   /**
    * Impersonates a user.
    *
