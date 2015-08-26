@@ -295,18 +295,6 @@ public class MockClient implements Client {
       return new MockClientValue(fields, values);
     }
 
-    /** Extracts field names from any select expressions. */
-    private String[] getRecArrayFieldNames(String[] columns) {
-      String[] fields = new String[columns.length];
-      for (int i = 0; i < columns.length; i++) {
-        String[] tokens = columns[i].split("\\W+");
-        // In a select expression, the name of the field is at the end.
-        // Otherwise, the single token is the original field name.
-        fields[i] = tokens[tokens.length - 1];
-      }
-      return fields;
-    }
-
     /**
      * Constructs a SQL query string from the {@code ListNodes}
      * arguments. The constructed string <strong>must</strong> match the

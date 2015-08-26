@@ -22,12 +22,10 @@ import com.google.enterprise.connector.spi.AuthorizationManager;
 import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.ListerAware;
 import com.google.enterprise.connector.spi.RepositoryException;
-import com.google.enterprise.connector.spi.Retriever;
-import com.google.enterprise.connector.spi.RetrieverAware;
 import com.google.enterprise.connector.spi.Session;
 import com.google.enterprise.connector.spi.TraversalManager;
 
-class LivelinkSession implements Session, ListerAware, RetrieverAware {
+class LivelinkSession implements Session, ListerAware {
     /** The connector instance. */
     private final LivelinkConnector connector;
 
@@ -42,9 +40,6 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
 
     /** The Lister. */
     private Lister lister;
-
-    /** The Retriever. */
-    private Retriever retriever;
 
     /**
      *
@@ -63,7 +58,6 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
         this.clientFactory = clientFactory;
         this.authenticationManager = authenticationManager;
         this.authorizationManager = authorizationManager;
-        this.retriever = null;
         if (connector.getPushAcls()) {
           GroupAdaptor groupAdaptor =
               new GroupAdaptor(connector, clientFactory.createClient());
@@ -75,6 +69,16 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
               "-Dfeed.name=" + connector.getGoogleConnectorName(),
               "-Dadaptor.fullListingSchedule="
               + connector.getGroupFeedSchedule(),
+        GroupAdaptor groupAdaptor =
+            new GroupAdaptor(connector, clientFactory.createClient());
+        String[] groupAdaptorArgs = {
+            "-Dgsa.hostname=" + connector.getGoogleFeedHost(),
+            "-Dserver.hostname=localhost",
+            "-Dserver.port=0",
+            "-Dserver.dashboardPort=0",
+            "-Dfeed.name=" + connector.getGoogleConnectorName(),
+            "-Dadaptor.fullListingSchedule="
+            + connector.getGroupFeedSchedule(),
             };
           this.lister = new AdaptorLister(groupAdaptor, groupAdaptorArgs);
         } else {
@@ -145,25 +149,6 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
       return lister;
     }
 
-  /**
-   * Gets the Retriever to implement Content URL Web feed.
-   *
-   * @return a Retriever
-   * @throws RepositoryException
-   */
-  @Override
-  public synchronized Retriever getRetriever() throws RepositoryException {
-    if (retriever == null) {
-      Client traversalClient = clientFactory.createClient();
-      String username = getCurrentUsername(traversalClient);
-      String traversalUsername = connector.getTraversalUsername();
-      impersonateUser(traversalClient, username, traversalUsername);
-      retriever = new LivelinkRetriever(connector, traversalClient,
-          connector.getContentHandler(traversalClient));
-    }
-    return retriever;
-  }
-
   private String getCurrentUsername(Client client) {
     String username = null;
     try {
@@ -178,7 +163,7 @@ class LivelinkSession implements Session, ListerAware, RetrieverAware {
     }
     return username;
   }
-  
+
   /**
    * Impersonates a user.
    *
