@@ -126,6 +126,16 @@ public class LivelinkTraversalManagerTest extends TestCase {
     jdbcFixture.tearDown();
   }
 
+  /**
+   * Helper to unwrap the TraversalManagerWrapper to get the
+   * LivelinkTraversalManager under test.
+   */
+  private LivelinkTraversalManager getTraversalManager(Session session)
+      throws RepositoryException {
+    return ((TraversalManagerWrapper) session.getTraversalManager())
+        .getTraversalManager();
+  }
+
   private void assertIncludedEmpty(String included) {
     assertFalse(included, included.contains("and (DataID in"));
     assertFalse(included, included.contains("and -OwnerID not in"));
@@ -138,8 +148,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
   public void testGetLastAuditEvent() throws RepositoryException {
     Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
+    LivelinkTraversalManager ltm = getTraversalManager(sess);
 
     ClientValue results = ltm.getLastAuditEvent();
     assertEquals(1, results.size());
@@ -168,8 +177,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
       int firstCandidateId, Date lastCandidateDate, int lastCandidateId,
       String checkpoint) throws RepositoryException {
     Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
+    LivelinkTraversalManager ltm = getTraversalManager(sess);
     ClientValue candidates = new MockClientValue(
         new String[] { "ModifyDate", "DataID" },
         new Object[][] { { firstCandidateDate, firstCandidateId },
@@ -288,8 +296,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
   /** Calls the like-named method under test. */
   private String getMatchingQuery() throws RepositoryException {
     Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
+    LivelinkTraversalManager ltm = getTraversalManager(sess);
     return ltm.getMatchingQuery(null, new Date(), false);
   }
 
@@ -544,8 +551,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
             size, selectExpressions.size());
 
         Session sess = conn.login();
-        LivelinkTraversalManager ltm =
-            (LivelinkTraversalManager) sess.getTraversalManager();
+        LivelinkTraversalManager ltm = getTraversalManager(sess);
 
         Field[] fields = ltm.getFields();
         assertEquals(LivelinkTraversalManager.DEFAULT_FIELDS.length + size,
@@ -567,8 +573,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
     conn.setIncludedSelectExpressions(
         ImmutableMap.of("MyDataSize", "GoogleDataSize"));
     Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
+    LivelinkTraversalManager ltm = getTraversalManager(sess);
     DocumentList list = ltm.startTraversal();
     assertNotNull(list.nextDocument());
     Document doc = list.nextDocument();
@@ -587,8 +592,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
   public void testGetResults() throws RepositoryException {
     Session sess = conn.login();
-    LivelinkTraversalManager ltm =
-        (LivelinkTraversalManager) sess.getTraversalManager();
+    LivelinkTraversalManager ltm = getTraversalManager(sess);
 
     // 2901 is an excluded volume type.
     ClientValue results = ltm.getResults("6,24,42,2000,2901", new Date());

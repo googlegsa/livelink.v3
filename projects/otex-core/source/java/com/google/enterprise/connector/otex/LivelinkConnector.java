@@ -428,6 +428,7 @@ public class LivelinkConnector implements Connector {
    *
    * @return the username
    */
+  @VisibleForTesting
   String getUsername() {
     return username;
   }
@@ -451,6 +452,15 @@ public class LivelinkConnector implements Connector {
     if (LOGGER.isLoggable(Level.CONFIG))
       LOGGER.config("USE HTTP TUNNELING: " + useHttpTunneling);
     this.useHttpTunneling = useHttpTunneling;
+  }
+
+  /**
+   * Gets a flag indicating that HTTP tunneling is enabled.
+   *
+   * @return <code>true</code> if HTTP tunneling is enabled
+   */
+  boolean getUseHttpTunneling() {
+    return useHttpTunneling;
   }
 
   /**
