@@ -58,7 +58,7 @@ class LivelinkSession implements Session, ListerAware {
         this.authorizationManager = authorizationManager;
         if (connector.getPushAcls()) {
           GroupAdaptor groupAdaptor =
-              new GroupAdaptor(connector, clientFactory.createClient());
+              new GroupAdaptor(connector, clientFactory);
           String[] groupAdaptorArgs = {
               "-Dgsa.hostname=" + connector.getGoogleFeedHost(),
               "-Dserver.hostname=localhost",

@@ -61,8 +61,7 @@ public class GroupAdaptorTest extends TestCase {
       throws RepositoryException {
     LivelinkConnector connector = getConnector();
     ClientFactory clientFactory = connector.getClientFactory();
-    Client client = clientFactory.createClient();
-    return new GroupAdaptor(connector, client);
+    return new GroupAdaptor(connector, clientFactory);
   }
 
   private void addUser(int userId, String name) throws SQLException {

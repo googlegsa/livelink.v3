@@ -24,6 +24,7 @@ import com.google.enterprise.adaptor.UserPrincipal;
 
 import com.google.enterprise.connector.logging.NDC;
 import com.google.enterprise.connector.otex.client.Client;
+import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
 
@@ -46,14 +47,20 @@ class GroupAdaptor extends AbstractAdaptor {
   /** The connector contains configuration information. */
   private final LivelinkConnector connector;
 
-  /** The client provides access to the server. */
-  private final Client client;
+  /**
+   * The client factory used to get a new client for each getDocIds
+   * call. Don't bother with two strategies here, as getDocIds is not
+   * called as often as resumeTraversal.
+   *
+   * @see TraversalManagerWrapper
+   */
+  private final ClientFactory clientFactory;
 
   private final IdentityUtils identityUtils;
 
-  GroupAdaptor(LivelinkConnector connector, Client client) {
+  GroupAdaptor(LivelinkConnector connector, ClientFactory clientFactory) {
     this.connector = connector;
-    this.client = client;
+    this.clientFactory = clientFactory;
     this.identityUtils = new IdentityUtils(connector);
   }
 
@@ -80,15 +87,16 @@ class GroupAdaptor extends AbstractAdaptor {
 
   private Map<GroupPrincipal, List<Principal>> getLivelinkGroups()
       throws RepositoryException {
+    Client client = clientFactory.createClient();
     Map<GroupPrincipal, List<Principal>> groups =
         new LinkedHashMap<GroupPrincipal, List<Principal>>();
-    getStandardGroups(groups);
-    getSystemAdminAndPublicGroups(groups);
+    getStandardGroups(client, groups);
+    getSystemAdminAndPublicGroups(client, groups);
     return groups;
   }
 
-  private void getStandardGroups(Map<GroupPrincipal, List<Principal>> groups)
-      throws RepositoryException {
+  private void getStandardGroups(Client client,
+      Map<GroupPrincipal, List<Principal>> groups) throws RepositoryException {
     ClientValue groupsValue = client.ListGroups();
     for (int i = 0; i < groupsValue.size(); i++) {
       String groupName = groupsValue.toString(i, "Name");
@@ -107,7 +115,7 @@ class GroupAdaptor extends AbstractAdaptor {
     }
   }
 
-  private void getSystemAdminAndPublicGroups(
+  private void getSystemAdminAndPublicGroups(Client client,
       Map<GroupPrincipal, List<Principal>> groups)
           throws RepositoryException {
     List<Principal> sysAdminMembers = new ArrayList<Principal>();
