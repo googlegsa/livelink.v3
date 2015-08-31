@@ -69,16 +69,6 @@ class LivelinkSession implements Session, ListerAware {
               "-Dfeed.name=" + connector.getGoogleConnectorName(),
               "-Dadaptor.fullListingSchedule="
               + connector.getGroupFeedSchedule(),
-        GroupAdaptor groupAdaptor =
-            new GroupAdaptor(connector, clientFactory.createClient());
-        String[] groupAdaptorArgs = {
-            "-Dgsa.hostname=" + connector.getGoogleFeedHost(),
-            "-Dserver.hostname=localhost",
-            "-Dserver.port=0",
-            "-Dserver.dashboardPort=0",
-            "-Dfeed.name=" + connector.getGoogleConnectorName(),
-            "-Dadaptor.fullListingSchedule="
-            + connector.getGroupFeedSchedule(),
             };
           this.lister = new AdaptorLister(groupAdaptor, groupAdaptorArgs);
         } else {
