@@ -21,6 +21,8 @@ import com.google.enterprise.adaptor.Adaptor;
 import com.google.enterprise.adaptor.Application;
 import com.google.enterprise.connector.spi.DocumentAcceptor;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.TraversalSchedule;
+import com.google.enterprise.connector.spi.TraversalScheduleAware;
 
 import java.util.Arrays;
 import java.util.logging.Level;
@@ -29,7 +31,8 @@ import java.util.logging.Logger;
 /**
  * Implementation of {@link AbstractLister} that runs an {@code Adaptor}.
  */
-public class AdaptorLister extends AbstractLister {
+public class AdaptorLister extends AbstractLister
+    implements TraversalScheduleAware {
   private static final Logger LOGGER =
       Logger.getLogger(AdaptorLister.class.getName());
 
@@ -42,6 +45,22 @@ public class AdaptorLister extends AbstractLister {
   public AdaptorLister(Adaptor adaptor, String[] adaptorArgs) {
     this.adaptor = adaptor;
     this.adaptorArgs = adaptorArgs;
+  }
+
+  /**
+   * Note: when the traversal is disabled in the admin console, this
+   * method is called once with the old, enabled schedule, then the
+   * lister is started, and then this method is called again with the
+   * new, disabled schedule. Since the adaptor library calls getDocIds
+   * at startup by default, it will be called once, and that seems to
+   * happen before the disabled schedule is passed in, so the groups
+   * are fed one more time before the feeds are actually disabled.
+   */
+  @Override
+  public void setTraversalSchedule(TraversalSchedule schedule) {
+    if (adaptor instanceof TraversalScheduleAware) {
+      ((TraversalScheduleAware) adaptor).setTraversalSchedule(schedule);
+    }
   }
 
   @Override

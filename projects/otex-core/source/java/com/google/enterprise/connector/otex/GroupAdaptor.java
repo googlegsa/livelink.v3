@@ -27,6 +27,8 @@ import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.TraversalSchedule;
+import com.google.enterprise.connector.spi.TraversalScheduleAware;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,7 +42,7 @@ import java.util.logging.Logger;
  * Implementation of {@link AbstractAdaptor} that feeds Livelink groups
  * information from the repository.
  */
-class GroupAdaptor extends AbstractAdaptor {
+class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
   private static final Logger LOGGER =
       Logger.getLogger(GroupAdaptor.class.getName());
 
@@ -57,6 +59,9 @@ class GroupAdaptor extends AbstractAdaptor {
   private final ClientFactory clientFactory;
 
   private final IdentityUtils identityUtils;
+
+  /** Whether the traversal, and therefore group feeding, is disabled. */
+  private volatile boolean isDisabled = false;
 
   GroupAdaptor(LivelinkConnector connector, ClientFactory clientFactory) {
     this.connector = connector;
@@ -156,6 +161,17 @@ class GroupAdaptor extends AbstractAdaptor {
   }
 
   /**
+   * This implementation checks whether traversal is disabled, but
+   * otherwise group feeding follows its own schedule.
+   */
+  @Override
+  public void setTraversalSchedule(TraversalSchedule schedule) {
+    LOGGER.log(Level.CONFIG, "{0} GROUP FEEDING",
+        (schedule.isDisabled()) ? "DISABLE" : "ENABLE");
+    this.isDisabled = schedule.isDisabled();
+  }
+
+  /**
    * No documents to serve for this adaptor.
    */
   @Override
@@ -172,6 +188,10 @@ class GroupAdaptor extends AbstractAdaptor {
       throws IOException, InterruptedException {
     NDC.push("GroupFeed " + connector.getGoogleConnectorName());
     try {
+      if (isDisabled) {
+        LOGGER.fine("GROUP FEEDING IS DISABLED");
+        return;
+      }
       docPusher.pushGroupDefinitions(getLivelinkGroups(), false);
     } catch (RepositoryException e) {
       throw new IOException("Error in feeding groups ", e);

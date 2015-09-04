@@ -32,6 +32,8 @@ import com.google.enterprise.adaptor.Config;
 import com.google.enterprise.adaptor.DocIdPusher;
 import com.google.enterprise.connector.spi.Lister;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.TraversalSchedule;
+import com.google.enterprise.connector.spi.TraversalScheduleAware;
 
 import org.junit.After;
 import org.junit.Before;
@@ -49,7 +51,17 @@ public class AdaptorListerTest {
   private static final Logger LOGGER =
       Logger.getLogger(AdaptorListerTest.class.getName());
 
-  private int dashboardPort;
+  private static final int DASHBOARD_PORT =
+        Integer.parseInt(System.getProperty("tests.dashboardPort"));
+
+  private static final String[] adaptorArgs = {
+    "-Dgsa.version=7.2.0-90",
+    "-Dgsa.hostname=localhost",
+    "-Dserver.hostname=localhost",
+    "-Dserver.port=0",
+    "-Dserver.dashboardPort=" + DASHBOARD_PORT,
+  };
+
   private Adaptor adaptor;
   private AdaptorLister testLister;
   private List<Exception> exceptionList;
@@ -57,16 +69,7 @@ public class AdaptorListerTest {
 
   @Before
   public void setUp() throws Exception {
-    dashboardPort =
-        Integer.parseInt(System.getProperty("tests.dashboardPort"));
     adaptor = getMockAdaptor();
-    String[] adaptorArgs = {
-        "-Dgsa.version=7.2.0-90",
-        "-Dgsa.hostname=localhost",
-        "-Dserver.hostname=localhost",
-        "-Dserver.port=0",
-        "-Dserver.dashboardPort=" + dashboardPort,
-        };
     testLister = new AdaptorLister(adaptor, adaptorArgs);
     exceptionList = new LinkedList<Exception>();
   }
@@ -91,7 +94,9 @@ public class AdaptorListerTest {
 
   @After
   public void tearDown() throws RepositoryException, InterruptedException {
-    listerThread.join();
+    if (listerThread != null) {
+      listerThread.join();
+    }
     if (!exceptionList.isEmpty()) {
       propagateIfPossible(exceptionList.get(0), RepositoryException.class);
     }
@@ -114,6 +119,31 @@ public class AdaptorListerTest {
     };
     t.start();
     return t;
+  }
+
+  @Test
+  public void testNotScheduleAware() {
+    adaptor = createMock(Adaptor.class);
+    replay(adaptor);
+    testLister = new AdaptorLister(adaptor, adaptorArgs);
+
+    testLister.setTraversalSchedule(createMock(TraversalSchedule.class));
+  }
+
+  private interface ScheduleAwareAdaptor
+      extends Adaptor, TraversalScheduleAware {
+  }
+
+  @Test
+  public void testScheduleAware() throws Exception {
+    adaptor = createMock(ScheduleAwareAdaptor.class);
+    ((TraversalScheduleAware) adaptor).setTraversalSchedule(
+        isA(TraversalSchedule.class));
+    expectLastCall().atLeastOnce();
+    replay(adaptor);
+    testLister = new AdaptorLister(adaptor, adaptorArgs);
+
+    testLister.setTraversalSchedule(createMock(TraversalSchedule.class));
   }
 
   @Test
@@ -156,7 +186,7 @@ public class AdaptorListerTest {
     // We need more time for the HttpServer to startup.
     Thread.sleep(1000L);
 
-    URL dashboardUrl = new URL("http", "localhost", dashboardPort, "/");
+    URL dashboardUrl = new URL("http", "localhost", DASHBOARD_PORT, "/");
     HttpURLConnection dashboard =
         (HttpURLConnection) dashboardUrl.openConnection();
     dashboard.setInstanceFollowRedirects(false);

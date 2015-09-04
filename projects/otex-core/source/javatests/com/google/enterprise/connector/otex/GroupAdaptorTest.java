@@ -14,6 +14,10 @@
 
 package com.google.enterprise.connector.otex;
 
+import static org.easymock.EasyMock.createMock;
+import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
+
 import com.google.common.collect.ImmutableSet;
 import com.google.enterprise.adaptor.GroupPrincipal;
 import com.google.enterprise.adaptor.Principal;
@@ -21,6 +25,7 @@ import com.google.enterprise.adaptor.UserPrincipal;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
+import com.google.enterprise.connector.spi.TraversalSchedule;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -131,7 +136,7 @@ public class GroupAdaptorTest extends TestCase {
     assertTrue(users.isEmpty());
   }
 
-  public void testOneGroup()
+  private void testOneGroup(GroupAdaptor out)
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
     addUser(1001, "user1");
@@ -140,7 +145,7 @@ public class GroupAdaptorTest extends TestCase {
     addGroupMembers(2001, 1001, 1002);
 
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
-        getGroupInfo(getGroupsAdaptor());
+        getGroupInfo(out);
 
     Set<GroupPrincipal> groupSet = groups.keySet();
     Set<GroupPrincipal> expectedGroupSet =
@@ -154,6 +159,36 @@ public class GroupAdaptorTest extends TestCase {
     Collection<Principal> users = groups.get(groupSet.iterator().next());
     Set<Principal> userSet = new HashSet<Principal>(users);
     assertEquals(expectedUserSet, userSet);
+  }
+
+  public void testOneGroup() throws Exception {
+    GroupAdaptor out = getGroupsAdaptor();
+    testOneGroup(out);
+  }
+
+  public void testOneGroup_enabled() throws Exception {
+    GroupAdaptor out = getGroupsAdaptor();
+    setScheduleDisabled(out, false);
+    testOneGroup(out);
+  }
+
+  public void testOneGroup_disabled() throws Exception {
+    addUser(1001, "user1");
+    addUser(1002, "user2");
+    addGroup(2001, "group1");
+    addGroupMembers(2001, 1001, 1002);
+
+    GroupAdaptor out = getGroupsAdaptor();
+    setScheduleDisabled(out, true);
+
+    assertEquals(null, getGroupInfo(out));
+  }
+
+  private void setScheduleDisabled(GroupAdaptor adaptor, boolean isDisabled) {
+    TraversalSchedule schedule = createMock(TraversalSchedule.class);
+    expect(schedule.isDisabled()).andReturn(isDisabled).atLeastOnce();
+    replay(schedule);
+    adaptor.setTraversalSchedule(schedule);
   }
 
   public void testMultipleGroups()
