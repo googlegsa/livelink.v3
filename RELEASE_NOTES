@@ -3,12 +3,149 @@
                             Release Notes
 
 This document contains the release notes for Google Search Appliance
-Connector for Livelink. This connector supports OpenText Livelink ECM -
-Enterprise Server and OpenText Content Server. The following
-sections describe the release in detail and provide information that
-supplements the main documentation.
+Connector for Livelink. This connector supports OpenText Content Server.
+The following sections describe the release in detail and provide
+information that supplements the main documentation.
 
-Web Site: http://code.google.com/p/google-enterprise-connector-otex/
+Web Site: https://github.com/googlegsa/livelink.v3
+
+
+Release 3.4.0, September 14, 2015
+=================================
+
+Introduction
+------------
+This is an upgrade release with some enhancements. Users of previous
+releases are encouraged to review the changes below to determine
+whether to upgrade.
+
+Known Issues
+------------
+11339023 - The includedSelectExpressions advanced configuration property
+           is not fully supported with OpenText Content Server version
+           10.0 Update 7 or later, or with OpenText Content Server 10.5.
+           With OTCS 10.0 Update 7, the property is not supported at all.
+           With OTCS 10.0 SP 2 Update 8 or later, or with OTCS 10.5, SQL
+           expressions may not be used, only columns from the WebNodes
+           view.
+
+11337840 - The DataSize attribute is not included in the indexed metadata.
+           Workaround: Use the includedSelectExpressions advanced
+           configuration property to include the DataSize attribute.
+
+           Due to issues in LAPI with negative long integers, to include
+           the DataSize column as an indexed property, you should refer
+           to the special GoogleDataSize column alias instead:
+
+           <property name="includedSelectExpressions">
+             <map><entry key="DataSize" value="GoogleDataSize" /></map>
+           </property>
+
+Issues Fixed Since 3.2.10
+-------------------------
+19269832 - Avoid logging warnings about negative user IDs and convert
+           user ID values of -3 to the item owner.
+
+15513381 - Low risk SQL injection vulnerability in connector authorization.
+           The hypothetical attack requires access to feed a specially
+           crafted document to the GSA, and does not affect document
+           security or return unauthorized documents in search results.
+           There are no known incidents of this occurring.
+
+9021325 - Workaround a LAPI bug in HTTP tunneling where server errors
+          would lead to repeated "Could not flush socket" exceptions.
+
+6514008 - Improve traversal performance with Items to Index when using
+          the DTreeAncestors table. This is controlled by the
+          useDTreeAncestorsFirst advanced configuration property, which
+          is false by default. You must also set the useDTreeAncestors
+          property to true (the default) to use this optimization. It is
+          not compatible with the genealogists.
+
+          To use this optimization with Oracle, a view needs to be added
+          to the white list. Please see the sections below for details
+          about the white list.
+
+          (select * from DTree join DTreeAncestors using (DataID)
+                    order by ModifyDate, DataID)
+
+4672008 - Implement per-URL ACLs for early binding authorization. ACLs
+          are enabled by default, and can be disabled with the pushAcls
+          advanced configuration property. When ACLs are enabled, the
+          connector will also send group memberships to the GSA. The
+          schedule is controlled by the groupFeedSchedule property.
+          The default is once a day.
+
+Advanced Configuration Properties
+---------------------------------
+For more details on these properties, see
+http://code.google.com/p/google-enterprise-connector-otex/wiki/AdvancedConfiguration
+
+Version Compatibility
+---------------------
+Connector instances created using versions 1.0.3 through 3.2.10 may be
+used with this version. This version works with Connector Manager
+version 3.4.0 or later. Earlier versions of the Connector Manager will
+not work correctly with this version of the connector.
+
+Java SE versions 6, 7, and 8 are supported.
+
+This product is designed to function with OpenText Content Server
+versions 10.0 and 10.5. LAPI 9.7.1 is required. OpenText Livelink ECM -
+Enterprise Server 9.7.1 is no longer supported.
+
+Customers with existing connector instances who upgrade to OpenText
+Content Server 10.5, and who have customized the excludedNodeTypes or
+excludedVolumeTypes advanced configuration properties, should note that
+new subtypes have been added to the default values.
+
+The ListNodes white list in opentext.ini must be configured as described
+in the section below. Customers upgrading from version 3.2.10 or earlier
+may need to update the ListNodes white list even if they have configured
+it for earlier versions of the connector.
+
+Enabling ListNodes with this Release
+------------------------------------
+The list of views that need to be added to the white list has changed.
+Only the list for Oracle has changed for customers upgrading from
+version 3.2.0 or later, but customers upgrading from version 3.0.0 or
+earlier will need these updates for SQL Server or Oracle.
+
+http://www.google.com/support/enterprise/static/gsa/docs/admin/connector_30/livelink/livelink.html#1083570
+
+For SQL Server-based installations, you must now add the following
+tables and derived views to the white list:
+
+DTreeAncestors
+(select b.*, (select ParentID from DTree c
+              where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID
+    from DTree b)
+(select b.*, CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate
+    from DAuditNew b)
+(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize
+    from WebNodes b)
+
+ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)','(select b.*, CONVERT(VARCHAR(23), AuditDate, 121) as GoogleAuditDate from DAuditNew b)','(select b.*, case when DataSize < 0 then 0 else DataSize end as GoogleDataSize from WebNodes b)'}
+
+For Oracle-based installations, you must now add the following tables
+and derived views to the white list:
+
+DTreeAncestors
+(select * from DTree order by ModifyDate, DataID)
+(select * from DTree join DTreeAncestors using (DataID)
+    order by ModifyDate, DataID)
+(select b.*, (select ParentID from DTree c
+              where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID
+    from DTree b)
+(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate
+    from DAuditNew b
+    order by AuditDate, EventID)
+(select b.*, cast(case when DataSize < 0 then 0 else DataSize end as number(19))
+    as GoogleDataSize from WebNodes b)
+
+ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select * from DTree order by ModifyDate, DataID)','(select * from DTree join DTreeAncestors using (DataID) order by ModifyDate, DataID)','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)',"(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate from DAuditNew b order by AuditDate, EventID)",'(select b.*, cast(case when DataSize < 0 then 0 else DataSize end as number(19)) as GoogleDataSize from WebNodes b)'}
+
+Note: The derived view with 'YYYY-MM-DD HH24:MI:SS' uses double quotes.
 
 
 Release 3.2.10, December 2, 2014

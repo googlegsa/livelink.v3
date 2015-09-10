@@ -6,33 +6,32 @@ repositories, such as enterprise content management systems. An
 enterprise content management (ECM) system provides a central
 repository for large numbers of documents.
 
-This connector for Open Text Livelink provides access to documents
-and document meta-data stored in the Livelink ECM - Enterprise
-Server developed by the Open Text Corporation.
+The Connector for Livelink provides access to documents and document
+metadata stored in the OpenText Content Server developed by the
+OpenText Corporation.
 
-The connector communicates with the Livelink Server using the Java
-language Livelink Application Programming Interface (LAPI). To
+The connector communicates with the OpenText Content Server using the
+Java language Livelink Application Programming Interface (LAPI). To
 properly build this connector you will need access to certain
-components of the Open Text Livelink ECM - Enterprise Server SDK,
-specifically lapi.jar. The Livelink SDK is a commercial product
-offered by the Open Text Corporation and is not included in this
-distribution.
+components of the OpenText Content Server SDK, specifically lapi.jar.
+The Content Server SDK is a commercial product offered by the
+OpenText Corporation and is not included in this distribution.
 
 
 Documentation Links
 
     * Documentation for the Google Search Appliance Connectors
-      http://code.google.com/apis/searchappliance/documentation/connectors/index.html
+      https://support.google.com/gsa/topic/4566684?ref_topic=2709671
 
     * Google Search Appliance Connector for Livelink
-      http://code.google.com/p/google-enterprise-connector-otex/
+      https://github.com/googlegsa/livelink.v3
 
     * Google Search Appliance
-      http://code.google.com/apis/searchappliance/documentation/index.html
+      https://support.google.com/gsa/
 
-    * Open Text Livelink SDK and LAPI
-      Livelink SDK and Livelink API information is available on
-      the Open Text corporate web site: http://www.opentext.com
+    * OpenText Content Server SDK and LAPI
+      OpenText SDK and Livelink API information is available on
+      the OpenText corporate web site: http://www.opentext.com
       [Registration is required to view most relevant content.]
 
 Licensing
