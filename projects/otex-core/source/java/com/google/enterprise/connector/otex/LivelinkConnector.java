@@ -940,6 +940,7 @@ public class LivelinkConnector implements Connector {
    *     the checkpoint date in the query, or a positive integer to
    *     also check for candidates more than the given number of days
    *     newer than the checkpoint date
+   * @since 3.2.2
    */
   public void setCandidatesTimeWarpFuzz(int fuzz) {
     if (LOGGER.isLoggable(Level.CONFIG))
@@ -1139,6 +1140,7 @@ public class LivelinkConnector implements Connector {
    * Sets the subtypes that do not support FetchVersion.
    *
    * @param unsupportedTypes a comma-separated list of subtypes
+   * @since 2.8.4
    */
   public void setUnsupportedFetchVersionTypes(final String unsupportedTypes) {
     propertyValidators.add(new PropertyValidator() {
@@ -1390,6 +1392,7 @@ public class LivelinkConnector implements Connector {
    *
    * @param selectExpressions a map from property names to SQL
    * {@code SELECT} expressions. The map may be null or empty.
+   * @since 2.8
    */
   public void setIncludedSelectExpressions(
       Map<String, String> selectExpressions) {
@@ -1517,6 +1520,7 @@ public class LivelinkConnector implements Connector {
    *
    * @param useDTreeAncestors <code>true</code> to use the DTreeAncestors
    * table when necessary, or <code>false</code> to use a slower method
+   * @since 2.6.10
    */
   public void setUseDTreeAncestors(boolean useDTreeAncestors) {
     if (LOGGER.isLoggable(Level.CONFIG))
@@ -1542,6 +1546,7 @@ public class LivelinkConnector implements Connector {
    * @param useDTreeAncestorsFirst <code>true</code> to use the
    * DTreeAncestors table in the candidates query, if needed, or
    * <code>false</code> to use it in the results query or not at all
+   * @since 3.4
    */
   public void setUseDTreeAncestorsFirst(final boolean useDTreeAncestorsFirst) {
     if (LOGGER.isLoggable(Level.CONFIG))
@@ -1577,6 +1582,7 @@ public class LivelinkConnector implements Connector {
    *
    * @param genealogist the fully-qualified name of the
    * <code>Genealogist</code> implementation to use
+   * @since 2.6.10
    */
   public void setGenealogist(String genealogist) {
     if (LOGGER.isLoggable(Level.CONFIG))
@@ -1678,6 +1684,7 @@ public class LivelinkConnector implements Connector {
    * Sets an additional SQL WHERE clause condition.
    *
    * @param sqlWhereCondition a valid SQL condition
+   * @since 2.8.4
    */
   public void setSqlWhereCondition(String sqlWhereCondition) {
     if (LOGGER.isLoggable(Level.CONFIG))
@@ -1973,7 +1980,8 @@ public class LivelinkConnector implements Connector {
    *
    * @param groupFeedSchedule a string in cron format,
    *     "minute, hour, day of month, month, day of week"
-  */
+   * @since 3.4
+   */
   public void setGroupFeedSchedule(String groupFeedSchedule) {
     LOGGER.log(Level.CONFIG, "GROUP FEED SCHEDULE: {0}", groupFeedSchedule);
     this.groupFeedSchedule = groupFeedSchedule;
@@ -2005,6 +2013,7 @@ public class LivelinkConnector implements Connector {
    * Sets the AuthorizationManager implementation to use.
    *
    * @param authorizationManager an authorization manager
+   * @since 2.6.10
    */
   public void setAuthorizationManager(
       AuthorizationManager authorizationManager) {
@@ -2018,6 +2027,7 @@ public class LivelinkConnector implements Connector {
    * implementation to use.
    *
    * @param authorizationManager an authorization manager
+   * @since 2.6.10
    */
   public void setPublicContentAuthorizationManager(
       LivelinkAuthorizationManager authorizationManager) {
