@@ -31,16 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 
-/**
- * Tests the construction of the queries for authorizing documents.
- *
- * Note that many tests provide a candidates predicate of
- * <code>null</code>, which is invalid. This leads to the string
- * "null" appearing in the SQL query as a predicate, which is also
- * invalid. But for our purposes this is OK, since it shows the
- * candidates predicate being included in the query, which is all we
- * need.
- */
 public class LivelinkAuthorizationManagerTest extends TestCase {
   private final JdbcFixture jdbcFixture = new JdbcFixture();
 
@@ -91,21 +81,21 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
   }
 
   public void testGetDocids() throws RepositoryException {
-    final String docid = "hello, world";
+    String docid = "-99999"; // Nothing else tests negative integers.
     Iterator<String> it = Collections.nCopies(1001, docid).iterator();
 
     afterInit();
 
     // The first request returns 1000 comma-separated copies of the docid.
     String docids = lam.getDocids(it);
-    assertNotNull(docids);
+    assertNotNull(docids, docids);
     assertEquals(docid.length() * 1000 + 999, docids.length());
 
     // The second request has just one docid left.
     assertEquals(docid, lam.getDocids(it));
 
     // The third request has none left.
-    assertNull(lam.getDocids(it));
+    assertEquals(null, lam.getDocids(it));
   }
 
   /**
@@ -226,6 +216,16 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
     assertEquals(6667, lam.getExcludedVolumeId(667, null, client));
   }
 
+  /** Tests an empty authZ request. */
+  public void testAuthorizeDocids_empty() throws RepositoryException {
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.<String>of(), identity);
+    assertPermittedDocs(ImmutableSet.<String>of(), responses);
+  }
+
   /** Tests a small authZ request with partially authorized results. */
   public void testAuthorizeDocids_small() throws RepositoryException {
     afterInit();
@@ -253,6 +253,37 @@ public class LivelinkAuthorizationManagerTest extends TestCase {
         lam.authorizeDocids(builder.build(), identity);
     assertPermittedDocs(ImmutableSet.of("2100", "2101", "3299"),
         responses);
+  }
+
+  public void testAuthorizeDocids_injection_someInvalid()
+      throws RepositoryException {
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.of("2100", "DataID", "2102"),
+            identity);
+    assertPermittedDocs(ImmutableSet.of("2100"), responses);
+  }
+
+  public void testAuthorizeDocids_injection_allInvalid()
+      throws RepositoryException {
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses =
+        lam.authorizeDocids(ImmutableSet.of("DataID", "0) or (1=1"), identity);
+    assertPermittedDocs(ImmutableSet.<String>of(), responses);
+  }
+
+  public void testAuthorizeDocids_injection_partialMatches()
+      throws RepositoryException {
+    afterInit();
+
+    AuthenticationIdentity identity = new SimpleAuthenticationIdentity("fred");
+    Collection<AuthorizationResponse> responses = lam.authorizeDocids(
+        ImmutableSet.of("+2100", "DataID-0", "0+DataID"), identity);
+    assertPermittedDocs(ImmutableSet.<String>of(), responses);
   }
 
   private void assertPermittedDocs(ImmutableSet<String> expected,

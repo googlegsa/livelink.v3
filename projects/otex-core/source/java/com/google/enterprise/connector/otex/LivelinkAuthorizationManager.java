@@ -17,7 +17,10 @@ package com.google.enterprise.connector.otex;
 import static com.google.enterprise.connector.otex.SqlQueries.choice;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
+import com.google.common.collect.Iterators;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -32,6 +35,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Implements an AuthorizationManager for the Livelink connector.
@@ -41,6 +45,10 @@ public class LivelinkAuthorizationManager
   /** The logger for this class. */
   private static final Logger LOGGER =
       Logger.getLogger(LivelinkAuthorizationManager.class.getName());
+
+  /** A predicate that matches the expected docid pattern for authZ requests. */
+  private static final Predicate<CharSequence> INTEGER_PREDICATE =
+      Predicates.contains(Pattern.compile("^-?\\d{1,10}$"));
 
   /** The connector contains configuration information. */
   private LivelinkConnector connector;
@@ -177,6 +185,8 @@ public class LivelinkAuthorizationManager
   /**
    * Adds an <code>AuthorizationResponse</code> instance to the
    * collection for each authorized document from the list.
+   * These doc IDs come from the GSA, so we filter them to just
+   * the integers to avoid SQL injection.
    *
    * @param iterator Iterator over the list of doc IDs
    * @param username the username for which to check authorization
@@ -185,8 +195,9 @@ public class LivelinkAuthorizationManager
    */
   private void addAuthorizedDocids(Collection<String> docids, String username,
       Collection<AuthorizationResponse> authorized) throws RepositoryException {
-    addAuthorizedDocids(docids.iterator(), username, authorized,
-        new AuthzCreator());
+    addAuthorizedDocids(
+        Iterators.filter(docids.iterator(), INTEGER_PREDICATE),
+        username, authorized, new AuthzCreator());
   }
 
   /**
