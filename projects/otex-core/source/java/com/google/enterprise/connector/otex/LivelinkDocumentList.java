@@ -399,7 +399,7 @@ class LivelinkDocumentList implements DocumentList {
       if (delRow < delSize) {
         try {
           delDate = dateFormat.parse(delArray.toString(delRow,
-                  "AuditDate"));
+                  "GoogleAuditDate"));
         } catch (RepositoryException e1) {
           delRow++;
           throw e1;
@@ -624,7 +624,7 @@ class LivelinkDocumentList implements DocumentList {
       // value. For example, the value returned by
       // GetObjectInfo may be different than the
       // value retrieved from the database.
-      long size = recArray.toLong(insRow, "DataSize");
+      long size = recArray.toLong(insRow, "GoogleDataSize");
       if (LOGGER.isLoggable(Level.FINER))
         LOGGER.finer("CONTENT DATASIZE = " + size);
 
@@ -762,7 +762,7 @@ class LivelinkDocumentList implements DocumentList {
       // Make sure this item has versions. See the MimeType, Version and
       // DataSize comments in collectContentProperty().  If DataSize is
       // not defined, then the item has no versions.
-      ClientValue dataSize = recArray.toValue(insRow, "DataSize");
+      ClientValue dataSize = recArray.toValue(insRow, "GoogleDataSize");
       if (!dataSize.isDefined())
         return;
 

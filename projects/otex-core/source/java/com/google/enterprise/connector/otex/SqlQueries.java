@@ -245,7 +245,7 @@ class SqlQueries {
 
         { "LivelinkConnector.validateIncludedLocationStartDate.select",
           new String[] {
-            "ModifyDate as minModifyDate",
+            "ModifyDate",
             "DataID" } },
         { "LivelinkConnector.validateIncludedLocationStartDate.from",
           "DTree" },
@@ -287,7 +287,7 @@ class SqlQueries {
 
         { "LivelinkTraversalManager.getLastAuditEvent.select",
           new String[] {
-            "GoogleAuditDate as AuditDate",
+            "GoogleAuditDate",
             "EventID",
             "DataID" } },
         { "LivelinkTraversalManager.getLastAuditEvent.from",
@@ -316,7 +316,7 @@ class SqlQueries {
 
         { "LivelinkTraversalManager.getDeletes.select",
           new String[] {
-            "GoogleAuditDate as AuditDate",
+            "GoogleAuditDate",
             "EventID",
             "DataID" } },
         { "LivelinkTraversalManager.getDeletes.from",
@@ -350,7 +350,7 @@ class SqlQueries {
 
         { "LivelinkConnector.validateIncludedLocationStartDate.select",
           new String[] {
-            "ModifyDate as minModifyDate",
+            "ModifyDate",
             "DataID" } },
         { "LivelinkConnector.validateIncludedLocationStartDate.from",
           "DTree" },
@@ -387,7 +387,7 @@ class SqlQueries {
 
         { "LivelinkTraversalManager.getLastAuditEvent.select",
           new String[] {
-            "GoogleAuditDate as AuditDate",
+            "GoogleAuditDate",
             "EventID",
             "DataID" } },
         { "LivelinkTraversalManager.getLastAuditEvent.from",
@@ -417,7 +417,7 @@ class SqlQueries {
 
         { "LivelinkTraversalManager.getDeletes.select",
           new String[] {
-            "GoogleAuditDate as AuditDate",
+            "GoogleAuditDate",
             "EventID",
             "DataID", } },
         { "LivelinkTraversalManager.getDeletes.from",
