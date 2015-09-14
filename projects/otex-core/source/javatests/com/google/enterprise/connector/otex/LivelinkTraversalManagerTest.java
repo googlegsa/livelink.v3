@@ -308,7 +308,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
         assertTrue(query, query.indexOf("and SubType not in "
                 + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
-                + "345,346,361,374,431,441,3030004,3030201)") != -1);
+                + "345,346,361,374,431,441,482,484,899,901,903,904,906,"
+                + "3030004,3030201)") != -1);
     }
 
     public void testExcludedNodes2() throws RepositoryException {
@@ -465,10 +466,11 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
         assertTrue(query, query.indexOf("and SubType not in "
             + "(137,142,143,148,150,154,161,162,201,203,209,210,211,"
-            + "345,346,361,374,431,441,3030004,3030201)") != -1);
+            + "345,346,361,374,431,441,482,484,899,901,903,904,906,"
+            + "3030004,3030201)") != -1);
         assertTrue(query, query.indexOf("and -OwnerID not in") != -1);
         assertTrue(query,
-            query.indexOf("SubType in (148,161,162,901)") != -1);
+            query.indexOf("SubType in (148,161,162,525,901)") != -1);
     }
 
   public void testUseDTreeAncestors_true() throws RepositoryException {
