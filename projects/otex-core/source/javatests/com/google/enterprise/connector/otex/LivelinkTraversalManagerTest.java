@@ -142,7 +142,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
     assertEquals(10042L, results.toLong(0, "EventID"));
     // The fractional seconds are OK, because LivelinkDateFormat.parse
     // handles multiple variations in the timestamp strings.
-    assertEquals("2013-04-24 08:00:00.0", results.toString(0, "AuditDate"));
+    assertEquals("2013-04-24 08:00:00.0",
+        results.toString(0, "GoogleAuditDate"));
   }
 
   /**

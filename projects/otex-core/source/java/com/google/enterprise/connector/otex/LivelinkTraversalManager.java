@@ -110,8 +110,8 @@ class LivelinkTraversalManager
     list.add(new Field("UserID", "UserID"));
 
     // Workaround LAPI NumberFormatException/NullPointerException bug
-    // returning negative longs.
-    list.add(Field.fromExpression("GoogleDataSize as DataSize", "DataSize"));
+    // returning negative longs, and integer overflow above 2 GB.
+    list.add(new Field("GoogleDataSize"));
 
     list.add(new Field("PermID"));
 
@@ -276,7 +276,7 @@ class LivelinkTraversalManager
       ClientValue results = getLastAuditEvent();
       if (results.size() > 0) {
         checkpoint.setDeleteCheckpoint(
-            dateFormat.parse(results.toString(0, "AuditDate")),
+            dateFormat.parse(results.toString(0, "GoogleAuditDate")),
             results.toValue(0, "EventID"));
       } else {
         LOGGER.fine("Unable to establish initial Deleted Items " +

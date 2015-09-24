@@ -162,11 +162,10 @@ public class MockClient implements Client {
           // This is an attempt to match the SQL injection
           // protections, which quote the column names (which must
           // therefore be identifiers and not keywords, numbers, or
-          // function calls) and which only allow multiple words for
-          // column aliases.
-          // Using case-insensitive regexp matching with (?i:...).
-          if (!column.matches(
-                  "(?i:[a-z][a-z0-9]*(( as)? ([a-z][a-z0-9]*))?)")) {
+          // function calls). For Update 7 of Livelink 9.7.1 and OTCS
+          // 10, column aliases are not supported. Column aliases
+          // for the includedSelectExpressions property are allowed.
+          if (!column.matches("[a-zA-Z][a-zA-Z0-9]*( alias[0-9]+)?")) {
             throw new RepositoryException("Invalid SQL column: " + column);
           }
 

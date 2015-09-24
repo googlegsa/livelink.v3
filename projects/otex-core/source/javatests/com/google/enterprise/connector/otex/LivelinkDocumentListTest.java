@@ -32,6 +32,7 @@ import com.google.enterprise.connector.spi.RepositoryDocumentException;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.SimpleTraversalContext;
 import com.google.enterprise.connector.spi.SpiConstants;
+import com.google.enterprise.connector.spi.SpiConstants.ActionType;
 import com.google.enterprise.connector.spi.TraversalContext;
 import com.google.enterprise.connector.spi.Value;
 
@@ -87,7 +88,11 @@ public class LivelinkDocumentListTest extends TestCase {
     connector.setUnsupportedFetchVersionTypes("");
 
     if (property != null) {
-      if (property.equals("publicContentUsername")) {
+      if (property.equals("includedObjectInfo")) {
+        connector.setIncludedObjectInfo(value);
+      } else if (property.equals("includedVersionInfo")) {
+        connector.setIncludedVersionInfo(value);
+      } else if (property.equals("publicContentUsername")) {
         connector.setPublicContentUsername(value);
         connector.setPublicContentAuthorizationManager(
             new LivelinkAuthorizationManager());
@@ -103,9 +108,10 @@ public class LivelinkDocumentListTest extends TestCase {
   /**
    * Creates a LivelinkDocumentList containing documents for the tests.
    *
-   * @param docInfo the object IDs (DataID) for the returned documents,
-   *     usually one of the values from MockConstants, alternating with
-   *     the file sizes (DataSize) for the returned documents
+   * @param docInfo a sequence of triplets containing: the object IDs
+   *     (DataID) for the returned documents, usually one of the
+   *     values from MockConstants, the file sizes (DataSize) for the
+   *     returned documents, and the user ID of the document owner
    */
   private DocumentList getObjectUnderTest(Object... docInfo)
       throws RepositoryException {
@@ -119,9 +125,10 @@ public class LivelinkDocumentListTest extends TestCase {
    *
    * @param connector the connector to use, instead of instantiating a
    *     generic one automatically
-   * @param docInfo the object IDs (DataID) for the returned documents,
-   *     usually one of the values from MockConstants, alternating with
-   *     the file sizes (DataSize) for the returned documents
+   * @param docInfo a sequence of triplets containing: the object IDs
+   *     (DataID) for the returned documents, usually one of the
+   *     values from MockConstants, the file sizes (DataSize) for the
+   *     returned documents, and the user ID of the document owner
    */
   private DocumentList getObjectUnderTest(LivelinkConnector connector,
       Object... docInfo) throws RepositoryException {
@@ -151,7 +158,8 @@ public class LivelinkDocumentListTest extends TestCase {
   private DocumentList getObjectUnderTest(LivelinkConnector connector,
       Client client, Object... docInfo) throws RepositoryException {
     ContentHandler contentHandler = new FileContentHandler();
-    return getObjectUnderTest(connector, client, contentHandler, null, docInfo);
+    return getDocumentList(connector, client, contentHandler, null,
+        ActionType.ADD, docInfo);
   }
 
   /**
@@ -167,8 +175,8 @@ public class LivelinkDocumentListTest extends TestCase {
     ClientFactory clientFactory = connector.getClientFactory();
     Client client = clientFactory.createClient();
 
-    return getObjectUnderTest(connector, client, contentHandler, null,
-        MockConstants.IO_OBJECT_ID, 0);
+    return getDocumentList(connector, client, contentHandler, null,
+        ActionType.ADD, MockConstants.IO_OBJECT_ID, 0);
   }
 
   /**
@@ -186,38 +194,88 @@ public class LivelinkDocumentListTest extends TestCase {
     Client client = clientFactory.createClient();
     ContentHandler contentHandler = new FileContentHandler();
 
-    return getObjectUnderTest(connector, client, contentHandler,
-        traversalContext, MockConstants.HARMLESS_OBJECT_ID, dataSize);
+    return getDocumentList(connector, client, contentHandler,
+        traversalContext, ActionType.ADD,
+        MockConstants.HARMLESS_OBJECT_ID, dataSize);
   }
 
-  /** Helper method for the other overloads. */
-  private DocumentList getObjectUnderTest(LivelinkConnector connector,
+  /**
+   * Creates a LivelinkDocumentList containing documents for the tests,
+   * using the given feed record action. In practice, this method is used
+   * for deleted documents.
+   *
+   * @param action either ActionType.ADD or ActionType.DELETE
+   * @param docInfo for deleted documents, a sequence of triplets
+   *     containing: the audit event date and ID (AuditDate and
+   *     EventID) and the object ID (DataID) for each of the deleted
+   *     documents
+   */
+  private DocumentList getObjectUnderTest(ActionType action, Object... docInfo)
+      throws RepositoryException {
+    LivelinkConnector connector = getConnector();
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    ContentHandler contentHandler = new FileContentHandler();
+
+    return getDocumentList(connector, client, contentHandler, null, action,
+        docInfo);
+  }
+
+  /** Helper method for the getObjectUnderTest overloads. */
+  private DocumentList getDocumentList(LivelinkConnector connector,
       Client client, ContentHandler contentHandler,
-      TraversalContext traversalContext, Object... docInfo)
+      TraversalContext traversalContext, ActionType action, Object... docInfo)
       throws RepositoryException {
     contentHandler.initialize(connector, client);
 
-    final String[] FIELDS = {
-      "ModifyDate", "DataID", "OwnerID", "SubType", "MimeType", "DataSize" };
-    assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 2);
-    Object[][] values = new Object[docInfo.length / 2][];
-    for (int i = 0; i < docInfo.length / 2; i++) {
-      Object objectId = docInfo[2 * i];
-      Object dataSize = docInfo[2 * i + 1];
-      values[i] = new Object[] {
-        new Date(), objectId, 2000, 144, "text/plain", dataSize };
+    String[] fieldNames;
+    ClientValue recArray;
+    ClientValue delArray;
+    switch (action) {
+      case ADD: {
+        fieldNames = new String[] {
+          "ModifyDate", "DataID", "OwnerID", "SubType", "MimeType",
+          "GoogleDataSize" };
+        assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 2);
+        Object[][] values = new Object[docInfo.length / 2][];
+        for (int i = 0; i < docInfo.length / 2; i++) {
+          Object objectId = docInfo[2 * i];
+          Object dataSize = docInfo[2 * i + 1];
+          values[i] = new Object[] { new Date(), objectId, 2000, 144,
+            "text/plain", dataSize };
+        }
+        recArray = new MockClientValue(fieldNames, values);
+        delArray = null;
+        break;
+      }
+      case DELETE: {
+        fieldNames = new String[] { "GoogleAuditDate", "EventID", "DataID" };
+        assertEquals(String.valueOf(docInfo.length), 0, docInfo.length % 3);
+        Object[][] values = new Object[docInfo.length / 3][];
+        for (int i = 0; i < docInfo.length / 3; i++) {
+          Object auditDate = docInfo[3 * i];
+          Object eventId = docInfo[3 * i + 1];
+          Object objectId = docInfo[3 * i + 2];
+          values[i] = new Object[] { auditDate, eventId, objectId };
+        }
+        recArray = null;
+        delArray = new MockClientValue(fieldNames, values);
+        break;
+      }
+      default:
+        throw new AssertionError("Invalid ActionType: " + action);
     }
-    ClientValue recArray = new MockClientValue(FIELDS, values);
 
-    Field[] fields = new Field[FIELDS.length];
+    // Map all the columns to properties for visibility in the tests.
+    Field[] fields = new Field[fieldNames.length];
     for (int i = 0; i < fields.length; i++) {
-      fields[i] = new Field(FIELDS[i], FIELDS[i]);
+      fields[i] = new Field(fieldNames[i], fieldNames[i]);
     }
     Checkpoint checkpoint = new Checkpoint();
 
     return new LivelinkDocumentList(connector, client,
-        contentHandler, recArray, fields, null, traversalContext, checkpoint,
-        connector.getUsername());
+        contentHandler, recArray, fields, delArray, traversalContext,
+        checkpoint, connector.getUsername());
   }
 
   public void testContentHandler() throws RepositoryException {
@@ -270,12 +328,12 @@ public class LivelinkDocumentListTest extends TestCase {
       fail("Invalid Content value: " + contentState);
     }
 
-    // The DataSize column is mapped to a property by getObjectUnderTest,
+    // The GoogleDataSize column is mapped to a property by getObjectUnderTest,
     // so by checking the property value we're also testing the mapping
     // of long integer properties (as done by includedSelectExpressions,
     // for example).
     assertEquals(String.valueOf(dataSize),
-        Value.getSingleValueString(doc, "DataSize"));
+        Value.getSingleValueString(doc, "GoogleDataSize"));
   }
 
   public void testNextDocument_noTraversalContext_smallDoc()
@@ -455,6 +513,58 @@ public class LivelinkDocumentListTest extends TestCase {
     Document doc = list.nextDocument();
     String checkpoint = list.checkpoint();
     assertTrue(checkpoint, checkpoint.endsWith("," + checkpointId));
+  }
+
+  /**
+   * Tests the mapping of a user ID property with a value of
+   * RIGHT_OWNER to the actual owner user name.
+   */
+  public void testNextDocument_ownerMapping_objectInfo()
+      throws RepositoryException {
+    LivelinkConnector connector =
+        getConnector("includedObjectInfo", "AssignedTo");
+    Client client = new MockClient() {
+        @Override public ClientValue GetObjectInfo(int volumeId, int objectId) {
+          return new MockClientValue(new String[] { "AssignedTo" },
+              new Object[] { -3 });
+        }
+      };
+    DocumentList list = getObjectUnderTest(connector, client,
+        MockConstants.HARMLESS_OBJECT_ID, 1);
+
+    Document doc = list.nextDocument();
+  }
+
+  /**
+   * Tests the mapping of a user ID property with a value of
+   * RIGHT_OWNER to the actual owner user name.
+   */
+  public void testNextDocument_ownerMapping_versionInfo()
+      throws RepositoryException {
+    LivelinkConnector connector =
+        getConnector("includedVersionInfo", "LockedBy");
+    String[] fields = connector.getVersionInfoKeys();
+    Client client = new MockClient() {
+        @Override public ClientValue GetVersionInfo(int volumeId, int objectId,
+            int versionNumber) {
+          return new MockClientValue(new String[] { "LockedBy" },
+              new Object[] { -3 });
+        }
+      };
+    DocumentList list = getObjectUnderTest(connector, client,
+        MockConstants.HARMLESS_OBJECT_ID, 1);
+
+    Document doc = list.nextDocument();
+  }
+
+  /** Tests a deleted document. Mostly a smoke test of the getDeletes query. */
+  public void testNextDocument_delete() throws RepositoryException {
+    DocumentList list = getObjectUnderTest(ActionType.DELETE,
+        "2015-02-15 12:34:56", 1234567, MockConstants.HARMLESS_OBJECT_ID);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(ActionType.DELETE.toString(),
+        Value.getSingleValueString(doc, SpiConstants.PROPNAME_ACTION));
   }
 
   /** Tests that the client must not be null. */

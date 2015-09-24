@@ -2144,8 +2144,8 @@ public class LivelinkConnector implements Connector {
           ancestorNodes, includedLocationNodes);
 
       if (results.size() > 0 &&
-          results.isDefined(0, "minModifyDate")) {
-        Date minDate = results.toDate(0, "minModifyDate");
+          results.isDefined(0, "ModifyDate")) {
+        Date minDate = results.toDate(0, "ModifyDate");
         if (LOGGER.isLoggable(Level.FINEST))
           LOGGER.finest("COMPUTED START DATE: " + minDate);
         if (startDate == null || minDate.after(startDate)) {

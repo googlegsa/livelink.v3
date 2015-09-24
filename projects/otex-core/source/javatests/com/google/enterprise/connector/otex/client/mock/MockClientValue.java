@@ -55,7 +55,7 @@ public final class MockClientValue implements ClientValue {
   }
 
   /** Constructs an Assoc. */
-  MockClientValue(String[] fieldNames, Object[] values) {
+  public MockClientValue(String[] fieldNames, Object[] values) {
     if (fieldNames == null || values == null ||
         fieldNames.length != values.length) {
       throw new IllegalArgumentException();
@@ -275,8 +275,13 @@ public final class MockClientValue implements ClientValue {
   }
 
   @Override
-  public ClientValue toValue(String field) {
-    throw new IllegalArgumentException();
+  public ClientValue toValue(String field) throws RepositoryException {
+    Object obj = getValue(field);
+    if (obj instanceof ClientValue) {
+      return (ClientValue) obj;
+    } else {
+      return new MockClientValue(obj);
+    }
   }
 
   @Override
