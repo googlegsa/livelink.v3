@@ -47,6 +47,8 @@
         prefix="${bin.archive}" />
       <zipfileset file="otex-core/config/logging.properties"
         prefix="${bin.archive}/Config" />
+      <zipfileset dir="otex-core/third_party/lib"
+        prefix="${bin.archive}/Lib" />
       <zipfileset file="../COPYING" 
         prefix="${bin.archive}/License" />
     </zip>
