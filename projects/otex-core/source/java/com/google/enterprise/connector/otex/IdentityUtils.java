@@ -18,8 +18,12 @@ import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
 
 import java.util.Enumeration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 class IdentityUtils {
+  private static final Logger LOGGER =
+      Logger.getLogger(IdentityUtils.class.getName());
 
   private LivelinkConnector connector;
 
@@ -47,12 +51,18 @@ class IdentityUtils {
   }
 
   public String getNamespace(ClientValue userData) throws RepositoryException {
-    String namespace;
-    if (isExternal(userData)) {
-      namespace = connector.getGoogleGlobalNamespace();
-    } else {
-      namespace = connector.getGoogleLocalNamespace();
+    try {
+      String namespace;
+      if (isExternal(userData)) {
+        namespace = connector.getGoogleGlobalNamespace();
+      } else {
+        namespace = connector.getGoogleLocalNamespace();
+      }
+      return namespace;
+    } catch (IllegalArgumentException e) {
+      LOGGER.log(Level.FINER, "Unable to get namespace from {0}, type {1}: {2}",
+          new Object[] {userData, userData.type(), e});
+      return null;
     }
-    return namespace;
   }
 }

@@ -191,6 +191,34 @@ public class GroupAdaptorTest extends TestCase {
     adaptor.setTraversalSchedule(schedule);
   }
 
+  public void testGroupNameWithSpace()
+      throws RepositoryException, SQLException, IOException,
+      InterruptedException {
+    addUser(1001, "user1");
+    addUser(1002, "user2");
+    addGroup(2001, "  group1");
+    addGroupMembers(2001, 1001, 1002);
+
+    Map<GroupPrincipal, ? extends Collection<Principal>> groups =
+        getGroupInfo(getGroupsAdaptor());
+
+    Set<GroupPrincipal> groupSet = groups.keySet();
+    GroupPrincipal expectedGroup =
+        new GroupPrincipal("group1", LOCAL_NAMESPACE);
+
+    Set<GroupPrincipal> expectedGroupSet =
+        ImmutableSet.of(expectedGroup);
+    assertGroupsEquals(expectedGroupSet, groupSet);
+
+    Set<UserPrincipal> expectedUserSet =
+        ImmutableSet.of(
+            new UserPrincipal("user1", LOCAL_NAMESPACE),
+            new UserPrincipal("user2", LOCAL_NAMESPACE));
+    Collection<Principal> users = groups.get(expectedGroup);
+    Set<Principal> userSet = new HashSet<Principal>(users);
+    assertEquals(expectedUserSet, userSet);
+  }
+
   public void testMultipleGroups()
       throws RepositoryException, SQLException, IOException,
       InterruptedException {

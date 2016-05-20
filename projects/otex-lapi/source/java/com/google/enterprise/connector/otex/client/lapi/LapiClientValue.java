@@ -140,17 +140,25 @@ public final class LapiClientValue implements ClientValue {
 
     /** {@inheritDoc} */
     @Override
-    public Enumeration<String> enumerateNames() {
-        final Enumeration<?> names = value.enumerateNames();
-        return new Enumeration<String>() {
-                @Override public boolean hasMoreElements() {
-                    return names.hasMoreElements();
-                }
-                @Override public String nextElement() {
-                    return names.nextElement().toString();
-                }
-            };
+  public Enumeration<String> enumerateNames() throws RepositoryException {
+    try {
+      final Enumeration<?> names = value.enumerateNames();
+      return new Enumeration<String>() {
+        @Override
+        public boolean hasMoreElements() {
+          return names.hasMoreElements();
+        }
+        @Override
+        public String nextElement() {
+          return names.nextElement().toString();
+        }
+      };
+    } catch (LLIllegalOperationException e) {
+      throw new IllegalArgumentException(e);
+    } catch (RuntimeException e) {
+      throw new LivelinkException(e, LOGGER);
     }
+  }
 
     /** {@inheritDoc} */
     @Override

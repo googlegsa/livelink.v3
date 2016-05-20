@@ -109,7 +109,7 @@ public interface ClientValue {
      *
      * @return an enumeration of strings
      */
-    Enumeration<String> enumerateNames();
+    Enumeration<String> enumerateNames() throws RepositoryException;
 
     /**
      * Gets a <code>ClientValue</code> from a stringified representation.
