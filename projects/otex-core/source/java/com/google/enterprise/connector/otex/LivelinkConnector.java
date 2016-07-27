@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientFactory;
@@ -2239,6 +2240,35 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Validates that all of the configured Items to Index exist.
+   *
+   * @param client the client to use for the query
+   */
+  /*
+   * TODO(wiarlawd): We could use a traversal client for better
+   * permissions checking, but we don't have direct access to one here
+   * (only LivelinkTraversalManager does).
+   */
+  private void validateIncludedLocationNodes(Client client)
+      throws RepositoryException {
+    Set<String> expectedIds = new HashSet<String>();
+    Collections.addAll(expectedIds, includedLocationNodes.split(","));
+    ClientValue actualIds = sqlQueries.execute(client, null,
+        "LivelinkConnector.validateIncludedLocationNodes",
+        includedLocationNodes);
+    if (actualIds.size() < expectedIds.size()) {
+      for (int i = 0; i < actualIds.size(); i++) {
+        expectedIds.remove(actualIds.toString(i, "DataID"));
+      }
+      String invalidIds = Joiner.on(", ").join(expectedIds);
+      throw new LivelinkException(
+          "The following Items to Index are missing or inaccessible: "
+          + invalidIds,
+          LOGGER, "missingItemsToIndex", new Object[] { invalidIds });
+    }
+  }
+
+  /**
    * Validates the DTreeAncestors table in the Livelink database,
    * which must be populated for the connector to work. This is a
    * coarse check to see if the table is completely empty.
@@ -2495,8 +2525,11 @@ public class LivelinkConnector implements Connector {
     autoDetectServtype(client);
     sqlQueries = new SqlQueries(isSqlServer);
 
-    // Check first to see if we are going to need the
-    // DTreeAncestors table.
+    if (!Strings.isNullOrEmpty(includedLocationNodes)) {
+      validateIncludedLocationNodes(client);
+    }
+
+    // Check to see if we are going to need the DTreeAncestors table.
     if (useDTreeAncestors &&
         (!hiddenItemsSubtypes.contains("all")
             || !Strings.isNullOrEmpty(includedLocationNodes)

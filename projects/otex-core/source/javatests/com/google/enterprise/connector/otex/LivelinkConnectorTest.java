@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.collect.ImmutableList;
-import com.google.enterprise.connector.otex.ConfigurationException;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClientFactory;
@@ -216,6 +215,46 @@ public class LivelinkConnectorTest extends TestCase {
     assertEquals(null, connector.getStartDate());
     connector.login();
     assertEquals(null, connector.getStartDate());
+  }
+
+  /** Tests that the included nodes exist. */
+  public void testValidateIncludedLocationNodes_valid()
+  throws RepositoryException {
+    connector.setIncludedLocationNodes("2000");
+    connector.login();
+  }
+
+  /** Tests that the included nodes exist. */
+  public void testValidateIncludedLocationNodes_duplicates()
+  throws RepositoryException {
+    connector.setIncludedLocationNodes("2000, 2000");
+    connector.login();
+  }
+
+  /** Tests that the included nodes do not exist. */
+  public void testValidateIncludedLocationNodes_invalid()
+  throws RepositoryException {
+    connector.setIncludedLocationNodes("666");
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (RepositoryException expected) {
+      assertTrue(expected.getMessage(),
+          expected.getMessage().endsWith(": 666"));
+    }
+  }
+
+  /** Tests that some of the included nodes do not exist. */
+  public void testValidateIncludedLocationNodes_mixed()
+  throws RepositoryException {
+    connector.setIncludedLocationNodes("2000, 666");
+    try {
+      connector.login();
+      fail("Expected an exception");
+    } catch (RepositoryException expected) {
+      assertTrue(expected.getMessage(),
+          expected.getMessage().endsWith(": 666"));
+    }
   }
 
   /**

@@ -139,6 +139,14 @@ class SqlQueries {
         { "HybridGenealogist.getParents.where",
           "DataID in ({0})" },
 
+        { "LivelinkConnector.validateIncludedLocationNodes.select",
+          new String[] {
+            "DataID" } },
+        { "LivelinkConnector.validateIncludedLocationNodes.from",
+          "DTree" },
+        { "LivelinkConnector.validateIncludedLocationNodes.where",
+          "DataID in ({0})" },
+
         { "LivelinkTraversalManager.getDescendants.where",
           "(DataID in ({0}) or "
           + "DataID in (select DataID from DTreeAncestors where "
