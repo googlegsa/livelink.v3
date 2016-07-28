@@ -25,7 +25,7 @@ import java.sql.Statement;
 class JdbcFixture {
   private static final String CREATE_TABLE_DAUDITNEW = "create table DAuditNew "
       + "(EventID bigint primary key, AuditID int, DataID int, "
-      + "SubType int, AuditDate timestamp)";
+      + "SubType int, AuditDate timestamp, AuditStr varchar)";
 
   private static final String CREATE_TABLE_DTREE = "create table DTree "
       + "(DataID int primary key, ParentID int, PermID int, "

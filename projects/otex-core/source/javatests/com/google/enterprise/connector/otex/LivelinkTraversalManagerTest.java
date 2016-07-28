@@ -63,12 +63,12 @@ public class LivelinkTraversalManagerTest extends TestCase {
         // Try inserting the DAuditNew entries out of date order, in
         // case that influences the natural order returned by the DB,
         // since we want an ORDER BY to pick the latest date.
-        "insert into DAuditNew(EventID, AuditDate) "
-        + "values(10017, timestamp'2001-01-01 00:00:00')",
-        "insert into DAuditNew(EventID, AuditDate) "
-        + "values(10042, timestamp'2013-04-24 08:00:00')",
-        "insert into DAuditNew(EventID, AuditDate) "
-        + "values(10024, timestamp'2005-10-06 12:34:56')",
+        "insert into DAuditNew(EventID, AuditDate, DataID) "
+        + "values(10017, timestamp'2001-01-01 00:00:00', 6601)",
+        "insert into DAuditNew(EventID, AuditDate, DataID) "
+        + "values(10042, timestamp'2013-04-24 08:00:00', 6602)",
+        "insert into DAuditNew(EventID, AuditDate, DataID) "
+        + "values(10024, timestamp'2005-10-06 12:34:56', 6603)",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
         + "values(24, 6, -2000, 0, timestamp'2001-01-01 00:00:00')",
         "insert into DTree(DataID, ParentID, OwnerID, SubType, ModifyDate) "
@@ -146,7 +146,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
     assertFalse(excluded, excluded.contains("and not"));
   }
 
-  public void testGetLastAuditEvent() throws RepositoryException {
+  private void testGetLastAuditEvent(boolean useIndexedDeleteQuery)
+      throws RepositoryException {
+    conn.setUseIndexedDeleteQuery(useIndexedDeleteQuery);
     Session sess = conn.login();
     LivelinkTraversalManager ltm = getTraversalManager(sess);
 
@@ -158,6 +160,14 @@ public class LivelinkTraversalManagerTest extends TestCase {
     // handles multiple variations in the timestamp strings.
     assertEquals("2013-04-24 08:00:00.0",
         results.toString(0, "GoogleAuditDate"));
+  }
+
+  public void testGetLastAuditEvent_custom() throws RepositoryException {
+    testGetLastAuditEvent(false);
+  }
+
+  public void testGetLastAuditEvent_standard() throws RepositoryException {
+    testGetLastAuditEvent(true);
   }
 
   /**
@@ -609,20 +619,15 @@ public class LivelinkTraversalManagerTest extends TestCase {
         new MockClient(), conn.getContentHandler(traversalClient));
   }
 
-  /**
-   * Asserts that the given DocumentList contains exactly the expected
-   * documents and nothing else.
-   */
-  private void assertDocumentListEquals(List<String> expectedDocids,
-      DocumentList list) throws RepositoryException {
+  /** Gets the doc IDs for each document in the list. */
+  private List<String> getDocids(DocumentList list) throws RepositoryException {
     assertNotNull(list);
-    for (String docid : expectedDocids) {
-      Document doc = list.nextDocument();
-      assertNotNull(doc);
-      assertEquals(docid,
-          Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
+    ImmutableList.Builder<String> docids = ImmutableList.builder();
+    Document doc;
+    while ((doc = list.nextDocument()) != null) {
+      docids.add(Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
     }
-    assertNull(list.nextDocument());
+    return docids.build();
   }
 
   /**
@@ -634,8 +639,8 @@ public class LivelinkTraversalManagerTest extends TestCase {
    * LivelinkTraversalManager that creates the underlying recarray and
    * checkpoint.
    */
-  private void testStartTraversal(boolean useDTreeAncestors)
-      throws SQLException, RepositoryException {
+  private void testStartTraversal(boolean useDTreeAncestors,
+      List<String> expectedIds) throws SQLException, RepositoryException {
     LivelinkTraversalManager ltm =
         getObjectUnderTest(useDTreeAncestors, false, null);
 
@@ -643,7 +648,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
     // updated because of its current date in WebNodes, so it's left
     // out of the results.
     DocumentList list = ltm.startTraversal();
-    assertDocumentListEquals(ImmutableList.of("24", "42", "6"), list);
+    assertEquals(expectedIds, getDocids(list));
 
     // When nextDocument returns null, the advance checkpoint is used,
     // which includes 66 with its original ModifyDate, since that was
@@ -656,12 +661,54 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
   public void testStartTraversalWithDTreeAncestors()
       throws SQLException, RepositoryException {
-    testStartTraversal(true);
+    testStartTraversal(true, ImmutableList.of("24", "42", "6"));
   }
 
   public void testStartTraversalWithGenealogist()
       throws SQLException, RepositoryException {
-    testStartTraversal(false);
+    testStartTraversal(false, ImmutableList.of("24", "42", "6"));
+  }
+
+  /** No deletes appear because the start checkpoint is forged. */
+  public void testStartTraversalWithDeletes()
+      throws SQLException, RepositoryException {
+    // Make the DAuditNew records visible as deletes.
+    jdbcFixture.executeUpdate(
+        "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
+
+    testStartTraversal(false, ImmutableList.of("24", "42", "6"));
+  }
+
+  /**
+   * The latest delete appears with the standard index query,
+   * due to the use of AuditDate >= X.
+   */
+  public void testStartTraversalWithDeletesStandard()
+      throws SQLException, RepositoryException {
+    // Make the DAuditNew records visible as deletes.
+    jdbcFixture.executeUpdate(
+        "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
+
+    conn.setUseIndexedDeleteQuery(true);
+    testStartTraversal(false, ImmutableList.of("24", "42", "6", "6602"));
+  }
+
+  public void testResumeTraversalWithDeletes()
+      throws SQLException, RepositoryException {
+    // Make the DAuditNew records visible as deletes.
+    jdbcFixture.executeUpdate(
+        "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
+
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
+    DocumentList list =
+        ltm.resumeTraversal("2001-01-01 00:00:00,0,2001-01-01 00:00:00,0");
+
+    // 2000 appears here and not in startTraversal because its
+    // modified time, from WebNodes, while after the last insert
+    // candidate, is not after the last delete.
+    assertEquals(
+        ImmutableList.of("24", "42", "6601", "2000", "6", "6603", "6602"),
+        getDocids(list));
   }
 
   /** Positive test to set a baseline for testResumeTraversalPingError. */
@@ -805,5 +852,40 @@ public class LivelinkTraversalManagerTest extends TestCase {
   /** Tests selecting a column that only exists in WebNodes and not DTree. */
   public void testSqlWhereCondition_webnodes_gen() throws Exception {
     testSqlWhereCondition(false, "MimeType is not null", ImmutableList.of(42));
+  }
+
+  private void testGetDeletes(boolean useIndexedDeleteQuery, int batchHint,
+      List<Integer> expectedIds) throws Exception {
+    // Make the DAuditNew records visible as deletes.
+    jdbcFixture.executeUpdate(
+        "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
+
+    conn.setUseIndexedDeleteQuery(useIndexedDeleteQuery);
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
+
+    // This matches the earliest AuditDate with a larger EventID.
+    String checkpoint = ",0,2001-01-01 00:00:00,99999";
+    ClientValue deletes = ltm.getDeletes(new Checkpoint(checkpoint), batchHint);
+    assertEquals(expectedIds, getDataIds(deletes));
+  }
+
+  /** The oldest delete is skipped by the matching date. */
+  public void testGetDeletes_custom() throws Exception {
+    testGetDeletes(false, 100, ImmutableList.of(6603, 6602));
+  }
+
+  /** The batch hint limits the returned results. */
+  public void testGetDeletes_customWithbatchHint() throws Exception {
+    testGetDeletes(false, 1, ImmutableList.of(6603));
+  }
+
+  /** All deletes match due to the use of AuditDate >= X. */
+  public void testGetDeletes_standard() throws Exception {
+    testGetDeletes(true, 100, ImmutableList.of(6601, 6603, 6602));
+  }
+
+  /** The batch hint does not limit the returned results. */
+  public void testGetDeletes_standardWithBatchHint() throws Exception {
+    testGetDeletes(true, 1, ImmutableList.of(6601, 6603, 6602));
   }
 }

@@ -65,6 +65,7 @@
         </property>
         <property name="showHiddenItems" value="true" />
         <property name="trackDeletedItems" value="true" />
+        <property name="useIndexedDeleteQuery" value="false" />
         <property name="useDTreeAncestors" value="true" />
         <property name="useDTreeAncestorsFirst" value="false" />
         <property name="genealogistMinCacheSize" value="1000" />

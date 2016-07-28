@@ -254,6 +254,9 @@ public class LivelinkConnector implements Connector {
   /** Whether to track deleted items, sending delete notification to GSA. */
   private boolean trackDeletedItems = true;
 
+  /** Whether to use a delete query that takes advantage of a standard index. */
+  private boolean useIndexedDeleteQuery;
+
   /** Whether to use DTreeAncestors table instead of a slower method. */
   private boolean useDTreeAncestors;
 
@@ -1517,6 +1520,32 @@ public class LivelinkConnector implements Connector {
   }
 
   /**
+   * Sets which query to use to search for deleted items.
+   *
+   * @param useIndexedDeleteQuery {@code true} to use a query that
+   *     takes advantage of a standard index, or {@code false} to use
+   *     the legacy query based on a recommended custom index.
+   * @since 3.4
+   */
+  public void setUseIndexedDeleteQuery(boolean useIndexedDeleteQuery) {
+    if (LOGGER.isLoggable(Level.CONFIG))
+      LOGGER.config("USE INDEXED DELETE QUERY: " + useIndexedDeleteQuery);
+    this.useIndexedDeleteQuery = useIndexedDeleteQuery;
+  }
+
+  /**
+   * Gets which query to use to search for deleted items.
+   *
+   * @return {@code true} to use a query that
+   *     takes advantage of a standard index, or {@code false} to use
+   *     the legacy query based on a recommended custom index.
+   * @since 3.4
+   */
+  public boolean getUseIndexedDeleteQuery() {
+    return this.useIndexedDeleteQuery;
+  }
+
+  /**
    * Sets whether or not to use the DTreeAncestors table for hierarchy data.
    *
    * @param useDTreeAncestors <code>true</code> to use the DTreeAncestors
@@ -2374,14 +2403,9 @@ public class LivelinkConnector implements Connector {
     int id = info.toInteger("ID");
     int volumeId = info.toInteger("VolumeID");
 
-    // FIXME: We don't want to log the exception as an error, but it
-    // would be nice to be able to log it as a warning.
     ClientValue missing =
         getMissingEnterpriseWorkspaceAncestors(client, id, volumeId);
-    if (missing == null) {
-      LOGGER.warning("Unable to check for missing entries in the " +
-          "Livelink DTreeAncestors table.");
-    } else if (missing.size() > 0) {
+    if (missing.size() > 0) {
       LOGGER.warning("The Livelink DTreeAncestors table " +
           "may be missing entries from the Enterprise workspace (" +
           id + ").");

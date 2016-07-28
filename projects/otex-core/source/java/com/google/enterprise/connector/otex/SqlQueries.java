@@ -44,18 +44,10 @@ class SqlQueries {
 
   public ClientValue execute(Client client, String logPrefix, String key,
       Object... parameters) throws RepositoryException {
-    String[] columns = resources.getStringArray(key + ".select");
-    String view = resources.getString(key + ".from");
+    String[] columns = getSelect(key);
+    String view = getFrom(logPrefix, key);
     String query = getWhere(logPrefix, key, parameters);
     return client.ListNodes(query, view, columns);
-  }
-
-  public ClientValue executeNoThrow(Client client, String logPrefix, String key,
-      Object... parameters) throws RepositoryException {
-    String[] columns = resources.getStringArray(key + ".select");
-    String view = resources.getString(key + ".from");
-    String query = getWhere(logPrefix, key, parameters);
-    return client.ListNodesNoThrow(query, view, columns);
   }
 
   public String[] getSelect(String key) {
@@ -96,9 +88,14 @@ class SqlQueries {
   private static final String DELETE_ORDER_BY =
       " order by AuditDate, EventID";
 
+  /** A looser sort order for deletes using the standard index. */
+  private static final String DELETE_ORDER_BY_STANDARD =
+      " order by AuditDate";
+
   /** Select list column for AuditDate; Oracle still lacks milliseconds. */
+  /* Quotes are doubled because this is passed through MessageFormat.format. */
   private static final String AUDIT_DATE_ORACLE =
-      "TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate";
+      "TO_CHAR(AuditDate, ''YYYY-MM-DD HH24:MI:SS'') as GoogleAuditDate";
 
   /** Select list column for AuditDate with milliseconds for SQL Server. */
   private static final String AUDIT_DATE_SQL_SERVER =
@@ -107,6 +104,10 @@ class SqlQueries {
   /** The ordered, derived view for DAuditNew on Oracle. */
   private static final String DAUDITNEW_VIEW_ORACLE = "(select b.*, "
       + AUDIT_DATE_ORACLE + " from DAuditNew b" + DELETE_ORDER_BY + ")";
+
+  /** The unordered, derived view for DAuditNew on Oracle. */
+  private static final String DAUDITNEW_VIEW_STANDARD_ORACLE = "(select b.*, "
+      + AUDIT_DATE_ORACLE + " from DAuditNew b)";
 
   /** The derived view for DAuditNew on SQL Server. */
   private static final String DAUDITNEW_VIEW_SQL_SERVER = "(select b.*, "
@@ -322,14 +323,14 @@ class SqlQueries {
           + "and T.DataID > {5,number,#}))'}"
           + " order by ModifyDate, T.DataID)" + ORDER_BY },
 
-        { "LivelinkTraversalManager.getDeletes.select",
+        { "LivelinkTraversalManager.getDeletesCustomIndex.select",
           new String[] {
             "GoogleAuditDate",
             "EventID",
             "DataID" } },
-        { "LivelinkTraversalManager.getDeletes.from",
+        { "LivelinkTraversalManager.getDeletesCustomIndex.from",
           DAUDITNEW_VIEW_SQL_SERVER },
-        { "LivelinkTraversalManager.getDeletes.where",
+        { "LivelinkTraversalManager.getDeletesCustomIndex.where",
           // AuditID = 2 is the same as "AuditStr = 'Delete'", except
           // that as of the July 2008 monthly patch for Livelink 9.7.1,
           // "Delete" would run afoul of the ListNodesQueryBlackList.
@@ -340,6 +341,22 @@ class SqlQueries {
           + "(AuditDate = ''{0}'' and EventID > {1,number,#}))"
           + "{2,choice,0#|1 and SubType not in ({3})}"
           + DELETE_ORDER_BY + ")" + DELETE_ORDER_BY},
+
+        { "LivelinkTraversalManager.getDeletesStandardIndex.select",
+          new String[] {
+            "GoogleAuditDate",
+            "EventID",
+            "DataID" } },
+        { "LivelinkTraversalManager.getDeletesStandardIndex.from",
+          DAUDITNEW_VIEW_SQL_SERVER },
+        { "LivelinkTraversalManager.getDeletesStandardIndex.where",
+          // We must use AuditStr, which is indexed, but "AuditStr = 'Delete'"
+          // would run afoul of the ListNodesQueryBlackList.
+          // Only include delete events after the checkpoint.
+          // Exclude items with a SubType we know we excluded when indexing.
+          "AuditStr like ''Delet%'' and AuditDate >= ''{0}''"
+          + "{1,choice,0#|1 and SubType not in ({2})}"
+          + DELETE_ORDER_BY_STANDARD }
       };
     }
   }
@@ -399,7 +416,8 @@ class SqlQueries {
             "EventID",
             "DataID" } },
         { "LivelinkTraversalManager.getLastAuditEvent.from",
-          DAUDITNEW_VIEW_ORACLE },
+          "{0,choice,0#" + DAUDITNEW_VIEW_ORACLE
+          + "|1#" + DAUDITNEW_VIEW_STANDARD_ORACLE + "}" },
         { "LivelinkTraversalManager.getLastAuditEvent.where",
           // Using a descending order by with rownum = 1 is a little
           // faster, but that would required whitelisting another view.
@@ -423,14 +441,14 @@ class SqlQueries {
           + "and '}"
           + "rownum <= {6,number,#}" },
 
-        { "LivelinkTraversalManager.getDeletes.select",
+        { "LivelinkTraversalManager.getDeletesCustomIndex.select",
           new String[] {
             "GoogleAuditDate",
             "EventID",
             "DataID", } },
-        { "LivelinkTraversalManager.getDeletes.from",
+        { "LivelinkTraversalManager.getDeletesCustomIndex.from",
           DAUDITNEW_VIEW_ORACLE },
-        { "LivelinkTraversalManager.getDeletes.where",
+        { "LivelinkTraversalManager.getDeletesCustomIndex.where",
           // AuditID = 2 is the same as "AuditStr = 'Delete'", except
           // that as of the July 2008 monthly patch for Livelink 9.7.1,
           // "Delete" would run afoul of the ListNodesQueryBlackList.
@@ -439,7 +457,23 @@ class SqlQueries {
           "AuditID = 2 and (AuditDate > TIMESTAMP''{0}'' or "
           + "(AuditDate = TIMESTAMP''{0}'' and EventID > {1,number,#}))"
           + "{2,choice,0#|1# and SubType not in ({3})} "
-          + "and rownum <= {4,number,#}" }
+          + "and rownum <= {4,number,#}" },
+
+        { "LivelinkTraversalManager.getDeletesStandardIndex.select",
+          new String[] {
+            "GoogleAuditDate",
+            "EventID",
+            "DataID", } },
+        { "LivelinkTraversalManager.getDeletesStandardIndex.from",
+          DAUDITNEW_VIEW_STANDARD_ORACLE },
+        { "LivelinkTraversalManager.getDeletesStandardIndex.where",
+          // We must use AuditStr, which is indexed, but "AuditStr = 'Delete'"
+          // would run afoul of the ListNodesQueryBlackList.
+          // Only include delete events after the checkpoint.
+          // Exclude items with a SubType we know we excluded when indexing.
+          "AuditStr like ''Delet%'' and AuditDate >= TIMESTAMP''{0}''"
+          + "{1,choice,0#|1# and SubType not in ({2})} "
+          + DELETE_ORDER_BY_STANDARD }
       };
     }
   }

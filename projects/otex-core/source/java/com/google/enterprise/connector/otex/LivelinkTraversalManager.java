@@ -301,8 +301,13 @@ class LivelinkTraversalManager
    */
   @VisibleForTesting
   ClientValue getLastAuditEvent() throws RepositoryException {
-    return sqlQueries.execute(sysadminClient, null,
-        "LivelinkTraversalManager.getLastAuditEvent");
+    // The Oracle view depends on useIndexedDeleteQuery.
+    String key = "LivelinkTraversalManager.getLastAuditEvent";
+    return sysadminClient.ListNodes(
+        sqlQueries.getWhere(null, key),
+        sqlQueries.getFrom(null, key,
+            choice(connector.getUseIndexedDeleteQuery())),
+        sqlQueries.getSelect(key));
   }
 
   /**
@@ -790,7 +795,7 @@ class LivelinkTraversalManager
         sqlQueries.getSelect("LivelinkTraversalManager.getCandidates"));
   }
 
-  /** Fetches the list of Deleted Items candidates for SQL Server. */
+  /** Fetches the list of Deleted Items candidates. */
   /*
    * I try limit the list of delete candidates to those
    * recently deleted (via a checkpoint) and items only of
@@ -801,7 +806,8 @@ class LivelinkTraversalManager
    * an explicitly included location, or an explicitly
    * excluded location.
    */
-  private ClientValue getDeletes(Checkpoint checkpoint, int batchsz)
+  @VisibleForTesting
+  ClientValue getDeletes(Checkpoint checkpoint, int batchsz)
       throws RepositoryException {
     if (deleteSupported == false) {
       return null;
@@ -811,10 +817,30 @@ class LivelinkTraversalManager
         ? dateFormat.toSqlMillisString(checkpoint.deleteDate)
         : dateFormat.toSqlString(checkpoint.deleteDate);
     String excludedNodeTypes = connector.getExcludedNodeTypes();
+
+    if (connector.getUseIndexedDeleteQuery()) {
+      return getDeletesStandardIndex(deleteDate, excludedNodeTypes);
+    } else {
+      return getDeletesCustomIndex(deleteDate, checkpoint.deleteEventId,
+          excludedNodeTypes, batchsz);
+    }
+  }
+
+  private ClientValue getDeletesCustomIndex(String deleteDate,
+      long deleteEventId, String excludedNodeTypes, int batchsz)
+      throws RepositoryException {
     return sqlQueries.execute(sysadminClient, "DELETE CANDIDATES QUERY",
-        "LivelinkTraversalManager.getDeletes",
-        deleteDate, checkpoint.deleteEventId,
+        "LivelinkTraversalManager.getDeletesCustomIndex",
+        deleteDate, deleteEventId,
         choice(!Strings.isNullOrEmpty(excludedNodeTypes)), excludedNodeTypes,
         batchsz);
+  }
+
+  private ClientValue getDeletesStandardIndex(String deleteDate,
+      String excludedNodeTypes) throws RepositoryException {
+    return sqlQueries.execute(sysadminClient, "DELETE CANDIDATES QUERY",
+        "LivelinkTraversalManager.getDeletesStandardIndex",
+        deleteDate,
+        choice(!Strings.isNullOrEmpty(excludedNodeTypes)), excludedNodeTypes);
   }
 }
