@@ -354,7 +354,7 @@ class SqlQueries {
           // would run afoul of the ListNodesQueryBlackList.
           // Only include delete events after the checkpoint.
           // Exclude items with a SubType we know we excluded when indexing.
-          "AuditStr like ''Delet%'' and AuditDate >= ''{0}''"
+          "AuditStr like ''Delet_'' and AuditDate >= ''{0}''"
           + "{1,choice,0#|1 and SubType not in ({2})}"
           + DELETE_ORDER_BY_STANDARD }
       };
@@ -471,7 +471,7 @@ class SqlQueries {
           // would run afoul of the ListNodesQueryBlackList.
           // Only include delete events after the checkpoint.
           // Exclude items with a SubType we know we excluded when indexing.
-          "AuditStr like ''Delet%'' and AuditDate >= TIMESTAMP''{0}''"
+          "AuditStr like ''Delet_'' and AuditDate >= TIMESTAMP''{0}''"
           + "{1,choice,0#|1# and SubType not in ({2})} "
           + DELETE_ORDER_BY_STANDARD }
       };
