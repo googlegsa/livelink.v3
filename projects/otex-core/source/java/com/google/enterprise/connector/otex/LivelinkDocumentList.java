@@ -260,7 +260,7 @@ class LivelinkDocumentList implements DocumentList {
         LivelinkAuthorizationManager authz =
             connector.getPublicContentAuthorizationManager();
         publicContentDocs = new HashSet<String>();
-        authz.addAuthorizedDocids(new DocIdIterator(), pcuser,
+        authz.addAuthorizedDocids(new DocIdIterator(recArray), pcuser,
             publicContentDocs);
 
         // We only care if there actually are public docs in
@@ -274,14 +274,17 @@ class LivelinkDocumentList implements DocumentList {
   /**
    * This iterates over the DocIDs in the recArray.
    */
-  private class DocIdIterator implements Iterator<String> {
+  private static class DocIdIterator implements Iterator<String> {
+    private final ClientValue recArray;
+
     /** The current row of the recarray. */
     private int row;
 
     /** The size of the recarray. */
     private final int size;
 
-    public DocIdIterator() {
+    public DocIdIterator(ClientValue recArray) {
+      this.recArray = recArray;
       this.row = 0;
       this.size = (recArray == null) ? 0 : recArray.size();
     }
@@ -318,13 +321,8 @@ class LivelinkDocumentList implements DocumentList {
    * <code>Document</code> it contains.
    */
   /*
-   * TODO: Eliminate this iterator and implement nextDocument
-   * directly using this code. The gap seems to be just that
-   * LivelinkTest assumes that it can iterate over the DocumentList
-   * multiple times, which the new SPI doesn't allow. We could redo
-   * the tests to eliminate that requirement, or add an internal
-   * reset/restart/beforeFirst method to cause nextDocument to start
-   * over again at the beginning.
+   * TODO(wiarlawd): Eliminate this iterator and implement
+   * nextDocument directly using this code.
    */
   private class LivelinkDocumentListIterator {
     /** The current row of the recArray. */
@@ -419,19 +417,8 @@ class LivelinkDocumentList implements DocumentList {
         try {
           // Return an Inserted Item.
           objectId = recArray.toInteger(insRow, "DataID");
-          volumeId = recArray.toInteger(insRow, "OwnerID");
-          subType  = recArray.toInteger(insRow, "SubType");
-          ownerId = recArray.toInteger(insRow, "UserID");
-
           props = new LivelinkDocument(objectId, fields.length*2);
-
-          // Collect the various properties for this row.
-          collectRecArrayProperties();
-          collectObjectInfoProperties();
-          collectVersionProperties();
-          collectCategoryAttributes();
-          collectDerivedProperties();
-          collectAclProperties();
+          collectInsertedObjectAttributes();
         } finally {
           // Establish the checkpoint for this row.
           checkpoint.setInsertCheckpoint(insDate, objectId);
@@ -441,11 +428,6 @@ class LivelinkDocumentList implements DocumentList {
         try {
           // return a Deleted Item
           objectId = delArray.toInteger(delRow, "DataID");
-
-          // LOGGER.fine("Deleted item[" + delRow + "]: DataID " +
-          //     objectId + "   AuditDate " + delDate +
-          //     "    EventID " +
-          //     delArray.toValue(delRow, "EventID").toString2());
           props = new LivelinkDocument(objectId, 3);
           collectDeletedObjectAttributes(delDate);
         } finally {
@@ -475,6 +457,20 @@ class LivelinkDocumentList implements DocumentList {
           Value.getDateValue(c));
       props.addProperty(SpiConstants.PROPNAME_ACTION,
           Value.getStringValue(ActionType.DELETE.toString()));
+    }
+
+    /** Collect the various properties for this row. */
+    private void collectInsertedObjectAttributes() throws RepositoryException {
+      volumeId = recArray.toInteger(insRow, "OwnerID");
+      subType  = recArray.toInteger(insRow, "SubType");
+      ownerId = recArray.toInteger(insRow, "UserID");
+
+      collectRecArrayProperties();
+      collectObjectInfoProperties();
+      collectVersionProperties();
+      collectCategoryAttributes();
+      collectDerivedProperties();
+      collectAclProperties();
     }
 
     /** Collects the recarray-based properties. */
