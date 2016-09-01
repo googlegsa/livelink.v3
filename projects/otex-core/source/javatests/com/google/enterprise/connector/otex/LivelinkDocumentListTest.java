@@ -48,10 +48,14 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class LivelinkDocumentListTest extends TestCase {
   private static final int USER_ID = 1999;
   private static final int GROUP_ID = 2999;
+
+  private static final AtomicReference<Set<Integer>> EMPTY_CACHE =
+      new AtomicReference<Set<Integer>>(ImmutableSet.<Integer>of());
 
   private static final String GLOBAL_NAMESPACE = "globalNS";
   private static final String LOCAL_NAMESPACE = "localNS";
@@ -199,7 +203,7 @@ public class LivelinkDocumentListTest extends TestCase {
       Client client, Object... docInfo) throws RepositoryException {
     ContentHandler contentHandler = new FileContentHandler();
     return getDocumentList(connector, client, contentHandler, null,
-        ActionType.ADD, docInfo);
+        ActionType.ADD, EMPTY_CACHE, docInfo);
   }
 
   /**
@@ -216,7 +220,7 @@ public class LivelinkDocumentListTest extends TestCase {
     Client client = clientFactory.createClient();
 
     return getDocumentList(connector, client, contentHandler, null,
-        ActionType.ADD, MockConstants.IO_OBJECT_ID, 0, USER_ID);
+        ActionType.ADD, EMPTY_CACHE, MockConstants.IO_OBJECT_ID, 0, USER_ID);
   }
 
   /**
@@ -235,7 +239,7 @@ public class LivelinkDocumentListTest extends TestCase {
     ContentHandler contentHandler = new FileContentHandler();
 
     return getDocumentList(connector, client, contentHandler,
-        traversalContext, ActionType.ADD,
+        traversalContext, ActionType.ADD, EMPTY_CACHE,
         MockConstants.HARMLESS_OBJECT_ID, dataSize, USER_ID);
   }
 
@@ -250,7 +254,8 @@ public class LivelinkDocumentListTest extends TestCase {
    *     EventID) and the object ID (DataID) for each of the deleted
    *     documents
    */
-  private DocumentList getObjectUnderTest(ActionType action, Object... docInfo)
+  private DocumentList getObjectUnderTest(ActionType action,
+      AtomicReference<Set<Integer>> delCache, Object... docInfo)
       throws RepositoryException {
     LivelinkConnector connector = getConnector();
     ClientFactory clientFactory = connector.getClientFactory();
@@ -258,13 +263,14 @@ public class LivelinkDocumentListTest extends TestCase {
     ContentHandler contentHandler = new FileContentHandler();
 
     return getDocumentList(connector, client, contentHandler, null, action,
-        docInfo);
+        delCache, docInfo);
   }
 
   /** Helper method for the getObjectUnderTest overloads. */
   private DocumentList getDocumentList(LivelinkConnector connector,
       Client client, ContentHandler contentHandler,
-      TraversalContext traversalContext, ActionType action, Object... docInfo)
+      TraversalContext traversalContext, ActionType action,
+      AtomicReference<Set<Integer>> delCache, Object... docInfo)
       throws RepositoryException {
     contentHandler.initialize(connector, client);
 
@@ -315,7 +321,7 @@ public class LivelinkDocumentListTest extends TestCase {
     Checkpoint checkpoint = new Checkpoint();
 
     return new LivelinkDocumentList(connector, client,
-        contentHandler, recArray, fields, delArray, traversalContext,
+        contentHandler, recArray, fields, delArray, delCache, traversalContext,
         checkpoint, connector.getUsername());
   }
 
@@ -335,6 +341,14 @@ public class LivelinkDocumentListTest extends TestCase {
     replay(contentHandler);
     DocumentList list = getObjectUnderTest(contentHandler);
     verify(contentHandler);
+  }
+
+  /** An assertion with a better error message than assertNull(Document). */
+  private void assertNullDocument(Document doc) throws RepositoryException {
+    if (doc != null) {
+      fail("Unexpected document " +
+          Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
+    }
   }
 
   /**
@@ -469,7 +483,7 @@ public class LivelinkDocumentListTest extends TestCase {
     String checkpoint = list.checkpoint();
     assertNotNull(checkpoint);
 
-    assertNull(list.nextDocument());
+    assertNullDocument(list.nextDocument());
     assertEquals(checkpoint, list.checkpoint());
   }
 
@@ -605,12 +619,44 @@ public class LivelinkDocumentListTest extends TestCase {
 
   /** Tests a deleted document. Mostly a smoke test of the getDeletes query. */
   public void testNextDocument_delete() throws RepositoryException {
-    DocumentList list = getObjectUnderTest(ActionType.DELETE,
+    DocumentList list = getObjectUnderTest(ActionType.DELETE, EMPTY_CACHE,
         "2015-02-15 12:34:56", 1234567, MockConstants.HARMLESS_OBJECT_ID);
     Document doc = list.nextDocument();
     assertNotNull(doc);
     assertEquals(ActionType.DELETE.toString(),
         Value.getSingleValueString(doc, SpiConstants.PROPNAME_ACTION));
+    assertEquals(String.valueOf(MockConstants.HARMLESS_OBJECT_ID),
+        Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
+    Document next = list.nextDocument();
+    assertNullDocument(next);
+  }
+
+  /** Tests multiple deletes with partial caching. */
+  public void testNextDocument_deleteSomeCached() throws RepositoryException {
+    AtomicReference<Set<Integer>> delCache =
+        new AtomicReference<Set<Integer>>(ImmutableSet.of(100));
+    DocumentList list = getObjectUnderTest(ActionType.DELETE, delCache,
+        "2015-02-13 12:34:56", 1234568, 100,
+        "2015-02-15 12:34:56", 1234567, 101);
+    Document doc = list.nextDocument();
+    assertNotNull(doc);
+    assertEquals(ActionType.DELETE.toString(),
+        Value.getSingleValueString(doc, SpiConstants.PROPNAME_ACTION));
+    assertEquals("101",
+        Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
+    Document next = list.nextDocument();
+    assertNullDocument(next);
+  }
+
+  /** This should never happen, but LivelinkDocumentList doesn't know that. */
+  public void testNextDocument_deleteAllCached() throws RepositoryException {
+    AtomicReference<Set<Integer>> delCache =
+        new AtomicReference<Set<Integer>>(ImmutableSet.of(100, 101));
+    DocumentList list = getObjectUnderTest(ActionType.DELETE, delCache,
+        "2015-02-13 12:34:56", 1234568, 100,
+        "2015-02-15 12:34:56", 1234567, 101);
+    Document next = list.nextDocument();
+    assertNullDocument(next);
   }
 
   /** Tests that the client must not be null. */
@@ -619,7 +665,7 @@ public class LivelinkDocumentListTest extends TestCase {
 
     try {
       DocumentList list = new LivelinkDocumentList(connector,
-          null, null, null, null, null, null, null, null);
+          null, null, null, null, null, EMPTY_CACHE, null, null, null);
       fail("Expected a NullPointerException");
     } catch (NullPointerException e) {
     }
@@ -632,9 +678,24 @@ public class LivelinkDocumentListTest extends TestCase {
     Client client = clientFactory.createClient();
 
     DocumentList list = new LivelinkDocumentList(connector,
-        client, null, null, null, null, null, null, null);
+        client, null, null, null, null, EMPTY_CACHE, null, null, null);
     try {
       Document next = list.nextDocument();
+      fail("Expected a NullPointerException");
+    } catch (NullPointerException e) {
+    }
+  }
+
+  /** Tests that the delete cache must not be null. */
+  public void testNullConstructorArgs_delCache() throws RepositoryException {
+    LivelinkConnector connector = getConnector();
+    ClientFactory clientFactory = connector.getClientFactory();
+    Client client = clientFactory.createClient();
+    Checkpoint checkpoint = new Checkpoint();
+
+    try {
+      DocumentList list = new LivelinkDocumentList(connector,
+        client, null, null, null, null, null, null, checkpoint, null);
       fail("Expected a NullPointerException");
     } catch (NullPointerException e) {
     }
@@ -648,9 +709,9 @@ public class LivelinkDocumentListTest extends TestCase {
     Checkpoint checkpoint = new Checkpoint();
 
     DocumentList list = new LivelinkDocumentList(connector,
-        client, null, null, null, null, null, checkpoint, null);
+        client, null, null, null, null, EMPTY_CACHE, null, checkpoint, null);
     Document next = list.nextDocument();
-    assertNull(next);
+    assertNullDocument(next);
   }
 
   /** Tests a null recArray with a non-null publicContentUsername. */
@@ -663,9 +724,9 @@ public class LivelinkDocumentListTest extends TestCase {
     Checkpoint checkpoint = new Checkpoint();
 
     DocumentList list = new LivelinkDocumentList(connector,
-        client, null, null, null, null, null, checkpoint, null);
+        client, null, null, null, null, EMPTY_CACHE, null, checkpoint, null);
     Document next = list.nextDocument();
-    assertNull(next);
+    assertNullDocument(next);
   }
 
   private void insertDTreeAcl(int dataID, int rightID, int permissions)

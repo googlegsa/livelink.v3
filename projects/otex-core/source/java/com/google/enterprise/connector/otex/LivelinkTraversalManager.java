@@ -30,8 +30,11 @@ import com.google.enterprise.connector.util.EmptyDocumentList;
 import com.google.enterprise.connector.util.TraversalTimer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -195,6 +198,15 @@ class LivelinkTraversalManager
 
   /** The TraversalContext from TraversalContextAware Interface */
   private TraversalContext traversalContext = null;
+
+  /**
+   * A cache to filter duplicate deletes when useIndexedDeleteQuery = false.
+   * The cache holds the deletes from the most recently checkpointed batch.
+   * The held Set itself should be immutable. It will be replaced on each
+   * batch, but should not be modified in place.
+   */
+  private final AtomicReference<Set<Integer>> deletesCache =
+      new AtomicReference<Set<Integer>>(Collections.<Integer>emptySet());
 
   LivelinkTraversalManager(LivelinkConnector connector,
       Client traversalClient, String traversalUsername, Client sysadminClient,
@@ -553,7 +565,7 @@ class LivelinkTraversalManager
               "DELETESET: " + numDeletes + " rows.");
         }
         return new LivelinkDocumentList(connector, traversalClient,
-            contentHandler, results, fields, deletes,
+            contentHandler, results, fields, deletes, deletesCache,
             traversalContext, checkpoint, currentUsername);
       }
 
@@ -806,8 +818,7 @@ class LivelinkTraversalManager
    * an explicitly included location, or an explicitly
    * excluded location.
    */
-  @VisibleForTesting
-  ClientValue getDeletes(Checkpoint checkpoint, int batchsz)
+  private ClientValue getDeletes(Checkpoint checkpoint, int batchsz)
       throws RepositoryException {
     if (deleteSupported == false) {
       return null;
@@ -819,7 +830,28 @@ class LivelinkTraversalManager
     String excludedNodeTypes = connector.getExcludedNodeTypes();
 
     if (connector.getUseIndexedDeleteQuery()) {
-      return getDeletesStandardIndex(deleteDate, excludedNodeTypes);
+      ClientValue deletes =
+          getDeletesStandardIndex(deleteDate, excludedNodeTypes);
+      if (deletes != null) {
+        // Check to see if all the results are cached. If only some of them
+        // are cached, we will let LivelinkDocumentList filter those out.
+        LOGGER.log(Level.FINER, "CHECKING CACHE FOR: {0} deletes.",
+            deletes.size());
+        Set<Integer> prevDelCache = deletesCache.get();
+        for (int i = 0; i < deletes.size(); i++) {
+          int delId = deletes.toInteger(i, "DataID");
+          if (prevDelCache.contains(delId)) {
+            LOGGER.log(Level.FINEST, "DUPLICATE DELETE FOR ID = {0,number,#}",
+                delId);
+          } else {
+            LOGGER.log(Level.FINEST, "UNPROCESSED DELETE FOR ID = {0,number,#}",
+                delId);
+            return deletes;
+          }
+        }
+      }
+      // There were no deletes, or all the deletes were cached.
+      return null;
     } else {
       return getDeletesCustomIndex(deleteDate, checkpoint.deleteEventId,
           excludedNodeTypes, batchsz);

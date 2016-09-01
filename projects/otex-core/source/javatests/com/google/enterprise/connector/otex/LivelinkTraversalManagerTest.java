@@ -855,7 +855,7 @@ public class LivelinkTraversalManagerTest extends TestCase {
   }
 
   private void testGetDeletes(boolean useIndexedDeleteQuery, int batchHint,
-      List<Integer> expectedIds) throws Exception {
+      List<String> expectedIds, List<String> expectedNextIds) throws Exception {
     // Make the DAuditNew records visible as deletes.
     jdbcFixture.executeUpdate(
         "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
@@ -864,28 +864,56 @@ public class LivelinkTraversalManagerTest extends TestCase {
     LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
 
     // This matches the earliest AuditDate with a larger EventID.
-    String checkpoint = ",0,2001-01-01 00:00:00,99999";
-    ClientValue deletes = ltm.getDeletes(new Checkpoint(checkpoint), batchHint);
-    assertEquals(expectedIds, getDataIds(deletes));
+    String checkpoint = "2099-01-01 00:00:00,0,2001-01-01 00:00:00,99999";
+    ltm.setBatchHint(batchHint);
+    DocumentList deletes = ltm.resumeTraversal(checkpoint);
+    assertEquals(expectedIds, getDocids(deletes));
+
+    // Verify the lack of cache updates in LivelinkTraversalManager itself.
+    deletes = ltm.resumeTraversal(checkpoint);
+    assertEquals(expectedIds, getDocids(deletes));
+
+    // Reading the DocumentList updates the cache for indexed deletes.
+    while (deletes.nextDocument() != null) {
+    }
+    String newCheckpoint = deletes.checkpoint();
+
+    // This isn't using the new checkpoint, but rather, verifying
+    // caching of the previous batch.
+    deletes = ltm.resumeTraversal(checkpoint);
+    if (useIndexedDeleteQuery) {
+      assertNull(deletes);
+    } else {
+      assertEquals(expectedIds, getDocids(deletes));
+    }
+
+    // Verify the expected next batch from the new checkpoint.
+    deletes = ltm.resumeTraversal(newCheckpoint);
+    if (expectedNextIds == null) {
+      assertNull(deletes);
+    } else {
+      assertEquals(expectedNextIds, getDocids(deletes));
+    }
   }
 
   /** The oldest delete is skipped by the matching date. */
   public void testGetDeletes_custom() throws Exception {
-    testGetDeletes(false, 100, ImmutableList.of(6603, 6602));
+    testGetDeletes(false, 100, ImmutableList.of("6603", "6602"), null);
   }
 
-  /** The batch hint limits the returned results. */
+  /** The batch hint limits the returned results and leads to a second batch. */
   public void testGetDeletes_customWithbatchHint() throws Exception {
-    testGetDeletes(false, 1, ImmutableList.of(6603));
+    testGetDeletes(false, 1, ImmutableList.of("6603"),
+        ImmutableList.of("6602"));
   }
 
   /** All deletes match due to the use of AuditDate >= X. */
   public void testGetDeletes_standard() throws Exception {
-    testGetDeletes(true, 100, ImmutableList.of(6601, 6603, 6602));
+    testGetDeletes(true, 100, ImmutableList.of("6601", "6603", "6602"), null);
   }
 
   /** The batch hint does not limit the returned results. */
   public void testGetDeletes_standardWithBatchHint() throws Exception {
-    testGetDeletes(true, 1, ImmutableList.of(6601, 6603, 6602));
+    testGetDeletes(true, 1, ImmutableList.of("6601", "6603", "6602"), null);
   }
 }

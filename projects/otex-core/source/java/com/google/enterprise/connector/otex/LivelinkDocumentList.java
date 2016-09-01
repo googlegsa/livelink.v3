@@ -14,6 +14,8 @@
 
 package com.google.enterprise.connector.otex;
 
+import static java.util.Collections.unmodifiableSet;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.primitives.Ints;
@@ -40,6 +42,8 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -99,6 +103,18 @@ class LivelinkDocumentList implements DocumentList {
   /** The table of Livelink deleted data, one row per object */
   private final ClientValue delArray;
 
+  /** A reference to the delete cache held by LivelinkTraversalManager. */
+  private final AtomicReference<Set<Integer>> delCacheReference;
+
+  /** The previous batch of deletes. */
+  private final Set<Integer> prevDelCache;
+
+  /**
+   * The next batch of deletes, accumulated as the DocumentList is
+   * processed. This will be set on the cache reference in checkpoint().
+   */
+  private final Set<Integer> nextDelCache;
+
   /** The TraversalContext from TraversalContextAware Interface */
   private final TraversalContext traversalContext;
 
@@ -127,8 +143,8 @@ class LivelinkDocumentList implements DocumentList {
    * RecArray of items returned from Livelink.
    */
   LivelinkDocumentList(LivelinkConnector connector, Client client,
-      ContentHandler contentHandler, ClientValue recArray,
-      Field[] fields, ClientValue delArray,
+      ContentHandler contentHandler, ClientValue recArray, Field[] fields,
+      ClientValue delArray, AtomicReference<Set<Integer>> delCacheReference,
       TraversalContext traversalContext, Checkpoint checkpoint,
       String currentUsername) throws RepositoryException {
     this.connector = connector;
@@ -138,6 +154,9 @@ class LivelinkDocumentList implements DocumentList {
     this.nameHandler = new UserNameHandler(client);
     this.recArray = recArray;
     this.delArray = delArray;
+    this.delCacheReference = delCacheReference;
+    this.prevDelCache = delCacheReference.get();
+    this.nextDelCache = new HashSet<Integer>();
     this.fields = fields;
     this.traversalContext = traversalContext;
     this.checkpoint = checkpoint;
@@ -231,11 +250,12 @@ class LivelinkDocumentList implements DocumentList {
    */
   @Override
   public String checkpoint() throws RepositoryException {
+    if (connector.getUseIndexedDeleteQuery()) {
+      delCacheReference.set(unmodifiableSet(nextDelCache));
+    }
     String cp = checkpoint.toString();
-
     if (LOGGER.isLoggable(Level.FINE))
       LOGGER.fine("CHECKPOINT: " + cp);
-
     return cp;
   }
 
@@ -390,20 +410,40 @@ class LivelinkDocumentList implements DocumentList {
           insRow++;
           throw e1;
         }
-      } else
+      } else {
+        // There are no more inserts.
         dateComp = 1;
+      }
 
       // ... and the next item to delete.
-      if (delRow < delSize) {
+      while (delRow < delSize) {
         try {
-          delDate = dateFormat.parse(delArray.toString(delRow,
-                  "GoogleAuditDate"));
+          int delId = delArray.toInteger(delRow, "DataID");
+          nextDelCache.add(delId);
+          if (prevDelCache.contains(delId)) {
+            LOGGER.log(Level.FINEST, "DUPLICATE DELETE FOR ID = {0,number,#}",
+                delId);
+            delRow++;
+          } else {
+            LOGGER.log(Level.FINEST, "UNPROCESSED DELETE FOR ID = {0,number,#}",
+                delId);
+            delDate = dateFormat.parse(delArray.toString(delRow,
+                    "GoogleAuditDate"));
+            break;
+          }
         } catch (RepositoryException e1) {
           delRow++;
           throw e1;
         }
-      } else
+      }
+      if (delRow == delSize) {
+        // There are no more uncached deletes. If there were no inserts,
+        // we're done.
+        if (dateComp != 0) {
+          return null;
+        }
         dateComp = -1;
+      }
 
       // Process earlier modification/deletion times first.
       // If timestamps are the same, process Inserts before Deletes.
