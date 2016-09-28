@@ -837,9 +837,7 @@ class LivelinkDocumentList implements DocumentList {
       List<Value> userPrincipals = new ArrayList<Value>();
       List<Value> groupPrincipals = new ArrayList<Value>();
 
-      if (LOGGER.isLoggable(Level.FINEST)) {
-        LOGGER.finest("ACE Info for id: " + objectId);
-      }
+      LOGGER.log(Level.FINEST, "ACL ENTRIES FOR ID: {0,number,#}", objectId);
 
       ClientValue ownerInfo =
           client.GetUserOrGroupByIDNoThrow(ownerId);
@@ -850,12 +848,12 @@ class LivelinkDocumentList implements DocumentList {
         boolean canRead = ((userPermissions & Client.PERM_SEECONTENTS) 
             == Client.PERM_SEECONTENTS);
 
+        if (LOGGER.isLoggable(Level.FINEST)) {
+          LOGGER.finest("ACL ENTRY: UserID " + userId + ", Permissions "
+              + userPermissions + ", SeeContents " + canRead);
+        }
         if (canRead) {
           getPrincipals(userId, ownerInfo, userPrincipals, groupPrincipals);
-        }
-        if (LOGGER.isLoggable(Level.FINEST)) {
-          LOGGER.finest("ACE Info: UserID " + userId + ", Permissions "
-              + userPermissions + ", SeeContents " + canRead);
         }
       }
       // Always add System Administration group since admins have bypass rights.
@@ -884,26 +882,25 @@ class LivelinkDocumentList implements DocumentList {
             break;
           case Client.RIGHT_OWNER:
             name = ownerInfo.toString("Name");
-            namespace = getUserGroupNamespace(ownerInfo);
+            namespace = getUserGroupNamespace(userId, name, ownerInfo);
             userPrincipals.add(asPrincipalValue(name, namespace));
             break;
           case Client.RIGHT_GROUP:
             ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(
                 ownerInfo.toInteger("GroupID"));
             name = userInfo.toString("Name");
-            namespace = getUserGroupNamespace(userInfo);
+            namespace = getUserGroupNamespace(userId, name, userInfo);
             groupPrincipals.add(asPrincipalValue(name, namespace));
             break;
           default:
-            if (LOGGER.isLoggable(Level.FINEST)) {
-              LOGGER.finest("Unexpected user or group id: " + userId);
-            }
+            LOGGER.log(Level.FINEST,
+                "Unexpected user or group ID: {0,number,#}", userId);
         }
       } else {
         ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
         if (userInfo != null) {
           name = userInfo.toString("Name");
-          namespace = getUserGroupNamespace(userInfo);
+          namespace = getUserGroupNamespace(userId, name, userInfo);
           if (!Strings.isNullOrEmpty(name)) {
             switch (userInfo.toInteger("Type")) {
               case Client.USER:
@@ -917,22 +914,25 @@ class LivelinkDocumentList implements DocumentList {
       }
     }
 
-    private String getUserGroupNamespace(ClientValue userInfo)
-        throws RepositoryException {
+    private String getUserGroupNamespace(int userId, String name,
+        ClientValue userInfo) throws RepositoryException {
       ClientValue userData;
       String namespace;
       if (userInfo != null && userInfo.hasValue()) {
         userData = userInfo.toValue("UserData");
         if (userData != null && userData.hasValue()) {
-          LOGGER.log(Level.FINEST,
-              "ACE Info: UserData {0}", userData.toString());
-          namespace = identityUtils.getNamespace(userData);
+          namespace = identityUtils.getNamespace(name, userData);
         } else {
           namespace = connector.getGoogleLocalNamespace();
         }
       } else {
+        userData = null;
         namespace = null;
       }
+      LOGGER.log(Level.FINEST, "ACL ENTRY: "
+          + "UserID {0,number,#}, Name {1}, Namespace {2}, UserData {3}",
+          new Object[] { userId, name, namespace,
+            userData == null ? null : userData.getDiagnosticString() });
       return namespace;
     }
 

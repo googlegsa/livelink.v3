@@ -195,6 +195,20 @@ public final class MockClientValue implements ClientValue {
   }
 
   @Override
+  public String getDiagnosticString() {
+    switch (type) {
+      case TABLE:
+        return "{" + fieldNames + ", " + tableValues + "}";
+      case ASSOC:
+        return "{" + fieldNames + ", " + assocValues + "}";
+      case LIST:
+        return "{" + listValues + "}";
+      default:
+        return "{type=" + type + ", " + atomicValue + "}";
+    }
+  }
+
+  @Override
   public Enumeration<String> enumerateNames() {
     return new Enumeration<String>() {
       private int i = 0;

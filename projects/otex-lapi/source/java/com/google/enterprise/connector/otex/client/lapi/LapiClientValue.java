@@ -138,6 +138,18 @@ public final class LapiClientValue implements ClientValue {
         return "UNKNOWN TYPE";
     }
 
+  @Override
+  public String getDiagnosticString() {
+    String asString;
+    try {
+      asString = value.toString();
+    } catch (RuntimeException e) {
+      asString = e.toString();
+    }
+    return String.format("Class %s, type %s, value %s",
+        value.getClass().getName(), typeByName(value.type()), asString);
+  }
+
     /** {@inheritDoc} */
     @Override
   public Enumeration<String> enumerateNames() throws RepositoryException {

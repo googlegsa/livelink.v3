@@ -50,7 +50,8 @@ class IdentityUtils {
     return false;
   }
 
-  public String getNamespace(ClientValue userData) throws RepositoryException {
+  public String getNamespace(String name, ClientValue userData)
+      throws RepositoryException {
     try {
       String namespace;
       if (isExternal(userData)) {
@@ -60,8 +61,9 @@ class IdentityUtils {
       }
       return namespace;
     } catch (IllegalArgumentException e) {
-      LOGGER.log(Level.FINER, "Unable to get namespace from {0}, type {1}: {2}",
-          new Object[] {userData, userData.type(), e});
+      LOGGER.log(Level.FINER,
+          "Unable to get namespace for {0} from {1}: {2}",
+          new Object[] {name, userData.getDiagnosticString(), e});
       return null;
     }
   }
