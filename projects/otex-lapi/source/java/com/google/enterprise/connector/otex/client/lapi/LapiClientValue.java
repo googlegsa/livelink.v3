@@ -146,8 +146,7 @@ public final class LapiClientValue implements ClientValue {
     } catch (RuntimeException e) {
       asString = e.toString();
     }
-    return String.format("Class %s, type %s, value %s",
-        value.getClass().getName(), typeByName(value.type()), asString);
+    return String.format("%s %s", typeByName(value.type()), asString);
   }
 
     /** {@inheritDoc} */
