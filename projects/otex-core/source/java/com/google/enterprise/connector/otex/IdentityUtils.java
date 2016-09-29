@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -27,7 +28,8 @@ class IdentityUtils {
       Logger.getLogger(IdentityUtils.class.getName());
 
   /** From the Users, Groups, and Domains API Overview page. */
-  private static final int LOGIN_MASK = Client.PRIV_LOGIN
+  @VisibleForTesting
+  static final int LOGIN_MASK = Client.PRIV_LOGIN
       | Client.PRIV_UAPI_SESSION | Client.PRIV_DAPI_SESSION
       | Client.PRIV_WAPI_SESSION;
 
@@ -47,6 +49,10 @@ class IdentityUtils {
     } else {
       return info;
     }
+  }
+
+  public boolean isDisabled(ClientValue info) throws RepositoryException {
+    return isDisabled(info.toInteger("ID"), info);
   }
 
   private boolean isDisabled(int userId, ClientValue info)

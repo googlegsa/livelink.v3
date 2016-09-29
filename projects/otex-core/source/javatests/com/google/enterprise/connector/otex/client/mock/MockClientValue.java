@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex.client.mock;
 
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
 
@@ -136,10 +137,55 @@ public final class MockClientValue implements ClientValue {
   }
 
   private Object getValue(int index) {
-    if (type != LIST)
-      throw new IllegalArgumentException("ClientValue is not a list.");
-    return listValues.get(index);
+    if (type == TABLE) {
+      if (index < 0 || index > tableValues.size()) {
+        throw new IllegalArgumentException(String.valueOf(index));
+      }
+      List<Object> rowValues = tableValues.get(index);
+      Object[] newValues = new Object[rowValues.size()];
+      for (int i = 0; i < rowValues.size(); i++) {
+        Object value = rowValues.get(i);
+        if (value instanceof String && fieldNames.get(i).equals("UserData")) {
+          // These are fake assoc strings.
+          newValues[i] = toAssoc((String) value);
+        } else {
+          newValues[i] = value;
+        }
+      }
+      return new MockClientValue(fieldNames.toArray(new String[0]), newValues);
+    } else if (type == LIST) {
+      return listValues.get(index);
+    } else {
+      throw new IllegalArgumentException("ClientValue is not a table or list.");
+    }
   }
+
+    private ClientValue toAssoc(String fieldData) {
+      if (Strings.isNullOrEmpty(fieldData)) {
+        return new MockClientValue();
+      }
+
+      String[] data = fieldData.split(",");
+      String[] names = new String[data.length];
+      String[] values = new String[data.length];
+      int i = 0;
+      for (String value : data) {
+        int index = value.indexOf("=");
+        if (index > 0) {
+          names[i] = value.substring(0, index);
+          values[i] = value.substring(index + 1);
+          i++;
+        }
+      }
+
+      if (i > 0) {
+        return new MockClientValue(
+            Arrays.copyOf(names, i),
+            Arrays.copyOf(values, i));
+      } else {
+        return new MockClientValue();
+      }
+    }
 
   @Override
   public int size() {

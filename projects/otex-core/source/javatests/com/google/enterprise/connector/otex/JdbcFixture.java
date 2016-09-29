@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.enterprise.connector.otex.IdentityUtils.LOGIN_MASK;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 
@@ -83,7 +84,7 @@ class JdbcFixture {
     executeUpdate(
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
             + " values(1000, 'Admin', 0, 2001, NULL,"
-            + Client.PRIV_PERM_BYPASS + ")");
+            + (Client.PRIV_PERM_BYPASS | LOGIN_MASK) + ")");
   }
 
   protected void tearDown() throws SQLException {

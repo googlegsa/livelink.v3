@@ -71,11 +71,15 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
     List<Principal> memberPrincipals = new ArrayList<Principal>();
 
     for (int i = 0; i < groupMembers.size(); i++) {
-      String memberName = groupMembers.toString(i, "Name");
-      int memberType = groupMembers.toInteger(i, "Type");
+      ClientValue memberInfo = groupMembers.toValue(i);
+      String memberName = memberInfo.toString("Name");
+      int memberType = memberInfo.toInteger("Type");
       LOGGER.log(Level.FINEST, "Member name: {0}; Member Type: {1}",
           new Object[] {memberName, memberType});
-      ClientValue memberUserData = groupMembers.toValue(i, "UserData");
+      if (identityUtils.isDisabled(memberInfo)) {
+        continue;
+      }
+      ClientValue memberUserData = memberInfo.toValue("UserData");
       String memberNamespace =
           identityUtils.getNamespace(memberName, memberUserData);
       if (memberNamespace != null) {
@@ -105,10 +109,11 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
       Map<GroupPrincipal, List<Principal>> groups) throws RepositoryException {
     ClientValue groupsValue = client.ListGroups();
     for (int i = 0; i < groupsValue.size(); i++) {
-      String groupName = groupsValue.toString(i, "Name");
+      ClientValue groupInfo = groupsValue.toValue(i);
+      String groupName = groupInfo.toString("Name");
       LOGGER.log(Level.FINEST, "Fetching group members for group name: {0}",
           groupName);
-      ClientValue groupUserData = groupsValue.toValue(i, "UserData");
+      ClientValue groupUserData = groupInfo.toValue("UserData");
       String groupNamespace =
           identityUtils.getNamespace(groupName, groupUserData);
       if (groupNamespace != null) {
@@ -133,14 +138,17 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
 
     ClientValue usersValue = client.ListUsers();
     for (int i = 0; i < usersValue.size(); i++) {
-      String userName = usersValue.toString(i, "Name");
+      ClientValue userInfo = usersValue.toValue(i);
+      String userName = userInfo.toString("Name");
       LOGGER.log(Level.FINEST, "Fetching privileges for {0}", userName);
-      ClientValue userData = usersValue.toValue(i, "UserData");
+      if (identityUtils.isDisabled(userInfo)) {
+        continue;
+      }
+      ClientValue userData = userInfo.toValue("UserData");
       String userNamespace = identityUtils.getNamespace(userName, userData);
 
       if (userNamespace != null) {
-        ClientValue usersInfo = client.GetUserInfo(userName);
-        int privs = usersInfo.toInteger("UserPrivileges");
+        int privs = userInfo.toInteger("UserPrivileges");
 
         if ((privs & Client.PRIV_PERM_BYPASS) == Client.PRIV_PERM_BYPASS) {
           LOGGER.log(Level.FINEST, "Admin Privileges for user {0}: {1}",

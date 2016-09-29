@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.enterprise.connector.otex.IdentityUtils.LOGIN_MASK;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
@@ -70,8 +71,8 @@ public class GroupAdaptorTest extends TestCase {
   }
 
   private void addUser(int userId, String name) throws SQLException {
-    // no privileges to user
-    addUser(userId, name, 0);
+    // No special privileges to user, just log-in enabled.
+    addUser(userId, name, LOGIN_MASK);
   }
 
   private void addUser(int userId, String name, int privileges)
@@ -99,6 +100,18 @@ public class GroupAdaptorTest extends TestCase {
   private void setUserData(int userId, String userData) throws SQLException {
     jdbcFixture.executeUpdate("UPDATE KUAF SET UserData = '" + userData
         + "' where ID = " + userId);
+  }
+
+  private void deleteUser(int userId) throws SQLException {
+    jdbcFixture.executeUpdate("update KUAF set "
+        + "Name = Name || ' (Delete) ' || ID, Deleted = 1, UserPrivileges = 0 "
+        + "where ID = " + userId);
+  }
+
+  private void deleteGroup(int groupId) throws SQLException {
+    jdbcFixture.executeUpdate("update KUAF set "
+        + "Name = Name || ' (Delete) ' || ID, Deleted = 1 "
+        + "where ID = " + groupId);
   }
 
   private Map<GroupPrincipal, ? extends Collection<Principal>> getGroupInfo(
@@ -263,6 +276,44 @@ public class GroupAdaptorTest extends TestCase {
     assertEquals(expectedUserSet2, userSet2);
   }
 
+  public void testDisabledUsersAndGroups() throws Exception {
+    addUser(1001, "user1",
+        Client.PRIV_PERM_WORLD | Client.PRIV_PERM_BYPASS | LOGIN_MASK);
+    addUser(1002, "user2", Client.PRIV_PERM_WORLD);
+    addUser(1003, "user3");
+    addGroup(2001, "group1");
+    addGroupMembers(2001, 1001, 1002, 1003);
+    deleteUser(1001);
+
+    addUser(1004, "user4", Client.PRIV_PERM_WORLD | LOGIN_MASK);
+    addGroup(2002, "group2");
+    addGroupMembers(2002, 1003, 1004);
+    deleteGroup(2002);
+
+    Map<GroupPrincipal, ? extends Collection<Principal>> groups =
+        getGroupInfo(getGroupsAdaptor());
+
+    GroupPrincipal expectedGroup =
+        new GroupPrincipal("group1", LOCAL_NAMESPACE);
+    GroupPrincipal sysAdminGroup =
+        new GroupPrincipal(Client.SYSADMIN_GROUP, LOCAL_NAMESPACE);
+    GroupPrincipal pubAccessGroup =
+        new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP, LOCAL_NAMESPACE);
+    assertEquals(ImmutableSet.of(expectedGroup, sysAdminGroup, pubAccessGroup),
+        groups.keySet());
+
+    assertEquals(
+        ImmutableSet.of(new UserPrincipal("user3", LOCAL_NAMESPACE)),
+        new HashSet<Principal>(groups.get(expectedGroup)));
+    assertEquals(
+        ImmutableSet.of(
+            new UserPrincipal("Admin", LOCAL_NAMESPACE)),
+        new HashSet<Principal>(groups.get(sysAdminGroup)));
+    assertEquals(
+        ImmutableSet.of(new UserPrincipal("user4", LOCAL_NAMESPACE)),
+        new HashSet<Principal>(groups.get(pubAccessGroup)));
+  }
+
   public void testExternalUser() throws RepositoryException,
       SQLException, IOException, InterruptedException {
     addUser(1001, "user1");
@@ -339,7 +390,7 @@ public class GroupAdaptorTest extends TestCase {
   private void testGroupsForUserPrivileges(int privileges, String... groupNames)
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
-    addUser(1001, "user1", privileges);
+    addUser(1001, "user1", privileges | LOGIN_MASK);
     Set<String> groupNamesSet = ImmutableSet.copyOf(groupNames);
 
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
