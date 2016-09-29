@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
 
@@ -25,10 +26,40 @@ class IdentityUtils {
   private static final Logger LOGGER =
       Logger.getLogger(IdentityUtils.class.getName());
 
-  private LivelinkConnector connector;
+  /** From the Users, Groups, and Domains API Overview page. */
+  private static final int LOGIN_MASK = Client.PRIV_LOGIN
+      | Client.PRIV_UAPI_SESSION | Client.PRIV_DAPI_SESSION
+      | Client.PRIV_WAPI_SESSION;
 
-  IdentityUtils(LivelinkConnector connector) {
+  private final LivelinkConnector connector;
+  private final Client client;
+
+  IdentityUtils(LivelinkConnector connector, Client client) {
     this.connector = connector;
+    this.client = client;
+  }
+
+  public ClientValue getUserOrGroupById(int userId)
+      throws RepositoryException {
+    ClientValue info = client.GetUserOrGroupByIDNoThrow(userId);
+    if (info == null || isDisabled(userId, info)) {
+      return null;
+    } else {
+      return info;
+    }
+  }
+
+  private boolean isDisabled(int userId, ClientValue info)
+      throws RepositoryException {
+    boolean isDisabled = info.toInteger("Deleted") == 1
+        || (info.toInteger("Type") == Client.USER
+            && (info.toInteger("UserPrivileges") & LOGIN_MASK) != LOGIN_MASK);
+    if (isDisabled) {
+      LOGGER.log(Level.FINEST,
+          "SKIPPING DISABLED USER OR GROUP ID: {0,number,#}, {1}",
+          new Object[] { userId, info.toString("Name") });
+    }
+    return isDisabled;
   }
 
   private boolean isExternal(ClientValue userData)

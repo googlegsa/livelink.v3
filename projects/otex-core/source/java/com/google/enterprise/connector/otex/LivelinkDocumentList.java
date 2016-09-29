@@ -141,7 +141,7 @@ class LivelinkDocumentList implements DocumentList {
     this.fields = fields;
     this.traversalContext = traversalContext;
     this.checkpoint = checkpoint;
-    this.identityUtils = new IdentityUtils(connector);
+    this.identityUtils = new IdentityUtils(connector, client);
 
     if (contentHandler instanceof RefreshableContentHandler) {
       ((RefreshableContentHandler) contentHandler).refresh();
@@ -839,8 +839,7 @@ class LivelinkDocumentList implements DocumentList {
 
       LOGGER.log(Level.FINEST, "ACL ENTRIES FOR ID: {0,number,#}", objectId);
 
-      ClientValue ownerInfo =
-          client.GetUserOrGroupByIDNoThrow(ownerId);
+      ClientValue ownerInfo = identityUtils.getUserOrGroupById(ownerId);
       ClientValue objectRightsInfo = client.GetObjectRights(objectId);
       for (int i = 0; i < objectRightsInfo.size(); i++) {
         int userId = objectRightsInfo.toInteger(i, "RightID");
@@ -881,23 +880,29 @@ class LivelinkDocumentList implements DocumentList {
             // Ignore this case, which Livelink does not implement.
             break;
           case Client.RIGHT_OWNER:
-            name = ownerInfo.toString("Name");
-            namespace = getUserGroupNamespace(userId, name, ownerInfo);
-            userPrincipals.add(asPrincipalValue(name, namespace));
+            if (ownerInfo != null) {
+              name = ownerInfo.toString("Name");
+              namespace = getUserGroupNamespace(userId, name, ownerInfo);
+              userPrincipals.add(asPrincipalValue(name, namespace));
+            }
             break;
           case Client.RIGHT_GROUP:
-            ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(
-                ownerInfo.toInteger("GroupID"));
-            name = userInfo.toString("Name");
-            namespace = getUserGroupNamespace(userId, name, userInfo);
-            groupPrincipals.add(asPrincipalValue(name, namespace));
+            if (ownerInfo != null) {
+              ClientValue userInfo = identityUtils.getUserOrGroupById(
+                  ownerInfo.toInteger("GroupID"));
+              if (userInfo != null) {
+                name = userInfo.toString("Name");
+                namespace = getUserGroupNamespace(userId, name, userInfo);
+                groupPrincipals.add(asPrincipalValue(name, namespace));
+              }
+            }
             break;
           default:
             LOGGER.log(Level.FINEST,
                 "Unexpected user or group ID: {0,number,#}", userId);
         }
       } else {
-        ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
+        ClientValue userInfo = identityUtils.getUserOrGroupById(userId);
         if (userInfo != null) {
           name = userInfo.toString("Name");
           namespace = getUserGroupNamespace(userId, name, userInfo);

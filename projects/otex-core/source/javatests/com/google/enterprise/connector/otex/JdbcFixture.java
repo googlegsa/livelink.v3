@@ -46,7 +46,7 @@ class JdbcFixture {
   private static final String CREATE_TABLE_KUAF =
       "create table KUAF "
       + "(ID int, Name varchar, Type int, GroupID int, UserData varchar," +
-      " UserPrivileges int)";
+      " UserPrivileges int, Deleted int default 0)";
 
   private static final String CREATE_TABLE_KUAFCHILDREN =
       "create table KUAFChildren "

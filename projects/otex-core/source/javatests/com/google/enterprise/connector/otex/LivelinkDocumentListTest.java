@@ -74,11 +74,9 @@ public class LivelinkDocumentListTest extends TestCase {
             + "values(1002, 'user2', 0, 2001, "
             + "'ExternalAuthentication=true', 2063)",
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
-            + "values(1003, 'user3', 0, 2002, NULL, 0)",
+            + "values(1003, 'user3', 0, 2002, NULL, 15)",
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
-            + "values(1666, '', 0, 0, NULL, 0)",
-        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
-            + "values(1999, 'user_name', 0, 2002, NULL, 0)",
+            + "values(1999, 'user_name', 0, 2002, NULL, 15)",
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
             + "values(2001, 'group1', 1, 0, NULL, 0)",
         "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
@@ -830,7 +828,32 @@ public class LivelinkDocumentListTest extends TestCase {
   }
 
   public void testAcl_emptyUserName() throws RepositoryException, SQLException {
+    jdbcFixture.executeUpdate(
+        "insert into KUAF(ID, Name, Type, GroupID, UserData, UserPrivileges) "
+        + "values(1666, '', 0, 0, NULL, 15)");
     insertDTreeAcl(28, 1666, Client.PERM_SEECONTENTS);
+
+    DocumentList list = getObjectUnderTest(28, 0, 1001);
+    Document doc = list.nextDocument();
+
+    assertNotNull(doc);
+    assertEquals(ImmutableSet.of(),
+        getPrincipalsNames(doc, SpiConstants.PROPNAME_ACLUSERS));
+    assertAclGroupsEquals(doc);
+  }
+
+  public void testAcl_invalidAclEntries()
+      throws RepositoryException, SQLException {
+    jdbcFixture.executeUpdate(
+        "insert into KUAF(ID, Name, Type, GroupID, UserPrivileges, Deleted) "
+        + "values(1667, 'Deleted user', 0, 0, 15, 1)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserPrivileges) "
+        + "values(1668, 'Disabled user', 0, 0, 13)",
+        "insert into KUAF(ID, Name, Type, GroupID, UserPrivileges, Deleted) "
+        + "values(2667, 'Deleted group', 1, 0, 15, 1)");
+    insertDTreeAcl(28, 1667, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(28, 1668, Client.PERM_SEECONTENTS);
+    insertDTreeAcl(28, 2667, Client.PERM_SEECONTENTS);
 
     DocumentList list = getObjectUnderTest(28, 0, 1001);
     Document doc = list.nextDocument();

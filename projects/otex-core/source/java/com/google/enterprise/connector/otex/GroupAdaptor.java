@@ -58,19 +58,16 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
    */
   private final ClientFactory clientFactory;
 
-  private final IdentityUtils identityUtils;
-
   /** Whether the traversal, and therefore group feeding, is disabled. */
   private volatile boolean isDisabled = false;
 
   GroupAdaptor(LivelinkConnector connector, ClientFactory clientFactory) {
     this.connector = connector;
     this.clientFactory = clientFactory;
-    this.identityUtils = new IdentityUtils(connector);
   }
 
-  private List<Principal> getMemberPrincipalList(ClientValue groupMembers)
-      throws RepositoryException {
+  private List<Principal> getMemberPrincipalList(IdentityUtils identityUtils,
+      ClientValue groupMembers) throws RepositoryException {
     List<Principal> memberPrincipals = new ArrayList<Principal>();
 
     for (int i = 0; i < groupMembers.size(); i++) {
@@ -96,14 +93,15 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
   private Map<GroupPrincipal, List<Principal>> getLivelinkGroups()
       throws RepositoryException {
     Client client = clientFactory.createClient();
+    IdentityUtils identityUtils = new IdentityUtils(connector, client);
     Map<GroupPrincipal, List<Principal>> groups =
         new LinkedHashMap<GroupPrincipal, List<Principal>>();
-    getStandardGroups(client, groups);
-    getSystemAdminAndPublicGroups(client, groups);
+    getStandardGroups(client, identityUtils, groups);
+    getSystemAdminAndPublicGroups(client, identityUtils, groups);
     return groups;
   }
 
-  private void getStandardGroups(Client client,
+  private void getStandardGroups(Client client, IdentityUtils identityUtils,
       Map<GroupPrincipal, List<Principal>> groups) throws RepositoryException {
     ClientValue groupsValue = client.ListGroups();
     for (int i = 0; i < groupsValue.size(); i++) {
@@ -118,7 +116,8 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
             new GroupPrincipal(groupName, groupNamespace);
 
         ClientValue groupMembers = client.ListMembers(groupName);
-        List<Principal> memberPrincipals = getMemberPrincipalList(groupMembers);
+        List<Principal> memberPrincipals =
+            getMemberPrincipalList(identityUtils, groupMembers);
         groups.put(groupPrincipal, memberPrincipals);
         LOGGER.log(Level.FINER, "Group principal: {0}; Member principals: {1}",
             new Object[] {groupPrincipal, memberPrincipals});
@@ -127,7 +126,7 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
   }
 
   private void getSystemAdminAndPublicGroups(Client client,
-      Map<GroupPrincipal, List<Principal>> groups)
+      IdentityUtils identityUtils, Map<GroupPrincipal, List<Principal>> groups)
           throws RepositoryException {
     List<Principal> sysAdminMembers = new ArrayList<Principal>();
     List<Principal> publicAccessMembers = new ArrayList<Principal>();

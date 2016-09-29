@@ -120,21 +120,19 @@ public class MockClient implements Client {
             throws RepositoryException {
       String query = "ID=" + id;
       String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
-          "UserPrivileges"};
+      String[] columns = new String[] {
+        "Name", "Type", "GroupID", "UserData", "UserPrivileges", "Deleted" };
       ClientValue user = executeQuery(query, view, columns);
 
       if (user.size() > 0) {
         // Need to return a Assoc LLValue, whereas the above is a table.
-        String name = user.toString(0, "Name");
-        int type = user.toInteger(0, "Type");
-        int groupId = user.toInteger(0, "GroupID");
-        int userPrivileges = user.toInteger(0, "UserPrivileges");
-        ClientValue userData = toAssoc(user.toString(0, "UserData"));
-        return new MockClientValue(
-            new String[] {"Name", "Type", "GroupID", "UserData",
-                "UserPrivileges"},
-            new Object[] {name, type, groupId, userData, userPrivileges});
+        return new MockClientValue(columns, new Object[] {
+              user.toString(0, "Name"),
+              user.toInteger(0, "Type"),
+              user.toInteger(0, "GroupID"),
+              toAssoc(user.toString(0, "UserData")),
+              user.toInteger(0, "UserPrivileges"),
+              user.toInteger(0, "Deleted") });
       } else {
         return null;
       }
