@@ -66,115 +66,6 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
     this.clientFactory = clientFactory;
   }
 
-  private List<Principal> getMemberPrincipalList(IdentityUtils identityUtils,
-      ClientValue groupMembers) throws RepositoryException {
-    List<Principal> memberPrincipals = new ArrayList<Principal>();
-
-    for (int i = 0; i < groupMembers.size(); i++) {
-      ClientValue memberInfo = groupMembers.toValue(i);
-      String memberName = memberInfo.toString("Name");
-      int memberType = memberInfo.toInteger("Type");
-      LOGGER.log(Level.FINEST, "Member name: {0}; Member Type: {1}",
-          new Object[] {memberName, memberType});
-      if (identityUtils.isDisabled(memberInfo)) {
-        continue;
-      }
-      ClientValue memberUserData = memberInfo.toValue("UserData");
-      String memberNamespace =
-          identityUtils.getNamespace(memberName, memberUserData);
-      if (memberNamespace != null) {
-        if (memberType == Client.USER) {
-          memberPrincipals.add(new UserPrincipal(memberName, memberNamespace));
-        } else if (memberType == Client.GROUP) {
-          memberPrincipals.add(new GroupPrincipal(memberName, memberNamespace));
-        }
-      }
-    }
-
-    return memberPrincipals;
-  }
-
-  private Map<GroupPrincipal, List<Principal>> getLivelinkGroups()
-      throws RepositoryException {
-    Client client = clientFactory.createClient();
-    IdentityUtils identityUtils = new IdentityUtils(connector, client);
-    Map<GroupPrincipal, List<Principal>> groups =
-        new LinkedHashMap<GroupPrincipal, List<Principal>>();
-    getStandardGroups(client, identityUtils, groups);
-    getSystemAdminAndPublicGroups(client, identityUtils, groups);
-    return groups;
-  }
-
-  private void getStandardGroups(Client client, IdentityUtils identityUtils,
-      Map<GroupPrincipal, List<Principal>> groups) throws RepositoryException {
-    ClientValue groupsValue = client.ListGroups();
-    for (int i = 0; i < groupsValue.size(); i++) {
-      ClientValue groupInfo = groupsValue.toValue(i);
-      String groupName = groupInfo.toString("Name");
-      LOGGER.log(Level.FINEST, "Fetching group members for group name: {0}",
-          groupName);
-      ClientValue groupUserData = groupInfo.toValue("UserData");
-      String groupNamespace =
-          identityUtils.getNamespace(groupName, groupUserData);
-      if (groupNamespace != null) {
-        GroupPrincipal groupPrincipal =
-            new GroupPrincipal(groupName, groupNamespace);
-
-        ClientValue groupMembers = client.ListMembers(groupName);
-        List<Principal> memberPrincipals =
-            getMemberPrincipalList(identityUtils, groupMembers);
-        groups.put(groupPrincipal, memberPrincipals);
-        LOGGER.log(Level.FINER, "Group principal: {0}; Member principals: {1}",
-            new Object[] {groupPrincipal, memberPrincipals});
-      }
-    }
-  }
-
-  private void getSystemAdminAndPublicGroups(Client client,
-      IdentityUtils identityUtils, Map<GroupPrincipal, List<Principal>> groups)
-          throws RepositoryException {
-    List<Principal> sysAdminMembers = new ArrayList<Principal>();
-    List<Principal> publicAccessMembers = new ArrayList<Principal>();
-
-    ClientValue usersValue = client.ListUsers();
-    for (int i = 0; i < usersValue.size(); i++) {
-      ClientValue userInfo = usersValue.toValue(i);
-      String userName = userInfo.toString("Name");
-      LOGGER.log(Level.FINEST, "Fetching privileges for {0}", userName);
-      if (identityUtils.isDisabled(userInfo)) {
-        continue;
-      }
-      ClientValue userData = userInfo.toValue("UserData");
-      String userNamespace = identityUtils.getNamespace(userName, userData);
-
-      if (userNamespace != null) {
-        int privs = userInfo.toInteger("UserPrivileges");
-
-        if ((privs & Client.PRIV_PERM_BYPASS) == Client.PRIV_PERM_BYPASS) {
-          LOGGER.log(Level.FINEST, "Admin Privileges for user {0}: {1}",
-              new Object[] {userName, privs});
-          sysAdminMembers.add(new UserPrincipal(userName, userNamespace));
-        }
-
-        if ((privs & Client.PRIV_PERM_WORLD) == Client.PRIV_PERM_WORLD) {
-          LOGGER.log(Level.FINEST, "Public Access Privileges for user {0}: {1}",
-              new Object[] {userName, privs});
-          publicAccessMembers.add(new UserPrincipal(userName, userNamespace));
-        }
-      }
-    }
-
-    GroupPrincipal sysAdminGroupPrincipal =
-        new GroupPrincipal(Client.SYSADMIN_GROUP,
-            connector.getGoogleLocalNamespace());
-    groups.put(sysAdminGroupPrincipal, sysAdminMembers);
-
-    GroupPrincipal publicAccessGroupPrincipal =
-        new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP,
-            connector.getGoogleLocalNamespace());
-    groups.put(publicAccessGroupPrincipal, publicAccessMembers);
-  }
-
   /**
    * This implementation checks whether traversal is disabled, but
    * otherwise group feeding follows its own schedule.
@@ -207,11 +98,135 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
         LOGGER.fine("GROUP FEEDING IS DISABLED");
         return;
       }
-      docPusher.pushGroupDefinitions(getLivelinkGroups(), false);
+      docPusher.pushGroupDefinitions(
+          new Traverser(connector, clientFactory).getGroups(), false);
     } catch (RepositoryException e) {
       throw new IOException("Error in feeding groups ", e);
     } finally {
       NDC.remove();
+    }
+  }
+
+  private static class Traverser {
+    private final LivelinkConnector connector;
+    private final Client client;
+    private final IdentityUtils identityUtils;
+
+    public Traverser(LivelinkConnector connector, ClientFactory clientFactory) {
+      this.connector = connector;
+      this.client = clientFactory.createClient();
+      this.identityUtils = new IdentityUtils(connector, client);
+    }
+
+    public Map<GroupPrincipal, List<Principal>> getGroups()
+        throws RepositoryException {
+      Map<GroupPrincipal, List<Principal>> groups =
+          new LinkedHashMap<GroupPrincipal, List<Principal>>();
+      getStandardGroups(groups);
+      getSystemAdminAndPublicGroups(groups);
+      return groups;
+    }
+
+    private void getStandardGroups(Map<GroupPrincipal, List<Principal>> groups)
+        throws RepositoryException {
+      ClientValue groupsValue = client.ListGroups();
+      for (int i = 0; i < groupsValue.size(); i++) {
+        ClientValue groupInfo = groupsValue.toValue(i);
+        String groupName = groupInfo.toString("Name");
+        LOGGER.log(Level.FINEST, "Fetching group members for group name: {0}",
+            groupName);
+        ClientValue groupUserData = groupInfo.toValue("UserData");
+        String groupNamespace =
+            identityUtils.getNamespace(groupName, groupUserData);
+        if (groupNamespace != null) {
+          GroupPrincipal groupPrincipal =
+              new GroupPrincipal(groupName, groupNamespace);
+
+          ClientValue groupMembers = client.ListMembers(groupName);
+          List<Principal> memberPrincipals =
+              getMemberPrincipalList(groupMembers);
+          groups.put(groupPrincipal, memberPrincipals);
+          LOGGER.log(Level.FINER,
+              "Group principal: {0}; Member principals: {1}",
+              new Object[] {groupPrincipal, memberPrincipals});
+        }
+      }
+    }
+
+    private List<Principal> getMemberPrincipalList(ClientValue groupMembers)
+        throws RepositoryException {
+      List<Principal> memberPrincipals = new ArrayList<Principal>();
+
+      for (int i = 0; i < groupMembers.size(); i++) {
+        ClientValue memberInfo = groupMembers.toValue(i);
+        String memberName = memberInfo.toString("Name");
+        int memberType = memberInfo.toInteger("Type");
+        LOGGER.log(Level.FINEST, "Member name: {0}; Member Type: {1}",
+            new Object[] {memberName, memberType});
+        if (identityUtils.isDisabled(memberInfo)) {
+          continue;
+        }
+        ClientValue memberUserData = memberInfo.toValue("UserData");
+        String memberNamespace =
+            identityUtils.getNamespace(memberName, memberUserData);
+        if (memberNamespace != null) {
+          if (memberType == Client.USER) {
+            memberPrincipals.add(
+                new UserPrincipal(memberName, memberNamespace));
+          } else if (memberType == Client.GROUP) {
+            memberPrincipals.add(
+                new GroupPrincipal(memberName, memberNamespace));
+          }
+        }
+      }
+
+      return memberPrincipals;
+    }
+
+    private void getSystemAdminAndPublicGroups(
+        Map<GroupPrincipal, List<Principal>> groups)
+        throws RepositoryException {
+      List<Principal> sysAdminMembers = new ArrayList<Principal>();
+      List<Principal> publicAccessMembers = new ArrayList<Principal>();
+
+      ClientValue usersValue = client.ListUsers();
+      for (int i = 0; i < usersValue.size(); i++) {
+        ClientValue userInfo = usersValue.toValue(i);
+        String userName = userInfo.toString("Name");
+        LOGGER.log(Level.FINEST, "Fetching privileges for {0}", userName);
+        if (identityUtils.isDisabled(userInfo)) {
+          continue;
+        }
+        ClientValue userData = userInfo.toValue("UserData");
+        String userNamespace = identityUtils.getNamespace(userName, userData);
+
+        if (userNamespace != null) {
+          int privs = userInfo.toInteger("UserPrivileges");
+
+          if ((privs & Client.PRIV_PERM_BYPASS) == Client.PRIV_PERM_BYPASS) {
+            LOGGER.log(Level.FINEST, "Admin Privileges for user {0}: {1}",
+                new Object[] {userName, privs});
+            sysAdminMembers.add(new UserPrincipal(userName, userNamespace));
+          }
+
+          if ((privs & Client.PRIV_PERM_WORLD) == Client.PRIV_PERM_WORLD) {
+            LOGGER.log(Level.FINEST,
+                "Public Access Privileges for user {0}: {1}",
+                new Object[] {userName, privs});
+            publicAccessMembers.add(new UserPrincipal(userName, userNamespace));
+          }
+        }
+      }
+
+      GroupPrincipal sysAdminGroupPrincipal =
+          new GroupPrincipal(Client.SYSADMIN_GROUP,
+              connector.getGoogleLocalNamespace());
+      groups.put(sysAdminGroupPrincipal, sysAdminMembers);
+
+      GroupPrincipal publicAccessGroupPrincipal =
+          new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP,
+              connector.getGoogleLocalNamespace());
+      groups.put(publicAccessGroupPrincipal, publicAccessMembers);
     }
   }
 }
