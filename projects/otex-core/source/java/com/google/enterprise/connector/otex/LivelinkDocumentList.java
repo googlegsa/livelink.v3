@@ -15,7 +15,6 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import com.google.common.primitives.Ints;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -834,8 +833,7 @@ class LivelinkDocumentList implements DocumentList {
         return;
       }
 
-      List<Value> userPrincipals = new ArrayList<Value>();
-      List<Value> groupPrincipals = new ArrayList<Value>();
+      AclPrincipalFactory principalFactory = new AclPrincipalFactory();
 
       LOGGER.log(Level.FINEST, "ACL ENTRIES FOR ID: {0,number,#}", objectId);
 
@@ -852,38 +850,34 @@ class LivelinkDocumentList implements DocumentList {
               + userPermissions + ", SeeContents " + canRead);
         }
         if (canRead) {
-          getPrincipals(userId, ownerInfo, userPrincipals, groupPrincipals);
+          getPrincipal(userId, ownerInfo, principalFactory);
         }
       }
       // Always add System Administration group since admins have bypass rights.
-      groupPrincipals.add(asPrincipalValue(Client.SYSADMIN_GROUP,
-          connector.getGoogleLocalNamespace()));
+      principalFactory.createGroup(Client.SYSADMIN_GROUP,
+          connector.getGoogleLocalNamespace());
 
       // add users and groups principals to the map
-      props.addProperty(SpiConstants.PROPNAME_ACLUSERS, userPrincipals);
-      props.addProperty(SpiConstants.PROPNAME_ACLGROUPS, groupPrincipals);
+      props.addProperty(SpiConstants.PROPNAME_ACLUSERS,
+          principalFactory.userPrincipals);
+      props.addProperty(SpiConstants.PROPNAME_ACLGROUPS,
+          principalFactory.groupPrincipals);
     }
 
-    private void getPrincipals(int userId, ClientValue ownerInfo,
-        List<Value> userPrincipals, List<Value> groupPrincipals)
-        throws RepositoryException {
-      String name;
-      String namespace;
+    private void getPrincipal(int userId, ClientValue ownerInfo,
+        AclPrincipalFactory principalFactory) throws RepositoryException {
       if (userId < 0) {
         switch (userId) {
           case Client.RIGHT_WORLD:
-            name = Client.PUBLIC_ACCESS_GROUP;
-            namespace = connector.getGoogleLocalNamespace();
-            groupPrincipals.add(asPrincipalValue(name, namespace));
+            principalFactory.createGroup(Client.PUBLIC_ACCESS_GROUP,
+                connector.getGoogleLocalNamespace());
             break;
           case Client.RIGHT_SYSTEM:
             // Ignore this case, which Livelink does not implement.
             break;
           case Client.RIGHT_OWNER:
             if (ownerInfo != null) {
-              name = ownerInfo.toString("Name");
-              namespace = getUserGroupNamespace(userId, name, ownerInfo);
-              userPrincipals.add(asPrincipalValue(name, namespace));
+              identityUtils.getPrincipal(ownerInfo, principalFactory);
             }
             break;
           case Client.RIGHT_GROUP:
@@ -891,9 +885,7 @@ class LivelinkDocumentList implements DocumentList {
               ClientValue userInfo = identityUtils.getUserOrGroupById(
                   ownerInfo.toInteger("GroupID"));
               if (userInfo != null) {
-                name = userInfo.toString("Name");
-                namespace = getUserGroupNamespace(userId, name, userInfo);
-                groupPrincipals.add(asPrincipalValue(name, namespace));
+                identityUtils.getPrincipal(userInfo, principalFactory);
               }
             }
             break;
@@ -904,36 +896,34 @@ class LivelinkDocumentList implements DocumentList {
       } else {
         ClientValue userInfo = identityUtils.getUserOrGroupById(userId);
         if (userInfo != null) {
-          name = userInfo.toString("Name");
-          namespace = getUserGroupNamespace(userId, name, userInfo);
-          if (!Strings.isNullOrEmpty(name)) {
-            switch (userInfo.toInteger("Type")) {
-              case Client.USER:
-                userPrincipals.add(asPrincipalValue(name, namespace));
-                break;
-              case Client.GROUP:
-                groupPrincipals.add(asPrincipalValue(name, namespace));
-            }
-          }
+          identityUtils.getPrincipal(userInfo, principalFactory);
         }
       }
     }
 
-    private String getUserGroupNamespace(int userId, String name,
-        ClientValue userInfo) throws RepositoryException {
-      ClientValue userData = userInfo.toValue("UserData");
-      String namespace = identityUtils.getNamespace(name, userData);
-      LOGGER.log(Level.FINEST, "ACL ENTRY: "
-          + "UserID {0,number,#}, Name {1}, Namespace {2}, UserData {3}",
-          new Object[] { userId, name, namespace,
-            userData == null ? null : userData.getDiagnosticString() });
-      return namespace;
-    }
+    private class AclPrincipalFactory
+        implements IdentityUtils.PrincipalFactory<Value> {
+      private final List<Value> userPrincipals = new ArrayList<Value>();
+      private final List<Value> groupPrincipals = new ArrayList<Value>();
 
-    private Value asPrincipalValue(String name, String namespace)
-        throws RepositoryDocumentException {
-      return Value.getPrincipalValue(new Principal(PrincipalType.UNKNOWN,
-          namespace, name, CaseSensitivityType.EVERYTHING_CASE_SENSITIVE));
+      @Override
+      public Value createUser(String name, String namespace) {
+        return addPrincipal(name, namespace, userPrincipals);
+      }
+
+      @Override
+      public Value createGroup(String name, String namespace) {
+        return addPrincipal(name, namespace, groupPrincipals);
+      }
+
+      private Value addPrincipal(String name, String namespace,
+          List<Value> principals) {
+        Value principal = Value.getPrincipalValue(new Principal(
+                PrincipalType.UNKNOWN, namespace, name,
+                CaseSensitivityType.EVERYTHING_CASE_SENSITIVE));
+        principals.add(principal);
+        return principal;
+      }
     }
 
     /**

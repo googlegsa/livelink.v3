@@ -111,11 +111,13 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
     private final LivelinkConnector connector;
     private final Client client;
     private final IdentityUtils identityUtils;
+    private final GroupsPrincipalFactory principalFactory;
 
     public Traverser(LivelinkConnector connector, ClientFactory clientFactory) {
       this.connector = connector;
       this.client = clientFactory.createClient();
       this.identityUtils = new IdentityUtils(connector, client);
+      this.principalFactory = new GroupsPrincipalFactory();
     }
 
     public Map<GroupPrincipal, List<Principal>> getGroups()
@@ -127,6 +129,19 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
       return groups;
     }
 
+    private static class GroupsPrincipalFactory
+        implements IdentityUtils.PrincipalFactory<Principal> {
+      @Override
+      public Principal createUser(String name, String namespace) {
+        return new UserPrincipal(name, namespace);
+      }
+
+      @Override
+      public Principal createGroup(String name, String namespace) {
+        return new GroupPrincipal(name, namespace);
+      }
+    }
+
     private void getStandardGroups(Map<GroupPrincipal, List<Principal>> groups)
         throws RepositoryException {
       ClientValue groupsValue = client.ListGroups();
@@ -135,13 +150,9 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
         String groupName = groupInfo.toString("Name");
         LOGGER.log(Level.FINEST, "Fetching group members for group name: {0}",
             groupName);
-        ClientValue groupUserData = groupInfo.toValue("UserData");
-        String groupNamespace =
-            identityUtils.getNamespace(groupName, groupUserData);
-        if (groupNamespace != null) {
-          GroupPrincipal groupPrincipal =
-              new GroupPrincipal(groupName, groupNamespace);
-
+        GroupPrincipal groupPrincipal = (GroupPrincipal)
+            identityUtils.getPrincipal(groupInfo, principalFactory);
+        if (groupPrincipal != null) {
           ClientValue groupMembers = client.ListMembers(groupName);
           List<Principal> memberPrincipals =
               getMemberPrincipalList(groupMembers);
@@ -166,17 +177,10 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
         if (identityUtils.isDisabled(memberInfo)) {
           continue;
         }
-        ClientValue memberUserData = memberInfo.toValue("UserData");
-        String memberNamespace =
-            identityUtils.getNamespace(memberName, memberUserData);
-        if (memberNamespace != null) {
-          if (memberType == Client.USER) {
-            memberPrincipals.add(
-                new UserPrincipal(memberName, memberNamespace));
-          } else if (memberType == Client.GROUP) {
-            memberPrincipals.add(
-                new GroupPrincipal(memberName, memberNamespace));
-          }
+        Principal memberPrincipal =
+            identityUtils.getPrincipal(memberInfo, principalFactory);
+        if (memberPrincipal != null) {
+          memberPrincipals.add(memberPrincipal);
         }
       }
 
@@ -197,23 +201,22 @@ class GroupAdaptor extends AbstractAdaptor implements TraversalScheduleAware{
         if (identityUtils.isDisabled(userInfo)) {
           continue;
         }
-        ClientValue userData = userInfo.toValue("UserData");
-        String userNamespace = identityUtils.getNamespace(userName, userData);
-
-        if (userNamespace != null) {
+        Principal userPrincipal =
+            identityUtils.getPrincipal(userInfo, principalFactory);
+        if (userPrincipal != null) {
           int privs = userInfo.toInteger("UserPrivileges");
 
           if ((privs & Client.PRIV_PERM_BYPASS) == Client.PRIV_PERM_BYPASS) {
             LOGGER.log(Level.FINEST, "Admin Privileges for user {0}: {1}",
                 new Object[] {userName, privs});
-            sysAdminMembers.add(new UserPrincipal(userName, userNamespace));
+            sysAdminMembers.add(userPrincipal);
           }
 
           if ((privs & Client.PRIV_PERM_WORLD) == Client.PRIV_PERM_WORLD) {
             LOGGER.log(Level.FINEST,
                 "Public Access Privileges for user {0}: {1}",
                 new Object[] {userName, privs});
-            publicAccessMembers.add(new UserPrincipal(userName, userNamespace));
+            publicAccessMembers.add(userPrincipal);
           }
         }
       }

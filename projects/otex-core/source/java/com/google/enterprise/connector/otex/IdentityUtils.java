@@ -15,6 +15,7 @@
 package com.google.enterprise.connector.otex;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.spi.RepositoryException;
@@ -68,6 +69,49 @@ class IdentityUtils {
     return isDisabled;
   }
 
+  public interface PrincipalFactory<T> {
+    T createUser(String name, String namespace);
+    T createGroup(String name, String namespace);
+  }
+
+  public <T> T getPrincipal(ClientValue userInfo, PrincipalFactory<T> factory)
+      throws RepositoryException {
+      int userId = userInfo.toInteger("ID");
+      String name = userInfo.toString("Name");
+      if (Strings.isNullOrEmpty(name)) {
+        LOGGER.log(Level.FINE,
+            "Ignoring ID {0}: empty name", userId);
+        return null;
+      }
+      ClientValue userData = userInfo.toValue("UserData");
+      String namespace = getNamespace(name, userData);
+      if (namespace == null) {
+        return null;
+      }
+      int type = userInfo.toInteger("Type");
+
+      T principal;
+      switch (type) {
+        case Client.USER:
+          principal = factory.createUser(name, namespace);
+          break;
+        case Client.GROUP:
+          principal = factory.createGroup(name, namespace);
+          break;
+        default:
+          LOGGER.log(Level.FINE,
+              "Ignoring ID {0}: unknown principal type: {1,number,#}",
+              new Object[] { userId, type });
+          principal = null;
+      }
+      LOGGER.log(Level.FINEST, "PRINCIPAL: "
+          + "UserID {0,number,#}, UserData {1}: {2}",
+          new Object[] { userId,
+            userData == null ? null : userData.getDiagnosticString(),
+            principal });
+      return principal;
+  }
+
   private boolean isExternal(ClientValue userData)
       throws RepositoryException {
     if (userData != null && userData.hasValue()) {
@@ -87,7 +131,7 @@ class IdentityUtils {
     return false;
   }
 
-  public String getNamespace(String name, ClientValue userData)
+  private String getNamespace(String name, ClientValue userData)
       throws RepositoryException {
     try {
       String namespace;

@@ -24,12 +24,15 @@ import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
 import com.google.enterprise.connector.otex.client.mock.MockClientValue;
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import java.sql.SQLException;
+import org.junit.rules.ExpectedException;
 
 public class IdentityUtilsTest extends JdbcFixture {
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
+
   private static final String GLOBAL_NAMESPACE = "globalNS";
   private static final String LOCAL_NAMESPACE = "localNS";
 
@@ -120,6 +123,24 @@ public class IdentityUtilsTest extends JdbcFixture {
     assertFalse(out.isDisabled(client.GetUserOrGroupByIDNoThrow(2001)));
   }
 
+  @Test
+  public void testGetPrincipal_emptyName() throws Exception {
+    addUser(1001, "");
+    ClientValue user1 = client.GetUserOrGroupByIDNoThrow(1001);
+
+    assertNull(out.getPrincipal(user1, null));
+  }
+
+  /** Verifies that the emptyName test is not using the factory. */
+  @Test
+  public void testGetPrincipal_npe() throws Exception {
+    addUser(1001, "user1");
+    ClientValue user1 = client.GetUserOrGroupByIDNoThrow(1001);
+
+    thrown.expect(NullPointerException.class);
+    out.getPrincipal(user1, null);
+  }
+
   private void testGetNamespace(String userData, String expectedNamespace)
       throws Exception {
     addUser(1001, "user1");
@@ -127,16 +148,20 @@ public class IdentityUtilsTest extends JdbcFixture {
     ClientValue user1 = client.GetUserOrGroupByIDNoThrow(1001);
 
     assertEquals(expectedNamespace,
-        out.getNamespace("user1", user1.toValue("UserData")));
+        out.getPrincipal(user1, new NamespaceFactory()));
   }
 
-  /*
-   * MockClientValue treats null values in a table or assoc as undefined,
-   * so we need an explicit test for null.
-   */
-  @Test
-  public void testGetNamespace_null() throws Exception {
-    assertEquals(LOCAL_NAMESPACE, out.getNamespace("user1", null));
+  private static class NamespaceFactory
+      implements IdentityUtils.PrincipalFactory<String> {
+    @Override
+    public String createUser(String name, String namespace) {
+      return namespace;
+    }
+
+    @Override
+    public String createGroup(String name, String namespace) {
+      return namespace;
+    }
   }
 
   @Test
