@@ -15,8 +15,6 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
@@ -36,7 +34,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -120,7 +117,7 @@ public class MockClient implements Client {
             throws RepositoryException {
       String query = "ID=" + id;
       String view = "KUAF";
-      String[] columns = new String[] {
+      String[] columns = new String[] { "ID",
         "Name", "Type", "GroupID", "UserData", "UserPrivileges", "Deleted" };
       ClientValue user = executeQuery(query, view, columns);
 

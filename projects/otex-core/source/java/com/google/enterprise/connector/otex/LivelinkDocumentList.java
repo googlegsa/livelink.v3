@@ -921,19 +921,8 @@ class LivelinkDocumentList implements DocumentList {
 
     private String getUserGroupNamespace(int userId, String name,
         ClientValue userInfo) throws RepositoryException {
-      ClientValue userData;
-      String namespace;
-      if (userInfo != null && userInfo.hasValue()) {
-        userData = userInfo.toValue("UserData");
-        if (userData != null && userData.hasValue()) {
-          namespace = identityUtils.getNamespace(name, userData);
-        } else {
-          namespace = connector.getGoogleLocalNamespace();
-        }
-      } else {
-        userData = null;
-        namespace = null;
-      }
+      ClientValue userData = userInfo.toValue("UserData");
+      String namespace = identityUtils.getNamespace(name, userData);
       LOGGER.log(Level.FINEST, "ACL ENTRY: "
           + "UserID {0,number,#}, Name {1}, Namespace {2}, UserData {3}",
           new Object[] { userId, name, namespace,

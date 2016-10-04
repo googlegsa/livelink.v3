@@ -15,9 +15,11 @@
 package com.google.enterprise.connector.otex;
 
 import static com.google.enterprise.connector.otex.IdentityUtils.LOGIN_MASK;
+
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.mock.MockClient;
-
+import org.junit.After;
+import org.junit.Before;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -66,7 +68,8 @@ class JdbcFixture {
   private Connection jdbcConnection;
 
   /** Initializes a database connection. */
-  protected void setUp() throws SQLException {
+  @Before
+  public void setUp() throws SQLException {
     // Get a named in-memory database for sharing across connections.
     // We delete all objects from the database for each test in tearDown.
     jdbcConnection = MockClient.getConnection();
@@ -87,7 +90,8 @@ class JdbcFixture {
             + (Client.PRIV_PERM_BYPASS | LOGIN_MASK) + ")");
   }
 
-  protected void tearDown() throws SQLException {
+  @After
+  public void tearDown() throws SQLException {
     try {
       executeUpdate("drop all objects");
     } finally {
@@ -110,5 +114,48 @@ class JdbcFixture {
     } finally {
       stmt.close();
     }
+  }
+
+  protected void addUser(int userId, String name) throws SQLException {
+    // No special privileges to user, just log-in enabled.
+    addUser(userId, name, LOGIN_MASK);
+  }
+
+  protected void addUser(int userId, String name, int privileges)
+      throws SQLException {
+    executeUpdate("insert into KUAF(ID, Name, Type, UserData, UserPrivileges) "
+        + "values(" + userId + ",'" + name + "', 0, NULL, " + privileges + ")");
+  }
+
+  protected void addGroup(int userId, String name) throws SQLException {
+    // no privileges to the group
+    executeUpdate("insert into KUAF(ID, Name, Type, UserData, UserPrivileges) "
+        + "values(" + userId + ",'" + name + "' ,1 , NULL, 0)");
+  }
+
+  protected void addGroupMembers(int groupId, int... userIds)
+      throws SQLException {
+    for (int i = 0; i < userIds.length; i++) {
+      executeUpdate("insert into KUAFChildren(ID, ChildID) "
+          + "values(" + groupId + ", " + userIds[i] + ")");
+    }
+  }
+
+  protected void setUserData(int userId, String userData) throws SQLException {
+    String value = (userData == null) ? "NULL" : "'" + userData + "'";
+    executeUpdate("UPDATE KUAF SET UserData = " + value
+        + " where ID = " + userId);
+  }
+
+  protected void deleteUser(int userId) throws SQLException {
+    executeUpdate("update KUAF set "
+        + "Name = Name || ' (Delete) ' || ID, Deleted = 1, UserPrivileges = 0 "
+        + "where ID = " + userId);
+  }
+
+  protected void deleteGroup(int groupId) throws SQLException {
+    executeUpdate("update KUAF set "
+        + "Name = Name || ' (Delete) ' || ID, Deleted = 1 "
+        + "where ID = " + groupId);
   }
 }

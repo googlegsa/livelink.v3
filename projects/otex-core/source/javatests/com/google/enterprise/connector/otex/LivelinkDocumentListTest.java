@@ -878,8 +878,7 @@ public class LivelinkDocumentListTest extends TestCase {
 
   private void setUserData(int userId, String userData)
       throws SQLException {
-    jdbcFixture.executeUpdate("UPDATE KUAF SET UserData = '" + userData
-        + "' where ID = " + userId);
+    jdbcFixture.setUserData(userId, userData);
   }
 
   private Principal getAclPrincipal(Document doc, String prop, String name)
@@ -938,35 +937,6 @@ public class LivelinkDocumentListTest extends TestCase {
         getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "group2"));
   }
 
-  public void testInvalidUserData_UserNamespace() throws RepositoryException,
-      SQLException {
-    insertDTreeAcl(33, 1001, Client.PERM_SEECONTENTS);
-    setUserData(1001, "invaliddata=");
-
-    DocumentList list = getObjectUnderTest(33, 0, 1001);
-    Document doc = list.nextDocument();
-    assertNotNull(doc);
-    assertEquals(
-        new Principal(UNKNOWN, LOCAL_NAMESPACE, "user1",
-            EVERYTHING_CASE_SENSITIVE),
-        getAclPrincipal(doc,
-            SpiConstants.PROPNAME_ACLUSERS, "user1"));
-  }
-
-  public void testNullUserData_UserNamespace() throws RepositoryException,
-      SQLException {
-    insertDTreeAcl(34, 1001, Client.PERM_SEECONTENTS);
-    setUserData(1001, null);
-
-    DocumentList list = getObjectUnderTest(34, 0, 1001);
-    Document doc = list.nextDocument();
-    assertNotNull(doc);
-    assertEquals(
-        new Principal(UNKNOWN, LOCAL_NAMESPACE, "user1",
-            EVERYTHING_CASE_SENSITIVE),
-        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
-  }
-
   public void testPublicAccess_Namespace()
       throws RepositoryException, SQLException {
     insertDTreeAcl(35, Client.RIGHT_WORLD, Client.PERM_SEECONTENTS);
@@ -984,7 +954,7 @@ public class LivelinkDocumentListTest extends TestCase {
   public void testOwner_Namespace()
       throws RepositoryException, SQLException {
     insertDTreeAcl(36, Client.RIGHT_OWNER, Client.PERM_SEECONTENTS);
-    setUserData(1001, "ExternalAuthentication=false,ldap=vizdom.com");
+    setUserData(1001, "ldap=example.com");
 
     DocumentList list = getObjectUnderTest(36, 0, 1001);
     Document doc = list.nextDocument();
@@ -1008,33 +978,5 @@ public class LivelinkDocumentListTest extends TestCase {
         new Principal(UNKNOWN, LOCAL_NAMESPACE, "group1",
             EVERYTHING_CASE_SENSITIVE),
         getAclPrincipal(doc, SpiConstants.PROPNAME_ACLGROUPS, "group1"));
-  }
-
-  public void testUserdataLdap_Namespace()
-      throws RepositoryException, SQLException {
-    insertDTreeAcl(38, 1001, Client.PERM_SEECONTENTS);
-    setUserData(1001, "LDAP=vizdom");
-
-    DocumentList list = getObjectUnderTest(38, 0, 1001);
-    Document doc = list.nextDocument();
-    assertNotNull(doc);
-    assertEquals(
-        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "user1",
-            EVERYTHING_CASE_SENSITIVE),
-        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
-  }
-
-  public void testUserdataNtlm_Namespace()
-      throws RepositoryException, SQLException {
-    insertDTreeAcl(38, 1001, Client.PERM_SEECONTENTS);
-    setUserData(1001, "ntlm=");
-
-    DocumentList list = getObjectUnderTest(38, 0, 1001);
-    Document doc = list.nextDocument();
-    assertNotNull(doc);
-    assertEquals(
-        new Principal(UNKNOWN, GLOBAL_NAMESPACE, "user1",
-            EVERYTHING_CASE_SENSITIVE),
-        getAclPrincipal(doc, SpiConstants.PROPNAME_ACLUSERS, "user1"));
   }
 }

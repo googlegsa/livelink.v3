@@ -44,7 +44,7 @@ class IdentityUtils {
   public ClientValue getUserOrGroupById(int userId)
       throws RepositoryException {
     ClientValue info = client.GetUserOrGroupByIDNoThrow(userId);
-    if (info == null || isDisabled(userId, info)) {
+    if (info == null || !info.hasValue() || isDisabled(userId, info)) {
       return null;
     } else {
       return info;
