@@ -14,6 +14,7 @@
 
 package com.google.enterprise.connector.otex;
 
+import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.spi.AuthenticationIdentity;
 import com.google.enterprise.connector.spi.SimpleAuthenticationIdentity;
 
@@ -358,5 +359,35 @@ public class IdentityResolverTest extends TestCase {
     test(DomainAndName.TRUE, "hogsmeade",
         getIdentity("fred@hogwarts.edu", "burrow"),
         "burrow\\fred@hogwarts.edu", "burrow\\fred");
+  }
+
+  private String getPrincipalIdentity(DomainAndName domainAndName,
+      String windowsDomain, String username) {
+    return new IdentityResolver(domainAndName, windowsDomain)
+        .getPrincipalIdentity(username);
+  }
+
+  public void testGetPrincipalIdentity() {
+    for (DomainAndName domainAndName : ImmutableList.of(
+            DomainAndName.FALSE,
+            DomainAndName.LEGACY,
+            DomainAndName.AUTHENTICATION)) {
+      assertEquals("fred", getPrincipalIdentity(
+              domainAndName, null, "fred"));
+      assertEquals("hogwarts\\fred", getPrincipalIdentity(
+              domainAndName, null, "hogwarts\\fred"));
+      assertEquals("hogsmeade\\fred", getPrincipalIdentity(
+              domainAndName, "hogsmeade", "fred"));
+      assertEquals("hogwarts\\fred", getPrincipalIdentity(
+              domainAndName, "hogsmeade", "hogwarts\\fred"));
+    }
+    assertEquals("fred", getPrincipalIdentity(
+            DomainAndName.TRUE, null, "fred"));
+    assertEquals("hogwarts\\fred", getPrincipalIdentity(
+            DomainAndName.TRUE, null, "hogwarts\\fred"));
+    assertEquals("fred", getPrincipalIdentity(
+            DomainAndName.TRUE, "hogsmeade", "fred"));
+    assertEquals("hogwarts\\fred", getPrincipalIdentity(
+            DomainAndName.TRUE, "hogsmeade", "hogwarts\\fred"));
   }
 }

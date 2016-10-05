@@ -42,7 +42,7 @@ public class IdentityUtilsTest extends JdbcFixture {
 
   @Before
   public void setUpObjectUnderTest() throws Exception {
-    LivelinkConnector connector = new LivelinkConnector(
+    connector = new LivelinkConnector(
         "com.google.enterprise.connector.otex.client.mock.MockClientFactory");
     connector.setGoogleGlobalNamespace(GLOBAL_NAMESPACE);
     connector.setGoogleLocalNamespace(LOCAL_NAMESPACE);
@@ -139,6 +139,54 @@ public class IdentityUtilsTest extends JdbcFixture {
 
     thrown.expect(NullPointerException.class);
     out.getPrincipal(user1, null);
+  }
+
+  private void testGetPrincipal_windowsDomain(String expectedName,
+      String windowsDomain, int userId) throws Exception {
+    connector.setWindowsDomain(windowsDomain);
+    out = new IdentityUtils(connector, client);
+    ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
+
+    assertEquals(expectedName, out.getPrincipal(userInfo, new NameFactory()));
+  }
+
+  private static class NameFactory
+      implements IdentityUtils.PrincipalFactory<String> {
+    @Override
+    public String createUser(String name, String namespace) {
+      return name;
+    }
+
+    @Override
+    public String createGroup(String name, String namespace) {
+      return name;
+    }
+  }
+
+  @Test
+  public void testGetPrincipal_windowsDomain_localUser() throws Exception {
+    addUser(1001, "user1");
+    testGetPrincipal_windowsDomain("user1", "hogwarts", 1001);
+  }
+
+  @Test
+  public void testGetPrincipal_windowsDomain_localGroup() throws Exception {
+    addGroup(2001, "group1");
+    testGetPrincipal_windowsDomain("group1", "hogwarts", 2001);
+  }
+
+  @Test
+  public void testGetPrincipal_windowsDomain_globalUser() throws Exception {
+    addUser(1001, "user1");
+    setUserData(1001, "ExternalAuthentication=true");
+    testGetPrincipal_windowsDomain("hogwarts\\user1", "hogwarts", 1001);
+  }
+
+  @Test
+  public void testGetPrincipal_windowsDomain_globalGroup() throws Exception {
+    addGroup(2001, "group1");
+    setUserData(2001, "ExternalAuthentication=true");
+    testGetPrincipal_windowsDomain("hogwarts\\group1", "hogwarts", 2001);
   }
 
   private void testGetNamespace(String userData, String expectedNamespace)

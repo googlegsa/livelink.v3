@@ -36,10 +36,13 @@ class IdentityUtils {
 
   private final LivelinkConnector connector;
   private final Client client;
+  private final IdentityResolver identityResolver;
 
   IdentityUtils(LivelinkConnector connector, Client client) {
     this.connector = connector;
     this.client = client;
+    this.identityResolver = new IdentityResolver(
+        connector.getDomainAndName(), connector.getWindowsDomain());
   }
 
   public ClientValue getUserOrGroupById(int userId)
@@ -83,12 +86,23 @@ class IdentityUtils {
             "Ignoring ID {0}: empty name", userId);
         return null;
       }
+      int type = userInfo.toInteger("Type");
       ClientValue userData = userInfo.toValue("UserData");
-      String namespace = getNamespace(name, userData);
-      if (namespace == null) {
+
+      String namespace;
+      try {
+        if (isExternal(userData)) {
+          name = identityResolver.getPrincipalIdentity(name);
+          namespace = connector.getGoogleGlobalNamespace();
+        } else {
+          namespace = connector.getGoogleLocalNamespace();
+        }
+      } catch (IllegalArgumentException e) {
+        LOGGER.log(Level.FINER,
+            "Unable to get principal for {0} from {1}: {2}",
+            new Object[] {name, userData.getDiagnosticString(), e});
         return null;
       }
-      int type = userInfo.toInteger("Type");
 
       T principal;
       switch (type) {
@@ -129,23 +143,5 @@ class IdentityUtils {
       }
     }
     return false;
-  }
-
-  private String getNamespace(String name, ClientValue userData)
-      throws RepositoryException {
-    try {
-      String namespace;
-      if (isExternal(userData)) {
-        namespace = connector.getGoogleGlobalNamespace();
-      } else {
-        namespace = connector.getGoogleLocalNamespace();
-      }
-      return namespace;
-    } catch (IllegalArgumentException e) {
-      LOGGER.log(Level.FINER,
-          "Unable to get namespace for {0} from {1}: {2}",
-          new Object[] {name, userData.getDiagnosticString(), e});
-      return null;
-    }
   }
 }
