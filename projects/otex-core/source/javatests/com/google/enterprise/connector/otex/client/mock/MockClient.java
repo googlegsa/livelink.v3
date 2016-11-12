@@ -15,8 +15,6 @@
 package com.google.enterprise.connector.otex.client.mock;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.enterprise.connector.otex.LivelinkException;
 import com.google.enterprise.connector.otex.LivelinkIOException;
 import com.google.enterprise.connector.otex.client.Client;
@@ -36,7 +34,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -120,51 +117,15 @@ public class MockClient implements Client {
             throws RepositoryException {
       String query = "ID=" + id;
       String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
-          "UserPrivileges"};
+      String[] columns = new String[] { "ID",
+        "Name", "Type", "GroupID", "UserData", "UserPrivileges", "Deleted" };
       ClientValue user = executeQuery(query, view, columns);
 
       if (user.size() > 0) {
         // Need to return a Assoc LLValue, whereas the above is a table.
-        String name = user.toString(0, "Name");
-        int type = user.toInteger(0, "Type");
-        int groupId = user.toInteger(0, "GroupID");
-        int userPrivileges = user.toInteger(0, "UserPrivileges");
-        ClientValue userData = toAssoc(user.toString(0, "UserData"));
-        return new MockClientValue(
-            new String[] {"Name", "Type", "GroupID", "UserData",
-                "UserPrivileges"},
-            new Object[] {name, type, groupId, userData, userPrivileges});
+        return user.toValue(0);
       } else {
         return null;
-      }
-    }
-
-    public ClientValue toAssoc(String fieldData)
-        throws RepositoryException {
-      if (Strings.isNullOrEmpty(fieldData)) {
-        return new MockClientValue();
-      }
-
-      String[] data = fieldData.split(",");
-      String[] names = new String[data.length];
-      String[] values = new String[data.length];
-      int i = 0;
-      for (String value : data) {
-        int index = value.indexOf("=");
-        if (index > 0) {
-          names[i] = value.substring(0, index);
-          values[i] = value.substring(index + 1);
-          i++;
-        }
-      }
-
-      if (i > 0) {
-        return new MockClientValue(
-            Arrays.copyOf(names, i),
-            Arrays.copyOf(values, i));
-      } else {
-        return new MockClientValue();
       }
     }
 
@@ -191,18 +152,20 @@ public class MockClient implements Client {
     /** {@inheritDoc} */
     @Override
     public ClientValue ListUsers() throws RepositoryException {
-      String query = "Type=" + Client.USER;
+      String query = "Type=" + Client.USER + " and Deleted=0";
       String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
+      String[] columns = new String[] { "ID",
+        "Name", "Type", "GroupID", "UserData", "UserPrivileges", "Deleted" };
       return executeQuery(query, view, columns);
     }
 
     /** {@inheritDoc} */
     @Override
     public ClientValue ListGroups() throws RepositoryException {
-      String query = "Type=" + Client.GROUP;
+      String query = "Type=" + Client.GROUP + " and Deleted=0";
       String view = "KUAF";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData"};
+      String[] columns = new String[] { "ID",
+        "Name", "Type", "GroupID", "UserData", "Deleted" };
       return executeQuery(query, view, columns);
     }
 
@@ -211,10 +174,11 @@ public class MockClient implements Client {
     public ClientValue ListMembers(String groupName)
         throws RepositoryException {
       String query = "KUAF.ID = a.ChildID and a.ID = " 
-          + "(select ID from KUAF where KUAF.Name='" + groupName + "')";
+          + "(select ID from KUAF where KUAF.Name='" + groupName + "') "
+          + "and KUAF.Deleted = 0";
       String view = "KUAF, KUAFChildren";
-      String[] columns = new String[] {"Name", "Type", "GroupID", "UserData",
-          "a.ChildID"};
+      String[] columns = new String[] { "KUAF.ID AS ID",
+        "Name", "Type", "GroupID", "UserData", "UserPrivileges", "Deleted" };
       return executeQuery(query, view, columns);
     }
 

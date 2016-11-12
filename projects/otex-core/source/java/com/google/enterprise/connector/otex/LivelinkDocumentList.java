@@ -17,7 +17,6 @@ package com.google.enterprise.connector.otex;
 import static java.util.Collections.unmodifiableSet;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import com.google.common.primitives.Ints;
 import com.google.enterprise.connector.otex.client.Client;
 import com.google.enterprise.connector.otex.client.ClientValue;
@@ -160,7 +159,7 @@ class LivelinkDocumentList implements DocumentList {
     this.fields = fields;
     this.traversalContext = traversalContext;
     this.checkpoint = checkpoint;
-    this.identityUtils = new IdentityUtils(connector);
+    this.identityUtils = new IdentityUtils(connector, client);
 
     if (contentHandler instanceof RefreshableContentHandler) {
       ((RefreshableContentHandler) contentHandler).refresh();
@@ -870,15 +869,11 @@ class LivelinkDocumentList implements DocumentList {
         return;
       }
 
-      List<Value> userPrincipals = new ArrayList<Value>();
-      List<Value> groupPrincipals = new ArrayList<Value>();
+      AclPrincipalFactory principalFactory = new AclPrincipalFactory();
 
-      if (LOGGER.isLoggable(Level.FINEST)) {
-        LOGGER.finest("ACE Info for id: " + objectId);
-      }
+      LOGGER.log(Level.FINEST, "ACL ENTRIES FOR ID: {0,number,#}", objectId);
 
-      ClientValue ownerInfo =
-          client.GetUserOrGroupByIDNoThrow(ownerId);
+      ClientValue ownerInfo = identityUtils.getUserOrGroupById(ownerId);
       ClientValue objectRightsInfo = client.GetObjectRights(objectId);
       for (int i = 0; i < objectRightsInfo.size(); i++) {
         int userId = objectRightsInfo.toInteger(i, "RightID");
@@ -886,96 +881,85 @@ class LivelinkDocumentList implements DocumentList {
         boolean canRead = ((userPermissions & Client.PERM_SEECONTENTS) 
             == Client.PERM_SEECONTENTS);
 
-        if (canRead) {
-          getPrincipals(userId, ownerInfo, userPrincipals, groupPrincipals);
-        }
         if (LOGGER.isLoggable(Level.FINEST)) {
-          LOGGER.finest("ACE Info: UserID " + userId + ", Permissions "
+          LOGGER.finest("ACL ENTRY: UserID " + userId + ", Permissions "
               + userPermissions + ", SeeContents " + canRead);
+        }
+        if (canRead) {
+          getPrincipal(userId, ownerInfo, principalFactory);
         }
       }
       // Always add System Administration group since admins have bypass rights.
-      groupPrincipals.add(asPrincipalValue(Client.SYSADMIN_GROUP,
-          connector.getGoogleLocalNamespace()));
+      principalFactory.createGroup(Client.SYSADMIN_GROUP,
+          connector.getGoogleLocalNamespace());
 
       // add users and groups principals to the map
-      props.addProperty(SpiConstants.PROPNAME_ACLUSERS, userPrincipals);
-      props.addProperty(SpiConstants.PROPNAME_ACLGROUPS, groupPrincipals);
+      props.addProperty(SpiConstants.PROPNAME_ACLUSERS,
+          principalFactory.userPrincipals);
+      props.addProperty(SpiConstants.PROPNAME_ACLGROUPS,
+          principalFactory.groupPrincipals);
     }
 
-    private void getPrincipals(int userId, ClientValue ownerInfo,
-        List<Value> userPrincipals, List<Value> groupPrincipals)
-        throws RepositoryException {
-      String name;
-      String namespace;
+    private void getPrincipal(int userId, ClientValue ownerInfo,
+        AclPrincipalFactory principalFactory) throws RepositoryException {
       if (userId < 0) {
         switch (userId) {
           case Client.RIGHT_WORLD:
-            name = Client.PUBLIC_ACCESS_GROUP;
-            namespace = connector.getGoogleLocalNamespace();
-            groupPrincipals.add(asPrincipalValue(name, namespace));
+            principalFactory.createGroup(Client.PUBLIC_ACCESS_GROUP,
+                connector.getGoogleLocalNamespace());
             break;
           case Client.RIGHT_SYSTEM:
             // Ignore this case, which Livelink does not implement.
             break;
           case Client.RIGHT_OWNER:
-            name = ownerInfo.toString("Name");
-            namespace = getUserGroupNamespace(ownerInfo);
-            userPrincipals.add(asPrincipalValue(name, namespace));
+            if (ownerInfo != null) {
+              identityUtils.getPrincipal(ownerInfo, principalFactory);
+            }
             break;
           case Client.RIGHT_GROUP:
-            ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(
-                ownerInfo.toInteger("GroupID"));
-            name = userInfo.toString("Name");
-            namespace = getUserGroupNamespace(userInfo);
-            groupPrincipals.add(asPrincipalValue(name, namespace));
+            if (ownerInfo != null) {
+              ClientValue userInfo = identityUtils.getUserOrGroupById(
+                  ownerInfo.toInteger("GroupID"));
+              if (userInfo != null) {
+                identityUtils.getPrincipal(userInfo, principalFactory);
+              }
+            }
             break;
           default:
-            if (LOGGER.isLoggable(Level.FINEST)) {
-              LOGGER.finest("Unexpected user or group id: " + userId);
-            }
+            LOGGER.log(Level.FINEST,
+                "Unexpected user or group ID: {0,number,#}", userId);
         }
       } else {
-        ClientValue userInfo = client.GetUserOrGroupByIDNoThrow(userId);
+        ClientValue userInfo = identityUtils.getUserOrGroupById(userId);
         if (userInfo != null) {
-          name = userInfo.toString("Name");
-          namespace = getUserGroupNamespace(userInfo);
-          if (!Strings.isNullOrEmpty(name)) {
-            switch (userInfo.toInteger("Type")) {
-              case Client.USER:
-                userPrincipals.add(asPrincipalValue(name, namespace));
-                break;
-              case Client.GROUP:
-                groupPrincipals.add(asPrincipalValue(name, namespace));
-            }
-          }
+          identityUtils.getPrincipal(userInfo, principalFactory);
         }
       }
     }
 
-    private String getUserGroupNamespace(ClientValue userInfo)
-        throws RepositoryException {
-      ClientValue userData;
-      String namespace;
-      if (userInfo != null && userInfo.hasValue()) {
-        userData = userInfo.toValue("UserData");
-        if (userData != null && userData.hasValue()) {
-          LOGGER.log(Level.FINEST,
-              "ACE Info: UserData {0}", userData.toString());
-          namespace = identityUtils.getNamespace(userData);
-        } else {
-          namespace = connector.getGoogleLocalNamespace();
-        }
-      } else {
-        namespace = null;
-      }
-      return namespace;
-    }
+    private class AclPrincipalFactory
+        implements IdentityUtils.PrincipalFactory<Value> {
+      private final List<Value> userPrincipals = new ArrayList<Value>();
+      private final List<Value> groupPrincipals = new ArrayList<Value>();
 
-    private Value asPrincipalValue(String name, String namespace)
-        throws RepositoryDocumentException {
-      return Value.getPrincipalValue(new Principal(PrincipalType.UNKNOWN,
-          namespace, name, CaseSensitivityType.EVERYTHING_CASE_SENSITIVE));
+      @Override
+      public Value createUser(String name, String namespace) {
+        return addPrincipal(name, namespace, userPrincipals);
+      }
+
+      @Override
+      public Value createGroup(String name, String namespace) {
+        return addPrincipal(name, namespace, groupPrincipals);
+      }
+
+      private Value addPrincipal(String name, String namespace,
+          List<Value> principals) {
+        Value principal = Value.getPrincipalValue(new Principal(
+                PrincipalType.UNKNOWN, namespace, name,
+                CaseSensitivityType.EVERYTHING_CASE_SENSITIVE));
+        principals.add(principal);
+        return principal;
+      }
     }
 
     /**

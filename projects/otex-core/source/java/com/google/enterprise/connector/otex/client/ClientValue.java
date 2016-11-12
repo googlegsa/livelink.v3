@@ -104,6 +104,12 @@ public interface ClientValue {
      */
     int type();
 
+  /**
+   * Gets a descriptive string representation of this value, without
+   * throwing an exception.
+   */
+  String getDiagnosticString();
+
     /**
      * Gets the list of field names for an assoc, record, or recarray value.
      *

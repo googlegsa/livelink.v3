@@ -63,6 +63,12 @@ public interface Client
     /** Public access privilege */
     int PRIV_PERM_WORLD = 2048;
 
+  /** User login privileges. */
+  int PRIV_LOGIN = 1;
+  int PRIV_UAPI_SESSION = 2;
+  int PRIV_DAPI_SESSION = 4;
+  int PRIV_WAPI_SESSION = 8;
+
     /** Constants corresponding to LAPI_ATTRIBUTES. */
     int ATTR_DATAVALUES = 0;
     int ATTR_DEFAULTVALUES = 1;

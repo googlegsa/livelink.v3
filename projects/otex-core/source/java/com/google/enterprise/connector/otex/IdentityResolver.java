@@ -22,7 +22,8 @@ import java.util.logging.Logger;
 
 /**
  * Maps {@AuthenticationIdentity} values to the usernames used for
- * authentication and authorization.
+ * authentication and authorization, and repository user and group
+ * names to ACL and group principal names.
  *
  * @since 2.8
  */
@@ -104,5 +105,20 @@ class IdentityResolver {
       LOGGER.fine("AUTHORIZE FOR: " + username);
     }
     return username;
+  }
+
+  /**
+   * Qualifies a bare username if it is not already qualified
+   * (explicitly or because the domainAndName property says it is),
+   * and we have a domain to qualify it with.
+   */
+  public String getPrincipalIdentity(String username) {
+    if (username.indexOf('\\') != -1
+        || domainAndName == DomainAndName.TRUE
+        || Strings.isNullOrEmpty(windowsDomain)) {
+      return username;
+    } else {
+      return windowsDomain + '\\' + username;
+    }
   }
 }

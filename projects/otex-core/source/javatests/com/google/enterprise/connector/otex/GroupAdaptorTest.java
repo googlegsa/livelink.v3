@@ -14,9 +14,12 @@
 
 package com.google.enterprise.connector.otex;
 
+import static com.google.enterprise.connector.otex.IdentityUtils.LOGIN_MASK;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.enterprise.adaptor.GroupPrincipal;
@@ -27,6 +30,8 @@ import com.google.enterprise.connector.otex.client.ClientFactory;
 import com.google.enterprise.connector.spi.RepositoryException;
 import com.google.enterprise.connector.spi.TraversalSchedule;
 
+import org.junit.Test;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -34,24 +39,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import junit.framework.TestCase;
-
-public class GroupAdaptorTest extends TestCase {
-
+public class GroupAdaptorTest extends JdbcFixture {
   private static final String GLOBAL_NAMESPACE = "globalNS";
   private static final String LOCAL_NAMESPACE = "localNS";
-
-  private final JdbcFixture jdbcFixture = new JdbcFixture();
-
-  @Override
-  protected void setUp() throws SQLException {
-    jdbcFixture.setUp();
-  }
-
-  @Override
-  protected void tearDown() throws SQLException {
-    jdbcFixture.tearDown();
-  }
 
   private LivelinkConnector getConnector()
       throws RepositoryException {
@@ -67,38 +57,6 @@ public class GroupAdaptorTest extends TestCase {
     LivelinkConnector connector = getConnector();
     ClientFactory clientFactory = connector.getClientFactory();
     return new GroupAdaptor(connector, clientFactory);
-  }
-
-  private void addUser(int userId, String name) throws SQLException {
-    // no privileges to user
-    addUser(userId, name, 0);
-  }
-
-  private void addUser(int userId, String name, int privileges)
-      throws SQLException {
-    jdbcFixture.executeUpdate("insert into KUAF(ID, Name, Type, UserData," +
-        " UserPrivileges)"
-        + " values(" + userId + ",'" + name + "' ,0 , NULL, " + privileges +")");
-  }
-
-  private void addGroup(int userId, String name) throws SQLException {
-    // no privileges to the group
-    jdbcFixture.executeUpdate("insert into KUAF(ID, Name, Type, UserData," +
-        " UserPrivileges)"
-        + " values(" + userId + ",'" + name + "' ,1 , NULL, 0)");
-  }
-
-  private void addGroupMembers(int groupId, int... userIds)
-      throws SQLException {
-    for (int i = 0; i < userIds.length; i++) {
-      jdbcFixture.executeUpdate("insert into KUAFChildren(ID, ChildID)"
-          + " values(" + groupId + ", " + userIds[i] + ")");
-    }
-  }
-
-  private void setUserData(int userId, String userData) throws SQLException {
-    jdbcFixture.executeUpdate("UPDATE KUAF SET UserData = '" + userData
-        + "' where ID = " + userId);
   }
 
   private Map<GroupPrincipal, ? extends Collection<Principal>> getGroupInfo(
@@ -119,6 +77,7 @@ public class GroupAdaptorTest extends TestCase {
     assertEquals(expectedSet, groupSet);
   }
 
+  @Test
   public void testEmptyGroup()
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
@@ -161,17 +120,20 @@ public class GroupAdaptorTest extends TestCase {
     assertEquals(expectedUserSet, userSet);
   }
 
+  @Test
   public void testOneGroup() throws Exception {
     GroupAdaptor out = getGroupsAdaptor();
     testOneGroup(out);
   }
 
+  @Test
   public void testOneGroup_enabled() throws Exception {
     GroupAdaptor out = getGroupsAdaptor();
     setScheduleDisabled(out, false);
     testOneGroup(out);
   }
 
+  @Test
   public void testOneGroup_disabled() throws Exception {
     addUser(1001, "user1");
     addUser(1002, "user2");
@@ -191,6 +153,7 @@ public class GroupAdaptorTest extends TestCase {
     adaptor.setTraversalSchedule(schedule);
   }
 
+  @Test
   public void testGroupNameWithSpace()
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
@@ -219,6 +182,7 @@ public class GroupAdaptorTest extends TestCase {
     assertEquals(expectedUserSet, userSet);
   }
 
+  @Test
   public void testMultipleGroups()
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
@@ -263,6 +227,46 @@ public class GroupAdaptorTest extends TestCase {
     assertEquals(expectedUserSet2, userSet2);
   }
 
+  @Test
+  public void testDisabledUsersAndGroups() throws Exception {
+    addUser(1001, "user1",
+        Client.PRIV_PERM_WORLD | Client.PRIV_PERM_BYPASS | LOGIN_MASK);
+    addUser(1002, "user2", Client.PRIV_PERM_WORLD);
+    addUser(1003, "user3");
+    addGroup(2001, "group1");
+    addGroupMembers(2001, 1001, 1002, 1003);
+    deleteUser(1001);
+
+    addUser(1004, "user4", Client.PRIV_PERM_WORLD | LOGIN_MASK);
+    addGroup(2002, "group2");
+    addGroupMembers(2002, 1003, 1004);
+    deleteGroup(2002);
+
+    Map<GroupPrincipal, ? extends Collection<Principal>> groups =
+        getGroupInfo(getGroupsAdaptor());
+
+    GroupPrincipal expectedGroup =
+        new GroupPrincipal("group1", LOCAL_NAMESPACE);
+    GroupPrincipal sysAdminGroup =
+        new GroupPrincipal(Client.SYSADMIN_GROUP, LOCAL_NAMESPACE);
+    GroupPrincipal pubAccessGroup =
+        new GroupPrincipal(Client.PUBLIC_ACCESS_GROUP, LOCAL_NAMESPACE);
+    assertEquals(ImmutableSet.of(expectedGroup, sysAdminGroup, pubAccessGroup),
+        groups.keySet());
+
+    assertEquals(
+        ImmutableSet.of(new UserPrincipal("user3", LOCAL_NAMESPACE)),
+        new HashSet<Principal>(groups.get(expectedGroup)));
+    assertEquals(
+        ImmutableSet.of(
+            new UserPrincipal("Admin", LOCAL_NAMESPACE)),
+        new HashSet<Principal>(groups.get(sysAdminGroup)));
+    assertEquals(
+        ImmutableSet.of(new UserPrincipal("user4", LOCAL_NAMESPACE)),
+        new HashSet<Principal>(groups.get(pubAccessGroup)));
+  }
+
+  @Test
   public void testExternalUser() throws RepositoryException,
       SQLException, IOException, InterruptedException {
     addUser(1001, "user1");
@@ -288,6 +292,7 @@ public class GroupAdaptorTest extends TestCase {
     assertEquals(expectedUserSet, userSet);
   }
 
+  @Test
   public void testNestedGroup()
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
@@ -339,7 +344,7 @@ public class GroupAdaptorTest extends TestCase {
   private void testGroupsForUserPrivileges(int privileges, String... groupNames)
       throws RepositoryException, SQLException, IOException,
       InterruptedException {
-    addUser(1001, "user1", privileges);
+    addUser(1001, "user1", privileges | LOGIN_MASK);
     Set<String> groupNamesSet = ImmutableSet.copyOf(groupNames);
 
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =
@@ -354,17 +359,20 @@ public class GroupAdaptorTest extends TestCase {
     }
   }
 
+  @Test
   public void testSysAdminPrivileges() throws SQLException, IOException,
       InterruptedException, RepositoryException {
     testGroupsForUserPrivileges(Client.PRIV_PERM_BYPASS, Client.SYSADMIN_GROUP);
   }
 
+  @Test
   public void testPublicAccessPrivileges() throws SQLException, IOException,
       InterruptedException, RepositoryException {
     testGroupsForUserPrivileges(Client.PRIV_PERM_WORLD,
         Client.PUBLIC_ACCESS_GROUP);
   }
 
+  @Test
   public void testSysAdminAndPublicAccessPrivileges() throws SQLException,
       IOException, InterruptedException, RepositoryException {
     testGroupsForUserPrivileges(
@@ -372,35 +380,41 @@ public class GroupAdaptorTest extends TestCase {
         Client.PUBLIC_ACCESS_GROUP, Client.SYSADMIN_GROUP);
   }
 
+  @Test
   public void testNoPublAccessPrivileges() throws SQLException, IOException,
       InterruptedException, RepositoryException {
     testGroupsForUserPrivileges((~0 & ~Client.PRIV_PERM_WORLD),
         Client.SYSADMIN_GROUP);
   }
 
+  @Test
   public void testNoSysAdminPrivileges() throws SQLException, IOException,
       InterruptedException, RepositoryException {
     testGroupsForUserPrivileges((~0 & ~Client.PRIV_PERM_BYPASS),
         Client.PUBLIC_ACCESS_GROUP);
   }
 
+  @Test
   public void testNoSysAdminOrPublAccessPrivileges() throws SQLException,
       IOException, InterruptedException, RepositoryException {
     testGroupsForUserPrivileges(~0 & ~Client.PRIV_PERM_BYPASS
         & ~Client.PRIV_PERM_WORLD);
   }
 
+  @Test
   public void testFullPrivileges() throws SQLException, IOException,
       InterruptedException, RepositoryException {
     testGroupsForUserPrivileges(~0, Client.PUBLIC_ACCESS_GROUP,
         Client.SYSADMIN_GROUP);
   }
 
+  @Test
   public void testNoPrivileges() throws SQLException, IOException,
       InterruptedException, RepositoryException {
     testGroupsForUserPrivileges(0);
   }
 
+  @Test
   public void testForSysAdminPublicAccessGroups() throws IOException,
       InterruptedException, RepositoryException {
     Map<GroupPrincipal, ? extends Collection<Principal>> groups =

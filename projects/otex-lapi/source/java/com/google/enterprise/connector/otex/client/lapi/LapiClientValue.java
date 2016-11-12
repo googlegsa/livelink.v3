@@ -52,8 +52,7 @@ public final class LapiClientValue implements ClientValue {
         assert DOUBLE == LLValue.LL_DOUBLE : LLValue.LL_DOUBLE;
         assert ERROR == LLValue.LL_ERROR : LLValue.LL_ERROR;
         assert INTEGER == LLValue.LL_INTEGER : LLValue.LL_INTEGER;
-        // Requires LAPI 9.7.1:
-        // assert LONG = LLValue.LL_LONG : LLValue.LL_LONG;
+        assert LONG == LLValue.LL_LONG : LLValue.LL_LONG;
         assert LIST == LLValue.LL_LIST : LLValue.LL_LIST;
         assert NOTSET == LLValue.LL_NOTSET : LLValue.LL_NOTSET;
         assert RECORD == LLValue.LL_RECORD : LLValue.LL_RECORD;
@@ -120,8 +119,8 @@ public final class LapiClientValue implements ClientValue {
         return value.type();
     }
 
-    public String typeByName(int type) {
-        switch (type) {
+    private String typeByName(int type) {
+      switch (type) {
         case ASSOC: return "ASSOC";
         case BOOLEAN: return "BOOLEAN";
         case DATE: return "DATE";
@@ -129,14 +128,26 @@ public final class LapiClientValue implements ClientValue {
         case ERROR: return "ERROR";
         case INTEGER: return "INTEGER";
         case LIST: return "LIST";
+        case LONG: return "LONG";
         case NOTSET: return "NOTSET";
         case RECORD: return "RECORD";
         case STRING: return "STRING";
         case TABLE: return "TABLE";
         case UNDEFINED: return "UNDEFINED";
-        }
-        return "UNKNOWN TYPE";
+        default: return "UNKNOWN (" + type + ")";
+      }
     }
+
+  @Override
+  public String getDiagnosticString() {
+    String asString;
+    try {
+      asString = value.toString();
+    } catch (RuntimeException e) {
+      asString = e.toString();
+    }
+    return String.format("%s %s", typeByName(value.type()), asString);
+  }
 
     /** {@inheritDoc} */
     @Override
@@ -575,7 +586,7 @@ public final class LapiClientValue implements ClientValue {
     @Override
     public String toString2() throws RepositoryException {
         try {
-            return value.toString(); // + " (type = " + typeByName(value.type()) + ")";
+            return value.toString();
         } catch (LLIllegalOperationException e) {
             throw new IllegalArgumentException(e);
         } catch (RuntimeException e) {
