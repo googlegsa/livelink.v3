@@ -7,11 +7,20 @@ Connector for Livelink. This connector supports OpenText Content Server.
 The following sections describe the release in detail and provide
 information that supplements the main documentation.
 
-Web Site: https://github.com/googlegsa/livelink.v3
+For information about the latest version of the Connector for OpenText,
+now in beta, see the version 4 overview page and GitHub project:
+
+    http://googlegsa.github.io/adaptor/index.html
+
+    https://github.com/googlegsa/opentext
+
+For more about version 3, see the version 3 GitHub project:
+
+    https://github.com/googlegsa/livelink.v3
 
 
-Release 3.4.0, September 14, 2015
-=================================
+Release 3.4.0, November 12, 2016
+================================
 
 Introduction
 ------------
@@ -43,6 +52,21 @@ Known Issues
 
 Issues Fixed Since 3.2.10
 -------------------------
+26991025 - Validate Items to Index when not using DTreeAncestors.
+
+25088575 - Improve delete performance by using a builtin database index,
+           to avoid having to create a custom index on the DAuditNew
+           table. This is controlled by the useIndexedDeleteQuery
+           advanced configuration property, which is false by default.
+
+           To use this optimization with Oracle, a view needs to be added
+           to the white list. Please see the sections below for details
+           about the white list.
+
+           (select b.*,
+                TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate
+            from DAuditNew b)
+
 19269832 - Avoid logging warnings about negative user IDs and convert
            user ID values of -3 to the item owner.
 
@@ -145,7 +169,10 @@ DTreeAncestors
 
 ListNodesTablesWhiteList={'DTree','WebNodes','WebNodesCatalog','DTreeAncestors','(select * from DTree order by ModifyDate, DataID)','(select * from DTree join DTreeAncestors using (DataID) order by ModifyDate, DataID)','(select b.*, (select ParentID from DTree c where -b.DataID = c.DataID and c.ParentID <> -1) as StepParentID from DTree b)',"(select b.*, TO_CHAR(AuditDate, 'YYYY-MM-DD HH24:MI:SS') as GoogleAuditDate from DAuditNew b order by AuditDate, EventID)",'(select b.*, cast(case when DataSize < 0 then 0 else DataSize end as number(19)) as GoogleDataSize from WebNodes b)'}
 
-Note: The derived view with 'YYYY-MM-DD HH24:MI:SS' uses double quotes.
+Notes:
+* The derived view with 'YYYY-MM-DD HH24:MI:SS' uses double quotes.
+* The derived view on DAuditNew for Oracle is different when using the
+  useIndexedDeleteQuery advanced configuration property.
 
 
 Release 3.2.10, December 2, 2014
