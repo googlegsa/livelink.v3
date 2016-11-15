@@ -646,7 +646,10 @@ public class LivelinkDocumentListTest extends TestCase {
     assertNullDocument(next);
   }
 
-  /** This should never happen, but LivelinkDocumentList doesn't know that. */
+  /**
+   * This can only happen if there were inserts, too, or
+   * LivelinkTraversalManager would not construct a LivelinkDocumentList.
+   */
   public void testNextDocument_deleteAllCached() throws RepositoryException {
     AtomicReference<Set<Integer>> delCache =
         new AtomicReference<Set<Integer>>(ImmutableSet.of(100, 101));

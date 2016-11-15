@@ -621,10 +621,17 @@ public class LivelinkTraversalManagerTest extends TestCase {
 
   /** Gets the doc IDs for each document in the list. */
   private List<String> getDocids(DocumentList list) throws RepositoryException {
+    return getDocids(list, Integer.MAX_VALUE);
+  }
+
+  /** Gets the doc IDs for up to {@code limit} documents in the list. */
+  private List<String> getDocids(DocumentList list, int limit)
+      throws RepositoryException {
     assertNotNull(list);
     ImmutableList.Builder<String> docids = ImmutableList.builder();
+    int i = 0;
     Document doc;
-    while ((doc = list.nextDocument()) != null) {
+    while (i++ < limit && (doc = list.nextDocument()) != null) {
       docids.add(Value.getSingleValueString(doc, SpiConstants.PROPNAME_DOCID));
     }
     return docids.build();
@@ -854,8 +861,9 @@ public class LivelinkTraversalManagerTest extends TestCase {
     testSqlWhereCondition(false, "MimeType is not null", ImmutableList.of(42));
   }
 
-  private void testGetDeletes(boolean useIndexedDeleteQuery, int batchHint,
-      List<String> expectedIds, List<String> expectedNextIds) throws Exception {
+  private void testResumeTraversalDeletes(boolean useIndexedDeleteQuery,
+      int batchHint, List<String> expectedIds, List<String> expectedNextIds)
+      throws Exception {
     // Make the DAuditNew records visible as deletes.
     jdbcFixture.executeUpdate(
         "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
@@ -869,20 +877,19 @@ public class LivelinkTraversalManagerTest extends TestCase {
     DocumentList deletes = ltm.resumeTraversal(checkpoint);
     assertEquals(expectedIds, getDocids(deletes));
 
-    // Verify the lack of cache updates in LivelinkTraversalManager itself.
+    // The cache is only updated when checkpoint() is called, so we
+    // should get the same results a second time.
     deletes = ltm.resumeTraversal(checkpoint);
     assertEquals(expectedIds, getDocids(deletes));
 
-    // Reading the DocumentList updates the cache for indexed deletes.
-    while (deletes.nextDocument() != null) {
-    }
+    // Update the cache for indexed deletes.
     String newCheckpoint = deletes.checkpoint();
 
     // This isn't using the new checkpoint, but rather, verifying
     // caching of the previous batch.
     deletes = ltm.resumeTraversal(checkpoint);
     if (useIndexedDeleteQuery) {
-      assertNull(deletes);
+      assertNullDocumentList(deletes);
     } else {
       assertEquals(expectedIds, getDocids(deletes));
     }
@@ -890,30 +897,103 @@ public class LivelinkTraversalManagerTest extends TestCase {
     // Verify the expected next batch from the new checkpoint.
     deletes = ltm.resumeTraversal(newCheckpoint);
     if (expectedNextIds == null) {
-      assertNull(deletes);
+      assertNullDocumentList(deletes);
     } else {
       assertEquals(expectedNextIds, getDocids(deletes));
     }
   }
 
   /** The oldest delete is skipped by the matching date. */
-  public void testGetDeletes_custom() throws Exception {
-    testGetDeletes(false, 100, ImmutableList.of("6603", "6602"), null);
+  public void testResumeTraversalDeletes_custom() throws Exception {
+    testResumeTraversalDeletes(false, 100,
+        ImmutableList.of("6603", "6602"), null);
   }
 
   /** The batch hint limits the returned results and leads to a second batch. */
-  public void testGetDeletes_customWithbatchHint() throws Exception {
-    testGetDeletes(false, 1, ImmutableList.of("6603"),
-        ImmutableList.of("6602"));
+  public void testResumeTraversalDeletes_customWithbatchHint()
+      throws Exception {
+    testResumeTraversalDeletes(false, 1,
+        ImmutableList.of("6603"), ImmutableList.of("6602"));
   }
 
   /** All deletes match due to the use of AuditDate >= X. */
-  public void testGetDeletes_standard() throws Exception {
-    testGetDeletes(true, 100, ImmutableList.of("6601", "6603", "6602"), null);
+  public void testResumeTraversalDeletes_standard() throws Exception {
+    testResumeTraversalDeletes(true, 100,
+        ImmutableList.of("6601", "6603", "6602"), null);
   }
 
   /** The batch hint does not limit the returned results. */
-  public void testGetDeletes_standardWithBatchHint() throws Exception {
-    testGetDeletes(true, 1, ImmutableList.of("6601", "6603", "6602"), null);
+  public void testResumeTraversalDeletes_standardWithBatchHint()
+      throws Exception {
+    testResumeTraversalDeletes(true, 1,
+        ImmutableList.of("6601", "6603", "6602"), null);
+  }
+
+  /**
+   * Ensures that a batch with inserts and all deletes cached does not
+   * reset the cache to empty, which would lead to resending some deletes.
+   */
+  public void testResumeTraversalDeletes_allDeletesCached() throws Exception {
+    // Make the DAuditNew records visible as deletes.
+    jdbcFixture.executeUpdate(
+        "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
+
+    conn.setUseIndexedDeleteQuery(true);
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
+
+    // This matches the earliest AuditDate with a larger EventID.
+    String checkpoint = "2099-01-01 00:00:00,0,2001-01-01 00:00:00,99999";
+    DocumentList deletes = ltm.resumeTraversal(checkpoint);
+    assertEquals(ImmutableList.of("6601", "6603", "6602"), getDocids(deletes));
+
+    // Update the cache for indexed deletes.
+    checkpoint = deletes.checkpoint();
+
+    // Unset the insert checkpoint to get some inserts now.
+    checkpoint = checkpoint.replaceAll("^.*,0,", ",0,");
+    DocumentList inserts = ltm.resumeTraversal(checkpoint);
+    assertEquals(ImmutableList.of("24", "42", "2000", "6"), getDocids(inserts));
+    checkpoint = inserts.checkpoint();
+
+    // Verify that all the deletes are still cached.
+    assertNullDocumentList(ltm.resumeTraversal(checkpoint));
+  }
+
+  /**
+   * Tests a scenario where there are some deletes, they get cached, and
+   * then a batch times out and is not fully processed.
+   */
+  public void testResumeTraversalDeletes_timeout() throws Exception {
+    // Make the DAuditNew records visible as deletes.
+    jdbcFixture.executeUpdate(
+        "update DAuditNew set AuditID = 2, AuditStr = 'Delete', SubType = 141");
+
+    conn.setUseIndexedDeleteQuery(true);
+    LivelinkTraversalManager ltm = getObjectUnderTest(new MockClient());
+
+    // This matches the earliest AuditDate with a larger EventID.
+    String checkpoint = "2099-01-01 00:00:00,0,2001-01-01 00:00:00,99999";
+    DocumentList deletes = ltm.resumeTraversal(checkpoint);
+    assertEquals(ImmutableList.of("6601"), getDocids(deletes, 1));
+
+    // Update the cache for indexed deletes.
+    checkpoint = deletes.checkpoint();
+
+    // Simulate a timeout, and call checkpoint immediately. without reading
+    // all the rows (or in this case, any of the rows).
+    deletes = ltm.resumeTraversal(checkpoint);
+    checkpoint = deletes.checkpoint();
+
+    // Verify that the initial delete is still cached.
+    assertEquals(ImmutableList.of("6603", "6602"),
+        getDocids(ltm.resumeTraversal(checkpoint)));
+  }
+
+  /** An assertion with a better error message than assertNull(DocumentList). */
+  private void assertNullDocumentList(DocumentList list)
+      throws RepositoryException {
+    if (list != null) {
+      fail("Expected null list, but got " + getDocids(list));
+    }
   }
 }

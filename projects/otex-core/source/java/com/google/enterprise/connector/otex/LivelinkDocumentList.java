@@ -249,7 +249,9 @@ class LivelinkDocumentList implements DocumentList {
    */
   @Override
   public String checkpoint() throws RepositoryException {
-    if (connector.getUseIndexedDeleteQuery()) {
+    // If we are not caching deletes, do not create a cache. If we are
+    // caching deletes, do not reset the cache to empty.
+    if (connector.getUseIndexedDeleteQuery() && !nextDelCache.isEmpty()) {
       delCacheReference.set(unmodifiableSet(nextDelCache));
     }
     String cp = checkpoint.toString();
