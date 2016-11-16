@@ -1,5 +1,12 @@
 Welcome to the Google Search Appliance Connector for Livelink!
 
+For information about the latest version of the Connector for OpenText,
+now in beta, see the version 4 overview page and GitHub project:
+
+    http://googlegsa.github.io/adaptor/index.html
+
+    https://github.com/googlegsa/opentext
+
 The Google Search Appliance connector framework enables Google search
 appliances to search and serve documents stored in non-Web
 repositories, such as enterprise content management systems. An
